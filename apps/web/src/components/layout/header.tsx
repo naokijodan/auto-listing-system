@@ -24,12 +24,31 @@ export function Header() {
   const unreadCount = unreadData?.data?.count ?? 0;
 
   useEffect(() => {
-    // Check system preference
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Check stored preference or system preference
     const stored = localStorage.getItem('theme');
-    const isDarkMode = stored ? stored === 'dark' : prefersDark;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    let isDarkMode: boolean;
+    if (stored === 'system' || !stored) {
+      isDarkMode = prefersDark;
+    } else {
+      isDarkMode = stored === 'dark';
+    }
+
     setIsDark(isDarkMode);
     document.documentElement.classList.toggle('dark', isDarkMode);
+
+    // Listen for system preference changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      const storedTheme = localStorage.getItem('theme');
+      if (storedTheme === 'system' || !storedTheme) {
+        setIsDark(e.matches);
+        document.documentElement.classList.toggle('dark', e.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   const toggleTheme = () => {

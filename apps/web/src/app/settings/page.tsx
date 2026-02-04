@@ -298,6 +298,31 @@ function MarketplaceSettings() {
 }
 
 function AppearanceSettings() {
+  const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('system');
+
+  // 初期化時にLocalStorageから読み込み
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('theme') as 'system' | 'light' | 'dark' | null;
+      if (stored) {
+        setTheme(stored);
+      }
+    }
+  });
+
+  const handleThemeChange = (newTheme: 'system' | 'light' | 'dark') => {
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+
+    // テーマを適用
+    if (newTheme === 'system') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', prefersDark);
+    } else {
+      document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -308,12 +333,42 @@ function AppearanceSettings() {
           <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             テーマ
           </label>
-          <select className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900">
+          <select
+            value={theme}
+            onChange={(e) => handleThemeChange(e.target.value as 'system' | 'light' | 'dark')}
+            className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+          >
             <option value="system">システム設定に従う</option>
             <option value="light">ライト</option>
             <option value="dark">ダーク</option>
           </select>
+          <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+            ヘッダーの太陽/月アイコンでも切り替えできます
+          </p>
         </div>
+
+        {/* Theme Preview */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { id: 'light', label: 'ライト', bg: 'bg-white border-zinc-200', text: 'text-zinc-900' },
+            { id: 'dark', label: 'ダーク', bg: 'bg-zinc-900 border-zinc-700', text: 'text-white' },
+            { id: 'system', label: 'システム', bg: 'bg-gradient-to-r from-white to-zinc-900 border-zinc-300', text: 'text-zinc-500' },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => handleThemeChange(t.id as 'system' | 'light' | 'dark')}
+              className={cn(
+                'flex flex-col items-center rounded-lg border-2 p-3 transition-colors',
+                t.bg,
+                theme === t.id ? 'ring-2 ring-amber-500' : ''
+              )}
+            >
+              <div className={cn('h-8 w-full rounded', t.id === 'light' ? 'bg-zinc-100' : t.id === 'dark' ? 'bg-zinc-800' : 'bg-gradient-to-r from-zinc-100 to-zinc-800')} />
+              <span className={cn('mt-2 text-xs font-medium', t.text)}>{t.label}</span>
+            </button>
+          ))}
+        </div>
+
         <div>
           <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             言語
