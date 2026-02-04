@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: als-postgres
+    environment:
+      POSTGRES_USER: als_user
+      POSTGRES_PASSWORD: als_password
+      POSTGRES_DB: als_development
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U als_user -d als_development"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - als-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: als-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - als-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: als-minio
+    environment:
+      MINIO_ROOT_USER: minio_access_key
+      MINIO_ROOT_PASSWORD: minio_secret_key
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - als-network
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: als-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 minio_access_key minio_secret_key;
+      mc mb local/images --ignore-existing;
+      mc anonymous set download local/images;
+      echo 'Bucket created successfully';
+      "
+    networks:
+      - als-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  als-network:
+    driver: bridge

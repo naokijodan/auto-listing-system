@@ -1,0 +1,292 @@
+// Prisma Schema for Auto Listing System
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================================
+// 仕入元情報
+// ========================================
+model Source {
+  id        String     @id @default(cuid())
+  type      SourceType
+  name      String
+  url       String?
+  isActive  Boolean    @default(true)
+  metadata  Json       @default("{}")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  products Product[]
+
+  @@map("sources")
+}
+
+enum SourceType {
+  MERCARI
+  YAHOO_AUCTION
+  YAHOO_FLEA
+  RAKUMA
+  RAKUTEN
+  AMAZON
+  TAKAYAMA
+  JOSHIN
+  OTHER
+}
+
+// ========================================
+// 統一商品モデル
+// ========================================
+model Product {
+  id String @id @default(cuid())
+
+  // ソース情報
+  sourceId     String
+  source       Source @relation(fields: [sourceId], references: [id])
+  sourceItemId String // 元サイトの商品ID
+  sourceUrl    String
+  sourceHash   String? // 差分検知用ハッシュ
+
+  // 基本情報（原文）
+  title       String
+  description String @db.Text
+  price       Int // 仕入価格（円）
+
+  // 翻訳済み情報
+  titleEn       String?
+  descriptionEn String? @db.Text
+
+  // 商品属性
+  category   String?
+  brand      String?
+  condition  String?
+  weight     Int? // グラム
+  attributes Json   @default("{}") // AI抽出属性
+
+  // 画像
+  images          String[] // 元画像URL
+  processedImages String[] // 白抜き後URL（MinIO/S3）
+
+  // セラー情報
+  sellerId   String?
+  sellerName String?
+
+  // ステータス
+  status            ProductStatus @default(PENDING_SCRAPE)
+  translationStatus ProcessStatus @default(PENDING)
+  imageStatus       ProcessStatus @default(PENDING)
+  lastError         String?       @db.Text
+
+  // タイムスタンプ
+  scrapedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  listings Listing[]
+  jobLogs  JobLog[]
+
+  @@unique([sourceId, sourceItemId])
+  @@index([status])
+  @@index([sourceHash])
+  @@index([createdAt])
+  @@map("products")
+}
+
+enum ProductStatus {
+  PENDING_SCRAPE
+  PROCESSING_IMAGE
+  TRANSLATING
+  READY_TO_REVIEW
+  APPROVED
+  PUBLISHING
+  ACTIVE
+  SOLD
+  OUT_OF_STOCK
+  ERROR
+  DELETED
+}
+
+enum ProcessStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  ERROR
+}
+
+// ========================================
+// 出品情報（マーケットプレイス別）
+// ========================================
+model Listing {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  marketplace          Marketplace
+  marketplaceListingId String? // eBay/Joom の出品ID
+
+  // 価格情報
+  listingPrice Float // 出品価格（USD）
+  shippingCost Float? // 送料
+  currency     String @default("USD")
+
+  // マーケット固有データ（JSONB）
+  marketplaceData Json @default("{}")
+
+  // ステータス
+  status       ListingStatus @default(DRAFT)
+  errorMessage String?       @db.Text
+
+  // タイムスタンプ
+  listedAt  DateTime?
+  soldAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([productId, marketplace])
+  @@index([marketplace, status])
+  @@index([marketplaceListingId])
+  @@map("listings")
+}
+
+enum Marketplace {
+  JOOM
+  EBAY
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_PUBLISH
+  PUBLISHING
+  ACTIVE
+  PAUSED
+  SOLD
+  ENDED
+  ERROR
+}
+
+// ========================================
+// ジョブログ
+// ========================================
+model JobLog {
+  id String @id @default(cuid())
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  jobId        String // BullMQ Job ID
+  queueName    String
+  jobType      String
+  status       JobStatus
+  payload      Json      @default("{}")
+  result       Json?
+  errorMessage String?   @db.Text
+
+  startedAt   DateTime
+  completedAt DateTime?
+  duration    Int? // ミリ秒
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([queueName, status])
+  @@index([createdAt])
+  @@index([jobId])
+  @@map("job_logs")
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  DEAD_LETTER
+}
+
+// ========================================
+// 価格計算設定
+// ========================================
+model PriceSetting {
+  id String @id @default(cuid())
+
+  name        String      @unique
+  marketplace Marketplace
+
+  // 手数料
+  platformFeeRate Float // プラットフォーム手数料率
+  paymentFeeRate  Float // 決済手数料率
+
+  // マージン
+  targetProfitRate Float // 目標利益率
+  adRate           Float @default(0) // 広告費率
+
+  // 為替
+  exchangeRate   Float // USD/JPY
+  exchangeBuffer Float @default(0) // 為替バッファ
+
+  // カテゴリ別設定（オプション）
+  categorySettings Json @default("{}")
+
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("price_settings")
+}
+
+// ========================================
+// eBay シッピングポリシー
+// ========================================
+model ShippingPolicy {
+  id String @id @default(cuid())
+
+  name   String
+  region String // US, EU, ASIA など
+
+  // 配送方法
+  carrier String // ePacket, Cpass, EMS など
+
+  // 送料テーブル（重量別）
+  shippingTable Json // { "100": 880, "200": 1060, ... }
+
+  // 燃油サーチャージ
+  fuelSurcharge Float @default(0)
+
+  // 関税設定
+  dutyThreshold Float? // 関税閾値（USD）
+  dutyRate      Float? // 関税率
+
+  // 追加設定
+  handlingTime Int    @default(1) // 発送準備日数
+  metadata     Json   @default("{}")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([region, carrier])
+  @@map("shipping_policies")
+}
+
+// ========================================
+// 為替レート履歴
+// ========================================
+model ExchangeRate {
+  id String @id @default(cuid())
+
+  fromCurrency String @default("JPY")
+  toCurrency   String @default("USD")
+  rate         Float
+
+  fetchedAt DateTime @default(now())
+  source    String   @default("manual") // manual, api, etc.
+
+  @@index([fromCurrency, toCurrency, fetchedAt])
+  @@map("exchange_rates")
+}
