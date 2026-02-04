@@ -21,6 +21,10 @@ import { notificationsRouter } from './routes/notifications';
 import { categoriesRouter } from './routes/categories';
 import { templatesRouter } from './routes/templates';
 import { promptsRouter } from './routes/prompts';
+import { analyticsRouter } from './routes/analytics';
+import { inventoryRouter } from './routes/inventory';
+import { pricingRouter } from './routes/pricing';
+import { competitorsRouter } from './routes/competitors';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 
@@ -63,6 +67,10 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/templates', templatesRouter);
 app.use('/api/prompts', promptsRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/inventory', inventoryRouter);
+app.use('/api/pricing', pricingRouter);
+app.use('/api/competitors', competitorsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
