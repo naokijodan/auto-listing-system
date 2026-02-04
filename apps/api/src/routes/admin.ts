@@ -8,6 +8,15 @@ import { QUEUE_NAMES } from '@als/config';
 const router = Router();
 const log = logger.child({ module: 'admin-api' });
 
+// 通知設定のチェック
+function getNotificationConfig() {
+  return {
+    slack: !!process.env.SLACK_WEBHOOK_URL,
+    discord: !!process.env.DISCORD_WEBHOOK_URL,
+    line: !!process.env.LINE_NOTIFY_TOKEN,
+  };
+}
+
 // Redis接続
 const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
@@ -447,6 +456,364 @@ router.get('/stats', async (req: Request, res: Response, next: NextFunction) => 
         last24Hours: recentJobs,
         failed: failedJobs,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 日次レポートをトリガー
+ * POST /api/admin/trigger/daily-report
+ */
+router.post('/trigger/daily-report', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const job = await scrapeQueue.add(
+      'daily-report',
+      {
+        triggeredAt: new Date().toISOString(),
+        manual: true,
+      },
+      {
+        priority: 1,
+      }
+    );
+
+    log.info({
+      type: 'manual_daily_report_triggered',
+      jobId: job.id,
+    });
+
+    res.json({
+      success: true,
+      jobId: job.id,
+      message: 'Daily report triggered',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * ヘルスチェックをトリガー
+ * POST /api/admin/trigger/health-check
+ */
+router.post('/trigger/health-check', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const job = await scrapeQueue.add(
+      'health-check',
+      {
+        triggeredAt: new Date().toISOString(),
+        manual: true,
+      },
+      {
+        priority: 1,
+      }
+    );
+
+    log.info({
+      type: 'manual_health_check_triggered',
+      jobId: job.id,
+    });
+
+    res.json({
+      success: true,
+      jobId: job.id,
+      message: 'Health check triggered',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 通知設定を取得
+ * GET /api/admin/notifications/config
+ */
+router.get('/notifications/config', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const config = getNotificationConfig();
+    const anyConfigured = config.slack || config.discord || config.line;
+
+    res.json({
+      configured: anyConfigured,
+      channels: config,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * テスト通知を送信
+ * POST /api/admin/notifications/test
+ */
+router.post('/notifications/test', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const config = getNotificationConfig();
+    const anyConfigured = config.slack || config.discord || config.line;
+
+    if (!anyConfigured) {
+      res.status(400).json({
+        success: false,
+        message: 'No notification channels configured',
+        hint: 'Set SLACK_WEBHOOK_URL, DISCORD_WEBHOOK_URL, or LINE_NOTIFY_TOKEN in .env',
+      });
+      return;
+    }
+
+    // テスト通知ジョブをキューに追加
+    const job = await scrapeQueue.add(
+      'test-notification',
+      {
+        triggeredAt: new Date().toISOString(),
+        testMessage: req.body.message || 'Test notification from Auto Listing System',
+      },
+      {
+        priority: 1,
+      }
+    );
+
+    res.json({
+      success: true,
+      jobId: job.id,
+      message: 'Test notification queued',
+      channels: config,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 詳細な日次レポートを取得
+ * GET /api/admin/reports/daily
+ */
+router.get('/reports/daily', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { date } = req.query;
+    const targetDate = date ? new Date(date as string) : new Date();
+
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const [
+      newProducts,
+      publishedListings,
+      soldListings,
+      outOfStockProducts,
+      completedJobs,
+      failedJobs,
+    ] = await Promise.all([
+      prisma.product.count({
+        where: { createdAt: { gte: startOfDay, lte: endOfDay } },
+      }),
+      prisma.listing.count({
+        where: { listedAt: { gte: startOfDay, lte: endOfDay } },
+      }),
+      prisma.listing.count({
+        where: { soldAt: { gte: startOfDay, lte: endOfDay } },
+      }),
+      prisma.product.count({
+        where: {
+          status: 'OUT_OF_STOCK',
+          updatedAt: { gte: startOfDay, lte: endOfDay },
+        },
+      }),
+      prisma.jobLog.count({
+        where: {
+          status: 'COMPLETED',
+          createdAt: { gte: startOfDay, lte: endOfDay },
+        },
+      }),
+      prisma.jobLog.count({
+        where: {
+          status: 'FAILED',
+          createdAt: { gte: startOfDay, lte: endOfDay },
+        },
+      }),
+    ]);
+
+    // ジョブタイプ別統計
+    const jobsByType = await prisma.jobLog.groupBy({
+      by: ['jobType', 'status'],
+      where: {
+        createdAt: { gte: startOfDay, lte: endOfDay },
+      },
+      _count: true,
+    });
+
+    res.json({
+      date: startOfDay.toISOString().split('T')[0],
+      products: {
+        new: newProducts,
+        outOfStock: outOfStockProducts,
+      },
+      listings: {
+        published: publishedListings,
+        sold: soldListings,
+      },
+      jobs: {
+        completed: completedJobs,
+        failed: failedJobs,
+        byType: jobsByType,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 週次サマリーを取得
+ * GET /api/admin/reports/weekly
+ */
+router.get('/reports/weekly', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+
+    const dailyStats = [];
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const [newProducts, published, sold, failed] = await Promise.all([
+        prisma.product.count({
+          where: {
+            createdAt: { gte: date, lt: nextDate },
+          },
+        }),
+        prisma.listing.count({
+          where: {
+            listedAt: { gte: date, lt: nextDate },
+          },
+        }),
+        prisma.listing.count({
+          where: {
+            soldAt: { gte: date, lt: nextDate },
+          },
+        }),
+        prisma.jobLog.count({
+          where: {
+            status: 'FAILED',
+            createdAt: { gte: date, lt: nextDate },
+          },
+        }),
+      ]);
+
+      dailyStats.push({
+        date: date.toISOString().split('T')[0],
+        newProducts,
+        published,
+        sold,
+        failed,
+      });
+    }
+
+    // 週間合計
+    const totals = dailyStats.reduce(
+      (acc, day) => ({
+        newProducts: acc.newProducts + day.newProducts,
+        published: acc.published + day.published,
+        sold: acc.sold + day.sold,
+        failed: acc.failed + day.failed,
+      }),
+      { newProducts: 0, published: 0, sold: 0, failed: 0 }
+    );
+
+    res.json({
+      period: {
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0],
+      },
+      totals,
+      daily: dailyStats,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * システムヘルス状態を取得
+ * GET /api/admin/health
+ */
+router.get('/health', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // 基本的なヘルスチェック
+    const checks = [];
+
+    // DB接続チェック
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      checks.push({ name: 'Database', status: 'ok', message: 'Connected' });
+    } catch {
+      checks.push({ name: 'Database', status: 'error', message: 'Connection failed' });
+    }
+
+    // Redis接続チェック
+    try {
+      await redis.ping();
+      checks.push({ name: 'Redis', status: 'ok', message: 'Connected' });
+    } catch {
+      checks.push({ name: 'Redis', status: 'error', message: 'Connection failed' });
+    }
+
+    // 直近1時間のジョブ成功率
+    const recentJobs = await prisma.jobLog.findMany({
+      where: {
+        createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+      },
+      select: { status: true },
+    });
+
+    if (recentJobs.length > 0) {
+      const failedCount = recentJobs.filter(j => j.status === 'FAILED').length;
+      const successRate = ((recentJobs.length - failedCount) / recentJobs.length) * 100;
+
+      checks.push({
+        name: 'Job Success Rate',
+        status: successRate > 80 ? 'ok' : successRate > 50 ? 'warning' : 'error',
+        message: `${successRate.toFixed(1)}% (${recentJobs.length} jobs)`,
+      });
+    }
+
+    // エラー状態の商品数
+    const errorProducts = await prisma.product.count({
+      where: { status: 'ERROR' },
+    });
+
+    checks.push({
+      name: 'Error Products',
+      status: errorProducts === 0 ? 'ok' : errorProducts < 10 ? 'warning' : 'error',
+      message: `${errorProducts} products in error state`,
+    });
+
+    // 通知設定
+    const notificationConfig = getNotificationConfig();
+    const anyNotificationConfigured = notificationConfig.slack || notificationConfig.discord || notificationConfig.line;
+
+    checks.push({
+      name: 'Notifications',
+      status: anyNotificationConfigured ? 'ok' : 'warning',
+      message: anyNotificationConfigured
+        ? `Configured: ${Object.entries(notificationConfig).filter(([, v]) => v).map(([k]) => k).join(', ')}`
+        : 'No notification channels configured',
+    });
+
+    const healthy = !checks.some(c => c.status === 'error');
+
+    res.json({
+      healthy,
+      timestamp: new Date().toISOString(),
+      checks,
     });
   } catch (error) {
     next(error);

@@ -10,6 +10,9 @@ import { processPublishJob } from '../processors/publish';
 import { processInventoryJob, processScheduledInventoryCheck } from '../processors/inventory';
 import { updateExchangeRate } from './exchange-rate';
 import { syncAllPrices } from './price-sync';
+import { sendDailyReportNotification, generateDailyReport } from './daily-report';
+import { notifyHealthIssues, checkSystemHealth, recordError } from './error-monitor';
+import { notifyExchangeRateUpdated } from './notifications';
 
 const workers: Worker[] = [];
 let deadLetterQueue: Queue | null = null;
@@ -32,6 +35,14 @@ export async function startWorkers(connection: IORedis): Promise<void> {
       // 価格同期ジョブ
       if (job.name === 'sync-prices' || job.name === 'manual-price-sync') {
         return handlePriceSync(job);
+      }
+      // 日次レポートジョブ
+      if (job.name === 'daily-report') {
+        return handleDailyReport(job);
+      }
+      // ヘルスチェックジョブ
+      if (job.name === 'health-check') {
+        return handleHealthCheck(job);
       }
       // 通常のスクレイピング
       return processScrapeJob(job);
@@ -105,6 +116,11 @@ async function handleExchangeRateUpdate(job: any): Promise<any> {
       source: result.source,
     });
 
+    // 変動があれば通知
+    if (result.success && result.oldRate !== result.newRate) {
+      await notifyExchangeRateUpdated(result.oldRate, result.newRate);
+    }
+
     return {
       success: result.success,
       oldRate: result.oldRate,
@@ -114,6 +130,7 @@ async function handleExchangeRateUpdate(job: any): Promise<any> {
     };
   } catch (error: any) {
     log.error({ type: 'exchange_rate_update_job_error', error: error.message });
+    await recordError('EXCHANGE_RATE', job.id, error.message, job.attemptsMade);
     throw error;
   }
 }
@@ -157,6 +174,70 @@ async function handlePriceSync(job: any): Promise<any> {
     };
   } catch (error: any) {
     log.error({ type: 'price_sync_job_error', error: error.message });
+    await recordError('PRICE_SYNC', job.id, error.message, job.attemptsMade);
+    throw error;
+  }
+}
+
+/**
+ * 日次レポートジョブのハンドラー
+ */
+async function handleDailyReport(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'daily-report' });
+
+  log.info({ type: 'daily_report_job_start' });
+
+  try {
+    const report = await generateDailyReport();
+    await sendDailyReportNotification();
+
+    log.info({
+      type: 'daily_report_job_complete',
+      date: report.date,
+      newProducts: report.products.new,
+      published: report.listings.published,
+    });
+
+    return {
+      success: true,
+      report,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'daily_report_job_error', error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * ヘルスチェックジョブのハンドラー
+ */
+async function handleHealthCheck(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'health-check' });
+
+  log.info({ type: 'health_check_job_start' });
+
+  try {
+    const health = await checkSystemHealth();
+
+    if (!health.healthy) {
+      await notifyHealthIssues();
+    }
+
+    log.info({
+      type: 'health_check_job_complete',
+      healthy: health.healthy,
+      issues: health.checks.filter(c => c.status !== 'ok').length,
+    });
+
+    return {
+      success: true,
+      healthy: health.healthy,
+      checks: health.checks,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'health_check_job_error', error: error.message });
     throw error;
   }
 }
@@ -198,6 +279,14 @@ function createWorker(
           error: error.message,
           stack: error.stack,
         });
+
+        // エラーモニタリング
+        await recordError(
+          job.name || queueName,
+          job.id || 'unknown',
+          error.message,
+          job.attemptsMade || 1
+        );
 
         throw error;
       }

@@ -33,6 +33,16 @@ export interface SchedulerConfig {
     enabled: boolean;
     cronExpression: string;
   };
+  // 日次レポート
+  dailyReport: {
+    enabled: boolean;
+    cronExpression: string;
+  };
+  // ヘルスチェック
+  healthCheck: {
+    enabled: boolean;
+    cronExpression: string;
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -48,6 +58,14 @@ const DEFAULT_CONFIG: SchedulerConfig = {
   priceSync: {
     enabled: true,
     cronExpression: '0 */6 * * *', // 6時間ごと
+  },
+  dailyReport: {
+    enabled: true,
+    cronExpression: '0 21 * * *', // 毎日21時
+  },
+  healthCheck: {
+    enabled: true,
+    cronExpression: '0 */3 * * *', // 3時間ごと
   },
 };
 
@@ -172,6 +190,78 @@ async function schedulePriceSync(config: SchedulerConfig['priceSync']) {
 }
 
 /**
+ * 日次レポートジョブをスケジュール
+ */
+async function scheduleDailyReport(config: SchedulerConfig['dailyReport']) {
+  if (!config.enabled) {
+    log.info({ type: 'daily_report_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await scrapeQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'daily-report') {
+      await scrapeQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  await scrapeQueue.add(
+    'daily-report',
+    {
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'daily-report',
+    }
+  );
+
+  log.info({
+    type: 'daily_report_scheduled',
+    cronExpression: config.cronExpression,
+  });
+}
+
+/**
+ * ヘルスチェックジョブをスケジュール
+ */
+async function scheduleHealthCheck(config: SchedulerConfig['healthCheck']) {
+  if (!config.enabled) {
+    log.info({ type: 'health_check_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await scrapeQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'health-check') {
+      await scrapeQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  await scrapeQueue.add(
+    'health-check',
+    {
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'health-check',
+    }
+  );
+
+  log.info({
+    type: 'health_check_scheduled',
+    cronExpression: config.cronExpression,
+  });
+}
+
+/**
  * スケジューラーを初期化
  */
 export async function initializeScheduler(config: Partial<SchedulerConfig> = {}) {
@@ -181,6 +271,8 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     inventoryCheck: { ...DEFAULT_CONFIG.inventoryCheck, ...config.inventoryCheck },
     exchangeRate: { ...DEFAULT_CONFIG.exchangeRate, ...config.exchangeRate },
     priceSync: { ...DEFAULT_CONFIG.priceSync, ...config.priceSync },
+    dailyReport: { ...DEFAULT_CONFIG.dailyReport, ...config.dailyReport },
+    healthCheck: { ...DEFAULT_CONFIG.healthCheck, ...config.healthCheck },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -188,6 +280,8 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleInventoryChecks(finalConfig.inventoryCheck);
   await scheduleExchangeRateUpdate(finalConfig.exchangeRate);
   await schedulePriceSync(finalConfig.priceSync);
+  await scheduleDailyReport(finalConfig.dailyReport);
+  await scheduleHealthCheck(finalConfig.healthCheck);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -202,6 +296,7 @@ export async function triggerInventoryCheck(productIds?: string[]) {
       triggeredAt: new Date().toISOString(),
       productIds,
       checkType: productIds ? 'specific' : 'all',
+      batchSize: 50,
     },
     {
       priority: 1, // 高優先度
@@ -234,6 +329,52 @@ export async function triggerPriceSync(listingIds?: string[]) {
 
   log.info({
     type: 'manual_price_sync_triggered',
+    jobId: job.id,
+  });
+
+  return job.id;
+}
+
+/**
+ * 手動で日次レポートをトリガー
+ */
+export async function triggerDailyReport() {
+  const job = await scrapeQueue.add(
+    'daily-report',
+    {
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_daily_report_triggered',
+    jobId: job.id,
+  });
+
+  return job.id;
+}
+
+/**
+ * 手動でヘルスチェックをトリガー
+ */
+export async function triggerHealthCheck() {
+  const job = await scrapeQueue.add(
+    'health-check',
+    {
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_health_check_triggered',
     jobId: job.id,
   });
 
