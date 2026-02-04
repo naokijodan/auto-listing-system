@@ -166,12 +166,151 @@ async function main() {
     data: {
       fromCurrency: 'JPY',
       toCurrency: 'USD',
-      rate: 150.0,
+      rate: 0.0067, // 1 JPY = 0.0067 USD (150 JPY/USD)
       source: 'seed',
     },
   });
 
   console.log('✅ Created initial exchange rate');
+
+  // 翻訳プロンプト
+  const translationPrompts = await Promise.all([
+    // デフォルトプロンプト
+    prisma.translationPrompt.upsert({
+      where: { name: 'default' },
+      update: {},
+      create: {
+        name: 'default',
+        category: null,
+        marketplace: null,
+        systemPrompt: `You are a professional translator specializing in e-commerce product listings.
+Your task is to translate Japanese product information into natural, SEO-friendly English suitable for international marketplaces like eBay and Joom.
+
+Guidelines:
+- Use clear, concise language
+- Keep brand names in original form
+- Convert Japanese sizes to international equivalents when possible
+- Remove Japanese-specific phrases that don't translate well
+- Optimize for search visibility`,
+        userPrompt: `Translate the following Japanese product information to English:
+
+Title: {{title}}
+
+Description:
+{{description}}`,
+        extractAttributes: ['brand', 'model', 'color', 'material', 'size', 'condition'],
+        additionalInstructions: null,
+        seoKeywords: [],
+        priority: 0,
+        isDefault: true,
+      },
+    }),
+    // 時計カテゴリ
+    prisma.translationPrompt.upsert({
+      where: { name: 'watches' },
+      update: {},
+      create: {
+        name: 'watches',
+        category: '時計',
+        marketplace: null,
+        systemPrompt: `You are a professional translator specializing in luxury watch listings for international marketplaces.
+Your expertise includes mechanical and quartz movements, Swiss and Japanese brands, and vintage timepieces.
+
+Guidelines:
+- Use precise horological terminology
+- Keep brand names in original form
+- Include movement type, case size, and water resistance when available
+- Highlight collectible or limited edition features
+- Use SEO-friendly terms like "vintage", "rare", "authentic"`,
+        userPrompt: `Translate the following Japanese watch listing to English:
+
+Title: {{title}}
+
+Description:
+{{description}}`,
+        extractAttributes: ['brand', 'model', 'movement', 'caseSize', 'waterResistance', 'material', 'condition', 'year'],
+        additionalInstructions: `Pay special attention to:
+- Movement type (automatic, quartz, manual, chronograph)
+- Case diameter in mm
+- Water resistance rating
+- Crystal type (sapphire, mineral, acrylic)
+- Box and papers availability`,
+        seoKeywords: ['vintage', 'authentic', 'rare', 'limited edition', 'Japan exclusive'],
+        priority: 10,
+        isDefault: false,
+      },
+    }),
+    // フィギュア・コレクタブル
+    prisma.translationPrompt.upsert({
+      where: { name: 'figures' },
+      update: {},
+      create: {
+        name: 'figures',
+        category: 'フィギュア',
+        marketplace: null,
+        systemPrompt: `You are a professional translator specializing in anime figures, collectibles, and Japanese pop culture merchandise.
+Your expertise includes scale figures, prize figures, and limited edition collectibles.
+
+Guidelines:
+- Keep character and series names in romanized Japanese or official English
+- Specify scale (1/7, 1/8, etc.) and manufacturer
+- Highlight exclusive or limited features
+- Note box condition for collectors
+- Use proper figure collecting terminology`,
+        userPrompt: `Translate the following Japanese figure listing to English:
+
+Title: {{title}}
+
+Description:
+{{description}}`,
+        extractAttributes: ['character', 'series', 'scale', 'manufacturer', 'condition', 'year'],
+        additionalInstructions: `Include:
+- Character name and series
+- Scale and approximate height
+- Manufacturer (Good Smile Company, Alter, Kotobukiya, etc.)
+- Whether box/packaging is included
+- Any exclusive or limited features`,
+        seoKeywords: ['anime', 'figure', 'Japan import', 'authentic', 'new in box'],
+        priority: 10,
+        isDefault: false,
+      },
+    }),
+    // アパレル
+    prisma.translationPrompt.upsert({
+      where: { name: 'apparel' },
+      update: {},
+      create: {
+        name: 'apparel',
+        category: 'ファッション',
+        marketplace: null,
+        systemPrompt: `You are a professional translator specializing in Japanese fashion and apparel for international buyers.
+Your expertise includes streetwear, designer fashion, and traditional Japanese clothing.
+
+Guidelines:
+- Convert Japanese sizes to international equivalents (S/M/L, US sizes, etc.)
+- Include actual measurements when available
+- Describe materials and care instructions
+- Note any Japanese brand exclusivity
+- Use fashion industry terminology`,
+        userPrompt: `Translate the following Japanese fashion item listing to English:
+
+Title: {{title}}
+
+Description:
+{{description}}`,
+        extractAttributes: ['brand', 'size', 'material', 'color', 'gender', 'condition'],
+        additionalInstructions: `Size conversion guide:
+- Japanese M = US S, Japanese L = US M
+- Include actual measurements (chest, length, shoulder width) if mentioned
+- Note if the item runs small/large`,
+        seoKeywords: ['Japanese fashion', 'streetwear', 'authentic', 'Japan exclusive'],
+        priority: 10,
+        isDefault: false,
+      },
+    }),
+  ]);
+
+  console.log(`✅ Created ${translationPrompts.length} translation prompts`);
 
   console.log('🎉 Seeding completed!');
 }

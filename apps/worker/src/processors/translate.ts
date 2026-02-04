@@ -38,7 +38,7 @@ export async function processTranslateJob(
       const translation = await translateProduct(
         title,
         description,
-        extractAttributes ?? true
+        { extractAttributes: extractAttributes ?? true }
       );
 
       // DB更新

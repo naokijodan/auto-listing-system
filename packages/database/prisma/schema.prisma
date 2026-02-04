@@ -291,3 +291,80 @@ model ExchangeRate {
   @@index([fromCurrency, toCurrency, fetchedAt])
   @@map("exchange_rates")
 }
+
+// ========================================
+// 翻訳プロンプト設定
+// ========================================
+model TranslationPrompt {
+  id String @id @default(cuid())
+
+  name        String  @unique // プロンプト名
+  category    String? // 対象カテゴリ（nullはデフォルト）
+  marketplace String? // joom, ebay, null=共通
+
+  // プロンプト内容
+  systemPrompt String @db.Text // システムプロンプト
+  userPrompt   String @db.Text // ユーザープロンプトテンプレート
+
+  // 抽出する属性
+  extractAttributes String[] // ["brand", "model", "color", ...]
+
+  // 追加指示
+  additionalInstructions String? @db.Text
+  seoKeywords            String[] // SEO推奨ワード
+
+  // 設定
+  priority  Int     @default(0) // 優先度（高いほど優先）
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, marketplace])
+  @@map("translation_prompts")
+}
+
+// ========================================
+// eBay カテゴリマッピング
+// ========================================
+model EbayCategoryMapping {
+  id String @id @default(cuid())
+
+  sourceCategory String // 元カテゴリ（日本語）
+  ebayCategoryId String // eBayカテゴリID
+  ebayCategoryName String // eBayカテゴリ名
+
+  // Item Specifics テンプレート
+  itemSpecifics Json @default("{}")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sourceCategory])
+  @@map("ebay_category_mappings")
+}
+
+// ========================================
+// マーケットプレイス認証情報
+// ========================================
+model MarketplaceCredential {
+  id String @id @default(cuid())
+
+  marketplace Marketplace
+  name        String // アカウント名
+
+  // 認証情報（暗号化推奨）
+  credentials Json // { clientId, clientSecret, accessToken, refreshToken, ... }
+
+  // トークン有効期限
+  tokenExpiresAt DateTime?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([marketplace, name])
+  @@map("marketplace_credentials")
+}
