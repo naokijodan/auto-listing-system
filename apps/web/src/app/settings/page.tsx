@@ -253,12 +253,67 @@ function NotificationSettings() {
 
       <Card>
         <CardHeader>
+          <CardTitle>在庫・価格監視アラート</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              価格変動通知閾値 (%)
+            </label>
+            <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+              この割合以上の価格変動があった場合に通知します
+            </p>
+            <input
+              type="number"
+              defaultValue={10}
+              min={1}
+              max={100}
+              className="h-10 w-32 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                リトライ回数
+              </label>
+              <input
+                type="number"
+                defaultValue={3}
+                min={1}
+                max={10}
+                className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                リトライ間隔 (秒)
+              </label>
+              <input
+                type="number"
+                defaultValue={5}
+                min={1}
+                max={60}
+                className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </div>
+          </div>
+          <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
+            <p className="text-sm text-amber-700 dark:text-amber-400">
+              在庫監視は指数バックオフ付きリトライを行い、エラー時は自動的に再試行されます。
+              通知タイムラグは約5分以内です。
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>通知イベント</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {[
             { label: '在庫切れ検知', description: '仕入元で在庫切れを検知した時' },
-            { label: '価格変動', description: '仕入価格が変動した時' },
+            { label: '価格変動', description: '仕入価格が変動した時（閾値超過時）' },
             { label: '出品成功', description: '出品が完了した時' },
             { label: '出品エラー', description: '出品に失敗した時' },
             { label: '日次レポート', description: '毎日21時にレポートを送信' },

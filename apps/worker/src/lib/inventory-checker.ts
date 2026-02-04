@@ -5,9 +5,74 @@ import IORedis from 'ioredis';
 import { QUEUE_NAMES } from '@rakuda/config';
 import { scrapeMercari } from './scrapers/mercari';
 import { scrapeYahooAuction } from './scrapers/yahoo-auction';
+import { notifyOutOfStock, notifyPriceChanged } from './notifications';
 import crypto from 'crypto';
 
 const log = logger.child({ module: 'inventory-checker' });
+
+/**
+ * アラート設定
+ */
+export interface AlertSettings {
+  priceChangeThresholdPercent: number; // 価格変動通知閾値 (%)
+  priceChangeNotifyEnabled: boolean;
+  outOfStockNotifyEnabled: boolean;
+  maxRetries: number;
+  retryDelayMs: number; // 初期リトライ遅延
+}
+
+const DEFAULT_ALERT_SETTINGS: AlertSettings = {
+  priceChangeThresholdPercent: 10, // 10%以上の変動で通知
+  priceChangeNotifyEnabled: true,
+  outOfStockNotifyEnabled: true,
+  maxRetries: 3,
+  retryDelayMs: 5000,
+};
+
+/**
+ * アラート設定を取得（環境変数またはデフォルト）
+ */
+export function getAlertSettings(): AlertSettings {
+  return {
+    priceChangeThresholdPercent: parseInt(process.env.PRICE_CHANGE_THRESHOLD_PERCENT || '10'),
+    priceChangeNotifyEnabled: process.env.PRICE_CHANGE_NOTIFY !== 'false',
+    outOfStockNotifyEnabled: process.env.OUT_OF_STOCK_NOTIFY !== 'false',
+    maxRetries: parseInt(process.env.INVENTORY_MAX_RETRIES || '3'),
+    retryDelayMs: parseInt(process.env.INVENTORY_RETRY_DELAY_MS || '5000'),
+  };
+}
+
+/**
+ * 指数バックオフでリトライ
+ */
+async function withExponentialBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 5000
+): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        const delay = baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000;
+        log.warn({
+          type: 'retry_with_backoff',
+          attempt: attempt + 1,
+          maxRetries,
+          delayMs: Math.round(delay),
+          error: error.message,
+        });
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError;
+}
 
 /**
  * 在庫チェック結果
@@ -42,8 +107,10 @@ const DEFAULT_BATCH_CONFIG: BatchCheckConfig = {
  * 単一商品の在庫チェック
  */
 export async function checkSingleProductInventory(
-  productId: string
+  productId: string,
+  alertSettings?: Partial<AlertSettings>
 ): Promise<InventoryCheckResult> {
+  const settings = { ...getAlertSettings(), ...alertSettings };
   log.info({ type: 'single_inventory_check_start', productId });
 
   const product = await prisma.product.findUnique({
@@ -68,28 +135,21 @@ export async function checkSingleProductInventory(
   }
 
   try {
-    // ソースタイプに応じたスクレイピング
-    let scrapeResult;
-    switch (product.source.type) {
-      case 'MERCARI':
-        scrapeResult = await scrapeMercari(product.sourceUrl);
-        break;
-      case 'YAHOO_AUCTION':
-        scrapeResult = await scrapeYahooAuction(product.sourceUrl);
-        break;
-      default:
-        log.warn({ type: 'unsupported_source', sourceType: product.source.type });
-        return {
-          productId,
-          isAvailable: true,
-          currentPrice: product.price,
-          priceChanged: false,
-          hashChanged: false,
-          newHash: null,
-          action: 'none',
-          error: `Unsupported source type: ${product.source.type}`,
-        };
-    }
+    // ソースタイプに応じたスクレイピング（指数バックオフ付きリトライ）
+    const scrapeResult = await withExponentialBackoff(
+      async () => {
+        switch (product.source.type) {
+          case 'MERCARI':
+            return await scrapeMercari(product.sourceUrl);
+          case 'YAHOO_AUCTION':
+            return await scrapeYahooAuction(product.sourceUrl);
+          default:
+            throw new Error(`Unsupported source type: ${product.source.type}`);
+        }
+      },
+      settings.maxRetries,
+      settings.retryDelayMs
+    );
 
     if (!scrapeResult.success) {
       log.error({ type: 'scrape_failed', productId, error: scrapeResult.error });
@@ -109,6 +169,11 @@ export async function checkSingleProductInventory(
     const isAvailable = scrapedProduct.isAvailable ?? true;
     const currentPrice = scrapedProduct.price;
     const priceChanged = currentPrice !== product.price;
+
+    // 価格変動率の計算
+    const priceChangePercent = product.price > 0
+      ? ((currentPrice - product.price) / product.price) * 100
+      : 0;
 
     // ハッシュ計算（タイトル、説明、価格、在庫状況）
     const contentForHash = `${scrapedProduct.title}|${scrapedProduct.description}|${currentPrice}|${isAvailable}`;
@@ -135,22 +200,67 @@ export async function checkSingleProductInventory(
     });
 
     // 出品中の商品がある場合、在庫切れなら取り下げ
-    if (!isAvailable && product.listings.length > 0) {
-      const activeListings = product.listings.filter(l => l.status === 'ACTIVE');
-      if (activeListings.length > 0) {
-        action = 'delist';
-        // 出品ステータス更新
-        await prisma.listing.updateMany({
-          where: {
-            productId,
-            status: 'ACTIVE',
+    const activeListings = product.listings.filter(l => l.status === 'ACTIVE');
+    if (!isAvailable && activeListings.length > 0) {
+      action = 'delist';
+      // 出品ステータス更新
+      await prisma.listing.updateMany({
+        where: {
+          productId,
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'ENDED',
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    // 通知作成とアラート送信
+    if (!isAvailable && settings.outOfStockNotifyEnabled) {
+      // DB通知作成
+      await prisma.notification.create({
+        data: {
+          type: 'OUT_OF_STOCK',
+          title: '在庫切れ検知',
+          message: `「${product.title}」が仕入元で在庫切れになりました。`,
+          severity: 'WARNING',
+          productId,
+          metadata: {
+            sourceUrl: product.sourceUrl,
+            affectedListings: activeListings.length,
           },
-          data: {
-            status: 'ENDED',
-            updatedAt: new Date(),
+        },
+      });
+
+      // 外部通知（Slack/Discord/LINE）
+      await notifyOutOfStock(product.title, product.sourceUrl, activeListings.length);
+    }
+
+    // 価格変動通知（閾値を超えた場合のみ）
+    if (
+      priceChanged &&
+      settings.priceChangeNotifyEnabled &&
+      Math.abs(priceChangePercent) >= settings.priceChangeThresholdPercent
+    ) {
+      // DB通知作成
+      await prisma.notification.create({
+        data: {
+          type: 'PRICE_CHANGE',
+          title: `仕入価格${priceChangePercent > 0 ? '上昇' : '下落'}`,
+          message: `「${product.title}」の仕入価格が${Math.abs(priceChangePercent).toFixed(1)}%${priceChangePercent > 0 ? '上昇' : '下落'}しました。`,
+          severity: Math.abs(priceChangePercent) > 20 ? 'WARNING' : 'INFO',
+          productId,
+          metadata: {
+            oldPrice: product.price,
+            newPrice: currentPrice,
+            changePercent: priceChangePercent,
           },
-        });
-      }
+        },
+      });
+
+      // 外部通知
+      await notifyPriceChanged(product.title, product.price, currentPrice, priceChangePercent);
     }
 
     log.info({
@@ -158,6 +268,7 @@ export async function checkSingleProductInventory(
       productId,
       isAvailable,
       priceChanged,
+      priceChangePercent: priceChanged ? priceChangePercent.toFixed(1) : 0,
       hashChanged,
       action,
     });
