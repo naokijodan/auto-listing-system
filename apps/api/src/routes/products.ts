@@ -715,4 +715,36 @@ router.post('/bulk/publish', async (req, res, next) => {
   }
 });
 
+/**
+ * 削除を取り消し（復元）
+ */
+router.post('/restore', async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      throw new AppError(400, 'ids array is required', 'INVALID_REQUEST');
+    }
+
+    const result = await prisma.product.updateMany({
+      where: { id: { in: ids }, status: 'DELETED' },
+      data: { status: 'SCRAPED' },
+    });
+
+    logger.info({
+      type: 'products_restored',
+      count: result.count,
+      ids,
+    });
+
+    res.json({
+      success: true,
+      message: `${result.count} products restored`,
+      data: { restoredCount: result.count },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export { router as productsRouter };

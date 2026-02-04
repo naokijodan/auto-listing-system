@@ -9,6 +9,7 @@ import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useProducts } from '@/lib/hooks';
 import { Product, productApi } from '@/lib/api';
+import { addToast } from '@/components/ui/toast';
 import {
   Search,
   Filter,
@@ -199,30 +200,69 @@ export default function ProductsPage() {
     }
   }, [mutate]);
 
-  // 一括削除
+  // 一括削除（Undo対応）
   const handleBulkDelete = useCallback(async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`${selectedIds.size}件の商品を削除しますか？`)) return;
+
+    const idsToDelete = Array.from(selectedIds);
+    const count = idsToDelete.length;
 
     try {
-      await productApi.bulkDelete(Array.from(selectedIds));
+      await productApi.bulkDelete(idsToDelete);
       setSelectedIds(new Set());
       mutate();
+
+      // Undo可能なトースト表示
+      addToast({
+        type: 'undo',
+        message: `${count}件の商品を削除しました`,
+        duration: 10000,
+        undoLabel: '元に戻す',
+        onUndo: async () => {
+          try {
+            await productApi.restore(idsToDelete);
+            mutate();
+            addToast({
+              type: 'success',
+              message: `${count}件の商品を復元しました`,
+            });
+          } catch (error) {
+            addToast({
+              type: 'error',
+              message: '復元に失敗しました',
+            });
+          }
+        },
+      });
     } catch (error) {
       console.error('Bulk delete failed:', error);
+      addToast({
+        type: 'error',
+        message: '削除に失敗しました',
+      });
     }
   }, [selectedIds, mutate]);
 
   // 一括出品
   const handleBulkPublish = useCallback(async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`${selectedIds.size}件の商品を出品登録しますか？`)) return;
+
+    const count = selectedIds.size;
 
     try {
-      await productApi.bulkPublish(Array.from(selectedIds));
+      const result = await productApi.bulkPublish(Array.from(selectedIds));
       mutate();
+
+      addToast({
+        type: 'success',
+        message: `${result.data.createdCount}件の出品を登録しました`,
+      });
     } catch (error) {
       console.error('Bulk publish failed:', error);
+      addToast({
+        type: 'error',
+        message: '出品登録に失敗しました',
+      });
     }
   }, [selectedIds, mutate]);
 

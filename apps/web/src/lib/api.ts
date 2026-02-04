@@ -256,4 +256,11 @@ export const productApi = {
       { ids, marketplace }
     );
   },
+
+  restore: async (ids: string[]) => {
+    return postApi<{ success: boolean; data: { restoredCount: number } }>(
+      '/api/products/restore',
+      { ids }
+    );
+  },
 };
