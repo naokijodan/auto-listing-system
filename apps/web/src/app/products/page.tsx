@@ -22,9 +22,21 @@ import {
   MoreHorizontal,
   Loader2,
   AlertCircle,
+  Package,
+  DollarSign,
+  FileText,
 } from 'lucide-react';
 
 const ROW_HEIGHT = 52; // Height of each row in pixels
+
+// View mode types
+type ViewMode = 'inventory' | 'price' | 'seo';
+
+const viewModes: { id: ViewMode; label: string; icon: typeof Package }[] = [
+  { id: 'inventory', label: '在庫', icon: Package },
+  { id: 'price', label: '価格', icon: DollarSign },
+  { id: 'seo', label: 'SEO', icon: FileText },
+];
 
 const sourceSiteLabels: Record<string, string> = {
   mercari: 'メルカリ',
@@ -38,6 +50,7 @@ export default function ProductsPage() {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('inventory');
 
   // Ref for virtual scroll container
   const parentRef = useRef<HTMLDivElement>(null);
@@ -189,6 +202,26 @@ export default function ProductsPage() {
           <Filter className="h-4 w-4" />
           詳細
         </Button>
+
+        {/* View Mode Toggle */}
+        <div className="flex items-center rounded-lg border border-zinc-200 bg-zinc-100 p-0.5 dark:border-zinc-700 dark:bg-zinc-800">
+          {viewModes.map((mode) => (
+            <button
+              key={mode.id}
+              onClick={() => setViewMode(mode.id)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                viewMode === mode.id
+                  ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
+                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+              )}
+            >
+              <mode.icon className="h-3.5 w-3.5" />
+              {mode.label}
+            </button>
+          ))}
+        </div>
+
         <Button variant="ghost" size="sm" onClick={() => mutate()}>
           <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
         </Button>
@@ -198,7 +231,7 @@ export default function ProductsPage() {
       <div className="flex flex-1 gap-4 overflow-hidden">
         {/* Left: Table */}
         <div className="flex-1 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          {/* Table Header */}
+          {/* Table Header - Changes based on view mode */}
           <div className="flex items-center border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
             <div className="w-8">
               <input
@@ -212,10 +245,35 @@ export default function ProductsPage() {
             <div className="w-12">画像</div>
             <div className="w-24">SKU</div>
             <div className="flex-1 min-w-0">商品名</div>
-            <div className="w-24 text-right">仕入価格</div>
-            <div className="w-24 text-right">出品価格</div>
-            <div className="w-20">仕入元</div>
-            <div className="w-24">ステータス</div>
+
+            {/* View Mode: Inventory */}
+            {viewMode === 'inventory' && (
+              <>
+                <div className="w-24 text-right">仕入価格</div>
+                <div className="w-24 text-right">出品価格</div>
+                <div className="w-20">仕入元</div>
+                <div className="w-24">ステータス</div>
+              </>
+            )}
+
+            {/* View Mode: Price */}
+            {viewMode === 'price' && (
+              <>
+                <div className="w-24 text-right">仕入価格</div>
+                <div className="w-24 text-right">出品価格</div>
+                <div className="w-20 text-right">利益</div>
+                <div className="w-20 text-right">利益率</div>
+              </>
+            )}
+
+            {/* View Mode: SEO */}
+            {viewMode === 'seo' && (
+              <>
+                <div className="w-32">ブランド</div>
+                <div className="w-32">カテゴリ</div>
+                <div className="w-24">翻訳</div>
+              </>
+            )}
           </div>
 
           {/* Table Body - Virtual Scroll */}
@@ -317,28 +375,116 @@ export default function ProductsPage() {
                           {product.titleEn || '翻訳なし'}
                         </p>
                       </div>
-                      <div className="w-24 text-right">
-                        <span className="text-sm text-zinc-900 dark:text-white">
-                          {formatCurrency(product.price)}
-                        </span>
-                      </div>
-                      <div className="w-24 text-right">
-                        {listingPrice ? (
-                          <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                            ${listingPrice.toFixed(2)}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-zinc-400">-</span>
-                        )}
-                      </div>
-                      <div className="w-20">
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {sourceSiteLabels[product.source?.type || ''] || product.source?.name || '-'}
-                        </span>
-                      </div>
-                      <div className="w-24">
-                        <StatusBadge status={product.status} />
-                      </div>
+
+                      {/* View Mode: Inventory */}
+                      {viewMode === 'inventory' && (
+                        <>
+                          <div className="w-24 text-right">
+                            <span className="text-sm text-zinc-900 dark:text-white">
+                              {formatCurrency(product.price)}
+                            </span>
+                          </div>
+                          <div className="w-24 text-right">
+                            {listingPrice ? (
+                              <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                                ${listingPrice.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-zinc-400">-</span>
+                            )}
+                          </div>
+                          <div className="w-20">
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                              {sourceSiteLabels[product.source?.type || ''] || product.source?.name || '-'}
+                            </span>
+                          </div>
+                          <div className="w-24">
+                            <StatusBadge status={product.status} />
+                          </div>
+                        </>
+                      )}
+
+                      {/* View Mode: Price */}
+                      {viewMode === 'price' && (() => {
+                        const costJpy = product.price;
+                        const priceUsd = listingPrice || 0;
+                        const exchangeRate = 150; // Assumed exchange rate
+                        const costUsd = costJpy / exchangeRate;
+                        const profit = priceUsd - costUsd;
+                        const profitRate = priceUsd > 0 ? (profit / priceUsd) * 100 : 0;
+
+                        return (
+                          <>
+                            <div className="w-24 text-right">
+                              <span className="text-sm text-zinc-900 dark:text-white">
+                                {formatCurrency(product.price)}
+                              </span>
+                            </div>
+                            <div className="w-24 text-right">
+                              {listingPrice ? (
+                                <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                                  ${listingPrice.toFixed(2)}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-zinc-400">-</span>
+                              )}
+                            </div>
+                            <div className="w-20 text-right">
+                              {priceUsd > 0 ? (
+                                <span className={cn(
+                                  'text-sm font-medium',
+                                  profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                                )}>
+                                  ${profit.toFixed(0)}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-zinc-400">-</span>
+                              )}
+                            </div>
+                            <div className="w-20 text-right">
+                              {priceUsd > 0 ? (
+                                <span className={cn(
+                                  'text-sm font-medium',
+                                  profitRate >= 20 ? 'text-emerald-600 dark:text-emerald-400' :
+                                  profitRate >= 10 ? 'text-amber-600 dark:text-amber-400' :
+                                  'text-red-600 dark:text-red-400'
+                                )}>
+                                  {profitRate.toFixed(0)}%
+                                </span>
+                              ) : (
+                                <span className="text-sm text-zinc-400">-</span>
+                              )}
+                            </div>
+                          </>
+                        );
+                      })()}
+
+                      {/* View Mode: SEO */}
+                      {viewMode === 'seo' && (
+                        <>
+                          <div className="w-32">
+                            <span className="text-sm text-zinc-900 dark:text-white truncate block">
+                              {product.brand || '-'}
+                            </span>
+                          </div>
+                          <div className="w-32">
+                            <span className="text-sm text-zinc-500 dark:text-zinc-400 truncate block">
+                              {product.category || '-'}
+                            </span>
+                          </div>
+                          <div className="w-24">
+                            {product.titleEn ? (
+                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                完了
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                未翻訳
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   );
                 })}
