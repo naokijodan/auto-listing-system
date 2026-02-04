@@ -7,7 +7,9 @@ import { processScrapeJob } from '../processors/scrape';
 import { processImageJob } from '../processors/image';
 import { processTranslateJob } from '../processors/translate';
 import { processPublishJob } from '../processors/publish';
-import { processInventoryJob } from '../processors/inventory';
+import { processInventoryJob, processScheduledInventoryCheck } from '../processors/inventory';
+import { updateExchangeRate } from './exchange-rate';
+import { syncAllPrices } from './price-sync';
 
 const workers: Worker[] = [];
 let deadLetterQueue: Queue | null = null;
@@ -22,7 +24,18 @@ export async function startWorkers(connection: IORedis): Promise<void> {
   // スクレイピングワーカー
   const scrapeWorker = createWorker(
     QUEUE_NAMES.SCRAPE,
-    processScrapeJob,
+    async (job) => {
+      // 為替レート更新ジョブ
+      if (job.name === 'update-exchange-rate') {
+        return handleExchangeRateUpdate(job);
+      }
+      // 価格同期ジョブ
+      if (job.name === 'sync-prices' || job.name === 'manual-price-sync') {
+        return handlePriceSync(job);
+      }
+      // 通常のスクレイピング
+      return processScrapeJob(job);
+    },
     connection,
     QUEUE_CONFIG[QUEUE_NAMES.SCRAPE]
   );
@@ -58,13 +71,94 @@ export async function startWorkers(connection: IORedis): Promise<void> {
   // 在庫監視ワーカー
   const inventoryWorker = createWorker(
     QUEUE_NAMES.INVENTORY,
-    processInventoryJob,
+    async (job) => {
+      // スケジュールされた在庫チェック
+      if (job.name === 'scheduled-inventory-check' || job.name === 'manual-inventory-check') {
+        return processScheduledInventoryCheck(job);
+      }
+      // 個別の在庫チェック
+      return processInventoryJob(job);
+    },
     connection,
     QUEUE_CONFIG[QUEUE_NAMES.INVENTORY]
   );
   workers.push(inventoryWorker);
 
   logger.info(`Started ${workers.length} workers`);
+}
+
+/**
+ * 為替レート更新ジョブのハンドラー
+ */
+async function handleExchangeRateUpdate(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'exchange-rate' });
+
+  log.info({ type: 'exchange_rate_update_job_start' });
+
+  try {
+    const result = await updateExchangeRate();
+
+    log.info({
+      type: 'exchange_rate_update_job_complete',
+      oldRate: result.oldRate,
+      newRate: result.newRate,
+      source: result.source,
+    });
+
+    return {
+      success: result.success,
+      oldRate: result.oldRate,
+      newRate: result.newRate,
+      source: result.source,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'exchange_rate_update_job_error', error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * 価格同期ジョブのハンドラー
+ */
+async function handlePriceSync(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'price-sync' });
+
+  log.info({ type: 'price_sync_job_start', data: job.data });
+
+  try {
+    const { listingIds } = job.data;
+
+    let result;
+    if (listingIds && listingIds.length > 0) {
+      // 特定の出品のみ同期
+      const results = [];
+      for (const id of listingIds) {
+        const { syncListingPrice } = await import('./price-sync');
+        results.push(await syncListingPrice(id));
+      }
+      result = {
+        success: true,
+        total: results.length,
+        updated: results.filter(r => r.priceChanged).length,
+        apiUpdated: results.filter(r => r.apiUpdated).length,
+        errors: results.filter(r => r.error).length,
+      };
+    } else {
+      // 全アクティブ出品を同期
+      result = await syncAllPrices();
+    }
+
+    log.info({ type: 'price_sync_job_complete', result });
+
+    return {
+      ...result,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'price_sync_job_error', error: error.message });
+    throw error;
+  }
 }
 
 /**
@@ -79,7 +173,7 @@ function createWorker(
   const worker = new Worker(
     queueName,
     async (job) => {
-      const log = logger.child({ jobId: job.id, queueName });
+      const log = logger.child({ jobId: job.id, queueName, jobName: job.name });
       const startTime = Date.now();
 
       log.info({ type: 'job_start', data: job.data });
@@ -126,6 +220,7 @@ function createWorker(
       type: 'worker_job_completed',
       queueName,
       jobId: job.id,
+      jobName: job.name,
     });
   });
 
@@ -134,6 +229,7 @@ function createWorker(
       type: 'worker_job_failed',
       queueName,
       jobId: job?.id,
+      jobName: job?.name,
       attemptsMade: job?.attemptsMade,
       error: err.message,
     });
@@ -165,6 +261,7 @@ async function moveToDeadLetter(job: any, error: Error): Promise<void> {
     await deadLetterQueue.add('dead-letter', {
       originalQueue: job.queueName,
       originalJobId: job.id,
+      originalJobName: job.name,
       payload: job.data,
       error: error.message,
       failedAt: new Date().toISOString(),
@@ -175,6 +272,7 @@ async function moveToDeadLetter(job: any, error: Error): Promise<void> {
       type: 'moved_to_dlq',
       originalQueue: job.queueName,
       jobId: job.id,
+      jobName: job.name,
     });
   } catch (err) {
     logger.error('Failed to move job to DLQ', err);
