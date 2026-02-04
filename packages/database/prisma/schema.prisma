@@ -368,3 +368,52 @@ model MarketplaceCredential {
   @@unique([marketplace, name])
   @@map("marketplace_credentials")
 }
+
+// ========================================
+// 通知
+// ========================================
+model Notification {
+  id String @id @default(cuid())
+
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  severity  NotificationSeverity @default(INFO)
+
+  // 関連データ
+  productId String?
+  listingId String?
+  jobLogId  String?
+  metadata  Json @default("{}")
+
+  // ステータス
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([isRead, createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  SCRAPE_COMPLETE
+  SCRAPE_FAILED
+  TRANSLATE_COMPLETE
+  TRANSLATE_FAILED
+  IMAGE_COMPLETE
+  IMAGE_FAILED
+  PUBLISH_COMPLETE
+  PUBLISH_FAILED
+  OUT_OF_STOCK
+  PRICE_CHANGE
+  SYSTEM
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+}

@@ -2,10 +2,26 @@
 
 import { Bell, Search, Sun, Moon } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import useSWR from 'swr';
 import { Button } from '../ui/button';
+import { fetcher } from '@/lib/api';
+
+interface UnreadCountResponse {
+  success: boolean;
+  data: { count: number };
+}
 
 export function Header() {
   const [isDark, setIsDark] = useState(false);
+
+  // 未読通知数を取得
+  const { data: unreadData } = useSWR<UnreadCountResponse>(
+    '/api/notifications/unread-count',
+    fetcher,
+    { refreshInterval: 30000 } // 30秒ごとに更新
+  );
+  const unreadCount = unreadData?.data?.count ?? 0;
 
   useEffect(() => {
     // Check system preference
@@ -42,12 +58,16 @@ export function Header() {
         <Button variant="ghost" size="sm" onClick={toggleTheme}>
           {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>
-        <Button variant="ghost" size="sm" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-            3
-          </span>
-        </Button>
+        <Link href="/notifications">
+          <Button variant="ghost" size="sm" className="relative">
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Button>
+        </Link>
         <div className="ml-2 flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500" />
           <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Admin</span>
