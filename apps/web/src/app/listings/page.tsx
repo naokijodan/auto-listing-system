@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
@@ -23,6 +24,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
+const ROW_HEIGHT = 52; // Height of each row in pixels
+
 const marketplaceLabels: Record<string, { label: string; color: string }> = {
   ebay: { label: 'eBay', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
   joom: { label: 'Joom', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
@@ -42,11 +45,14 @@ export default function ListingsPage() {
   const [marketplaceFilter, setMarketplaceFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
+  // Ref for virtual scroll container
+  const parentRef = useRef<HTMLDivElement>(null);
+
   // Fetch listings from API
   const { data, error, isLoading, mutate } = useListings({
     status: statusFilter || undefined,
     marketplace: marketplaceFilter || undefined,
-    limit: 100,
+    limit: 5000, // Request more items for virtual scroll
   });
 
   const listings = data?.data ?? [];
@@ -71,6 +77,24 @@ export default function ListingsPage() {
       return title.toLowerCase().includes(query) || listing.externalId?.toLowerCase().includes(query);
     });
   }, [listings, searchQuery]);
+
+  // Virtual scroll setup
+  const virtualizer = useVirtualizer({
+    count: filteredListings.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10,
+  });
+
+  // Scroll to focused item
+  useEffect(() => {
+    if (focusedId && filteredListings.length > 0) {
+      const index = filteredListings.findIndex((l) => l.id === focusedId);
+      if (index >= 0) {
+        virtualizer.scrollToIndex(index, { align: 'auto' });
+      }
+    }
+  }, [focusedId, filteredListings, virtualizer]);
 
   // キーボード操作
   useEffect(() => {
@@ -224,8 +248,12 @@ export default function ListingsPage() {
             <div className="w-24">ステータス</div>
           </div>
 
-          {/* Table Body */}
-          <div className="overflow-y-auto" style={{ height: 'calc(100% - 36px)' }}>
+          {/* Table Body - Virtual Scroll */}
+          <div
+            ref={parentRef}
+            className="overflow-y-auto"
+            style={{ height: 'calc(100% - 36px)' }}
+          >
             {/* Loading State */}
             {isLoading && (
               <div className="flex items-center justify-center py-12">
@@ -253,77 +281,93 @@ export default function ListingsPage() {
               </div>
             )}
 
-            {/* Listing Rows */}
-            {!isLoading && !error && filteredListings.map((listing) => {
-              const isSelected = selectedIds.has(listing.id);
-              const isFocused = focusedId === listing.id;
-              const mp = marketplaceLabels[listing.marketplace] || { label: listing.marketplace, color: 'bg-zinc-100 text-zinc-800' };
-              const imageUrl = listing.product?.processedImages?.[0] || listing.product?.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`;
-              const title = listing.product?.titleEn || listing.product?.title || 'No Title';
-              // Views/Watchers from marketplaceData if available
-              const views = (listing.marketplaceData as Record<string, unknown>)?.views as number ?? 0;
-              const watchers = (listing.marketplaceData as Record<string, unknown>)?.watchers as number ?? 0;
+            {/* Virtualized Listing Rows */}
+            {!isLoading && !error && filteredListings.length > 0 && (
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const listing = filteredListings[virtualRow.index];
+                  const isSelected = selectedIds.has(listing.id);
+                  const isFocused = focusedId === listing.id;
+                  const mp = marketplaceLabels[listing.marketplace] || { label: listing.marketplace, color: 'bg-zinc-100 text-zinc-800' };
+                  const imageUrl = listing.product?.processedImages?.[0] || listing.product?.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`;
+                  const title = listing.product?.titleEn || listing.product?.title || 'No Title';
+                  const views = (listing.marketplaceData as Record<string, unknown>)?.views as number ?? 0;
+                  const watchers = (listing.marketplaceData as Record<string, unknown>)?.watchers as number ?? 0;
 
-              return (
-                <div
-                  key={listing.id}
-                  onClick={() => setFocusedId(listing.id)}
-                  className={cn(
-                    'flex items-center border-b border-zinc-100 px-3 py-1.5 cursor-pointer transition-colors',
-                    'dark:border-zinc-800/50',
-                    isFocused && 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-l-amber-500',
-                    !isFocused && isSelected && 'bg-zinc-50 dark:bg-zinc-800/30',
-                    !isFocused && !isSelected && 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'
-                  )}
-                >
-                  <div className="w-8">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelect(listing.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="h-4 w-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
-                    />
-                  </div>
-                  <div className="w-12">
-                    <div className="h-10 w-10 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
-                      <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                  return (
+                    <div
+                      key={listing.id}
+                      data-index={virtualRow.index}
+                      ref={virtualizer.measureElement}
+                      onClick={() => setFocusedId(listing.id)}
+                      className={cn(
+                        'absolute left-0 top-0 w-full flex items-center border-b border-zinc-100 px-3 cursor-pointer transition-colors',
+                        'dark:border-zinc-800/50',
+                        isFocused && 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-l-amber-500',
+                        !isFocused && isSelected && 'bg-zinc-50 dark:bg-zinc-800/30',
+                        !isFocused && !isSelected && 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'
+                      )}
+                      style={{
+                        height: `${ROW_HEIGHT}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      <div className="w-8">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(listing.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
+                        />
+                      </div>
+                      <div className="w-12">
+                        <div className="h-10 w-10 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
+                          <img src={imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                        </div>
+                      </div>
+                      <div className="w-20">
+                        <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', mp.color)}>
+                          {mp.label}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className="truncate text-sm font-medium text-zinc-900 dark:text-white">
+                          {title}
+                        </p>
+                        <p className="truncate text-xs text-zinc-500 dark:text-zinc-400 font-mono">
+                          {listing.externalId || listing.id.slice(0, 12)}
+                        </p>
+                      </div>
+                      <div className="w-24 text-right">
+                        <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                          {listing.currency === 'USD' ? '$' : ''}{listing.listingPrice.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="w-16 text-right">
+                        <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                          {views}
+                        </span>
+                      </div>
+                      <div className="w-16 text-right">
+                        <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                          {watchers}
+                        </span>
+                      </div>
+                      <div className="w-24">
+                        <StatusBadge status={listing.status} />
+                      </div>
                     </div>
-                  </div>
-                  <div className="w-20">
-                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', mp.color)}>
-                      {mp.label}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0 pr-2">
-                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-white">
-                      {title}
-                    </p>
-                    <p className="truncate text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-                      {listing.externalId || listing.id.slice(0, 12)}
-                    </p>
-                  </div>
-                  <div className="w-24 text-right">
-                    <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                      {listing.currency === 'USD' ? '$' : ''}{listing.listingPrice.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="w-16 text-right">
-                    <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {views}
-                    </span>
-                  </div>
-                  <div className="w-16 text-right">
-                    <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {watchers}
-                    </span>
-                  </div>
-                  <div className="w-24">
-                    <StatusBadge status={listing.status} />
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

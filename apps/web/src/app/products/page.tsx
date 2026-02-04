@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/badge';
@@ -23,6 +24,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 
+const ROW_HEIGHT = 52; // Height of each row in pixels
+
 const sourceSiteLabels: Record<string, string> = {
   mercari: 'メルカリ',
   yahoo: 'ヤフオク',
@@ -36,14 +39,25 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
+  // Ref for virtual scroll container
+  const parentRef = useRef<HTMLDivElement>(null);
+
   // Fetch products from API
   const { data, error, isLoading, mutate } = useProducts({
     status: statusFilter || undefined,
-    limit: 100,
+    limit: 5000, // Request more items for virtual scroll demo
   });
 
   const products = data?.data ?? [];
   const totalCount = data?.pagination?.total ?? 0;
+
+  // Virtual scroll setup
+  const virtualizer = useVirtualizer({
+    count: products.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10, // Render 10 extra items above/below visible area
+  });
 
   // Set initial focus when products load
   useEffect(() => {
@@ -54,6 +68,16 @@ export default function ProductsPage() {
 
   const selectedProduct = products.find((p) => p.id === focusedId);
   const isMultiSelect = selectedIds.size > 1;
+
+  // Scroll to focused item
+  useEffect(() => {
+    if (focusedId && products.length > 0) {
+      const index = products.findIndex((p) => p.id === focusedId);
+      if (index >= 0) {
+        virtualizer.scrollToIndex(index, { align: 'auto' });
+      }
+    }
+  }, [focusedId, products, virtualizer]);
 
   // キーボード操作
   useEffect(() => {
@@ -194,8 +218,12 @@ export default function ProductsPage() {
             <div className="w-24">ステータス</div>
           </div>
 
-          {/* Table Body */}
-          <div className="overflow-y-auto" style={{ height: 'calc(100% - 36px)' }}>
+          {/* Table Body - Virtual Scroll */}
+          <div
+            ref={parentRef}
+            className="overflow-y-auto"
+            style={{ height: 'calc(100% - 36px)' }}
+          >
             {/* Loading State */}
             {isLoading && (
               <div className="flex items-center justify-center py-12">
@@ -223,81 +251,99 @@ export default function ProductsPage() {
               </div>
             )}
 
-            {/* Product Rows */}
-            {!isLoading && !error && products.map((product) => {
-              const isSelected = selectedIds.has(product.id);
-              const isFocused = focusedId === product.id;
-              const imageUrl = product.processedImages?.[0] || product.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`;
-              const listingPrice = product.listings?.[0]?.listingPrice;
+            {/* Virtualized Product Rows */}
+            {!isLoading && !error && products.length > 0 && (
+              <div
+                style={{
+                  height: `${virtualizer.getTotalSize()}px`,
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {virtualizer.getVirtualItems().map((virtualRow) => {
+                  const product = products[virtualRow.index];
+                  const isSelected = selectedIds.has(product.id);
+                  const isFocused = focusedId === product.id;
+                  const imageUrl = product.processedImages?.[0] || product.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`;
+                  const listingPrice = product.listings?.[0]?.listingPrice;
 
-              return (
-                <div
-                  key={product.id}
-                  onClick={() => setFocusedId(product.id)}
-                  className={cn(
-                    'flex items-center border-b border-zinc-100 px-3 py-1.5 cursor-pointer transition-colors',
-                    'dark:border-zinc-800/50',
-                    isFocused && 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-l-amber-500',
-                    !isFocused && isSelected && 'bg-zinc-50 dark:bg-zinc-800/30',
-                    !isFocused && !isSelected && 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'
-                  )}
-                >
-                  <div className="w-8">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelect(product.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="h-4 w-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
-                    />
-                  </div>
-                  <div className="w-12">
-                    <div className="h-10 w-10 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
-                      <img
-                        src={imageUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
+                  return (
+                    <div
+                      key={product.id}
+                      data-index={virtualRow.index}
+                      ref={virtualizer.measureElement}
+                      onClick={() => setFocusedId(product.id)}
+                      className={cn(
+                        'absolute left-0 top-0 w-full flex items-center border-b border-zinc-100 px-3 cursor-pointer transition-colors',
+                        'dark:border-zinc-800/50',
+                        isFocused && 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-l-amber-500',
+                        !isFocused && isSelected && 'bg-zinc-50 dark:bg-zinc-800/30',
+                        !isFocused && !isSelected && 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'
+                      )}
+                      style={{
+                        height: `${ROW_HEIGHT}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      <div className="w-8">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(product.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
+                        />
+                      </div>
+                      <div className="w-12">
+                        <div className="h-10 w-10 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
+                          <img
+                            src={imageUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      </div>
+                      <div className="w-24">
+                        <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                          {product.sourceItemId?.slice(0, 8) || product.id.slice(0, 8)}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className="truncate text-sm font-medium text-zinc-900 dark:text-white">
+                          {product.title}
+                        </p>
+                        <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                          {product.titleEn || '翻訳なし'}
+                        </p>
+                      </div>
+                      <div className="w-24 text-right">
+                        <span className="text-sm text-zinc-900 dark:text-white">
+                          {formatCurrency(product.price)}
+                        </span>
+                      </div>
+                      <div className="w-24 text-right">
+                        {listingPrice ? (
+                          <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                            ${listingPrice.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-zinc-400">-</span>
+                        )}
+                      </div>
+                      <div className="w-20">
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {sourceSiteLabels[product.source?.type || ''] || product.source?.name || '-'}
+                        </span>
+                      </div>
+                      <div className="w-24">
+                        <StatusBadge status={product.status} />
+                      </div>
                     </div>
-                  </div>
-                  <div className="w-24">
-                    <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                      {product.sourceItemId?.slice(0, 8) || product.id.slice(0, 8)}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0 pr-2">
-                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-white">
-                      {product.title}
-                    </p>
-                    <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                      {product.titleEn || '翻訳なし'}
-                    </p>
-                  </div>
-                  <div className="w-24 text-right">
-                    <span className="text-sm text-zinc-900 dark:text-white">
-                      {formatCurrency(product.price)}
-                    </span>
-                  </div>
-                  <div className="w-24 text-right">
-                    {listingPrice ? (
-                      <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                        ${listingPrice.toFixed(2)}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-zinc-400">-</span>
-                    )}
-                  </div>
-                  <div className="w-20">
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {sourceSiteLabels[product.source?.type || ''] || product.source?.name || '-'}
-                    </span>
-                  </div>
-                  <div className="w-24">
-                    <StatusBadge status={product.status} />
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
