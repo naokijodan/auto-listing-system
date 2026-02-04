@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { logger } from '@als/logger';
 import { prisma } from '@als/database';
 

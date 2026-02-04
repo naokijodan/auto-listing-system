@@ -76,6 +76,12 @@ setup_env() {
     else
         log_warn ".env already exists, skipping"
     fi
+
+    # 環境変数を読み込み
+    set -a
+    source .env
+    set +a
+    log_info "Environment variables loaded"
 }
 
 # npm 依存関係インストール

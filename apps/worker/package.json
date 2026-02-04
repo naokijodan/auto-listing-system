@@ -16,6 +16,7 @@
     "@als/logger": "*",
     "@als/schema": "*",
     "bullmq": "^5.1.0",
+    "dotenv": "^17.2.3",
     "ioredis": "^5.3.2"
   },
   "devDependencies": {
