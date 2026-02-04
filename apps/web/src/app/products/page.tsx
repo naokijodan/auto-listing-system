@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useProducts } from '@/lib/hooks';
-import { Product } from '@/lib/api';
+import { Product, productApi } from '@/lib/api';
 import {
   Search,
   Filter,
@@ -51,9 +51,19 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('inventory');
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    created: number;
+    updated: number;
+    failed: number;
+    errors: string[];
+  } | null>(null);
 
   // Ref for virtual scroll container
   const parentRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch products from API
   const { data, error, isLoading, mutate } = useProducts({
@@ -146,6 +156,79 @@ export default function ProductsPage() {
     }
   }, [selectedIds.size, products]);
 
+  // エクスポート処理
+  const handleExport = useCallback(async (exportSelected = false) => {
+    setIsExporting(true);
+    try {
+      const ids = exportSelected && selectedIds.size > 0
+        ? Array.from(selectedIds)
+        : undefined;
+      await productApi.exportCsv(ids);
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [selectedIds]);
+
+  // インポート処理
+  const handleImport = useCallback(async (file: File) => {
+    setIsImporting(true);
+    setImportResult(null);
+    try {
+      const csv = await file.text();
+      const result = await productApi.importCsv(csv);
+      setImportResult(result.data);
+      mutate(); // リストを更新
+    } catch (error) {
+      console.error('Import failed:', error);
+      setImportResult({
+        created: 0,
+        updated: 0,
+        failed: 1,
+        errors: ['インポートに失敗しました'],
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  }, [mutate]);
+
+  // 一括削除
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size}件の商品を削除しますか？`)) return;
+
+    try {
+      await productApi.bulkDelete(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      mutate();
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+    }
+  }, [selectedIds, mutate]);
+
+  // 一括出品
+  const handleBulkPublish = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`${selectedIds.size}件の商品を出品登録しますか？`)) return;
+
+    try {
+      await productApi.bulkPublish(Array.from(selectedIds));
+      mutate();
+    } catch (error) {
+      console.error('Bulk publish failed:', error);
+    }
+  }, [selectedIds, mutate]);
+
+  // ファイル選択ハンドラー
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImport(file);
+    }
+    e.target.value = ''; // リセット
+  }, [handleImport]);
+
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
       {/* Header */}
@@ -157,12 +240,37 @@ export default function ProductsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Upload className="h-4 w-4" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isImporting}
+          >
+            {isImporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
             インポート
           </Button>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleExport(false)}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
             エクスポート
           </Button>
         </div>
@@ -612,14 +720,33 @@ export default function ProductsPage() {
           <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
             価格一括変更
           </Button>
-          <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={selectedIds.size === 0}
+            onClick={handleBulkPublish}
+          >
             一括出品
           </Button>
-          <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
-            <Download className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={selectedIds.size === 0 || isExporting}
+            onClick={() => handleExport(true)}
+          >
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
             エクスポート
           </Button>
-          <Button variant="danger" size="sm" disabled={selectedIds.size === 0}>
+          <Button
+            variant="danger"
+            size="sm"
+            disabled={selectedIds.size === 0}
+            onClick={handleBulkDelete}
+          >
             <Trash2 className="h-4 w-4" />
             削除
           </Button>
@@ -632,6 +759,46 @@ export default function ProductsPage() {
         <span><kbd className="rounded bg-zinc-200 px-1.5 py-0.5 dark:bg-zinc-700">Space</kbd> 選択</span>
         <span><kbd className="rounded bg-zinc-200 px-1.5 py-0.5 dark:bg-zinc-700">Enter</kbd> 詳細</span>
       </div>
+
+      {/* Import Result Modal */}
+      {importResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900">
+            <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
+              インポート結果
+            </h3>
+            <div className="mb-4 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-zinc-600 dark:text-zinc-400">新規作成:</span>
+                <span className="font-medium text-emerald-600">{importResult.created}件</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-600 dark:text-zinc-400">更新:</span>
+                <span className="font-medium text-blue-600">{importResult.updated}件</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-600 dark:text-zinc-400">失敗:</span>
+                <span className="font-medium text-red-600">{importResult.failed}件</span>
+              </div>
+            </div>
+            {importResult.errors.length > 0 && (
+              <div className="mb-4 max-h-32 overflow-y-auto rounded bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-400">
+                {importResult.errors.map((err, i) => (
+                  <div key={i}>{err}</div>
+                ))}
+              </div>
+            )}
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full"
+              onClick={() => setImportResult(null)}
+            >
+              閉じる
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

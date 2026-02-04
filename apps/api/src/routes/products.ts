@@ -10,6 +10,7 @@ import {
   generateSourceHash,
 } from '@rakuda/schema';
 import { AppError } from '../middleware/error-handler';
+import { parseCsv, rowToProduct, productsToCsv } from '../utils/csv';
 
 const router = Router();
 
@@ -55,6 +56,45 @@ router.get('/', async (req, res, next) => {
         offset: Number(offset),
       },
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 商品エクスポート（CSV）
+ * 注意: /:id より前に定義する必要がある
+ */
+router.get('/export', async (req, res, next) => {
+  try {
+    const { status, ids } = req.query;
+
+    const where: any = {};
+    if (status) {
+      where.status = status as string;
+    }
+    if (ids) {
+      const idArray = (ids as string).split(',');
+      where.id = { in: idArray };
+    }
+
+    const products = await prisma.product.findMany({
+      where,
+      include: {
+        source: true,
+        listings: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const csv = productsToCsv(products);
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="products_${new Date().toISOString().split('T')[0]}.csv"`
+    );
+    res.send(csv);
   } catch (error) {
     next(error);
   }
@@ -357,6 +397,261 @@ router.delete('/:id', async (req, res, next) => {
     res.json({
       success: true,
       message: 'Product deleted',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 商品インポート（CSV）
+ */
+router.post('/import', async (req, res, next) => {
+  try {
+    const { csv, sourceType = 'OTHER' } = req.body;
+
+    if (!csv) {
+      throw new AppError(400, 'CSV data is required', 'INVALID_REQUEST');
+    }
+
+    const rows = parseCsv(csv);
+    const results = {
+      created: 0,
+      updated: 0,
+      failed: 0,
+      errors: [] as string[],
+    };
+
+    // ソース取得または作成
+    let source = await prisma.source.findFirst({
+      where: { type: sourceType.toUpperCase() as any },
+    });
+
+    if (!source) {
+      source = await prisma.source.create({
+        data: {
+          type: sourceType.toUpperCase() as any,
+          name: sourceType,
+        },
+      });
+    }
+
+    for (let i = 0; i < rows.length; i++) {
+      try {
+        const productData = rowToProduct(rows[i]);
+
+        if (!productData.title) {
+          results.failed++;
+          results.errors.push(`Row ${i + 1}: title is required`);
+          continue;
+        }
+
+        // sourceItemIdを生成（URLまたはタイトルのハッシュ）
+        const sourceItemId =
+          productData.sourceUrl ||
+          Buffer.from(productData.title).toString('base64').slice(0, 20);
+
+        // 既存チェック
+        const existing = await prisma.product.findUnique({
+          where: {
+            sourceId_sourceItemId: {
+              sourceId: source.id,
+              sourceItemId,
+            },
+          },
+        });
+
+        if (existing) {
+          // 更新
+          await prisma.product.update({
+            where: { id: existing.id },
+            data: {
+              title: productData.title,
+              titleEn: productData.titleEn,
+              price: productData.price,
+              brand: productData.brand,
+              category: productData.category,
+              condition: productData.condition,
+              description: productData.description || '',
+              images: productData.images || [],
+            },
+          });
+          results.updated++;
+        } else {
+          // 新規作成
+          await prisma.product.create({
+            data: {
+              sourceId: source.id,
+              sourceItemId,
+              sourceUrl: productData.sourceUrl || '',
+              title: productData.title,
+              titleEn: productData.titleEn,
+              price: productData.price,
+              brand: productData.brand,
+              category: productData.category,
+              condition: productData.condition,
+              description: productData.description || '',
+              images: productData.images || [],
+              status: 'SCRAPED',
+              scrapedAt: new Date(),
+            },
+          });
+          results.created++;
+        }
+      } catch (error: any) {
+        results.failed++;
+        results.errors.push(`Row ${i + 1}: ${error.message}`);
+      }
+    }
+
+    logger.info({
+      type: 'products_imported',
+      ...results,
+    });
+
+    res.json({
+      success: true,
+      message: 'Import completed',
+      data: results,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 一括削除
+ */
+router.delete('/bulk', async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      throw new AppError(400, 'ids array is required', 'INVALID_REQUEST');
+    }
+
+    const result = await prisma.product.updateMany({
+      where: { id: { in: ids } },
+      data: { status: 'DELETED' },
+    });
+
+    logger.info({
+      type: 'products_bulk_deleted',
+      count: result.count,
+      ids,
+    });
+
+    res.json({
+      success: true,
+      message: `${result.count} products deleted`,
+      data: { deletedCount: result.count },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 一括更新
+ */
+router.patch('/bulk', async (req, res, next) => {
+  try {
+    const { ids, updates } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      throw new AppError(400, 'ids array is required', 'INVALID_REQUEST');
+    }
+
+    if (!updates || typeof updates !== 'object') {
+      throw new AppError(400, 'updates object is required', 'INVALID_REQUEST');
+    }
+
+    // 許可されたフィールドのみ更新
+    const allowedFields = ['status', 'brand', 'category', 'condition', 'price'];
+    const safeUpdates: Record<string, any> = {};
+
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        safeUpdates[field] = updates[field];
+      }
+    }
+
+    if (Object.keys(safeUpdates).length === 0) {
+      throw new AppError(400, 'No valid updates provided', 'INVALID_REQUEST');
+    }
+
+    const result = await prisma.product.updateMany({
+      where: { id: { in: ids } },
+      data: safeUpdates,
+    });
+
+    logger.info({
+      type: 'products_bulk_updated',
+      count: result.count,
+      updates: safeUpdates,
+    });
+
+    res.json({
+      success: true,
+      message: `${result.count} products updated`,
+      data: { updatedCount: result.count },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 一括出品
+ */
+router.post('/bulk/publish', async (req, res, next) => {
+  try {
+    const { ids, marketplace = 'JOOM', listingPrice } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      throw new AppError(400, 'ids array is required', 'INVALID_REQUEST');
+    }
+
+    const products = await prisma.product.findMany({
+      where: { id: { in: ids }, status: { not: 'DELETED' } },
+    });
+
+    const createdListings = [];
+
+    for (const product of products) {
+      // 既存の出品がなければ作成
+      const existingListing = await prisma.listing.findUnique({
+        where: {
+          productId_marketplace: {
+            productId: product.id,
+            marketplace: marketplace as any,
+          },
+        },
+      });
+
+      if (!existingListing) {
+        const listing = await prisma.listing.create({
+          data: {
+            productId: product.id,
+            marketplace: marketplace as any,
+            listingPrice: listingPrice || product.price / 150, // Simple conversion
+            status: 'PENDING_PUBLISH',
+          },
+        });
+        createdListings.push(listing);
+      }
+    }
+
+    logger.info({
+      type: 'products_bulk_publish',
+      count: createdListings.length,
+      marketplace,
+    });
+
+    res.json({
+      success: true,
+      message: `${createdListings.length} listings created`,
+      data: { createdCount: createdListings.length },
     });
   } catch (error) {
     next(error);

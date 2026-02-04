@@ -167,12 +167,73 @@ export async function postApi<T>(url: string, data?: unknown): Promise<T> {
   return res.json();
 }
 
-export async function deleteApi<T>(url: string): Promise<T> {
+export async function deleteApi<T>(url: string, data?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
     method: 'DELETE',
+    headers: data ? { 'Content-Type': 'application/json' } : undefined,
+    body: data ? JSON.stringify(data) : undefined,
   });
   if (!res.ok) {
     throw new Error('API error');
   }
   return res.json();
 }
+
+export async function patchApi<T>(url: string, data?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${url}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: data ? JSON.stringify(data) : undefined,
+  });
+  if (!res.ok) {
+    throw new Error('API error');
+  }
+  return res.json();
+}
+
+// Product operations
+export const productApi = {
+  exportCsv: async (ids?: string[]): Promise<void> => {
+    const params = ids ? `?ids=${ids.join(',')}` : '';
+    const res = await fetch(`${API_BASE}/api/products/export${params}`);
+    if (!res.ok) throw new Error('Export failed');
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `products_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+
+  importCsv: async (csv: string, sourceType = 'OTHER') => {
+    return postApi<{
+      success: boolean;
+      data: { created: number; updated: number; failed: number; errors: string[] };
+    }>('/api/products/import', { csv, sourceType });
+  },
+
+  bulkDelete: async (ids: string[]) => {
+    return deleteApi<{ success: boolean; data: { deletedCount: number } }>(
+      '/api/products/bulk',
+      { ids }
+    );
+  },
+
+  bulkUpdate: async (ids: string[], updates: Record<string, unknown>) => {
+    return patchApi<{ success: boolean; data: { updatedCount: number } }>(
+      '/api/products/bulk',
+      { ids, updates }
+    );
+  },
+
+  bulkPublish: async (ids: string[], marketplace = 'JOOM') => {
+    return postApi<{ success: boolean; data: { createdCount: number } }>(
+      '/api/products/bulk/publish',
+      { ids, marketplace }
+    );
+  },
+};
