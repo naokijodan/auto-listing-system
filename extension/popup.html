@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auto Listing System</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .header p {
+      font-size: 11px;
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+
+    .content {
+      padding: 16px;
+    }
+
+    .status {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .status-label {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .status-value {
+      font-size: 13px;
+      color: #333;
+      word-break: break-all;
+    }
+
+    .status-value.supported {
+      color: #22c55e;
+    }
+
+    .status-value.unsupported {
+      color: #ef4444;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #667eea;
+      border: 1px solid #667eea;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #f0f4ff;
+    }
+
+    .marketplace-select {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .marketplace-option {
+      flex: 1;
+      padding: 10px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .marketplace-option:hover {
+      border-color: #667eea;
+    }
+
+    .marketplace-option.selected {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .marketplace-option input {
+      display: none;
+    }
+
+    .marketplace-option span {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .settings {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .settings-row label {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .settings-row input {
+      width: 180px;
+      padding: 6px 8px;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .message {
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 12px;
+      display: none;
+    }
+
+    .message.success {
+      background: #dcfce7;
+      color: #166534;
+      display: block;
+    }
+
+    .message.error {
+      background: #fee2e2;
+      color: #991b1b;
+      display: block;
+    }
+
+    .message.loading {
+      background: #e0e7ff;
+      color: #3730a3;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Auto Listing System</h1>
+    <p>ワンクリック出品</p>
+  </div>
+
+  <div class="content">
+    <div class="status">
+      <div class="status-label">現在のページ</div>
+      <div class="status-value" id="currentUrl">読み込み中...</div>
+    </div>
+
+    <div class="status">
+      <div class="status-label">ステータス</div>
+      <div class="status-value" id="pageStatus">確認中...</div>
+    </div>
+
+    <div class="marketplace-select">
+      <label class="marketplace-option selected">
+        <input type="radio" name="marketplace" value="joom" checked>
+        <span>Joom</span>
+      </label>
+      <label class="marketplace-option">
+        <input type="radio" name="marketplace" value="ebay">
+        <span>eBay</span>
+      </label>
+      <label class="marketplace-option">
+        <input type="radio" name="marketplace" value="both">
+        <span>両方</span>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button id="btnSubmit" class="btn-primary" disabled>
+        出品リクエスト送信
+      </button>
+      <button id="btnBulk" class="btn-secondary" disabled>
+        セラー一括取得
+      </button>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="settings">
+      <div class="settings-row">
+        <label>API URL</label>
+        <input type="text" id="apiUrl" value="http://localhost:3000">
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

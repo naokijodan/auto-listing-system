@@ -92,13 +92,15 @@ router.get('/:id', async (req, res, next) => {
 
 /**
  * スクレイピングリクエスト（URLから商品取得）
+ * Chrome拡張から呼び出される
  */
 router.post('/scrape', async (req, res, next) => {
   try {
-    const { url, sourceType, priority = 0 } = req.body;
+    const { url, source, sourceType, marketplace = ['joom'], options = {}, priority = 0 } = req.body;
 
-    if (!url || !sourceType) {
-      throw new AppError(400, 'url and sourceType are required', 'INVALID_REQUEST');
+    const resolvedSource = source || sourceType;
+    if (!url || !resolvedSource) {
+      throw new AppError(400, 'url and source are required', 'INVALID_REQUEST');
     }
 
     // ジョブ追加
@@ -106,7 +108,13 @@ router.post('/scrape', async (req, res, next) => {
       'scrape',
       {
         url,
-        sourceType,
+        sourceType: resolvedSource,
+        marketplace: Array.isArray(marketplace) ? marketplace : [marketplace],
+        options: {
+          processImages: options.processImages ?? true,
+          translate: options.translate ?? true,
+          removeBackground: options.removeBackground ?? true,
+        },
         priority,
         retryCount: 0,
       },
@@ -124,16 +132,85 @@ router.post('/scrape', async (req, res, next) => {
       type: 'scrape_job_added',
       jobId: job.id,
       url,
-      sourceType,
+      source: resolvedSource,
+      marketplace,
     });
 
     res.status(202).json({
       success: true,
       message: 'Scrape job queued',
+      jobId: job.id,
       data: {
         jobId: job.id,
         url,
-        sourceType,
+        source: resolvedSource,
+        marketplace,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * セラー一括スクレイピング
+ * セラーページのURLから全商品を取得
+ */
+router.post('/scrape-seller', async (req, res, next) => {
+  try {
+    const { url, source, marketplace = ['joom'], options = {}, priority = 0 } = req.body;
+
+    if (!url || !source) {
+      throw new AppError(400, 'url and source are required', 'INVALID_REQUEST');
+    }
+
+    const limit = options.limit || 50;
+
+    // セラー一括スクレイピングジョブ追加
+    const job = await scrapeQueue.add(
+      'scrape-seller',
+      {
+        url,
+        sourceType: source,
+        marketplace: Array.isArray(marketplace) ? marketplace : [marketplace],
+        options: {
+          processImages: options.processImages ?? true,
+          translate: options.translate ?? true,
+          removeBackground: options.removeBackground ?? true,
+          limit,
+        },
+        priority,
+        retryCount: 0,
+      },
+      {
+        priority,
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 60000,
+        },
+      }
+    );
+
+    logger.info({
+      type: 'scrape_seller_job_added',
+      jobId: job.id,
+      url,
+      source,
+      limit,
+    });
+
+    res.status(202).json({
+      success: true,
+      message: 'Seller scrape job queued',
+      jobId: job.id,
+      count: limit,
+      data: {
+        jobId: job.id,
+        url,
+        source,
+        marketplace,
+        limit,
       },
     });
   } catch (error) {

@@ -2,15 +2,10 @@ import { Job } from 'bullmq';
 import { prisma } from '@als/database';
 import { logger } from '@als/logger';
 import { ImageJobPayload, ImageJobResult } from '@als/schema';
+import { processImages } from '../lib/image-processor';
 
 /**
  * 画像処理ジョブプロセッサー
- *
- * TODO Phase 2で実装:
- * - 画像ダウンロード
- * - rembg による背景除去
- * - リサイズ
- * - MinIO/S3 へのアップロード
  */
 export async function processImageJob(
   job: Job<ImageJobPayload>
@@ -30,55 +25,91 @@ export async function processImageJob(
     where: { id: productId },
     data: {
       imageStatus: 'PROCESSING',
+      status: 'PROCESSING_IMAGES',
     },
   });
 
   try {
-    // TODO: Phase 2で実装
-    // 1. 各画像をダウンロード
-    // 2. rembg で背景除去（removeBackground が true の場合）
-    // 3. リサイズ
-    // 4. MinIO/S3 にアップロード
-    // 5. 新しいURLをDBに保存
+    // 画像処理実行
+    const processedImages = await processImages(
+      imageUrls,
+      productId,
+      removeBackground ?? true,
+      3 // 並列数
+    );
 
-    const processedUrls: string[] = [];
-    const failedUrls: string[] = [];
+    // 処理済み画像URLを保存
+    const processedUrls = processedImages.map((img) => img.processedUrl);
+    const failedUrls = imageUrls.filter(
+      (url) => !processedImages.find((img) => img.originalUrl === url)
+    );
 
-    // プレースホルダー: 元のURLをそのまま返す
-    for (const url of imageUrls) {
-      processedUrls.push(url);
-    }
-
-    // ステータス更新
     await prisma.product.update({
       where: { id: productId },
       data: {
         processedImages: processedUrls,
         imageStatus: 'COMPLETED',
+        status: 'READY_TO_REVIEW',
+      },
+    });
+
+    // ジョブログ記録
+    await prisma.jobLog.create({
+      data: {
+        jobId: job.id || `image-${Date.now()}`,
+        queueName: 'image',
+        jobType: 'IMAGE',
+        status: 'COMPLETED',
+        productId,
+        result: {
+          originalCount: imageUrls.length,
+          processedCount: processedImages.length,
+          failedCount: failedUrls.length,
+        },
+        startedAt: new Date(),
+        completedAt: new Date(),
       },
     });
 
     log.info({
       type: 'image_processing_complete',
       productId,
-      processed: processedUrls.length,
-      failed: failedUrls.length,
+      processedCount: processedImages.length,
+      failedCount: failedUrls.length,
     });
 
     return {
       success: true,
-      message: 'Image processing placeholder',
+      message: `Processed ${processedImages.length} images`,
       processedUrls,
       failedUrls,
       timestamp: new Date().toISOString(),
     };
   } catch (error: any) {
-    // エラー時はステータス更新
+    log.error({
+      type: 'image_processing_error',
+      productId,
+      error: error.message,
+    });
+
     await prisma.product.update({
       where: { id: productId },
       data: {
         imageStatus: 'ERROR',
+        status: 'ERROR',
         lastError: error.message,
+      },
+    });
+
+    await prisma.jobLog.create({
+      data: {
+        jobId: job.id || `image-${Date.now()}`,
+        queueName: 'image',
+        jobType: 'IMAGE',
+        status: 'FAILED',
+        productId,
+        errorMessage: error.message,
+        startedAt: new Date(),
       },
     });
 

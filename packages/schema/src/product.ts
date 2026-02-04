@@ -99,8 +99,9 @@ export const ScrapedProductSchema = z.object({
   // 商品属性（スクレイピング時点）
   category: z.string().optional(),
   brand: z.string().optional(),
-  condition: ConditionSchema.optional(),
+  condition: z.string().optional(), // 元サイトの状態表記（後でマッピング）
   weight: z.number().positive().optional(),
+  isAvailable: z.boolean().optional(), // 在庫状況
 
   // 画像URL（元サイト）
   images: z.array(z.string().url()).min(1).max(20),
