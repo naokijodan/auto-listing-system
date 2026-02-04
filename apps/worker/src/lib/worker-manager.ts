@@ -1,7 +1,7 @@
 import { Worker, Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { logger } from '@als/logger';
-import { QUEUE_NAMES, QUEUE_CONFIG } from '@als/config';
+import { logger } from '@rakuda/logger';
+import { QUEUE_NAMES, QUEUE_CONFIG } from '@rakuda/config';
 
 import { processScrapeJob } from '../processors/scrape';
 import { processImageJob } from '../processors/image';

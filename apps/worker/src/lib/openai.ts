@@ -1,13 +1,16 @@
 import OpenAI from 'openai';
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
 
 const log = logger.child({ module: 'openai' });
 
-// OpenAIクライアント
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// OpenAIクライアント（APIキーがある場合のみ初期化）
+let openai: OpenAI | null = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
 
 // モデル設定
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
@@ -207,6 +210,16 @@ export async function translateProduct(
   } = {}
 ): Promise<TranslationResult> {
   const { extractAttributes = true, category, marketplace } = options;
+
+  // OpenAI APIキーが設定されていない場合はプレースホルダーを返す
+  if (!openai) {
+    log.warn({ type: 'openai_not_configured' });
+    return {
+      titleEn: `[EN] ${title}`,
+      descriptionEn: `[EN] ${description}`,
+      tokensUsed: 0,
+    };
+  }
 
   // プロンプト設定を取得
   const promptConfig = await getPromptConfig(category, marketplace);

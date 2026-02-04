@@ -1,5 +1,5 @@
-import { logger } from '@als/logger';
-import { ScrapedProduct } from '@als/schema';
+import { logger } from '@rakuda/logger';
+import { ScrapedProduct } from '@rakuda/schema';
 import { createPage, randomDelay } from '../puppeteer';
 import { ScraperResult } from './index';
 

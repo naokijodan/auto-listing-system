@@ -1,5 +1,5 @@
 import IORedis from 'ioredis';
-import { logger } from '@als/logger';
+import { logger } from '@rakuda/logger';
 
 let connection: IORedis | null = null;
 

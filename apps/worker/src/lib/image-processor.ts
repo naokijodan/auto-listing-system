@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import sharp from 'sharp';
-import { logger } from '@als/logger';
+import { logger } from '@rakuda/logger';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const execAsync = promisify(exec);

@@ -1,5 +1,5 @@
 {
-  "name": "@als/worker",
+  "name": "@rakuda/worker",
   "version": "1.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -11,10 +11,10 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@als/config": "*",
-    "@als/database": "*",
-    "@als/logger": "*",
-    "@als/schema": "*",
+    "@rakuda/config": "*",
+    "@rakuda/database": "*",
+    "@rakuda/logger": "*",
+    "@rakuda/schema": "*",
     "@aws-sdk/client-s3": "^3.982.0",
     "bullmq": "^5.1.0",
     "dotenv": "^17.2.3",

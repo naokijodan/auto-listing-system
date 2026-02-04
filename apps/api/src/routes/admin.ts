@@ -1,9 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
-import { QUEUE_NAMES } from '@als/config';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
+import { QUEUE_NAMES } from '@rakuda/config';
 
 const router = Router();
 const log = logger.child({ module: 'admin-api' });

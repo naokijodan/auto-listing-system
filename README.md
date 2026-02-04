@@ -1,6 +1,9 @@
-# Auto Listing System
+# 🐫 RAKUDA
 
-eBay/Joom自動出品システム - メルカリ等から商品を取得し、自動で出品・在庫管理を行う統合システム
+越境EC自動出品システム - メルカリ等から商品を取得し、eBay/Joomへ自動で出品・在庫管理を行う統合システム
+
+> **RAKUDA** = 「楽だ」+ ラクダ（荷物を運ぶ）🐫
+> 商品を世界へ楽に運ぶ、越境ECの架け橋
 
 ## 概要
 
@@ -26,8 +29,8 @@ eBay/Joom自動出品システム - メルカリ等から商品を取得し、�
 
 ```bash
 # リポジトリクローン
-git clone https://github.com/naokijodan/auto-listing-system.git
-cd auto-listing-system
+git clone https://github.com/naokijodan/rakuda.git
+cd rakuda
 
 # セットアップスクリプト実行
 ./scripts/bootstrap.sh
@@ -99,7 +102,7 @@ npm run db:studio      # Prisma Studio起動
 ## プロジェクト構成
 
 ```
-auto-listing-system/
+rakuda/
 ├── apps/
 │   ├── web/          # Next.js フロントエンド
 │   ├── api/          # Express API
@@ -142,8 +145,8 @@ auto-listing-system/
 
 ## 設計ドキュメント
 
-- [設計計画書](https://naokijodan.github.io/auto-listing-system-plan/)
-- [実装計画書](https://naokijodan.github.io/auto-listing-system-plan/implementation.html)
+- [設計計画書](https://naokijodan.github.io/rakuda-docs/)
+- [実装計画書](https://naokijodan.github.io/rakuda-docs/implementation.html)
 
 ## ライセンス
 

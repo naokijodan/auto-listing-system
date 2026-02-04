@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
-import { TranslateJobPayload, TranslateJobResult } from '@als/schema';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
+import { TranslateJobPayload, TranslateJobResult } from '@rakuda/schema';
 import { translateProduct, isOpenAIConfigured } from '../lib/openai';
 
 /**

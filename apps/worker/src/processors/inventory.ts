@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
-import { InventoryJobPayload, InventoryJobResult } from '@als/schema';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
+import { InventoryJobPayload, InventoryJobResult } from '@rakuda/schema';
 import { checkSingleProductInventory } from '../lib/inventory-checker';
 
 /**

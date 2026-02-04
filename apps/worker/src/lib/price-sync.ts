@@ -1,5 +1,5 @@
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
 import { calculatePrice, PriceCalculationInput } from './price-calculator';
 import { getLatestExchangeRate } from './exchange-rate';
 import { joomApi, isJoomConfigured } from './joom-api';

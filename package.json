@@ -1,5 +1,5 @@
 {
-  "name": "auto-listing-system",
+  "name": "rakuda",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -13,9 +13,9 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "db:migrate": "turbo run db:migrate --filter=@als/database",
-    "db:generate": "turbo run db:generate --filter=@als/database",
-    "db:studio": "turbo run db:studio --filter=@als/database",
+    "db:migrate": "turbo run db:migrate --filter=@rakuda/database",
+    "db:generate": "turbo run db:generate --filter=@rakuda/database",
+    "db:studio": "turbo run db:studio --filter=@rakuda/database",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",

@@ -1,4 +1,4 @@
-import { ScrapedProduct } from '@als/schema';
+import { ScrapedProduct } from '@rakuda/schema';
 import { scrapeMercari, scrapeMercariSeller } from './mercari';
 import { scrapeYahooAuction, scrapeYahooAuctionSeller } from './yahoo-auction';
 

@@ -1,5 +1,5 @@
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
 
 const log = logger.child({ module: 'joom-api' });
 

@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: als-postgres
+    container_name: rakuda-postgres
     environment:
       POSTGRES_USER: als_user
       POSTGRES_PASSWORD: als_password
@@ -18,11 +18,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - als-network
+      - rakuda-network
 
   redis:
     image: redis:7-alpine
-    container_name: als-redis
+    container_name: rakuda-redis
     ports:
       - "6379:6379"
     volumes:
@@ -34,11 +34,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - als-network
+      - rakuda-network
 
   minio:
     image: minio/minio:latest
-    container_name: als-minio
+    container_name: rakuda-minio
     environment:
       MINIO_ROOT_USER: minio_access_key
       MINIO_ROOT_PASSWORD: minio_secret_key
@@ -54,11 +54,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - als-network
+      - rakuda-network
 
   minio-init:
     image: minio/mc:latest
-    container_name: als-minio-init
+    container_name: rakuda-minio-init
     depends_on:
       minio:
         condition: service_healthy
@@ -70,7 +70,7 @@ services:
       echo 'Bucket created successfully';
       "
     networks:
-      - als-network
+      - rakuda-network
 
 volumes:
   postgres_data:
@@ -78,5 +78,5 @@ volumes:
   minio_data:
 
 networks:
-  als-network:
+  rakuda-network:
     driver: bridge

@@ -1,4 +1,4 @@
-import { logger } from '@als/logger';
+import { logger } from '@rakuda/logger';
 
 const log = logger.child({ module: 'notifications' });
 

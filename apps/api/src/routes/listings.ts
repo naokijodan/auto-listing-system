@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
-import { QUEUE_NAMES } from '@als/config';
-import { CreateListingRequestSchema } from '@als/schema';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
+import { QUEUE_NAMES } from '@rakuda/config';
+import { CreateListingRequestSchema } from '@rakuda/schema';
 import { AppError } from '../middleware/error-handler';
 
 const router = Router();

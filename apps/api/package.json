@@ -1,5 +1,5 @@
 {
-  "name": "@als/api",
+  "name": "@rakuda/api",
   "version": "1.0.0",
   "private": true,
   "main": "./src/index.ts",
@@ -11,10 +11,10 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@als/config": "*",
-    "@als/database": "*",
-    "@als/logger": "*",
-    "@als/schema": "*",
+    "@rakuda/config": "*",
+    "@rakuda/database": "*",
+    "@rakuda/logger": "*",
+    "@rakuda/schema": "*",
     "@bull-board/api": "^5.10.0",
     "@bull-board/express": "^5.10.0",
     "bullmq": "^5.1.0",

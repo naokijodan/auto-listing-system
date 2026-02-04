@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
-import { ImageJobPayload, ImageJobResult } from '@als/schema';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
+import { ImageJobPayload, ImageJobResult } from '@rakuda/schema';
 import { processImages } from '../lib/image-processor';
 
 /**

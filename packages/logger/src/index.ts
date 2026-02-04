@@ -42,7 +42,7 @@ export function createLogger(options: LoggerOptions = {}) {
   const isDevelopment = process.env.NODE_ENV !== 'production';
 
   return pino({
-    name: options.name || 'als',
+    name: options.name || 'rakuda',
     level: options.level || process.env.LOG_LEVEL || 'info',
 
     // シークレットのマスク

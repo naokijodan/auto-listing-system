@@ -1,9 +1,9 @@
 import { Job, Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
-import { QUEUE_NAMES } from '@als/config';
-import { ScrapeJobPayload, ScrapeJobResult, generateSourceHash } from '@als/schema';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
+import { QUEUE_NAMES } from '@rakuda/config';
+import { ScrapeJobPayload, ScrapeJobResult, generateSourceHash } from '@rakuda/schema';
 import { scrapeProduct, scrapeSellerProducts, SourceType } from '../lib/scrapers';
 
 const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {

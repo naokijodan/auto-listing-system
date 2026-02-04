@@ -1,8 +1,8 @@
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { QUEUE_NAMES } from '@als/config';
+import { QUEUE_NAMES } from '@rakuda/config';
 import { scrapeMercari } from './scrapers/mercari';
 import { scrapeYahooAuction } from './scrapers/yahoo-auction';
 import crypto from 'crypto';

@@ -8,9 +8,9 @@ import { ExpressAdapter } from '@bull-board/express';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 
-import { logger } from '@als/logger';
-import { QUEUE_NAMES } from '@als/config';
-import { prisma } from '@als/database';
+import { logger } from '@rakuda/logger';
+import { QUEUE_NAMES } from '@rakuda/config';
+import { prisma } from '@rakuda/database';
 
 import { productsRouter } from './routes/products';
 import { listingsRouter } from './routes/listings';

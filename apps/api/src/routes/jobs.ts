@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { prisma } from '@als/database';
-import { QUEUE_NAMES } from '@als/config';
+import { prisma } from '@rakuda/database';
+import { QUEUE_NAMES } from '@rakuda/config';
 import { AppError } from '../middleware/error-handler';
 
 const router = Router();

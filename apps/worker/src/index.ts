@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { logger } from '@als/logger';
-import { prisma } from '@als/database';
+import { logger } from '@rakuda/logger';
+import { prisma } from '@rakuda/database';
 
 import { createConnection, closeConnection } from './lib/redis';
 import { startWorkers, stopWorkers } from './lib/worker-manager';

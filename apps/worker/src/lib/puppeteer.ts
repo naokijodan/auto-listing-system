@@ -1,5 +1,5 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
-import { logger } from '@als/logger';
+import { logger } from '@rakuda/logger';
 
 let browser: Browser | null = null;
 

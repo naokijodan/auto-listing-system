@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
-import { prisma } from '@als/database';
-import { logger } from '@als/logger';
-import { PublishJobPayload, PublishJobResult } from '@als/schema';
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
+import { PublishJobPayload, PublishJobResult } from '@rakuda/schema';
 import { joomApi, isJoomConfigured } from '../lib/joom-api';
 import { ebayApi, isEbayConfigured, mapConditionToEbay } from '../lib/ebay-api';
 import { calculatePrice } from '../lib/price-calculator';

@@ -1,7 +1,7 @@
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { logger } from '@als/logger';
-import { QUEUE_NAMES } from '@als/config';
+import { logger } from '@rakuda/logger';
+import { QUEUE_NAMES } from '@rakuda/config';
 
 const log = logger.child({ module: 'scheduler' });
 
