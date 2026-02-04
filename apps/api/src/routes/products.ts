@@ -25,20 +25,77 @@ const imageQueue = new Queue(QUEUE_NAMES.IMAGE, { connection: redis });
 const translateQueue = new Queue(QUEUE_NAMES.TRANSLATE, { connection: redis });
 
 /**
- * 商品一覧取得
+ * 商品一覧取得（検索機能付き）
  */
 router.get('/', async (req, res, next) => {
   try {
-    const { status, limit = 50, offset = 0 } = req.query;
+    const {
+      status,
+      limit = 50,
+      offset = 0,
+      search,
+      brand,
+      category,
+      sourceType,
+      minPrice,
+      maxPrice,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = req.query;
 
-    const where = status ? { status: status as any } : {};
+    // 検索条件を構築
+    const where: any = {};
+
+    // ステータスフィルター
+    if (status) {
+      where.status = status as string;
+    }
+
+    // 全文検索（タイトル、説明、英語タイトル）
+    if (search) {
+      const searchTerm = search as string;
+      where.OR = [
+        { title: { contains: searchTerm, mode: 'insensitive' } },
+        { titleEn: { contains: searchTerm, mode: 'insensitive' } },
+        { description: { contains: searchTerm, mode: 'insensitive' } },
+        { brand: { contains: searchTerm, mode: 'insensitive' } },
+        { sourceItemId: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+    }
+
+    // ブランドフィルター
+    if (brand) {
+      where.brand = { contains: brand as string, mode: 'insensitive' };
+    }
+
+    // カテゴリフィルター
+    if (category) {
+      where.category = { contains: category as string, mode: 'insensitive' };
+    }
+
+    // ソースタイプフィルター
+    if (sourceType) {
+      where.source = { type: (sourceType as string).toUpperCase() };
+    }
+
+    // 価格範囲フィルター
+    if (minPrice || maxPrice) {
+      where.price = {};
+      if (minPrice) where.price.gte = Number(minPrice);
+      if (maxPrice) where.price.lte = Number(maxPrice);
+    }
+
+    // ソート設定
+    const allowedSortFields = ['createdAt', 'price', 'title', 'updatedAt', 'scrapedAt'];
+    const sortField = allowedSortFields.includes(sortBy as string) ? sortBy : 'createdAt';
+    const orderBy = { [sortField as string]: sortOrder === 'asc' ? 'asc' : 'desc' };
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
         take: Number(limit),
         skip: Number(offset),
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           source: true,
           listings: true,

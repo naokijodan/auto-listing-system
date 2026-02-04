@@ -2,7 +2,19 @@ import useSWR from 'swr';
 import { fetcher, api, ApiResponse, Product, Listing, JobLog, QueueStats } from './api';
 
 // Products
-export function useProducts(params?: { status?: string; limit?: number; offset?: number }) {
+export function useProducts(params?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+  search?: string;
+  brand?: string;
+  category?: string;
+  sourceType?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}) {
   const url = api.getProducts(params);
   return useSWR<ApiResponse<Product[]>>(url, fetcher, {
     refreshInterval: 30000, // 30秒ごとに更新

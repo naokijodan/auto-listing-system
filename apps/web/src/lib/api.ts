@@ -113,11 +113,31 @@ export interface ApiResponse<T> {
 // API functions
 export const api = {
   // Products
-  getProducts: (params?: { status?: string; limit?: number; offset?: number }) => {
+  getProducts: (params?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+    search?: string;
+    brand?: string;
+    category?: string;
+    sourceType?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }) => {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
     if (params?.limit) query.set('limit', params.limit.toString());
     if (params?.offset) query.set('offset', params.offset.toString());
+    if (params?.search) query.set('search', params.search);
+    if (params?.brand) query.set('brand', params.brand);
+    if (params?.category) query.set('category', params.category);
+    if (params?.sourceType) query.set('sourceType', params.sourceType);
+    if (params?.minPrice) query.set('minPrice', params.minPrice.toString());
+    if (params?.maxPrice) query.set('maxPrice', params.maxPrice.toString());
+    if (params?.sortBy) query.set('sortBy', params.sortBy);
+    if (params?.sortOrder) query.set('sortOrder', params.sortOrder);
     const queryStr = query.toString();
     return `/api/products${queryStr ? `?${queryStr}` : ''}`;
   },

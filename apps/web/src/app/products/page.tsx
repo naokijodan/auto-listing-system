@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, useDeferredValue } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,7 @@ export default function ProductsPage() {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('inventory');
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -61,13 +62,18 @@ export default function ProductsPage() {
     errors: string[];
   } | null>(null);
 
+  // デバウンスされた検索クエリ
+  const deferredSearch = useDeferredValue(searchQuery);
+
   // Ref for virtual scroll container
   const parentRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch products from API
+  // Fetch products from API with search
   const { data, error, isLoading, mutate } = useProducts({
     status: statusFilter || undefined,
+    search: deferredSearch || undefined,
+    sourceType: sourceFilter || undefined,
     limit: 5000, // Request more items for virtual scroll demo
   });
 
@@ -301,10 +307,19 @@ export default function ProductsPage() {
           <option value="SOLD">売却済</option>
           <option value="ERROR">エラー</option>
         </select>
-        <select className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900">
+        <select
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+        >
           <option value="">すべての仕入元</option>
-          <option value="mercari">メルカリ</option>
-          <option value="yahoo">ヤフオク</option>
+          <option value="MERCARI">メルカリ</option>
+          <option value="YAHOO_AUCTION">ヤフオク</option>
+          <option value="YAHOO_FLEA">ヤフフリ</option>
+          <option value="RAKUMA">ラクマ</option>
+          <option value="RAKUTEN">楽天</option>
+          <option value="AMAZON">Amazon</option>
+          <option value="OTHER">その他</option>
         </select>
         <Button variant="ghost" size="sm">
           <Filter className="h-4 w-4" />
