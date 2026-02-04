@@ -1,11 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Auto Listing System",
-  "version": "1.0.0",
+  "name": "RAKUDA - Auto Listing System",
+  "version": "2.0.0",
   "description": "メルカリ等から商品を取得し、eBay/Joomへ自動出品",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "sidePanel",
+    "tabs"
   ],
   "host_permissions": [
     "https://jp.mercari.com/*",
@@ -14,15 +16,22 @@
     "https://paypayfleamarket.yahoo.co.jp/*",
     "https://fril.jp/*",
     "https://item.rakuten.co.jp/*",
-    "https://www.amazon.co.jp/*"
+    "https://www.amazon.co.jp/*",
+    "http://localhost:3000/*"
   ],
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
-    }
+    },
+    "default_title": "RAKUDA"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
   },
   "icons": {
     "16": "icons/icon16.png",
@@ -32,14 +41,13 @@
   "content_scripts": [
     {
       "matches": [
-        "https://jp.mercari.com/item/*",
-        "https://www.mercari.com/jp/items/*",
-        "https://auctions.yahoo.co.jp/jp/auction/*",
-        "https://paypayfleamarket.yahoo.co.jp/item/*",
-        "https://fril.jp/item/*",
+        "https://jp.mercari.com/*",
+        "https://www.mercari.com/jp/*",
+        "https://auctions.yahoo.co.jp/*",
+        "https://paypayfleamarket.yahoo.co.jp/*",
+        "https://fril.jp/*",
         "https://item.rakuten.co.jp/*",
-        "https://www.amazon.co.jp/dp/*",
-        "https://www.amazon.co.jp/gp/product/*"
+        "https://www.amazon.co.jp/*"
       ],
       "js": ["content.js"],
       "run_at": "document_end"

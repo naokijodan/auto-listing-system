@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,11 +13,16 @@ import {
   Database,
   Save,
   RefreshCw,
+  Layers,
+  FolderTree,
+  Sparkles,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const tabs = [
   { id: 'price', label: '価格設定', icon: DollarSign },
+  { id: 'listing', label: '出品設定', icon: Layers },
   { id: 'notifications', label: '通知設定', icon: Bell },
   { id: 'marketplace', label: 'マーケットプレイス', icon: Globe },
   { id: 'appearance', label: '外観', icon: Palette },
@@ -61,6 +67,7 @@ export default function SettingsPage() {
         {/* Content */}
         <div className="flex-1">
           {activeTab === 'price' && <PriceSettings />}
+          {activeTab === 'listing' && <ListingSettings />}
           {activeTab === 'notifications' && <NotificationSettings />}
           {activeTab === 'marketplace' && <MarketplaceSettings />}
           {activeTab === 'appearance' && <AppearanceSettings />}
@@ -160,6 +167,59 @@ function PriceSettings() {
           保存
         </Button>
       </div>
+    </div>
+  );
+}
+
+function ListingSettings() {
+  const settingsLinks = [
+    {
+      href: '/settings/templates',
+      icon: Layers,
+      title: '出品テンプレート',
+      description: '商品タイプごとの出品設定プリセットを管理',
+    },
+    {
+      href: '/settings/categories',
+      icon: FolderTree,
+      title: 'カテゴリマッピング',
+      description: '日本語カテゴリとeBayカテゴリの紐付けを管理',
+    },
+    {
+      href: '/settings/prompts',
+      icon: Sparkles,
+      title: '翻訳プロンプト',
+      description: '商品ジャンルごとの翻訳品質を最適化',
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>出品設定</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {settingsLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex items-center justify-between rounded-lg border border-zinc-200 p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              <div className="flex items-center gap-4">
+                <div className="rounded-lg bg-amber-50 p-2 dark:bg-amber-900/20">
+                  <link.icon className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-zinc-900 dark:text-white">{link.title}</h3>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">{link.description}</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-zinc-400" />
+            </Link>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }

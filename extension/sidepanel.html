@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RAKUDA</title>
+  <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f4f4f5;
+      --bg-tertiary: #e4e4e7;
+      --text-primary: #18181b;
+      --text-secondary: #71717a;
+      --text-muted: #a1a1aa;
+      --border: #e4e4e7;
+      --accent: #d97706;
+      --accent-hover: #b45309;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    .dark {
+      --bg-primary: #18181b;
+      --bg-secondary: #27272a;
+      --bg-tertiary: #3f3f46;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --border: #3f3f46;
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .container {
+      max-width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border);
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent) 0%, #f59e0b 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    /* Status Section */
+    .status-section {
+      padding: 16px;
+    }
+
+    .card {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 14px;
+      color: var(--text-primary);
+      word-break: break-all;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.supported {
+      background: rgba(34, 197, 94, 0.1);
+      color: var(--success);
+    }
+
+    .status-badge.unsupported {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* Template Section */
+    .template-section {
+      padding: 0 16px 16px;
+    }
+
+    .select-wrapper {
+      position: relative;
+    }
+
+    select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 14px;
+      cursor: pointer;
+      appearance: none;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .select-arrow {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--text-muted);
+    }
+
+    /* Marketplace Selection */
+    .marketplace-section {
+      padding: 0 16px 16px;
+    }
+
+    .marketplace-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .marketplace-btn {
+      padding: 12px 8px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-primary);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .marketplace-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .marketplace-btn.selected {
+      border-color: var(--accent);
+      background: rgba(217, 119, 6, 0.1);
+    }
+
+    .marketplace-btn input {
+      display: none;
+    }
+
+    .marketplace-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* Action Buttons */
+    .actions-section {
+      padding: 0 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, #f59e0b 100%);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+    }
+
+    .btn-secondary {
+      background: var(--bg-primary);
+      color: var(--accent);
+      border: 2px solid var(--accent);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(217, 119, 6, 0.1);
+    }
+
+    /* Progress Section */
+    .progress-section {
+      padding: 0 16px 16px;
+      display: none;
+    }
+
+    .progress-section.visible {
+      display: block;
+    }
+
+    .progress-bar-container {
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent) 0%, #f59e0b 100%);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    /* Message Section */
+    .message {
+      margin: 0 16px 16px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+
+    .message.visible {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .message.success {
+      background: rgba(34, 197, 94, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .message.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .message.loading {
+      background: rgba(217, 119, 6, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(217, 119, 6, 0.2);
+    }
+
+    /* Recent Items */
+    .recent-section {
+      padding: 0 16px 16px;
+      flex: 1;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .recent-item {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .recent-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      background: var(--bg-tertiary);
+      object-fit: cover;
+    }
+
+    .recent-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .recent-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .recent-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .recent-status {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+    }
+
+    .recent-status.queued { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+    .recent-status.processing { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+    .recent-status.completed { background: rgba(34, 197, 94, 0.1); color: var(--success); }
+    .recent-status.failed { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+
+    /* Settings Panel */
+    .settings-section {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-primary);
+    }
+
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .settings-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .settings-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .settings-input {
+      width: 200px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-size: 12px;
+    }
+
+    .settings-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    /* Connection Status */
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 8px 16px;
+    }
+
+    .connection-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--error);
+    }
+
+    .connection-dot.connected {
+      background: var(--success);
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid transparent;
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: var(--text-muted);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .empty-text {
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">🐪</div>
+        <span class="logo-text">RAKUDA</span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="btnTheme" title="テーマ切替">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="btnRefresh" title="更新">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="btnSettings" title="設定">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="status-section">
+      <div class="card">
+        <div class="card-label">現在のページ</div>
+        <div class="card-value" id="currentUrl">読み込み中...</div>
+      </div>
+      <div class="card">
+        <div class="card-label">ステータス</div>
+        <div id="pageStatus">
+          <span class="status-badge unsupported">
+            <span class="status-dot"></span>
+            <span>確認中...</span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <section class="template-section">
+      <div class="card-label">テンプレート</div>
+      <div class="select-wrapper">
+        <select id="templateSelect">
+          <option value="">テンプレートを選択</option>
+        </select>
+        <span class="select-arrow">▼</span>
+      </div>
+    </section>
+
+    <section class="marketplace-section">
+      <div class="card-label">出品先</div>
+      <div class="marketplace-grid">
+        <label class="marketplace-btn selected">
+          <input type="radio" name="marketplace" value="joom" checked>
+          <span class="marketplace-name">Joom</span>
+        </label>
+        <label class="marketplace-btn">
+          <input type="radio" name="marketplace" value="ebay">
+          <span class="marketplace-name">eBay</span>
+        </label>
+        <label class="marketplace-btn">
+          <input type="radio" name="marketplace" value="both">
+          <span class="marketplace-name">両方</span>
+        </label>
+      </div>
+    </section>
+
+    <section class="actions-section">
+      <button id="btnSubmit" class="btn btn-primary" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13"/>
+          <path d="M22 2L15 22L11 13L2 9L22 2Z"/>
+        </svg>
+        出品リクエスト送信
+      </button>
+      <button id="btnBulk" class="btn btn-secondary" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/>
+          <rect x="14" y="3" width="7" height="7"/>
+          <rect x="14" y="14" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        セラー一括取得
+      </button>
+    </section>
+
+    <section class="progress-section" id="progressSection">
+      <div class="card-label">進捗</div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+      </div>
+      <div class="progress-text" id="progressText">0 / 0 件完了</div>
+    </section>
+
+    <div id="message" class="message"></div>
+
+    <section class="recent-section">
+      <div class="section-title">最近の登録</div>
+      <div class="recent-list" id="recentList">
+        <div class="empty-state">
+          <div class="empty-icon">📦</div>
+          <div class="empty-text">まだ登録がありません</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="connection-status">
+      <span class="connection-dot" id="connectionDot"></span>
+      <span id="connectionText">接続確認中...</span>
+    </div>
+
+    <section class="settings-section" id="settingsPanel" style="display: none;">
+      <div class="settings-row">
+        <span class="settings-label">API URL</span>
+        <input type="text" class="settings-input" id="apiUrl" value="http://localhost:3000">
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">デフォルト利益率</span>
+        <input type="number" class="settings-input" id="profitRate" value="30" min="0" max="100" style="width: 80px;">
+      </div>
+    </section>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

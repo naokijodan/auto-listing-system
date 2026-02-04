@@ -321,6 +321,8 @@ model TranslationPrompt {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  templates ListingTemplate[]
+
   @@index([category, marketplace])
   @@map("translation_prompts")
 }
@@ -342,8 +344,49 @@ model EbayCategoryMapping {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  templates ListingTemplate[]
+
   @@unique([sourceCategory])
   @@map("ebay_category_mappings")
+}
+
+// ========================================
+// 出品テンプレート
+// ========================================
+model ListingTemplate {
+  id String @id @default(cuid())
+
+  name        String @unique // テンプレート名
+  description String? // 説明
+
+  // カテゴリマッピングへの参照
+  categoryMappingId String?
+  categoryMapping   EbayCategoryMapping? @relation(fields: [categoryMappingId], references: [id])
+
+  // 翻訳プロンプトへの参照
+  translationPromptId String?
+  translationPrompt   TranslationPrompt? @relation(fields: [translationPromptId], references: [id])
+
+  // 価格設定
+  profitRate Float @default(30) // 目標利益率 (%)
+  minProfit  Float @default(500) // 最低利益額 (円)
+
+  // 出品設定
+  titleTemplate       String? @db.Text // タイトルテンプレート
+  descriptionTemplate String? @db.Text // 説明文テンプレート
+  conditionMapping    Json    @default("{}") // コンディション変換マップ
+
+  // デフォルト値
+  defaultWeight       Int?    // デフォルト重量 (g)
+  defaultShippingDays String? // 配送日数
+
+  // 設定
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryMappingId])
+  @@map("listing_templates")
 }
 
 // ========================================

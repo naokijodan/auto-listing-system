@@ -18,6 +18,9 @@ import { jobsRouter } from './routes/jobs';
 import { healthRouter } from './routes/health';
 import { adminRouter } from './routes/admin';
 import { notificationsRouter } from './routes/notifications';
+import { categoriesRouter } from './routes/categories';
+import { templatesRouter } from './routes/templates';
+import { promptsRouter } from './routes/prompts';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 
@@ -57,6 +60,9 @@ app.use('/api/listings', listingsRouter);
 app.use('/api/jobs', jobsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/categories', categoriesRouter);
+app.use('/api/templates', templatesRouter);
+app.use('/api/prompts', promptsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
