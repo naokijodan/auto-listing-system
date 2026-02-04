@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useListings } from '@/lib/hooks';
+import { Listing } from '@/lib/api';
 import {
   Search,
   Filter,
@@ -17,24 +19,9 @@ import {
   Pause,
   DollarSign,
   Globe,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
-
-// Mock data
-const mockListings = Array.from({ length: 40 }, (_, i) => ({
-  id: `listing-${String(i + 1).padStart(5, '0')}`,
-  productId: `prod-${String(i + 1).padStart(5, '0')}`,
-  sku: `nt${String(i + 1).padStart(4, '0')}`,
-  title: ['SEIKO SKX007 Diver Watch', 'ORIENT Bambino Automatic', 'CASIO G-SHOCK GA-2100', 'CITIZEN Promaster', 'Hermes Silk Tie', 'Christian Dior Cufflinks', 'Tiffany Necklace'][i % 7],
-  marketplace: ['ebay', 'joom', 'ebay', 'joom', 'ebay', 'ebay', 'joom'][i % 7],
-  status: ['PUBLISHED', 'PUBLISHED', 'DRAFT', 'SOLD', 'PUBLISHED', 'ENDED', 'PUBLISHED'][i % 7],
-  listingPrice: [126.30, 146.68, 156.87, 126.30, 114.07, 79.64, 174.88][i % 7],
-  currency: 'USD',
-  views: Math.floor(Math.random() * 500),
-  watchers: Math.floor(Math.random() * 20),
-  externalId: `EXT-${String(Math.floor(Math.random() * 100000000)).padStart(12, '0')}`,
-  publishedAt: new Date(Date.now() - Math.floor(Math.random() * 30) * 86400000).toISOString(),
-  images: [`https://placehold.co/400x400/27272a/f59e0b?text=${encodeURIComponent(['SKX', 'Bambino', 'G-SHOCK', 'Promaster', 'Hermes', 'Dior', 'Tiffany'][i % 7])}`],
-}));
 
 const marketplaceLabels: Record<string, { label: string; color: string }> = {
   ebay: { label: 'eBay', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -50,18 +37,40 @@ const statusLabels: Record<string, string> = {
 
 export default function ListingsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [focusedId, setFocusedId] = useState<string | null>(mockListings[0]?.id || null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [marketplaceFilter, setMarketplaceFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
-  const selectedListing = mockListings.find((l) => l.id === focusedId);
+  // Fetch listings from API
+  const { data, error, isLoading, mutate } = useListings({
+    status: statusFilter || undefined,
+    marketplace: marketplaceFilter || undefined,
+    limit: 100,
+  });
+
+  const listings = data?.data ?? [];
+  const totalCount = data?.pagination?.total ?? 0;
+
+  // Set initial focus when listings load
+  useEffect(() => {
+    if (listings.length > 0 && !focusedId) {
+      setFocusedId(listings[0].id);
+    }
+  }, [listings, focusedId]);
+
+  const selectedListing = listings.find((l) => l.id === focusedId);
   const isMultiSelect = selectedIds.size > 1;
 
-  const filteredListings = mockListings.filter((listing) => {
-    if (marketplaceFilter && listing.marketplace !== marketplaceFilter) return false;
-    if (searchQuery && !listing.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  // Client-side search filter (API handles marketplace/status)
+  const filteredListings = useMemo(() => {
+    if (!searchQuery) return listings;
+    const query = searchQuery.toLowerCase();
+    return listings.filter((listing) => {
+      const title = listing.product?.title || listing.product?.titleEn || '';
+      return title.toLowerCase().includes(query) || listing.externalId?.toLowerCase().includes(query);
+    });
+  }, [listings, searchQuery]);
 
   // キーボード操作
   useEffect(() => {
@@ -116,13 +125,13 @@ export default function ListingsPage() {
     }
   }, [selectedIds.size, filteredListings]);
 
-  // Stats
-  const stats = {
-    published: mockListings.filter((l) => l.status === 'PUBLISHED').length,
-    draft: mockListings.filter((l) => l.status === 'DRAFT').length,
-    sold: mockListings.filter((l) => l.status === 'SOLD').length,
-    ended: mockListings.filter((l) => l.status === 'ENDED').length,
-  };
+  // Stats (from all listings, not filtered)
+  const stats = useMemo(() => ({
+    published: listings.filter((l) => l.status === 'PUBLISHED').length,
+    draft: listings.filter((l) => l.status === 'DRAFT').length,
+    sold: listings.filter((l) => l.status === 'SOLD').length,
+    ended: listings.filter((l) => l.status === 'ENDED').length,
+  }), [listings]);
 
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
@@ -131,7 +140,7 @@ export default function ListingsPage() {
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">出品管理</h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {mockListings.length.toLocaleString()} 件の出品
+            {isLoading ? '読み込み中...' : `${totalCount.toLocaleString()} 件の出品`}
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -174,15 +183,21 @@ export default function ListingsPage() {
           <option value="ebay">eBay</option>
           <option value="joom">Joom</option>
         </select>
-        <select className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+        >
           <option value="">すべてのステータス</option>
-          <option value="PUBLISHED">出品中</option>
           <option value="DRAFT">下書き</option>
+          <option value="PUBLISHING">出品処理中</option>
+          <option value="PUBLISHED">出品中</option>
           <option value="SOLD">売却済</option>
           <option value="ENDED">終了</option>
+          <option value="ERROR">エラー</option>
         </select>
-        <Button variant="ghost" size="sm">
-          <RefreshCw className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={() => mutate()}>
+          <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
         </Button>
       </div>
 
@@ -211,10 +226,43 @@ export default function ListingsPage() {
 
           {/* Table Body */}
           <div className="overflow-y-auto" style={{ height: 'calc(100% - 36px)' }}>
-            {filteredListings.map((listing) => {
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                <span className="ml-2 text-sm text-zinc-500">読み込み中...</span>
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <AlertCircle className="h-8 w-8 text-red-500" />
+                <p className="mt-2 text-sm text-red-500">データの取得に失敗しました</p>
+                <Button variant="outline" size="sm" className="mt-4" onClick={() => mutate()}>
+                  <RefreshCw className="h-4 w-4" />
+                  再試行
+                </Button>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoading && !error && filteredListings.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <p className="text-sm text-zinc-500">出品がありません</p>
+              </div>
+            )}
+
+            {/* Listing Rows */}
+            {!isLoading && !error && filteredListings.map((listing) => {
               const isSelected = selectedIds.has(listing.id);
               const isFocused = focusedId === listing.id;
-              const mp = marketplaceLabels[listing.marketplace];
+              const mp = marketplaceLabels[listing.marketplace] || { label: listing.marketplace, color: 'bg-zinc-100 text-zinc-800' };
+              const imageUrl = listing.product?.processedImages?.[0] || listing.product?.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`;
+              const title = listing.product?.titleEn || listing.product?.title || 'No Title';
+              // Views/Watchers from marketplaceData if available
+              const views = (listing.marketplaceData as Record<string, unknown>)?.views as number ?? 0;
+              const watchers = (listing.marketplaceData as Record<string, unknown>)?.watchers as number ?? 0;
 
               return (
                 <div
@@ -239,7 +287,7 @@ export default function ListingsPage() {
                   </div>
                   <div className="w-12">
                     <div className="h-10 w-10 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
-                      <img src={listing.images[0]} alt="" className="h-full w-full object-cover" />
+                      <img src={imageUrl} alt="" className="h-full w-full object-cover" />
                     </div>
                   </div>
                   <div className="w-20">
@@ -249,25 +297,25 @@ export default function ListingsPage() {
                   </div>
                   <div className="flex-1 min-w-0 pr-2">
                     <p className="truncate text-sm font-medium text-zinc-900 dark:text-white">
-                      {listing.title}
+                      {title}
                     </p>
                     <p className="truncate text-xs text-zinc-500 dark:text-zinc-400 font-mono">
-                      {listing.externalId}
+                      {listing.externalId || listing.id.slice(0, 12)}
                     </p>
                   </div>
                   <div className="w-24 text-right">
                     <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                      ${listing.listingPrice.toFixed(2)}
+                      {listing.currency === 'USD' ? '$' : ''}{listing.listingPrice.toFixed(2)}
                     </span>
                   </div>
                   <div className="w-16 text-right">
                     <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {listing.views}
+                      {views}
                     </span>
                   </div>
                   <div className="w-16 text-right">
                     <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {listing.watchers}
+                      {watchers}
                     </span>
                   </div>
                   <div className="w-24">
@@ -286,8 +334,8 @@ export default function ListingsPage() {
               {/* Image */}
               <div className="mb-4 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                 <img
-                  src={selectedListing.images[0]}
-                  alt={selectedListing.title}
+                  src={selectedListing.product?.processedImages?.[0] || selectedListing.product?.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`}
+                  alt={selectedListing.product?.title || ''}
                   className="h-48 w-full object-contain"
                 />
               </div>
@@ -296,13 +344,13 @@ export default function ListingsPage() {
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', marketplaceLabels[selectedListing.marketplace].color)}>
-                      {marketplaceLabels[selectedListing.marketplace].label}
+                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', (marketplaceLabels[selectedListing.marketplace] || { color: 'bg-zinc-100 text-zinc-800' }).color)}>
+                      {(marketplaceLabels[selectedListing.marketplace] || { label: selectedListing.marketplace }).label}
                     </span>
                     <StatusBadge status={selectedListing.status} />
                   </div>
                   <h3 className="font-semibold text-zinc-900 dark:text-white">
-                    {selectedListing.title}
+                    {selectedListing.product?.titleEn || selectedListing.product?.title || 'No Title'}
                   </h3>
                 </div>
 
@@ -310,18 +358,22 @@ export default function ListingsPage() {
                 <div className="flex items-center justify-between rounded-lg bg-emerald-50 p-3 dark:bg-emerald-900/20">
                   <span className="text-sm text-emerald-700 dark:text-emerald-400">出品価格</span>
                   <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                    ${selectedListing.listingPrice.toFixed(2)}
+                    {selectedListing.currency === 'USD' ? '$' : ''}{selectedListing.listingPrice.toFixed(2)}
                   </span>
                 </div>
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-zinc-200 p-3 text-center dark:border-zinc-700">
-                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">{selectedListing.views}</p>
+                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                      {((selectedListing.marketplaceData as Record<string, unknown>)?.views as number) ?? 0}
+                    </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">閲覧数</p>
                   </div>
                   <div className="rounded-lg border border-zinc-200 p-3 text-center dark:border-zinc-700">
-                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">{selectedListing.watchers}</p>
+                    <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                      {((selectedListing.marketplaceData as Record<string, unknown>)?.watchers as number) ?? 0}
+                    </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">ウォッチャー</p>
                   </div>
                 </div>
@@ -333,9 +385,10 @@ export default function ListingsPage() {
                   </div>
                   <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {[
-                      { label: '出品ID', value: selectedListing.externalId },
-                      { label: 'SKU', value: selectedListing.sku },
-                      { label: '出品日', value: new Date(selectedListing.publishedAt).toLocaleDateString('ja-JP') },
+                      { label: '出品ID', value: selectedListing.externalId || selectedListing.id.slice(0, 12) },
+                      { label: '商品ID', value: selectedListing.productId.slice(0, 12) },
+                      { label: '出品日', value: selectedListing.publishedAt ? new Date(selectedListing.publishedAt).toLocaleDateString('ja-JP') : '-' },
+                      { label: '送料', value: selectedListing.shippingCost ? `$${selectedListing.shippingCost.toFixed(2)}` : '-' },
                     ].map((item) => (
                       <div key={item.label} className="flex items-center justify-between px-3 py-2">
                         <span className="text-xs text-zinc-500 dark:text-zinc-400">{item.label}</span>
@@ -351,10 +404,14 @@ export default function ListingsPage() {
                     <Edit className="h-4 w-4" />
                     編集
                   </Button>
-                  <Button variant="outline" size="sm">
-                    <ExternalLink className="h-4 w-4" />
-                    出品ページ
-                  </Button>
+                  {selectedListing.listingUrl && (
+                    <a href={selectedListing.listingUrl} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm" className="w-full">
+                        <ExternalLink className="h-4 w-4" />
+                        出品ページ
+                      </Button>
+                    </a>
+                  )}
                   <Button variant="outline" size="sm">
                     <DollarSign className="h-4 w-4" />
                     価格変更
@@ -368,7 +425,7 @@ export default function ListingsPage() {
             </div>
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-zinc-400">
-              出品を選択してください
+              {isLoading ? '読み込み中...' : '出品を選択してください'}
             </div>
           )}
         </div>

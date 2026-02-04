@@ -1,68 +1,14 @@
 'use client';
 
+import { useMemo } from 'react';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { QueueStatus } from '@/components/dashboard/queue-status';
 import { RecentActivity } from '@/components/dashboard/recent-activity';
 import { SalesChart } from '@/components/dashboard/sales-chart';
-import { Package, ShoppingCart, Activity, DollarSign } from 'lucide-react';
+import { Package, ShoppingCart, Activity, DollarSign, Loader2 } from 'lucide-react';
+import { useDashboardStats, useJobLogs, useQueueStats } from '@/lib/hooks';
 
-// Demo data - will be replaced with real API data
-const mockStats = {
-  products: { total: 1234, change: 12 },
-  listings: { total: 856, change: 8 },
-  sold: { total: 234, change: 15 },
-  revenue: { total: 1250000, change: 23 },
-};
-
-const mockQueues = [
-  { name: 'scrape', waiting: 5, active: 2, completed: 150, failed: 3 },
-  { name: 'translate', waiting: 3, active: 1, completed: 145, failed: 1 },
-  { name: 'image', waiting: 8, active: 3, completed: 140, failed: 2 },
-  { name: 'publish', waiting: 2, active: 1, completed: 130, failed: 5 },
-  { name: 'inventory', waiting: 0, active: 0, completed: 500, failed: 0 },
-];
-
-const mockActivities = [
-  {
-    id: '1',
-    type: 'listing_published' as const,
-    title: 'eBayに出品完了',
-    description: 'SEIKO SKX007 - $299.99',
-    status: 'published',
-    createdAt: new Date(Date.now() - 5 * 60000).toISOString(),
-  },
-  {
-    id: '2',
-    type: 'product_added' as const,
-    title: '新商品を追加',
-    description: 'メルカリから取得: ヴィンテージ時計',
-    createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
-  },
-  {
-    id: '3',
-    type: 'job_completed' as const,
-    title: '在庫チェック完了',
-    description: '500商品をチェック、3件の在庫切れを検知',
-    status: 'completed',
-    createdAt: new Date(Date.now() - 30 * 60000).toISOString(),
-  },
-  {
-    id: '4',
-    type: 'price_updated' as const,
-    title: '価格自動更新',
-    description: '為替レート変動により12商品の価格を調整',
-    createdAt: new Date(Date.now() - 60 * 60000).toISOString(),
-  },
-  {
-    id: '5',
-    type: 'job_failed' as const,
-    title: '出品エラー',
-    description: 'Joom API レート制限',
-    status: 'failed',
-    createdAt: new Date(Date.now() - 90 * 60000).toISOString(),
-  },
-];
-
+// Chart data (placeholder - will be calculated from real data later)
 const mockChartData = [
   { date: '1/29', listings: 45, sold: 12 },
   { date: '1/30', listings: 52, sold: 18 },
@@ -74,48 +20,83 @@ const mockChartData = [
 ];
 
 export default function Dashboard() {
+  // Fetch dashboard data
+  const { products, listings, queueStats, isLoading } = useDashboardStats();
+  const { data: jobLogsData } = useJobLogs({ limit: 10 });
+
+  // Transform job logs to activity format
+  const activities = useMemo(() => {
+    if (!jobLogsData?.data) return [];
+    return jobLogsData.data.map((log) => ({
+      id: log.id,
+      type: log.status === 'failed' ? 'job_failed' as const :
+            log.status === 'completed' ? 'job_completed' as const :
+            'product_added' as const,
+      title: `${log.queueName} - ${log.jobType}`,
+      description: log.errorMessage || `Job ID: ${log.jobId.slice(0, 8)}`,
+      status: log.status,
+      createdAt: log.createdAt,
+    }));
+  }, [jobLogsData]);
+
+  // Transform queue stats
+  const queues = useMemo(() => {
+    return queueStats.map((q) => ({
+      name: q.name,
+      waiting: q.waiting,
+      active: q.active,
+      completed: q.completed,
+      failed: q.failed,
+      delayed: q.delayed,
+    }));
+  }, [queueStats]);
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">ダッシュボード</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          RAKUDAの稼働状況を一目で確認
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">ダッシュボード</h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            RAKUDAの稼働状況を一目で確認
+          </p>
+        </div>
+        {isLoading && (
+          <div className="flex items-center gap-2 text-sm text-zinc-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            更新中...
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="総商品数"
-          value={mockStats.products.total}
+          value={isLoading ? '...' : products}
           icon={Package}
-          change={mockStats.products.change}
-          changeLabel="先週比"
+          changeLabel="データ取得中"
           color="blue"
         />
         <StatsCard
-          title="出品中"
-          value={mockStats.listings.total}
+          title="出品数"
+          value={isLoading ? '...' : listings}
           icon={ShoppingCart}
-          change={mockStats.listings.change}
-          changeLabel="先週比"
+          changeLabel="データ取得中"
           color="amber"
         />
         <StatsCard
           title="販売数（今月）"
-          value={mockStats.sold.total}
+          value={isLoading ? '...' : '-'}
           icon={Activity}
-          change={mockStats.sold.change}
-          changeLabel="先月比"
+          changeLabel="未実装"
           color="emerald"
         />
         <StatsCard
           title="売上（今月）"
-          value={`¥${(mockStats.revenue.total / 10000).toFixed(0)}万`}
+          value={isLoading ? '...' : '-'}
           icon={DollarSign}
-          change={mockStats.revenue.change}
-          changeLabel="先月比"
+          changeLabel="未実装"
           color="purple"
         />
       </div>
@@ -126,12 +107,19 @@ export default function Dashboard() {
           <SalesChart data={mockChartData} />
         </div>
         <div>
-          <RecentActivity activities={mockActivities} />
+          <RecentActivity activities={activities.length > 0 ? activities : [
+            { id: '0', type: 'product_added' as const, title: 'データなし', description: 'ジョブログがありません', createdAt: new Date().toISOString() }
+          ]} />
         </div>
       </div>
 
       {/* Queue Status */}
-      <QueueStatus queues={mockQueues} />
+      <QueueStatus queues={queues.length > 0 ? queues : [
+        { name: 'scrape', waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
+        { name: 'translate', waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
+        { name: 'image', waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
+        { name: 'publish', waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
+      ]} />
 
       {/* Exchange Rate Card */}
       <div className="rounded-xl border border-zinc-200 bg-gradient-to-r from-amber-50 to-orange-50 p-6 dark:border-zinc-800 dark:from-amber-900/20 dark:to-orange-900/20">

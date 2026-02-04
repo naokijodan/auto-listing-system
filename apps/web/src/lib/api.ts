@@ -1,72 +1,89 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
+// Generic fetcher for SWR
 export async function fetcher<T>(url: string): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`);
   if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
+    const error = new Error('API error');
+    throw error;
   }
   return res.json();
 }
 
-export interface DashboardStats {
-  products: {
-    total: number;
-    active: number;
-    outOfStock: number;
-    error: number;
-  };
-  listings: {
-    total: number;
-    published: number;
-    draft: number;
-    sold: number;
-  };
-  jobs: {
-    completed: number;
-    failed: number;
-    waiting: number;
-    active: number;
-  };
-  exchangeRate: {
-    rate: number;
-    updatedAt: string;
-    change: number;
-  };
+// Types
+export interface Source {
+  id: string;
+  type: string;
+  name: string;
 }
 
 export interface Product {
   id: string;
+  sourceId: string;
+  sourceItemId: string;
+  sourceUrl: string;
+  sourceHash: string;
   title: string;
   titleEn?: string;
-  sourceUrl: string;
-  sourcePrice: number;
-  status: string;
-  sourceSite: string;
+  description?: string;
+  descriptionEn?: string;
+  price: number;
   images: string[];
+  processedImages: string[];
+  category?: string;
+  brand?: string;
+  condition?: string;
+  weight?: number;
+  attributes?: Record<string, unknown>;
+  sellerId?: string;
+  sellerName?: string;
+  status: string;
+  scrapedAt: string;
   createdAt: string;
   updatedAt: string;
+  source?: Source;
+  listings?: Listing[];
 }
 
 export interface Listing {
   id: string;
   productId: string;
   marketplace: string;
-  status: string;
-  listingPrice: number;
-  currency: string;
   externalId?: string;
+  listingUrl?: string;
+  listingPrice: number;
+  shippingCost?: number;
+  currency: string;
+  status: string;
+  marketplaceData?: Record<string, unknown>;
   publishedAt?: string;
+  soldAt?: string;
+  soldPrice?: number;
   createdAt: string;
   updatedAt: string;
-  product?: Product;
+  product?: {
+    id: string;
+    title: string;
+    titleEn?: string;
+    price: number;
+    images: string[];
+    processedImages: string[];
+  };
 }
 
 export interface JobLog {
   id: string;
+  productId?: string;
+  listingId?: string;
+  jobId: string;
+  queueName: string;
   jobType: string;
   status: string;
   attempts: number;
   errorMessage?: string;
+  errorStack?: string;
+  duration?: number;
+  result?: Record<string, unknown>;
   createdAt: string;
   completedAt?: string;
 }
@@ -80,35 +97,82 @@ export interface QueueStats {
   delayed: number;
 }
 
-// API endpoints
-export const api = {
-  // Dashboard
-  dashboard: () => fetcher<{ data: DashboardStats }>('/api/admin/health'),
+export interface Pagination {
+  total: number;
+  limit: number;
+  offset: number;
+}
 
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  pagination?: Pagination;
+  message?: string;
+}
+
+// API functions
+export const api = {
   // Products
-  products: (params?: { status?: string; limit?: number; offset?: number }) => {
+  getProducts: (params?: { status?: string; limit?: number; offset?: number }) => {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
     if (params?.limit) query.set('limit', params.limit.toString());
     if (params?.offset) query.set('offset', params.offset.toString());
-    return fetcher<{ data: Product[]; total: number }>(`/api/products?${query}`);
+    const queryStr = query.toString();
+    return `/api/products${queryStr ? `?${queryStr}` : ''}`;
   },
 
+  getProduct: (id: string) => `/api/products/${id}`,
+
   // Listings
-  listings: (params?: { status?: string; marketplace?: string }) => {
+  getListings: (params?: { status?: string; marketplace?: string; limit?: number; offset?: number }) => {
     const query = new URLSearchParams();
     if (params?.status) query.set('status', params.status);
     if (params?.marketplace) query.set('marketplace', params.marketplace);
-    return fetcher<{ data: Listing[]; total: number }>(`/api/listings?${query}`);
+    if (params?.limit) query.set('limit', params.limit.toString());
+    if (params?.offset) query.set('offset', params.offset.toString());
+    const queryStr = query.toString();
+    return `/api/listings${queryStr ? `?${queryStr}` : ''}`;
   },
+
+  getListing: (id: string) => `/api/listings/${id}`,
 
   // Jobs
-  jobLogs: (limit = 50) => fetcher<{ data: JobLog[] }>(`/api/jobs/logs?limit=${limit}`),
-  queueStats: () => fetcher<{ data: QueueStats[] }>('/api/jobs/stats'),
-
-  // Reports
-  dailyReport: (date?: string) => {
-    const query = date ? `?date=${date}` : '';
-    return fetcher<{ data: Record<string, unknown> }>(`/api/admin/reports/daily${query}`);
+  getJobLogs: (params?: { productId?: string; queueName?: string; status?: string; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.productId) query.set('productId', params.productId);
+    if (params?.queueName) query.set('queueName', params.queueName);
+    if (params?.status) query.set('status', params.status);
+    if (params?.limit) query.set('limit', params.limit.toString());
+    const queryStr = query.toString();
+    return `/api/jobs/logs${queryStr ? `?${queryStr}` : ''}`;
   },
+
+  getQueueStats: () => `/api/jobs/stats`,
+
+  // Health / Dashboard
+  getHealth: () => `/api/health`,
 };
+
+// POST/PUT/DELETE helpers
+export async function postApi<T>(url: string, data?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${url}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: data ? JSON.stringify(data) : undefined,
+  });
+  if (!res.ok) {
+    throw new Error('API error');
+  }
+  return res.json();
+}
+
+export async function deleteApi<T>(url: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${url}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    throw new Error('API error');
+  }
+  return res.json();
+}

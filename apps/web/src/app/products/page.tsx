@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useProducts } from '@/lib/hooks';
+import { Product } from '@/lib/api';
 import {
   Search,
   Filter,
@@ -17,58 +19,61 @@ import {
   Download,
   Upload,
   MoreHorizontal,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
-
-// Mock data - 実際はAPIから取得
-const mockProducts = Array.from({ length: 50 }, (_, i) => ({
-  id: `prod-${String(i + 1).padStart(5, '0')}`,
-  sku: `nt${String(i + 1).padStart(4, '0')}`,
-  title: ['SEIKO SKX007', 'ORIENT バンビーノ', 'CASIO G-SHOCK', 'CITIZEN プロマスター', 'HERMES ネクタイ', 'Dior カフリンクス', 'Tiffany ネックレス'][i % 7],
-  titleEn: ['SEIKO SKX007 Diver Watch', 'ORIENT Bambino Automatic', 'CASIO G-SHOCK GA-2100', 'CITIZEN Promaster Eco-Drive', 'Hermes Silk Tie', 'Christian Dior Cufflinks', 'Tiffany Necklace'][i % 7],
-  sourcePrice: [8980, 10980, 11980, 8980, 7780, 4400, 13700][i % 7],
-  listingPrice: [126.30, 146.68, 156.87, 126.30, 114.07, 79.64, 174.88][i % 7],
-  sourceSite: ['mercari', 'yahoo', 'mercari', 'yahoo', 'mercari', 'yahoo', 'mercari'][i % 7],
-  status: ['ACTIVE', 'ACTIVE', 'PENDING', 'OUT_OF_STOCK', 'ACTIVE', 'ERROR', 'ACTIVE'][i % 7],
-  watchCount: Math.floor(Math.random() * 10),
-  category: ['時計', '時計', '時計', '時計', 'ネクタイ', 'カフリンクス', 'ネックレス'][i % 7],
-  images: [`https://placehold.co/400x400/27272a/f59e0b?text=${encodeURIComponent(['SKX', 'Bambino', 'G-SHOCK', 'Promaster', 'Hermes', 'Dior', 'Tiffany'][i % 7])}`],
-  brand: ['SEIKO', 'ORIENT', 'CASIO', 'CITIZEN', 'HERMES', 'Dior', 'Tiffany'][i % 7],
-  condition: '美品',
-  listingStatus: '出品中',
-}));
 
 const sourceSiteLabels: Record<string, string> = {
   mercari: 'メルカリ',
   yahoo: 'ヤフオク',
   rakuma: 'ラクマ',
+  ebay: 'eBay',
 };
 
 export default function ProductsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [focusedId, setFocusedId] = useState<string | null>(mockProducts[0]?.id || null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
-  const selectedProduct = mockProducts.find((p) => p.id === focusedId);
+  // Fetch products from API
+  const { data, error, isLoading, mutate } = useProducts({
+    status: statusFilter || undefined,
+    limit: 100,
+  });
+
+  const products = data?.data ?? [];
+  const totalCount = data?.pagination?.total ?? 0;
+
+  // Set initial focus when products load
+  useEffect(() => {
+    if (products.length > 0 && !focusedId) {
+      setFocusedId(products[0].id);
+    }
+  }, [products, focusedId]);
+
+  const selectedProduct = products.find((p) => p.id === focusedId);
   const isMultiSelect = selectedIds.size > 1;
 
   // キーボード操作
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const currentIndex = mockProducts.findIndex((p) => p.id === focusedId);
+      if (products.length === 0) return;
+      const currentIndex = products.findIndex((p) => p.id === focusedId);
 
       switch (e.key) {
         case 'j':
         case 'ArrowDown':
           e.preventDefault();
-          if (currentIndex < mockProducts.length - 1) {
-            setFocusedId(mockProducts[currentIndex + 1].id);
+          if (currentIndex < products.length - 1) {
+            setFocusedId(products[currentIndex + 1].id);
           }
           break;
         case 'k':
         case 'ArrowUp':
           e.preventDefault();
           if (currentIndex > 0) {
-            setFocusedId(mockProducts[currentIndex - 1].id);
+            setFocusedId(products[currentIndex - 1].id);
           }
           break;
         case ' ':
@@ -82,7 +87,7 @@ export default function ProductsPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedId]);
+  }, [focusedId, products]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -97,12 +102,12 @@ export default function ProductsPage() {
   }, []);
 
   const toggleSelectAll = useCallback(() => {
-    if (selectedIds.size === mockProducts.length) {
+    if (selectedIds.size === products.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(mockProducts.map((p) => p.id)));
+      setSelectedIds(new Set(products.map((p) => p.id)));
     }
-  }, [selectedIds.size]);
+  }, [selectedIds.size, products]);
 
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
@@ -111,7 +116,7 @@ export default function ProductsPage() {
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">商品管理</h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {mockProducts.length.toLocaleString()} 件の商品
+            {isLoading ? '読み込み中...' : `${totalCount.toLocaleString()} 件の商品`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -138,11 +143,17 @@ export default function ProductsPage() {
             className="h-9 w-full rounded-lg border border-zinc-200 bg-white pl-9 pr-4 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
-        <select className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+        >
           <option value="">すべてのステータス</option>
-          <option value="ACTIVE">アクティブ</option>
-          <option value="PENDING">保留中</option>
-          <option value="OUT_OF_STOCK">在庫切れ</option>
+          <option value="SCRAPED">スクレイピング済</option>
+          <option value="PROCESSING">処理中</option>
+          <option value="READY">出品可能</option>
+          <option value="LISTED">出品中</option>
+          <option value="SOLD">売却済</option>
           <option value="ERROR">エラー</option>
         </select>
         <select className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900">
@@ -154,8 +165,8 @@ export default function ProductsPage() {
           <Filter className="h-4 w-4" />
           詳細
         </Button>
-        <Button variant="ghost" size="sm">
-          <RefreshCw className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={() => mutate()}>
+          <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
         </Button>
       </div>
 
@@ -168,8 +179,9 @@ export default function ProductsPage() {
             <div className="w-8">
               <input
                 type="checkbox"
-                checked={selectedIds.size === mockProducts.length}
+                checked={products.length > 0 && selectedIds.size === products.length}
                 onChange={toggleSelectAll}
+                disabled={products.length === 0}
                 className="h-4 w-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
               />
             </div>
@@ -184,9 +196,39 @@ export default function ProductsPage() {
 
           {/* Table Body */}
           <div className="overflow-y-auto" style={{ height: 'calc(100% - 36px)' }}>
-            {mockProducts.map((product) => {
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                <span className="ml-2 text-sm text-zinc-500">読み込み中...</span>
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <AlertCircle className="h-8 w-8 text-red-500" />
+                <p className="mt-2 text-sm text-red-500">データの取得に失敗しました</p>
+                <Button variant="outline" size="sm" className="mt-4" onClick={() => mutate()}>
+                  <RefreshCw className="h-4 w-4" />
+                  再試行
+                </Button>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoading && !error && products.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <p className="text-sm text-zinc-500">商品がありません</p>
+              </div>
+            )}
+
+            {/* Product Rows */}
+            {!isLoading && !error && products.map((product) => {
               const isSelected = selectedIds.has(product.id);
               const isFocused = focusedId === product.id;
+              const imageUrl = product.processedImages?.[0] || product.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`;
+              const listingPrice = product.listings?.[0]?.listingPrice;
 
               return (
                 <div
@@ -212,7 +254,7 @@ export default function ProductsPage() {
                   <div className="w-12">
                     <div className="h-10 w-10 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
                       <img
-                        src={product.images[0]}
+                        src={imageUrl}
                         alt=""
                         className="h-full w-full object-cover"
                       />
@@ -220,7 +262,7 @@ export default function ProductsPage() {
                   </div>
                   <div className="w-24">
                     <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                      {product.sku}
+                      {product.sourceItemId?.slice(0, 8) || product.id.slice(0, 8)}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0 pr-2">
@@ -228,22 +270,26 @@ export default function ProductsPage() {
                       {product.title}
                     </p>
                     <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                      {product.titleEn}
+                      {product.titleEn || '翻訳なし'}
                     </p>
                   </div>
                   <div className="w-24 text-right">
                     <span className="text-sm text-zinc-900 dark:text-white">
-                      {formatCurrency(product.sourcePrice)}
+                      {formatCurrency(product.price)}
                     </span>
                   </div>
                   <div className="w-24 text-right">
-                    <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                      ${product.listingPrice.toFixed(2)}
-                    </span>
+                    {listingPrice ? (
+                      <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                        ${listingPrice.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-zinc-400">-</span>
+                    )}
                   </div>
                   <div className="w-20">
                     <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {sourceSiteLabels[product.sourceSite]}
+                      {sourceSiteLabels[product.source?.type || ''] || product.source?.name || '-'}
                     </span>
                   </div>
                   <div className="w-24">
@@ -262,7 +308,7 @@ export default function ProductsPage() {
               {/* Product Image */}
               <div className="mb-4 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                 <img
-                  src={selectedProduct.images[0]}
+                  src={selectedProduct.processedImages?.[0] || selectedProduct.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`}
                   alt={selectedProduct.title}
                   className="h-48 w-full object-contain"
                 />
@@ -275,15 +321,17 @@ export default function ProductsPage() {
                     {selectedProduct.title}
                   </h3>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    {selectedProduct.titleEn}
+                    {selectedProduct.titleEn || '翻訳なし'}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <StatusBadge status={selectedProduct.status} />
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {selectedProduct.listingStatus}
-                  </span>
+                  {selectedProduct.listings && selectedProduct.listings.length > 0 && (
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {selectedProduct.listings.length}件の出品
+                    </span>
+                  )}
                 </div>
 
                 {/* Specs Table */}
@@ -293,14 +341,14 @@ export default function ProductsPage() {
                   </div>
                   <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {[
-                      { label: 'SKU', value: selectedProduct.sku },
-                      { label: 'ブランド', value: selectedProduct.brand },
-                      { label: 'カテゴリ', value: selectedProduct.category },
-                      { label: 'コンディション', value: selectedProduct.condition },
-                      { label: '仕入元', value: sourceSiteLabels[selectedProduct.sourceSite] },
-                      { label: '仕入価格', value: formatCurrency(selectedProduct.sourcePrice) },
-                      { label: '出品価格', value: `$${selectedProduct.listingPrice.toFixed(2)}` },
-                      { label: 'ウォッチ数', value: selectedProduct.watchCount },
+                      { label: 'ID', value: selectedProduct.sourceItemId?.slice(0, 12) || selectedProduct.id.slice(0, 12) },
+                      { label: 'ブランド', value: selectedProduct.brand || '-' },
+                      { label: 'カテゴリ', value: selectedProduct.category || '-' },
+                      { label: 'コンディション', value: selectedProduct.condition || '-' },
+                      { label: '仕入元', value: sourceSiteLabels[selectedProduct.source?.type || ''] || selectedProduct.source?.name || '-' },
+                      { label: '仕入価格', value: formatCurrency(selectedProduct.price) },
+                      { label: '出品価格', value: selectedProduct.listings?.[0]?.listingPrice ? `$${selectedProduct.listings[0].listingPrice.toFixed(2)}` : '-' },
+                      { label: '重量', value: selectedProduct.weight ? `${selectedProduct.weight}g` : '-' },
                     ].map((item) => (
                       <div key={item.label} className="flex items-center justify-between px-3 py-2">
                         <span className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -320,16 +368,25 @@ export default function ProductsPage() {
                     <Edit className="h-4 w-4" />
                     編集
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <ExternalLink className="h-4 w-4" />
-                    仕入元
-                  </Button>
+                  {selectedProduct.sourceUrl && (
+                    <a
+                      href={selectedProduct.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1"
+                    >
+                      <Button variant="outline" size="sm" className="w-full">
+                        <ExternalLink className="h-4 w-4" />
+                        仕入元
+                      </Button>
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-zinc-400">
-              商品を選択してください
+              {isLoading ? '読み込み中...' : '商品を選択してください'}
             </div>
           )}
         </div>
