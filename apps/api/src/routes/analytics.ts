@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import PDFDocument from 'pdfkit';
 
 const router = Router();
 const log = logger.child({ module: 'analytics' });
@@ -1201,6 +1202,127 @@ router.get('/financial/daily', async (req, res, next) => {
       success: true,
       data: sortedData,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PDFレポートエクスポート
+ */
+router.get('/financial/export-pdf', async (req, res, next) => {
+  try {
+    const { period = 'month' } = req.query;
+
+    let startDate = new Date();
+    let endDate = new Date();
+
+    if (period === 'week') {
+      startDate.setDate(startDate.getDate() - 7);
+    } else if (period === 'month') {
+      startDate.setMonth(startDate.getMonth() - 1);
+    } else if (period === 'quarter') {
+      startDate.setMonth(startDate.getMonth() - 3);
+    } else if (period === 'year') {
+      startDate.setFullYear(startDate.getFullYear() - 1);
+    }
+
+    // データ取得
+    const orders = await prisma.order.findMany({
+      where: {
+        orderedAt: { gte: startDate, lte: endDate },
+        paymentStatus: 'PAID',
+      },
+      include: { sales: true },
+    });
+
+    // 為替レート
+    const latestRate = await prisma.exchangeRate.findFirst({
+      where: { fromCurrency: 'JPY', toCurrency: 'USD' },
+      orderBy: { fetchedAt: 'desc' },
+    });
+    const exchangeRate = latestRate?.rate || 0.0067;
+
+    // 集計
+    let totalRevenue = 0;
+    let totalCost = 0;
+    let totalFees = 0;
+    let orderCount = orders.length;
+    let itemCount = 0;
+
+    for (const order of orders) {
+      totalRevenue += order.subtotal;
+      totalFees += order.marketplaceFee + order.paymentFee;
+      for (const sale of order.sales) {
+        itemCount += sale.quantity;
+        if (sale.costPrice) {
+          totalCost += sale.costPrice * exchangeRate;
+        }
+      }
+    }
+
+    const grossProfit = totalRevenue - totalCost;
+    const netProfit = grossProfit - totalFees;
+    const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+    const netMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+    // PDF生成
+    const doc = new PDFDocument({ margin: 50 });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="financial-report-${period}-${new Date().toISOString().split('T')[0]}.pdf"`
+    );
+
+    doc.pipe(res);
+
+    // ヘッダー
+    doc.fontSize(24).text('RAKUDA Financial Report', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(12).text(`Period: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`, { align: 'center' });
+    doc.text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+    doc.moveDown(2);
+
+    // サマリーセクション
+    doc.fontSize(16).text('Summary', { underline: true });
+    doc.moveDown();
+    doc.fontSize(12);
+    doc.text(`Total Orders: ${orderCount}`);
+    doc.text(`Total Items Sold: ${itemCount}`);
+    doc.text(`Average Order Value: $${orderCount > 0 ? (totalRevenue / orderCount).toFixed(2) : '0.00'}`);
+    doc.moveDown(2);
+
+    // 収益セクション
+    doc.fontSize(16).text('Revenue', { underline: true });
+    doc.moveDown();
+    doc.fontSize(12);
+    doc.text(`Gross Revenue: $${totalRevenue.toFixed(2)}`);
+    doc.moveDown(2);
+
+    // コストセクション
+    doc.fontSize(16).text('Costs', { underline: true });
+    doc.moveDown();
+    doc.fontSize(12);
+    doc.text(`Cost of Goods (COGS): $${totalCost.toFixed(2)}`);
+    doc.text(`Marketplace Fees: $${totalFees.toFixed(2)}`);
+    doc.text(`Total Costs: $${(totalCost + totalFees).toFixed(2)}`);
+    doc.moveDown(2);
+
+    // 利益セクション
+    doc.fontSize(16).text('Profit', { underline: true });
+    doc.moveDown();
+    doc.fontSize(12);
+    doc.text(`Gross Profit: $${grossProfit.toFixed(2)} (${grossMargin.toFixed(1)}%)`);
+    doc.text(`Net Profit: $${netProfit.toFixed(2)} (${netMargin.toFixed(1)}%)`);
+    doc.moveDown(2);
+
+    // 追加情報
+    doc.fontSize(10).fillColor('gray');
+    doc.text(`Exchange Rate: 1 USD = ${Math.round(1 / exchangeRate)} JPY`);
+    doc.text('Note: All amounts are in USD unless otherwise specified.');
+
+    doc.end();
   } catch (error) {
     next(error);
   }

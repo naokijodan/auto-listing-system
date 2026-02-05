@@ -217,6 +217,7 @@ export const api = {
     if (params?.format) query.set('format', params.format);
     return `/api/analytics/financial/tax-export?${query.toString()}`;
   },
+  getPdfExport: (period = 'month') => `/api/analytics/financial/export-pdf?period=${period}`,
 
   // Notification Channels
   getNotificationChannels: () => `/api/notification-channels`,

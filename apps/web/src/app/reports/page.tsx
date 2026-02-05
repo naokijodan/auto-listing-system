@@ -24,6 +24,7 @@ import {
   Clock,
   Loader2,
   RefreshCw,
+  FileText,
 } from 'lucide-react';
 import {
   BarChart,
@@ -62,6 +63,7 @@ const statusColors: Record<string, string> = {
 export default function ReportsPage() {
   const [period, setPeriod] = useState<Period>('month');
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // API データ取得
   const { data: kpiResponse, isLoading: kpiLoading, mutate: mutateKpi } = useKpi();
@@ -95,7 +97,7 @@ export default function ReportsPage() {
     color: ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'][i] || '#6b7280',
   }));
 
-  // エクスポート処理
+  // CSVエクスポート処理
   const handleExport = async () => {
     setIsExporting(true);
     try {
@@ -117,6 +119,31 @@ export default function ReportsPage() {
       console.error('Export failed:', error);
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  // PDFエクスポート処理
+  const handlePdfExport = async () => {
+    setIsExportingPdf(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${api.getPdfExport(period)}`
+      );
+      if (!res.ok) throw new Error('PDF export failed');
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `financial-report_${period}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -162,7 +189,15 @@ export default function ReportsPage() {
             ) : (
               <Download className="h-4 w-4" />
             )}
-            エクスポート
+            CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={handlePdfExport} disabled={isExportingPdf}>
+            {isExportingPdf ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+            PDF
           </Button>
         </div>
       </div>
