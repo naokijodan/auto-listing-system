@@ -15,6 +15,7 @@
     "test:unit": "turbo run test:unit",
     "test:integration": "turbo run test:integration",
     "test:coverage": "turbo run test:coverage",
+    "test:e2e": "turbo run test:e2e",
     "typecheck": "turbo run typecheck",
     "db:migrate": "turbo run db:migrate --filter=@rakuda/database",
     "db:generate": "turbo run db:generate --filter=@rakuda/database",
@@ -25,6 +26,7 @@
     "bootstrap": "./scripts/bootstrap.sh"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.1",
     "@types/supertest": "^6.0.3",
     "@vitest/coverage-v8": "^1.6.1",
     "@vitest/ui": "^1.6.1",
