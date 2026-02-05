@@ -7,7 +7,7 @@ import { processScrapeJob } from '../processors/scrape';
 import { processImageJob } from '../processors/image';
 import { processTranslateJob } from '../processors/translate';
 import { processPublishJob } from '../processors/publish';
-import { processInventoryJob, processScheduledInventoryCheck } from '../processors/inventory';
+import { processInventoryJob, processScheduledInventoryCheck, processSyncListingStatus } from '../processors/inventory';
 import { updateExchangeRate } from './exchange-rate';
 import { syncAllPrices } from './price-sync';
 import { sendDailyReportNotification, generateDailyReport } from './daily-report';
@@ -83,6 +83,10 @@ export async function startWorkers(connection: IORedis): Promise<void> {
   const inventoryWorker = createWorker(
     QUEUE_NAMES.INVENTORY,
     async (job) => {
+      // 出品状態同期
+      if (job.name === 'sync-listing-status') {
+        return processSyncListingStatus(job);
+      }
       // スケジュールされた在庫チェック
       if (job.name === 'scheduled-inventory-check' || job.name === 'manual-inventory-check') {
         return processScheduledInventoryCheck(job);

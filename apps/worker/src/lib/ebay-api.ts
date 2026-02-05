@@ -369,6 +369,27 @@ export class EbayApiClient {
   }
 
   /**
+   * オファーを取得（状態確認）
+   */
+  async getOffer(offerId: string): Promise<EbayApiResponse<{
+    offerId: string;
+    sku: string;
+    status: string;
+    listingId?: string;
+    pricingSummary?: {
+      price: { value: string; currency: string };
+    };
+    availableQuantity?: number;
+  }>> {
+    log.info({
+      type: 'ebay_get_offer',
+      offerId,
+    });
+
+    return this.inventoryApiRequest('GET', `/offer/${offerId}`);
+  }
+
+  /**
    * オファーを公開（出品）
    */
   async publishOffer(offerId: string): Promise<EbayApiResponse<{ listingId: string }>> {
@@ -439,6 +460,106 @@ export class EbayApiClient {
         },
       },
     });
+  }
+
+  /**
+   * カテゴリをキーワードで検索（Taxonomy API）
+   */
+  async searchCategories(
+    query: string,
+    marketplaceId: string = 'EBAY_US'
+  ): Promise<EbayApiResponse<{
+    categoryId: string;
+    categoryName: string;
+    categoryPath: string;
+  }[]>> {
+    log.info({
+      type: 'ebay_search_categories',
+      query,
+      marketplaceId,
+    });
+
+    // Taxonomy APIにアクセス
+    // 注: 実際のeBay Taxonomy APIはBrowse APIの一部
+    // GET /commerce/taxonomy/v1/category_tree/{category_tree_id}/get_category_suggestions
+    try {
+      const accessToken = await this.getAccessToken();
+
+      // eBay US のカテゴリツリーID
+      const categoryTreeId = marketplaceId === 'EBAY_US' ? '0' : '0';
+
+      const url = `https://api.ebay.com/commerce/taxonomy/v1/category_tree/${categoryTreeId}/get_category_suggestions?q=${encodeURIComponent(query)}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        log.error({ type: 'ebay_taxonomy_api_error', status: response.status, error: errorText });
+
+        // API未設定やエラー時はDBのマッピングから検索
+        const dbMappings = await prisma.ebayCategoryMapping.findMany({
+          where: {
+            OR: [
+              { sourceCategory: { contains: query, mode: 'insensitive' } },
+              { ebayCategoryName: { contains: query, mode: 'insensitive' } },
+            ],
+          },
+          take: 10,
+        });
+
+        return {
+          success: true,
+          data: dbMappings.map(m => ({
+            categoryId: m.ebayCategoryId,
+            categoryName: m.ebayCategoryName || m.sourceCategory,
+            categoryPath: m.ebayCategoryPath || '',
+          })),
+        };
+      }
+
+      const data = await response.json();
+      const suggestions = data.categorySuggestions || [];
+
+      return {
+        success: true,
+        data: suggestions.map((s: any) => ({
+          categoryId: s.category?.categoryId || '',
+          categoryName: s.category?.categoryName || '',
+          categoryPath: s.categoryTreeNodeAncestors
+            ?.map((a: any) => a.categoryName)
+            .reverse()
+            .join(' > ') || '',
+        })),
+      };
+    } catch (error: any) {
+      log.error({ type: 'ebay_search_categories_error', error: error.message });
+
+      // フォールバック: DBマッピングを検索
+      const dbMappings = await prisma.ebayCategoryMapping.findMany({
+        where: {
+          OR: [
+            { sourceCategory: { contains: query, mode: 'insensitive' } },
+            { ebayCategoryName: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+        take: 10,
+      });
+
+      return {
+        success: true,
+        data: dbMappings.map(m => ({
+          categoryId: m.ebayCategoryId,
+          categoryName: m.ebayCategoryName || m.sourceCategory,
+          categoryPath: m.ebayCategoryPath || '',
+        })),
+      };
+    }
   }
 
   /**

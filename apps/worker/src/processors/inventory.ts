@@ -3,6 +3,8 @@ import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { InventoryJobPayload, InventoryJobResult } from '@rakuda/schema';
 import { checkSingleProductInventory } from '../lib/inventory-checker';
+import { ebayApi, isEbayConfigured } from '../lib/ebay-api';
+import { joomApi, isJoomConfigured } from '../lib/joom-api';
 
 /**
  * 在庫監視ジョブプロセッサー
@@ -225,6 +227,149 @@ export async function processScheduledInventoryCheck(
       outOfStock: 0,
       priceChanged: 0,
       errors: 1,
+    };
+  }
+}
+
+/**
+ * 出品状態同期ジョブのプロセッサー
+ * マーケットプレイスAPIから現在の状態を取得してDBを更新
+ */
+export async function processSyncListingStatus(
+  job: Job<{
+    listingId: string;
+    marketplace: string;
+    marketplaceListingId?: string;
+  }>
+): Promise<{
+  success: boolean;
+  listingId: string;
+  status?: string;
+  price?: number;
+  quantity?: number;
+  error?: string;
+}> {
+  const { listingId, marketplace, marketplaceListingId } = job.data;
+  const log = logger.child({ jobId: job.id, processor: 'sync-listing-status' });
+
+  log.info({
+    type: 'sync_listing_status_start',
+    listingId,
+    marketplace,
+  });
+
+  try {
+    // 出品情報を取得
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId },
+    });
+
+    if (!listing) {
+      return { success: false, listingId, error: 'Listing not found' };
+    }
+
+    const externalId = marketplaceListingId || listing.marketplaceListingId;
+    if (!externalId) {
+      return { success: false, listingId, error: 'No marketplace listing ID' };
+    }
+
+    let marketplaceStatus: {
+      status: string;
+      price?: number;
+      quantity?: number;
+    } | null = null;
+
+    // マーケットプレイスAPIから状態を取得
+    if (marketplace === 'EBAY' && await isEbayConfigured()) {
+      const marketplaceData = listing.marketplaceData as { offerId?: string };
+      if (marketplaceData?.offerId) {
+        const response = await ebayApi.getOffer(marketplaceData.offerId);
+        if (response.success && response.data) {
+          marketplaceStatus = {
+            status: response.data.status || 'UNKNOWN',
+            price: response.data.pricingSummary?.price
+              ? parseFloat(response.data.pricingSummary.price.value)
+              : undefined,
+            quantity: response.data.availableQuantity,
+          };
+        }
+      }
+    } else if (marketplace === 'JOOM' && await isJoomConfigured()) {
+      const response = await joomApi.getProduct(externalId);
+      if (response.success && response.data) {
+        marketplaceStatus = {
+          status: response.data.isActive ? 'ACTIVE' : 'INACTIVE',
+          price: response.data.price,
+          quantity: response.data.quantity,
+        };
+      }
+    }
+
+    if (!marketplaceStatus) {
+      return {
+        success: false,
+        listingId,
+        error: 'Failed to fetch marketplace status or marketplace not configured',
+      };
+    }
+
+    // DB更新
+    const updates: any = {
+      updatedAt: new Date(),
+    };
+
+    // ステータスをDBステータスにマッピング
+    if (marketplaceStatus.status) {
+      const statusMap: Record<string, string> = {
+        PUBLISHED: 'ACTIVE',
+        ACTIVE: 'ACTIVE',
+        INACTIVE: 'PAUSED',
+        UNPUBLISHED: 'INACTIVE',
+        ENDED: 'SOLD',
+      };
+      updates.status = statusMap[marketplaceStatus.status] || listing.status;
+    }
+
+    // 価格が異なる場合は警告ログ（自動更新はしない）
+    if (marketplaceStatus.price && marketplaceStatus.price !== listing.listingPrice) {
+      log.warn({
+        type: 'price_mismatch',
+        listingId,
+        dbPrice: listing.listingPrice,
+        marketplacePrice: marketplaceStatus.price,
+      });
+    }
+
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: updates,
+    });
+
+    log.info({
+      type: 'sync_listing_status_complete',
+      listingId,
+      status: marketplaceStatus.status,
+      price: marketplaceStatus.price,
+    });
+
+    return {
+      success: true,
+      listingId,
+      status: marketplaceStatus.status,
+      price: marketplaceStatus.price,
+      quantity: marketplaceStatus.quantity,
+    };
+  } catch (error: any) {
+    log.error({
+      type: 'sync_listing_status_error',
+      listingId,
+      error: error.message,
+    });
+
+    return {
+      success: false,
+      listingId,
+      error: error.message,
     };
   }
 }

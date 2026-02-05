@@ -233,7 +233,7 @@ router.get('/export/json', async (req, res, next) => {
 });
 
 /**
- * eBayカテゴリ検索（外部API連携用プレースホルダー）
+ * eBayカテゴリ検索（DBマッピング + モックデータ）
  */
 router.get('/ebay/search', async (req, res, next) => {
   try {
@@ -243,21 +243,53 @@ router.get('/ebay/search', async (req, res, next) => {
       throw new AppError(400, 'query parameter is required', 'INVALID_REQUEST');
     }
 
-    // TODO: eBay Trading API連携
-    // 現時点ではモックデータを返す
-    const mockCategories = [
+    const searchQuery = (query as string).toLowerCase();
+
+    // DBのカテゴリマッピングを検索
+    const dbMappings = await prisma.ebayCategoryMapping.findMany({
+      where: {
+        OR: [
+          { sourceCategory: { contains: query as string, mode: 'insensitive' } },
+          { ebayCategoryName: { contains: query as string, mode: 'insensitive' } },
+          { ebayCategoryPath: { contains: query as string, mode: 'insensitive' } },
+        ],
+      },
+      take: 10,
+    });
+
+    // DBマッピングを整形
+    const dbCategories = dbMappings.map(m => ({
+      id: m.ebayCategoryId,
+      name: m.ebayCategoryName || m.sourceCategory,
+      path: m.ebayCategoryPath || '',
+      source: 'database',
+    }));
+
+    // よく使うカテゴリのモックデータ（DBにない場合のフォールバック）
+    const commonCategories = [
       { id: '31387', name: 'Wristwatches', path: 'Jewelry & Watches > Watches, Parts & Accessories > Wristwatches' },
       { id: '260324', name: 'Watch Parts', path: 'Jewelry & Watches > Watches, Parts & Accessories > Parts, Tools & Guides > Parts' },
       { id: '14324', name: 'Collectible Japanese Anime Items', path: 'Collectibles > Animation Art & Merchandise > Japanese, Anime > Other Japanese Anime Items' },
       { id: '183454', name: 'Action Figures', path: 'Toys & Hobbies > Action Figures & Accessories > Action Figures' },
+      { id: '158798', name: 'Video Games', path: 'Video Games & Consoles > Video Games' },
+      { id: '139973', name: 'Trading Cards', path: 'Toys & Hobbies > Collectible Card Games > CCG Individual Cards' },
+      { id: '11450', name: 'Clothing, Shoes & Accessories', path: 'Clothing, Shoes & Accessories' },
+      { id: '281', name: 'Jewelry & Watches', path: 'Jewelry & Watches' },
+      { id: '220', name: 'Toys & Hobbies', path: 'Toys & Hobbies' },
+      { id: '1', name: 'Collectibles', path: 'Collectibles' },
     ].filter(c =>
-      c.name.toLowerCase().includes((query as string).toLowerCase()) ||
-      c.path.toLowerCase().includes((query as string).toLowerCase())
-    );
+      c.name.toLowerCase().includes(searchQuery) ||
+      c.path.toLowerCase().includes(searchQuery)
+    ).map(c => ({ ...c, source: 'common' }));
+
+    // 結果をマージ（重複除去）
+    const seenIds = new Set(dbCategories.map(c => c.id));
+    const additionalCategories = commonCategories.filter(c => !seenIds.has(c.id));
 
     res.json({
       success: true,
-      data: mockCategories,
+      data: [...dbCategories, ...additionalCategories].slice(0, 15),
+      message: dbCategories.length > 0 ? 'Results from database mappings' : 'Results from common categories',
     });
   } catch (error) {
     next(error);

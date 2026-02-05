@@ -16,6 +16,7 @@ const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
 
 // キュー
 const publishQueue = new Queue(QUEUE_NAMES.PUBLISH, { connection: redis });
+const inventoryQueue = new Queue(QUEUE_NAMES.INVENTORY, { connection: redis });
 
 /**
  * 出品一覧取得
@@ -615,13 +616,30 @@ router.post('/bulk/sync', async (req, res, next) => {
       take: 200,
     });
 
-    // TODO: 実際のマーケットプレイスAPIから状態を取得する実装
-    // 現在はプレースホルダー
+    // 状態同期ジョブをキューに追加
+    const jobs = listings.map((listing) => ({
+      name: 'sync-listing-status',
+      data: {
+        listingId: listing.id,
+        marketplace: listing.marketplace,
+        marketplaceListingId: listing.marketplaceListingId,
+      },
+      opts: {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        delay: Math.random() * 10000, // 0-10秒のランダム遅延
+      },
+    }));
+
+    if (jobs.length > 0) {
+      await inventoryQueue.addBulk(jobs);
+    }
 
     logger.info({
       type: 'bulk_sync_request',
       listingCount: listings.length,
       marketplace,
+      jobsQueued: jobs.length,
     });
 
     res.json({
@@ -629,7 +647,8 @@ router.post('/bulk/sync', async (req, res, next) => {
       message: `Sync requested for ${listings.length} listings`,
       data: {
         requestedCount: listings.length,
-        note: 'Sync will be processed in background',
+        jobsQueued: jobs.length,
+        note: 'Sync jobs added to inventory queue',
       },
     });
   } catch (error) {
