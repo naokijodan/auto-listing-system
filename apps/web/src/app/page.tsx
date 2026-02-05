@@ -17,8 +17,9 @@ import {
   Clock,
   Heart,
   BarChart3,
+  Truck,
 } from 'lucide-react';
-import { useDashboardStats, useJobLogs } from '@/lib/hooks';
+import { useDashboardStats, useJobLogs, useExchangeRate, useOrderStats } from '@/lib/hooks';
 import { fetcher } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -68,6 +69,13 @@ export default function Dashboard() {
     { refreshInterval: 300000 }
   );
   const trendData = trendResponse?.data || [];
+
+  // Fetch exchange rate
+  const { data: exchangeRateData } = useExchangeRate();
+  const currentRate = exchangeRateData?.currentRate;
+
+  // Fetch order stats
+  const { data: orderStatsData } = useOrderStats();
 
   // Transform job logs to activity format
   const activities = useMemo(() => {
@@ -233,6 +241,50 @@ export default function Dashboard() {
         </div>
       ) : null}
 
+      {/* Order Stats Card */}
+      {orderStatsData?.data && (
+        <Link
+          href="/orders"
+          className="block rounded-xl border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                <Truck className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                  注文管理
+                </h3>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  総注文: {orderStatsData.data.totalOrders}件
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-6">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                  {orderStatsData.data.pendingOrders}
+                </p>
+                <p className="text-xs text-zinc-500">保留中</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {orderStatsData.data.paidOrders}
+                </p>
+                <p className="text-xs text-zinc-500">支払済</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                  ${orderStatsData.data.totalRevenue?.toLocaleString() ?? 0}
+                </p>
+                <p className="text-xs text-zinc-500">売上</p>
+              </div>
+            </div>
+          </div>
+        </Link>
+      )}
+
       {/* Charts and Activity */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -297,15 +349,17 @@ export default function Dashboard() {
               現在の為替レート
             </h3>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              最終更新: {new Date().toLocaleDateString('ja-JP')}
+              最終更新: {currentRate?.fetchedAt
+                ? new Date(currentRate.fetchedAt).toLocaleString('ja-JP')
+                : '--'}
             </p>
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
-              ¥150.00 / $1
+              ¥{(currentRate?.usdToJpy ?? 150).toFixed(2)} / $1
             </p>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              価格計算に使用
+              {currentRate?.source ? `ソース: ${currentRate.source}` : '価格計算に使用'}
             </p>
           </div>
         </div>
