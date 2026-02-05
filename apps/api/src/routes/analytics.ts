@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
 import PDFDocument from 'pdfkit';
+
+// 為替レートのデフォルト値（USD/JPY）
+const DEFAULT_USD_TO_JPY = 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
 const router = Router();
 const log = logger.child({ module: 'analytics' });
@@ -129,7 +133,7 @@ router.get('/kpi', async (req, res, next) => {
     ]);
 
     // 為替レート（DBから取得、なければフォールバック）
-    const exchangeRate = latestExchangeRate ? (1 / latestExchangeRate.rate) : 150;
+    const exchangeRate = latestExchangeRate ? (1 / latestExchangeRate.rate) : DEFAULT_USD_TO_JPY;
 
     // 売上・利益計算関数
     const calculateRevenue = (sales: typeof salesToday) => {
@@ -319,7 +323,7 @@ router.get('/rankings/category', async (req, res, next) => {
       }
       categoryStats[category].count++;
       categoryStats[category].revenue += listing.listingPrice;
-      categoryStats[category].profit += listing.listingPrice - (listing.product?.price || 0) / 150;
+      categoryStats[category].profit += listing.listingPrice - (listing.product?.price || 0) / DEFAULT_USD_TO_JPY;
     }
 
     const rankings = Object.entries(categoryStats)
@@ -383,7 +387,7 @@ router.get('/rankings/brand', async (req, res, next) => {
       }
       brandStats[brand].count++;
       brandStats[brand].revenue += listing.listingPrice;
-      brandStats[brand].profit += listing.listingPrice - (listing.product?.price || 0) / 150;
+      brandStats[brand].profit += listing.listingPrice - (listing.product?.price || 0) / DEFAULT_USD_TO_JPY;
     }
 
     const rankings = Object.entries(brandStats)
@@ -551,7 +555,7 @@ router.get('/financial/pnl', async (req, res, next) => {
       },
       orderBy: { fetchedAt: 'desc' },
     });
-    const exchangeRate = latestRate?.rate || 0.0067; // デフォルト 150円/ドル
+    const exchangeRate = latestRate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD; // デフォルト 150円/ドル
 
     // 集計
     let totalRevenue = 0;
@@ -787,7 +791,7 @@ router.get('/financial/roi', async (req, res, next) => {
       },
       orderBy: { fetchedAt: 'desc' },
     });
-    const exchangeRate = latestRate?.rate || 0.0067;
+    const exchangeRate = latestRate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
     // 売上データを取得
     const sales = await prisma.sale.findMany({
@@ -993,7 +997,7 @@ router.get('/financial/tax-export', async (req, res, next) => {
         monthlyRates[monthKey] = rate.rate;
       }
     }
-    const defaultRate = 0.0067;
+    const defaultRate = EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
     // 月別サマリー
     const monthlySummary: Record<string, {
@@ -1176,7 +1180,7 @@ router.get('/financial/daily', async (req, res, next) => {
       where: { fromCurrency: 'JPY', toCurrency: 'USD' },
       orderBy: { fetchedAt: 'desc' },
     });
-    const exchangeRate = latestRate?.rate || 0.0067;
+    const exchangeRate = latestRate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
     // 注文データ
     const orders = await prisma.order.findMany({
@@ -1286,7 +1290,7 @@ router.get('/financial/export-pdf', async (req, res, next) => {
       where: { fromCurrency: 'JPY', toCurrency: 'USD' },
       orderBy: { fetchedAt: 'desc' },
     });
-    const exchangeRate = latestRate?.rate || 0.0067;
+    const exchangeRate = latestRate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
     // 集計
     let totalRevenue = 0;

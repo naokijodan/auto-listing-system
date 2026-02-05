@@ -176,7 +176,7 @@ export default function ProductsPage() {
         : undefined;
       await productApi.exportCsv(ids);
     } catch (error) {
-      console.error('Export failed:', error);
+      addToast({ type: 'error', message: 'エクスポートに失敗しました' });
     } finally {
       setIsExporting(false);
     }
@@ -192,7 +192,7 @@ export default function ProductsPage() {
       setImportResult(result.data);
       mutate(); // リストを更新
     } catch (error) {
-      console.error('Import failed:', error);
+      addToast({ type: 'error', message: 'インポートに失敗しました' });
       setImportResult({
         created: 0,
         updated: 0,
@@ -239,7 +239,6 @@ export default function ProductsPage() {
         },
       });
     } catch (error) {
-      console.error('Bulk delete failed:', error);
       addToast({
         type: 'error',
         message: '削除に失敗しました',
@@ -262,7 +261,6 @@ export default function ProductsPage() {
         message: `${result.data.createdCount}件の出品を登録しました`,
       });
     } catch (error) {
-      console.error('Bulk publish failed:', error);
       addToast({
         type: 'error',
         message: '出品登録に失敗しました',

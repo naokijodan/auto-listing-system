@@ -1,5 +1,6 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
 
 const log = logger.child({ module: 'exchange-rate' });
 
@@ -106,7 +107,7 @@ export async function updateExchangeRate(): Promise<{
     },
   });
 
-  const oldRate = currentRate?.rate || 0.0067; // デフォルト: 150 JPY/USD
+  const oldRate = currentRate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
   // 外部APIからレート取得
   let result = await fetchExchangeRateFromAPI();
@@ -183,10 +184,10 @@ export async function getLatestExchangeRate(): Promise<{
   });
 
   if (!rate) {
-    // デフォルト値
+    // デフォルト値（定数を使用）
     return {
-      jpyToUsd: 0.0067,
-      usdToJpy: 150,
+      jpyToUsd: EXCHANGE_RATE_DEFAULTS.JPY_TO_USD,
+      usdToJpy: 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD,
       fetchedAt: new Date(),
       source: 'default',
     };

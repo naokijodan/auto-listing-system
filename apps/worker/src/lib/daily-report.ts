@@ -1,6 +1,10 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
 import { notifyDailyReport } from './notifications';
+
+// 為替レートのデフォルト値（USD/JPY）
+const DEFAULT_USD_TO_JPY = 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
 const log = logger.child({ module: 'daily-report' });
 
@@ -165,7 +169,7 @@ export async function generateDailyReport(date?: Date): Promise<DailyReportData>
     }),
   ]);
 
-  const currentJpyPerUsd = currentRate ? 1 / currentRate.rate : 150;
+  const currentJpyPerUsd = currentRate ? 1 / currentRate.rate : DEFAULT_USD_TO_JPY;
   const previousJpyPerUsd = previousRate ? 1 / previousRate.rate : currentJpyPerUsd;
   const rateChange = ((currentJpyPerUsd - previousJpyPerUsd) / previousJpyPerUsd) * 100;
 

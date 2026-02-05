@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/api';
+import { addToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import {
   Users,
@@ -115,12 +116,12 @@ export default function CompetitorsPage() {
           competitorSeller: '',
         });
         mutate();
+        addToast({ type: 'success', message: '競合商品を追加しました' });
       } else {
-        alert(data.error || 'エラーが発生しました');
+        addToast({ type: 'error', message: data.error || 'エラーが発生しました' });
       }
     } catch (error) {
-      console.error(error);
-      alert('エラーが発生しました');
+      addToast({ type: 'error', message: 'エラーが発生しました' });
     } finally {
       setIsSubmitting(false);
     }
@@ -137,12 +138,12 @@ export default function CompetitorsPage() {
       const data = await res.json();
       if (data.success) {
         mutate();
+        addToast({ type: 'success', message: '競合商品を削除しました' });
       } else {
-        alert('エラーが発生しました');
+        addToast({ type: 'error', message: 'エラーが発生しました' });
       }
     } catch (error) {
-      console.error(error);
-      alert('エラーが発生しました');
+      addToast({ type: 'error', message: 'エラーが発生しました' });
     }
   };
 

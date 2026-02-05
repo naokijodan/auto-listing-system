@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { addToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { useOrders, useOrderStats, Order } from '@/lib/hooks';
 import { patchApi } from '@/lib/api';
@@ -85,7 +86,7 @@ export default function OrdersPage() {
       await patchApi(`/api/orders/${orderId}`, { status: newStatus });
       mutate();
     } catch (error) {
-      console.error('Failed to update order status:', error);
+      addToast({ type: 'error', message: '注文ステータスの更新に失敗しました' });
     }
   };
 
@@ -105,7 +106,7 @@ export default function OrdersPage() {
       });
       mutate();
     } catch (error) {
-      console.error('Failed to add tracking:', error);
+      addToast({ type: 'error', message: '追跡情報の追加に失敗しました' });
     }
   };
 

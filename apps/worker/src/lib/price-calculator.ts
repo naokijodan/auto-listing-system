@@ -1,5 +1,6 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { PRICE_DEFAULTS, SHIPPING_DEFAULTS, EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
 
 const log = logger.child({ module: 'price-calculator' });
 
@@ -55,7 +56,7 @@ async function getExchangeRate(): Promise<number> {
     orderBy: { fetchedAt: 'desc' },
   });
 
-  return rate?.rate || 0.0067; // デフォルト: 1 USD = 150 JPY
+  return rate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 }
 
 /**
@@ -91,14 +92,15 @@ async function getPriceSetting(marketplace: 'joom' | 'ebay', category?: string) 
   });
 
   if (!defaultSetting) {
-    // フォールバック値
+    // フォールバック値（@rakuda/configの定数を使用）
+    const defaults = marketplace === 'joom' ? PRICE_DEFAULTS.JOOM : PRICE_DEFAULTS.EBAY;
     return {
-      platformFeeRate: marketplace === 'joom' ? 0.15 : 0.13,
-      paymentFeeRate: 0.03,
-      targetProfitRate: 0.30,
-      adRate: 0,
+      platformFeeRate: defaults.platformFeeRate,
+      paymentFeeRate: defaults.paymentFeeRate,
+      targetProfitRate: defaults.targetProfitRate,
+      adRate: defaults.adRate,
       exchangeRate: await getExchangeRate(),
-      exchangeBuffer: 0.02,
+      exchangeBuffer: defaults.exchangeBuffer,
     };
   }
 
@@ -115,10 +117,9 @@ async function getShippingCost(
 ): Promise<number> {
   if (marketplace === 'joom') {
     // Joomは送料込み価格が一般的
-    // 簡易計算: 重量ベース
-    const baseShipping = 5; // USD
-    const perGram = 0.01; // USD/g
-    return baseShipping + (weight * perGram);
+    // 簡易計算: 重量ベース（定数を使用）
+    const { baseCost, perGramCost } = SHIPPING_DEFAULTS.JOOM;
+    return baseCost + (weight * perGramCost);
   }
 
   // eBay: 地域別送料テーブル
@@ -130,8 +131,8 @@ async function getShippingCost(
   });
 
   if (!policy) {
-    // デフォルト送料
-    return 12; // USD
+    // デフォルト送料（定数を使用）
+    return SHIPPING_DEFAULTS.EBAY.defaultCost;
   }
 
   const shippingTable = policy.shippingTable as Record<string, number>;

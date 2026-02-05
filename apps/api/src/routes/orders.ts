@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
 import { AppError } from '../middleware/error-handler';
+
+// 為替レートのデフォルト値（USD/JPY）
+const DEFAULT_USD_TO_JPY = 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
 const router = Router();
 const log = logger.child({ module: 'orders' });
@@ -330,7 +334,7 @@ router.patch('/sales/:saleId', async (req, res, next) => {
       where: { fromCurrency: 'JPY', toCurrency: 'USD' },
       orderBy: { fetchedAt: 'desc' },
     });
-    const exchangeRate = latestRate ? (1 / latestRate.rate) : 150; // フォールバック: 150円/USD
+    const exchangeRate = latestRate ? (1 / latestRate.rate) : DEFAULT_USD_TO_JPY;
     const costPriceUsd = costPrice ? costPrice / exchangeRate : null;
     const profitUsd = costPriceUsd ? sale.totalPrice - costPriceUsd : null;
     const profitJpy = profitUsd ? profitUsd * exchangeRate : null;

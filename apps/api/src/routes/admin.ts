@@ -3,7 +3,10 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
-import { QUEUE_NAMES } from '@rakuda/config';
+import { QUEUE_NAMES, EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
+
+// 為替レートのデフォルト値（USD/JPY）
+const DEFAULT_USD_TO_JPY = 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
 const router = Router();
 const log = logger.child({ module: 'admin-api' });
@@ -396,11 +399,11 @@ router.get('/exchange-rates', async (req: Request, res: Response, next: NextFunc
 
     // 最新のUSD/JPYレートも計算
     const latestRate = rates[0];
-    const usdToJpy = latestRate ? 1 / latestRate.rate : 150;
+    const usdToJpy = latestRate ? 1 / latestRate.rate : DEFAULT_USD_TO_JPY;
 
     res.json({
       currentRate: {
-        jpyToUsd: latestRate?.rate || 0.0067,
+        jpyToUsd: latestRate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD,
         usdToJpy,
         fetchedAt: latestRate?.fetchedAt || null,
         source: latestRate?.source || 'none',

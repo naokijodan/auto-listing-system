@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
+
+// 為替レートのデフォルト値（USD/JPY）
+const DEFAULT_USD_TO_JPY = 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
 const router = Router();
 const log = logger.child({ module: 'inventory' });
@@ -130,7 +134,7 @@ router.get('/stale', async (req, res, next) => {
       );
       const costPrice = listing.product?.price || 0;
       const currentPrice = listing.listingPrice;
-      const profitMargin = currentPrice > 0 ? (currentPrice - costPrice / 150) / currentPrice : 0;
+      const profitMargin = currentPrice > 0 ? (currentPrice - costPrice / DEFAULT_USD_TO_JPY) / currentPrice : 0;
       // marketplaceDataからviews/watchersを取得（存在すれば）
       const marketplaceData = listing.marketplaceData as Record<string, unknown> || {};
       const views = (marketplaceData.views as number) || 0;
@@ -144,7 +148,7 @@ router.get('/stale', async (req, res, next) => {
         views,
         watchers,
         currentPrice,
-        costPrice: costPrice / 150, // USD換算
+        costPrice: costPrice / DEFAULT_USD_TO_JPY, // USD換算
         profitMargin: Math.round(profitMargin * 100) / 100,
         staleScore: calculateStaleScore(daysSinceListed, profitMargin),
         recommendedAction: getRecommendedAction(daysSinceListed, profitMargin, views),

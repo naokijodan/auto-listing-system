@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/api';
+import { addToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import {
   AlertTriangle,
@@ -151,12 +152,12 @@ export default function StaleInventoryPage() {
       if (data.success) {
         setSelectedIds(new Set());
         mutate();
+        addToast({ type: 'success', message: '出品を停止しました' });
       } else {
-        alert('エラーが発生しました');
+        addToast({ type: 'error', message: 'エラーが発生しました' });
       }
     } catch (error) {
-      console.error(error);
-      alert('エラーが発生しました');
+      addToast({ type: 'error', message: 'エラーが発生しました' });
     } finally {
       setIsProcessing(false);
     }
@@ -180,12 +181,12 @@ export default function StaleInventoryPage() {
       if (data.success) {
         setSelectedIds(new Set());
         mutate();
+        addToast({ type: 'success', message: `${selectedIds.size}件の価格を値下げしました` });
       } else {
-        alert('エラーが発生しました');
+        addToast({ type: 'error', message: 'エラーが発生しました' });
       }
     } catch (error) {
-      console.error(error);
-      alert('エラーが発生しました');
+      addToast({ type: 'error', message: 'エラーが発生しました' });
     } finally {
       setIsProcessing(false);
     }
@@ -206,12 +207,12 @@ export default function StaleInventoryPage() {
       if (data.success) {
         setSelectedIds(new Set());
         mutate();
+        addToast({ type: 'success', message: '再出品を登録しました' });
       } else {
-        alert('エラーが発生しました');
+        addToast({ type: 'error', message: 'エラーが発生しました' });
       }
     } catch (error) {
-      console.error(error);
-      alert('エラーが発生しました');
+      addToast({ type: 'error', message: 'エラーが発生しました' });
     } finally {
       setIsProcessing(false);
     }

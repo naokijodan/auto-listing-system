@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/api';
+import { addToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import {
   Activity,
@@ -151,7 +152,7 @@ export default function MonitoringPage() {
         mutate();
       }
     } catch (error) {
-      console.error(error);
+      addToast({ type: 'error', message: 'アラートの確認に失敗しました' });
     }
   };
 
@@ -165,7 +166,7 @@ export default function MonitoringPage() {
         mutate();
       }
     } catch (error) {
-      console.error(error);
+      addToast({ type: 'error', message: '全アラートの確認に失敗しました' });
     }
   };
 

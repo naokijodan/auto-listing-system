@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import useSWR from 'swr';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { addToast } from '@/components/ui/toast';
 import { fetcher, postApi, patchApi, deleteApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import {
@@ -106,7 +107,7 @@ export default function NotificationsPage() {
         await patchApi(`/api/notifications/${id}/read`, {});
         mutate();
       } catch (error) {
-        console.error('Failed to mark as read:', error);
+        addToast({ type: 'error', message: '既読の更新に失敗しました' });
       }
     },
     [mutate]
@@ -118,7 +119,7 @@ export default function NotificationsPage() {
       await patchApi('/api/notifications/read-all', {});
       mutate();
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      addToast({ type: 'error', message: '全て既読の更新に失敗しました' });
     }
   }, [mutate]);
 
@@ -129,7 +130,7 @@ export default function NotificationsPage() {
         await deleteApi(`/api/notifications/${id}`);
         mutate();
       } catch (error) {
-        console.error('Failed to delete notification:', error);
+        addToast({ type: 'error', message: '通知の削除に失敗しました' });
       }
     },
     [mutate]

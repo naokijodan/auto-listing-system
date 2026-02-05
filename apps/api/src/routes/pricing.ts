@@ -3,6 +3,10 @@ import IORedis from 'ioredis';
 import { Queue } from 'bullmq';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
+
+// 為替レートのデフォルト値（USD/JPY）
+const DEFAULT_USD_TO_JPY = 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
 const router = Router();
 const log = logger.child({ module: 'pricing' });
@@ -71,7 +75,7 @@ function generateRecommendation(listing: {
   const marketplaceData = listing.marketplaceData as Record<string, unknown> || {};
   const views = (marketplaceData.views as number) || 0;
   const currentPrice = listing.listingPrice;
-  const costPrice = (listing.product?.price || 0) / 150; // USD換算
+  const costPrice = (listing.product?.price || 0) / DEFAULT_USD_TO_JPY; // USD換算
 
   let recommendedPrice = currentPrice;
   let reason = '';
@@ -257,7 +261,7 @@ router.post('/simulate', async (req, res, next) => {
     }
 
     const currentPrice = listing.listingPrice;
-    const costPrice = (listing.product?.price || 0) / 150;
+    const costPrice = (listing.product?.price || 0) / DEFAULT_USD_TO_JPY;
     const currentProfit = currentPrice - costPrice;
     const newProfit = newPrice - costPrice;
     const profitChange = newProfit - currentProfit;

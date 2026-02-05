@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
 import { getLatestExchangeRate } from '../../lib/exchange-rate';
 import { mockPrisma } from '../setup';
 
@@ -29,8 +30,8 @@ describe('Exchange Rate', () => {
 
       const result = await getLatestExchangeRate();
 
-      expect(result.jpyToUsd).toBe(0.0067);
-      expect(result.usdToJpy).toBe(150);
+      expect(result.jpyToUsd).toBe(EXCHANGE_RATE_DEFAULTS.JPY_TO_USD);
+      expect(result.usdToJpy).toBeCloseTo(1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD, 2);
       expect(result.source).toBe('default');
     });
 

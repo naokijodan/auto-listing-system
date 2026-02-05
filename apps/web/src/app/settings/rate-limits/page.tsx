@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/api';
+import { addToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import {
   Gauge,
@@ -115,12 +116,12 @@ export default function RateLimitsPage() {
         setEditingDomain(null);
         setEditValues({});
         mutate();
+        addToast({ type: 'success', message: '設定を保存しました' });
       } else {
-        alert('保存に失敗しました');
+        addToast({ type: 'error', message: '保存に失敗しました' });
       }
     } catch (error) {
-      console.error(error);
-      alert('エラーが発生しました');
+      addToast({ type: 'error', message: 'エラーが発生しました' });
     } finally {
       setIsSaving(false);
     }
@@ -137,10 +138,10 @@ export default function RateLimitsPage() {
       const data = await res.json();
       if (data.success) {
         mutate();
+        addToast({ type: 'success', message: 'デフォルト設定に戻しました' });
       }
     } catch (error) {
-      console.error(error);
-      alert('エラーが発生しました');
+      addToast({ type: 'error', message: 'エラーが発生しました' });
     }
   };
 
@@ -153,9 +154,10 @@ export default function RateLimitsPage() {
       const data = await res.json();
       if (data.success) {
         mutateStatus();
+        addToast({ type: 'success', message: 'カウンターをリセットしました' });
       }
     } catch (error) {
-      console.error(error);
+      addToast({ type: 'error', message: 'カウンターのリセットに失敗しました' });
     }
   };
 

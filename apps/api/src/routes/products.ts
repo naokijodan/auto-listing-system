@@ -3,7 +3,7 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
-import { QUEUE_NAMES } from '@rakuda/config';
+import { QUEUE_NAMES, EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
 import {
   ScrapedProductSchema,
   parseScrapedProduct,
@@ -11,6 +11,9 @@ import {
 } from '@rakuda/schema';
 import { AppError } from '../middleware/error-handler';
 import { parseCsv, rowToProduct, productsToCsv } from '../utils/csv';
+
+// 為替レートのデフォルト値（USD/JPY）
+const DEFAULT_USD_TO_JPY = 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
 
 const router = Router();
 
@@ -691,7 +694,7 @@ router.post('/bulk/publish', async (req, res, next) => {
           data: {
             productId: product.id,
             marketplace: marketplace as any,
-            listingPrice: listingPrice || product.price / 150, // Simple conversion
+            listingPrice: listingPrice || product.price / DEFAULT_USD_TO_JPY,
             status: 'PENDING_PUBLISH',
           },
         });

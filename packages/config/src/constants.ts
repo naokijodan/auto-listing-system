@@ -119,17 +119,35 @@ export const INVENTORY_SCHEDULE = {
 // 価格計算デフォルト値
 export const PRICE_DEFAULTS = {
   JOOM: {
-    platformFeeRate: 0.15,
-    paymentFeeRate: 0.03,
-    targetProfitRate: 0.20,
+    platformFeeRate: 0.15,       // 15%
+    paymentFeeRate: 0.03,        // 3%
+    targetProfitRate: 0.30,      // 30%
     adRate: 0,
+    exchangeBuffer: 0.02,        // 2% 為替バッファ
   },
   EBAY: {
-    platformFeeRate: 0.1325, // 13.25%
-    paymentFeeRate: 0.029 + 0.30, // 2.9% + $0.30
-    targetProfitRate: 0.20,
+    platformFeeRate: 0.13,       // 13%
+    paymentFeeRate: 0.03,        // 3%
+    targetProfitRate: 0.30,      // 30%
     adRate: 0,
+    exchangeBuffer: 0.02,        // 2% 為替バッファ
   },
+} as const;
+
+// 送料デフォルト値
+export const SHIPPING_DEFAULTS = {
+  JOOM: {
+    baseCost: 5,                 // USD ベース送料
+    perGramCost: 0.01,           // USD/g
+  },
+  EBAY: {
+    defaultCost: 12,             // USD デフォルト送料
+  },
+} as const;
+
+// 為替レートデフォルト値
+export const EXCHANGE_RATE_DEFAULTS = {
+  JPY_TO_USD: 0.0067,            // 1 JPY = 0.0067 USD (約150円/ドル)
 } as const;
 
 // 画像処理設定

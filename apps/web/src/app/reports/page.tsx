@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { addToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import {
   useKpi,
@@ -116,7 +117,7 @@ export default function ReportsPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('Export failed:', error);
+      addToast({ type: 'error', message: 'エクスポートに失敗しました' });
     } finally {
       setIsExporting(false);
     }
@@ -141,7 +142,7 @@ export default function ReportsPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('PDF export failed:', error);
+      addToast({ type: 'error', message: 'PDFエクスポートに失敗しました' });
     } finally {
       setIsExportingPdf(false);
     }
