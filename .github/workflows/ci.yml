@@ -93,12 +93,30 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/rakuda_test
 
-      - name: Run tests
-        run: npm run test -- --coverage
+      - name: Run unit tests
+        run: npm run test:unit
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/rakuda_test
           REDIS_URL: redis://localhost:6379
           NODE_ENV: test
+          TEST_USE_RECORDINGS: 'true'
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/rakuda_test
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          TEST_USE_RECORDINGS: 'true'
+          EBAY_MODE: sandbox
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/rakuda_test
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          TEST_USE_RECORDINGS: 'true'
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
