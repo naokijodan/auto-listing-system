@@ -754,3 +754,168 @@ model AlertLog {
   @@index([batchId])
   @@map("alert_logs")
 }
+
+// ========================================
+// 価格履歴（Phase 28）
+// ========================================
+model PriceHistory {
+  id         String   @id @default(cuid())
+  listingId  String
+  price      Float
+  currency   String   @default("USD")
+  source     String   // 'manual' | 'rule' | 'ai' | 'competitor' | 'initial'
+  metadata   Json?    // 追加情報（変更理由など）
+  recordedAt DateTime @default(now())
+
+  @@index([listingId, recordedAt])
+  @@index([recordedAt])
+  @@map("price_histories")
+}
+
+// ========================================
+// 競合価格ログ（Phase 28）
+// ========================================
+model CompetitorPriceLog {
+  id                   String   @id @default(cuid())
+  competitorIdentifier String   // 競合商品識別子（URL or ID）
+  listingId            String?  // 関連する自社出品
+  productId            String?  // 関連する自社商品
+  marketplace          String   // 競合のマーケットプレイス
+  price                Float
+  currency             String   @default("USD")
+  title                String?  // 競合商品タイトル
+  url                  String?  // 競合商品URL
+  metadata             Json?    // 追加データ
+  recordedAt           DateTime @default(now())
+
+  @@index([listingId, recordedAt])
+  @@index([productId, recordedAt])
+  @@index([competitorIdentifier, recordedAt])
+  @@index([recordedAt])
+  @@map("competitor_price_logs")
+}
+
+// ========================================
+// 価格推奨（Phase 28）
+// ========================================
+model PriceRecommendation {
+  id               String   @id @default(cuid())
+  listingId        String
+  productId        String?
+
+  // 価格情報
+  currentPrice     Float
+  recommendedPrice Float
+  minPrice         Float?   // ルールによる下限
+  maxPrice         Float?   // ルールによる上限
+
+  // 推奨の詳細
+  confidence       Float    @default(0.5) // 0-1 信頼度
+  reason           Json     // 推奨根拠（JSON）
+  impact           Json?    // 影響試算（JSON）
+  ruleId           String?  // 適用されたルールID
+
+  // ステータス
+  status           PriceRecommendationStatus @default(PENDING)
+  expiresAt        DateTime
+
+  // 処理履歴
+  approvedBy       String?  // 承認者
+  approvedAt       DateTime?
+  appliedAt        DateTime?
+  rejectedReason   String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([listingId, status])
+  @@index([status, expiresAt])
+  @@index([createdAt])
+  @@map("price_recommendations")
+}
+
+enum PriceRecommendationStatus {
+  PENDING    // 承認待ち
+  APPROVED   // 承認済み（適用待ち）
+  REJECTED   // 却下
+  APPLIED    // 適用済み
+  EXPIRED    // 期限切れ
+  CANCELLED  // キャンセル
+}
+
+// ========================================
+// 価格ルール（Phase 28）
+// ========================================
+model PricingRule {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+
+  // ルールタイプ
+  type        PricingRuleType
+
+  // ルール定義
+  conditions  Json     // 適用条件（JSON配列）
+  actions     Json     // アクション定義（JSON配列）
+
+  // 適用範囲
+  marketplace String?  // null = 全マーケットプレイス
+  category    String?  // null = 全カテゴリ
+
+  // 優先度と状態
+  priority    Int      @default(0) // 高いほど優先
+  isActive    Boolean  @default(true)
+
+  // 安全設定
+  safetyConfig Json?   // サーキットブレーカー設定
+
+  // 統計
+  appliedCount Int     @default(0)
+  lastAppliedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type, isActive])
+  @@index([priority])
+  @@map("pricing_rules")
+}
+
+enum PricingRuleType {
+  COMPETITOR_FOLLOW  // 競合追従
+  MIN_MARGIN         // 最低利益率維持
+  MAX_DISCOUNT       // 最大値下げ制限
+  DEMAND_BASED       // 需要ベース
+  TIME_BASED         // 時間ベース（滞留日数など）
+  CUSTOM             // カスタム
+}
+
+// ========================================
+// 価格変更ログ（Phase 28）
+// ========================================
+model PriceChangeLog {
+  id               String   @id @default(cuid())
+  listingId        String
+  recommendationId String?
+
+  // 価格変更
+  oldPrice         Float
+  newPrice         Float
+  currency         String   @default("USD")
+  changePercent    Float    // 変更率（%）
+
+  // 変更理由
+  source           String   // 'manual' | 'rule' | 'ai' | 'auto'
+  ruleId           String?
+  reason           String?
+
+  // プラットフォーム更新
+  platformUpdated  Boolean  @default(false)
+  platformError    String?
+
+  createdAt        DateTime @default(now())
+
+  @@index([listingId, createdAt])
+  @@index([source, createdAt])
+  @@map("price_change_logs")
+}

@@ -70,6 +70,7 @@ export const QUEUE_NAMES = {
   PUBLISH: 'publish-queue',
   INVENTORY: 'inventory-queue',
   NOTIFICATION: 'notification-queue',
+  PRICING: 'pricing-queue',
   DEAD_LETTER: 'dead-letter-queue',
 } as const;
 
@@ -115,6 +116,13 @@ export const QUEUE_CONFIG = {
     concurrency: 5,
     attempts: 3,
     backoff: { type: 'exponential', delay: 5000 },
+  },
+  [QUEUE_NAMES.PRICING]: {
+    priority: 3,
+    rateLimit: { max: 20, duration: 60000 }, // 20件/分
+    concurrency: 3,
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 10000 },
   },
 } as const;
 

@@ -12,6 +12,7 @@ const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
 // キュー
 const inventoryQueue = new Queue(QUEUE_NAMES.INVENTORY, { connection: redis });
 const scrapeQueue = new Queue(QUEUE_NAMES.SCRAPE, { connection: redis });
+const pricingQueue = new Queue(QUEUE_NAMES.PRICING, { connection: redis });
 
 /**
  * スケジューラー設定
@@ -43,6 +44,13 @@ export interface SchedulerConfig {
     enabled: boolean;
     cronExpression: string;
   };
+  // 価格最適化（Phase 28）
+  pricingOptimization: {
+    enabled: boolean;
+    evaluateCron: string;     // 価格評価
+    processExpiredCron: string; // 期限切れ処理
+    processApprovedCron: string; // 承認済み適用
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -66,6 +74,12 @@ const DEFAULT_CONFIG: SchedulerConfig = {
   healthCheck: {
     enabled: true,
     cronExpression: '0 */3 * * *', // 3時間ごと
+  },
+  pricingOptimization: {
+    enabled: true,
+    evaluateCron: '0 */4 * * *',      // 4時間ごとに価格評価
+    processExpiredCron: '0 */2 * * *', // 2時間ごとに期限切れ処理
+    processApprovedCron: '*/30 * * * *', // 30分ごとに承認済み適用
   },
 };
 
@@ -262,6 +276,74 @@ async function scheduleHealthCheck(config: SchedulerConfig['healthCheck']) {
 }
 
 /**
+ * 価格最適化ジョブをスケジュール（Phase 28）
+ */
+async function schedulePricingOptimization(config: SchedulerConfig['pricingOptimization']) {
+  if (!config.enabled) {
+    log.info({ type: 'pricing_optimization_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await pricingQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    await pricingQueue.removeRepeatableByKey(job.key);
+  }
+
+  // 価格評価ジョブ
+  await pricingQueue.add(
+    'evaluate',
+    {
+      type: 'evaluate',
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.evaluateCron,
+      },
+      jobId: 'pricing-evaluate',
+    }
+  );
+
+  // 期限切れ処理ジョブ
+  await pricingQueue.add(
+    'process-expired',
+    {
+      type: 'process_expired',
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.processExpiredCron,
+      },
+      jobId: 'pricing-process-expired',
+    }
+  );
+
+  // 承認済み適用ジョブ
+  await pricingQueue.add(
+    'process-approved',
+    {
+      type: 'process_approved',
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.processApprovedCron,
+      },
+      jobId: 'pricing-process-approved',
+    }
+  );
+
+  log.info({
+    type: 'pricing_optimization_scheduled',
+    evaluateCron: config.evaluateCron,
+    processExpiredCron: config.processExpiredCron,
+    processApprovedCron: config.processApprovedCron,
+  });
+}
+
+/**
  * スケジューラーを初期化
  */
 export async function initializeScheduler(config: Partial<SchedulerConfig> = {}) {
@@ -273,6 +355,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     priceSync: { ...DEFAULT_CONFIG.priceSync, ...config.priceSync },
     dailyReport: { ...DEFAULT_CONFIG.dailyReport, ...config.dailyReport },
     healthCheck: { ...DEFAULT_CONFIG.healthCheck, ...config.healthCheck },
+    pricingOptimization: { ...DEFAULT_CONFIG.pricingOptimization, ...config.pricingOptimization },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -282,6 +365,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await schedulePriceSync(finalConfig.priceSync);
   await scheduleDailyReport(finalConfig.dailyReport);
   await scheduleHealthCheck(finalConfig.healthCheck);
+  await schedulePricingOptimization(finalConfig.pricingOptimization);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -376,6 +460,59 @@ export async function triggerHealthCheck() {
   log.info({
     type: 'manual_health_check_triggered',
     jobId: job.id,
+  });
+
+  return job.id;
+}
+
+/**
+ * 手動で価格評価をトリガー（Phase 28）
+ */
+export async function triggerPricingEvaluation(listingIds?: string[], ruleIds?: string[]) {
+  const job = await pricingQueue.add(
+    'evaluate',
+    {
+      type: 'evaluate',
+      triggeredAt: new Date().toISOString(),
+      listingIds,
+      ruleIds,
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_pricing_evaluation_triggered',
+    jobId: job.id,
+    listingCount: listingIds?.length || 'all',
+  });
+
+  return job.id;
+}
+
+/**
+ * 手動で価格推奨適用をトリガー（Phase 28）
+ */
+export async function triggerPricingApply(recommendationId: string) {
+  const job = await pricingQueue.add(
+    'apply',
+    {
+      type: 'apply',
+      recommendationId,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_pricing_apply_triggered',
+    jobId: job.id,
+    recommendationId,
   });
 
   return job.id;

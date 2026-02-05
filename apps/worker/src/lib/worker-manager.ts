@@ -9,6 +9,7 @@ import { processTranslateJob } from '../processors/translate';
 import { processPublishJob } from '../processors/publish';
 import { processInventoryJob, processScheduledInventoryCheck, processSyncListingStatus } from '../processors/inventory';
 import { processNotificationJob } from '../processors/notification';
+import { pricingProcessor } from '../processors/pricing';
 import { alertManager } from './alert-manager';
 import { updateExchangeRate } from './exchange-rate';
 import { syncAllPrices } from './price-sync';
@@ -109,6 +110,15 @@ export async function startWorkers(connection: IORedis): Promise<void> {
     QUEUE_CONFIG[QUEUE_NAMES.NOTIFICATION]
   );
   workers.push(notificationWorker);
+
+  // 価格最適化ワーカー（Phase 28）
+  const pricingWorker = createWorker(
+    QUEUE_NAMES.PRICING,
+    pricingProcessor,
+    connection,
+    QUEUE_CONFIG[QUEUE_NAMES.PRICING]
+  );
+  workers.push(pricingWorker);
 
   // AlertManager初期化
   await alertManager.initialize();

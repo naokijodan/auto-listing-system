@@ -12,3 +12,6 @@ export * from './alert';
 
 // Realtime schemas (Phase 27)
 export * from './realtime';
+
+// Pricing schemas (Phase 28)
+export * from './pricing';
