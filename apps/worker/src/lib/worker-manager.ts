@@ -8,6 +8,8 @@ import { processImageJob } from '../processors/image';
 import { processTranslateJob } from '../processors/translate';
 import { processPublishJob } from '../processors/publish';
 import { processInventoryJob, processScheduledInventoryCheck, processSyncListingStatus } from '../processors/inventory';
+import { processNotificationJob } from '../processors/notification';
+import { alertManager } from './alert-manager';
 import { updateExchangeRate } from './exchange-rate';
 import { syncAllPrices } from './price-sync';
 import { sendDailyReportNotification, generateDailyReport } from './daily-report';
@@ -98,6 +100,18 @@ export async function startWorkers(connection: IORedis): Promise<void> {
     QUEUE_CONFIG[QUEUE_NAMES.INVENTORY]
   );
   workers.push(inventoryWorker);
+
+  // 通知ワーカー（Phase 26）
+  const notificationWorker = createWorker(
+    QUEUE_NAMES.NOTIFICATION,
+    processNotificationJob,
+    connection,
+    QUEUE_CONFIG[QUEUE_NAMES.NOTIFICATION]
+  );
+  workers.push(notificationWorker);
+
+  // AlertManager初期化
+  await alertManager.initialize();
 
   logger.info(`Started ${workers.length} workers`);
 }

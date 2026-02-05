@@ -5,6 +5,7 @@ import { logger } from '@rakuda/logger';
 import { QUEUE_NAMES } from '@rakuda/config';
 import { ScrapeJobPayload, ScrapeJobResult, generateSourceHash } from '@rakuda/schema';
 import { scrapeProduct, scrapeSellerProducts, SourceType } from '../lib/scrapers';
+import { alertManager } from '../lib/alert-manager';
 
 const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
@@ -238,6 +239,17 @@ async function processSingleScrape(
       },
     });
 
+    // Phase 26: AlertManager経由のアラート発火
+    await alertManager.processEvent({
+      type: 'SCRAPE_ERROR',
+      data: {
+        source: sourceType,
+        url,
+        error: error.message,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
     throw error;
   }
 }
@@ -365,6 +377,18 @@ async function processSellerScrape(
         errorMessage: error.message,
         startedAt: new Date(),
       },
+    });
+
+    // Phase 26: AlertManager経由のアラート発火
+    await alertManager.processEvent({
+      type: 'SCRAPE_ERROR',
+      data: {
+        source: sourceType,
+        url,
+        error: error.message,
+        isBulkScrape: true,
+      },
+      timestamp: new Date().toISOString(),
     });
 
     throw error;

@@ -6,6 +6,7 @@ import { QUEUE_NAMES } from '@rakuda/config';
 import { scrapeMercari } from './scrapers/mercari';
 import { scrapeYahooAuction } from './scrapers/yahoo-auction';
 import { notifyOutOfStock, notifyPriceChanged } from './notifications';
+import { alertManager } from './alert-manager';
 import crypto from 'crypto';
 
 const log = logger.child({ module: 'inventory-checker' });
@@ -235,6 +236,20 @@ export async function checkSingleProductInventory(
 
       // 外部通知（Slack/Discord/LINE）
       await notifyOutOfStock(product.title, product.sourceUrl, activeListings.length);
+
+      // Phase 26: AlertManager経由のアラート発火
+      await alertManager.processEvent({
+        type: 'INVENTORY_OUT_OF_STOCK',
+        productId,
+        listingId: activeListings[0]?.id,
+        data: {
+          title: product.title,
+          sourceUrl: product.sourceUrl,
+          marketplace: activeListings[0]?.marketplace || 'unknown',
+          affectedListings: activeListings.length,
+        },
+        timestamp: new Date().toISOString(),
+      });
     }
 
     // 価格変動通知（閾値を超えた場合のみ）
@@ -261,6 +276,21 @@ export async function checkSingleProductInventory(
 
       // 外部通知
       await notifyPriceChanged(product.title, product.price, currentPrice, priceChangePercent);
+
+      // Phase 26: AlertManager経由のアラート発火（20%以上の変動）
+      if (Math.abs(priceChangePercent) >= 20) {
+        await alertManager.processEvent({
+          type: 'PRICE_DROP_DETECTED',
+          productId,
+          data: {
+            title: product.title,
+            oldPrice: product.price,
+            newPrice: currentPrice,
+            changePercent: priceChangePercent,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
     log.info({

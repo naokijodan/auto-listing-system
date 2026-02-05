@@ -709,3 +709,48 @@ enum WebhookEventStatus {
   FAILED
   IGNORED
 }
+
+// ========================================
+// アラートルール（Phase 26）
+// ========================================
+model AlertRule {
+  id                 String   @id @default(cuid())
+  name               String
+  eventType          String
+  conditions         Json     @default("[]")
+  severity           String   @default("info")
+  channels           String[]
+  cooldownMinutes    Int      @default(30)
+  batchWindowMinutes Int      @default(5)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([eventType])
+  @@index([isActive])
+  @@map("alert_rules")
+}
+
+// ========================================
+// アラートログ（Phase 26）
+// ========================================
+model AlertLog {
+  id        String    @id @default(cuid())
+  ruleId    String?
+  eventType String
+  severity  String
+  title     String
+  message   String    @db.Text
+  metadata  Json?
+  channels  String[]
+  status    String    @default("pending")
+  batchId   String?
+  sentAt    DateTime?
+  errorMsg  String?
+  createdAt DateTime  @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([status])
+  @@index([batchId])
+  @@map("alert_logs")
+}

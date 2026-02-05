@@ -5,6 +5,7 @@ import { PublishJobPayload, PublishJobResult } from '@rakuda/schema';
 import { joomApi, isJoomConfigured } from '../lib/joom-api';
 import { ebayApi, isEbayConfigured, mapConditionToEbay } from '../lib/ebay-api';
 import { calculatePrice } from '../lib/price-calculator';
+import { alertManager } from '../lib/alert-manager';
 
 /**
  * 出品ジョブプロセッサー
@@ -144,6 +145,19 @@ export async function processPublishJob(
         errorMessage: error.message,
         startedAt: new Date(),
       },
+    });
+
+    // Phase 26: AlertManager経由のアラート発火
+    await alertManager.processEvent({
+      type: 'LISTING_FAILED',
+      productId,
+      listingId,
+      data: {
+        title: product.title,
+        marketplace: marketplace.toUpperCase(),
+        error: error.message,
+      },
+      timestamp: new Date().toISOString(),
     });
 
     throw error;

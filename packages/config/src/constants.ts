@@ -69,6 +69,7 @@ export const QUEUE_NAMES = {
   TRANSLATE: 'translate-queue',
   PUBLISH: 'publish-queue',
   INVENTORY: 'inventory-queue',
+  NOTIFICATION: 'notification-queue',
   DEAD_LETTER: 'dead-letter-queue',
 } as const;
 
@@ -107,6 +108,13 @@ export const QUEUE_CONFIG = {
     concurrency: 3,
     attempts: 5,
     backoff: { type: 'exponential', delay: 30000 },
+  },
+  [QUEUE_NAMES.NOTIFICATION]: {
+    priority: 6, // 低優先度（メイン処理を阻害しない）
+    rateLimit: { max: 30, duration: 60000 }, // 30件/分
+    concurrency: 5,
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 5000 },
   },
 } as const;
 
