@@ -33,7 +33,7 @@ export async function startWorkers(connection: IORedis): Promise<void> {
         return handleExchangeRateUpdate(job);
       }
       // 価格同期ジョブ
-      if (job.name === 'sync-prices' || job.name === 'manual-price-sync') {
+      if (job.name === 'sync-prices' || job.name === 'manual-price-sync' || job.name === 'sync-price') {
         return handlePriceSync(job);
       }
       // 日次レポートジョブ
@@ -144,11 +144,48 @@ async function handlePriceSync(job: any): Promise<any> {
   log.info({ type: 'price_sync_job_start', data: job.data });
 
   try {
-    const { listingIds } = job.data;
+    const { listingIds, listingId, marketplace, externalId, newPrice, currency } = job.data;
 
     let result;
-    if (listingIds && listingIds.length > 0) {
-      // 特定の出品のみ同期
+
+    // 単一出品の直接価格更新（APIからの推奨価格適用）
+    if (listingId && externalId && newPrice !== undefined) {
+      const { ebayApi, isEbayConfigured } = await import('./ebay-api');
+      const { joomApi, isJoomConfigured } = await import('./joom-api');
+
+      let apiUpdated = false;
+      let error: string | undefined;
+
+      try {
+        if (marketplace === 'EBAY' && await isEbayConfigured()) {
+          await ebayApi.updatePrice(externalId, newPrice, currency || 'USD');
+          apiUpdated = true;
+        } else if (marketplace === 'JOOM' && await isJoomConfigured()) {
+          // Joomは productId と sku が必要
+          const listing = await (await import('@rakuda/database')).prisma.listing.findUnique({
+            where: { id: listingId },
+          });
+          const marketplaceData = listing?.marketplaceData as { sku?: string };
+          if (marketplaceData?.sku) {
+            await joomApi.updatePrice(externalId, marketplaceData.sku, newPrice);
+            apiUpdated = true;
+          }
+        }
+      } catch (apiError: any) {
+        error = apiError.message;
+        log.error({ type: 'price_sync_api_error', listingId, error });
+      }
+
+      result = {
+        success: apiUpdated,
+        listingId,
+        marketplace,
+        newPrice,
+        apiUpdated,
+        error,
+      };
+    } else if (listingIds && listingIds.length > 0) {
+      // 特定の出品のみ再計算して同期
       const results = [];
       for (const id of listingIds) {
         const { syncListingPrice } = await import('./price-sync');

@@ -1,9 +1,18 @@
 import { Router } from 'express';
+import OpenAI from 'openai';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { AppError } from '../middleware/error-handler';
 
 const router = Router();
+const log = logger.child({ module: 'prompts' });
+
+// OpenAIクライアント
+let openai: OpenAI | null = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
+const MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 /**
  * 翻訳プロンプト一覧取得
@@ -241,26 +250,92 @@ router.post('/:id/test', async (req, res, next) => {
       throw new AppError(404, 'Translation prompt not found', 'NOT_FOUND');
     }
 
-    // TODO: 実際のAI翻訳サービス連携
-    // 現時点ではモックデータを返す
-    const mockTranslation = {
-      titleEn: `[Test] ${title}`,
-      descriptionEn: description ? `[Test Translation] ${description.substring(0, 100)}...` : null,
-      extractedAttributes: {
-        brand: 'Unknown',
-        model: 'Unknown',
-      },
-      usedPrompt: {
-        system: prompt.systemPrompt.substring(0, 100) + '...',
-        user: prompt.userPrompt.substring(0, 100) + '...',
-      },
-    };
+    // OpenAIが設定されていない場合はモックを返す
+    if (!openai) {
+      const mockTranslation = {
+        titleEn: `[Mock] ${title}`,
+        descriptionEn: description ? `[Mock Translation] ${description.substring(0, 100)}...` : null,
+        extractedAttributes: null,
+        usedPrompt: {
+          system: prompt.systemPrompt.substring(0, 100) + '...',
+          user: prompt.userPrompt.substring(0, 100) + '...',
+        },
+        tokensUsed: 0,
+      };
 
-    res.json({
-      success: true,
-      data: mockTranslation,
-      message: 'This is a mock translation. AI integration pending.',
-    });
+      return res.json({
+        success: true,
+        data: mockTranslation,
+        message: 'OpenAI API key not configured. Returning mock data.',
+      });
+    }
+
+    // ユーザープロンプトを構築
+    const userPrompt = prompt.userPrompt
+      .replace('{{title}}', title)
+      .replace('{{description}}', description || '(なし)');
+
+    // 属性抽出の指示
+    const attributeInstructions = prompt.extractAttributes.length > 0
+      ? `\n\nAlso extract these attributes if present: ${prompt.extractAttributes.join(', ')}`
+      : '';
+
+    const fullUserPrompt = userPrompt + attributeInstructions + `
+
+Return a JSON object:
+{
+  "titleEn": "Translated title",
+  "descriptionEn": "Translated description",
+  "attributes": { ... }
+}`;
+
+    try {
+      log.info({ type: 'test_translation_start', promptId: prompt.id, model: MODEL });
+
+      const response = await openai.chat.completions.create({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: prompt.systemPrompt },
+          { role: 'user', content: fullUserPrompt },
+        ],
+        temperature: 0.3,
+        response_format: { type: 'json_object' },
+      });
+
+      const content = response.choices[0]?.message?.content;
+      const parsed = content ? JSON.parse(content) : {};
+      const tokensUsed = response.usage?.total_tokens || 0;
+
+      log.info({ type: 'test_translation_complete', tokensUsed });
+
+      res.json({
+        success: true,
+        data: {
+          titleEn: parsed.titleEn || title,
+          descriptionEn: parsed.descriptionEn || description,
+          extractedAttributes: parsed.attributes || null,
+          usedPrompt: {
+            system: prompt.systemPrompt.substring(0, 200) + '...',
+            user: fullUserPrompt.substring(0, 200) + '...',
+          },
+          tokensUsed,
+          model: MODEL,
+        },
+      });
+    } catch (aiError: any) {
+      log.error({ type: 'test_translation_error', error: aiError.message });
+
+      res.json({
+        success: false,
+        data: {
+          titleEn: `[Error] ${title}`,
+          descriptionEn: null,
+          extractedAttributes: null,
+          error: aiError.message,
+        },
+        message: 'AI translation failed',
+      });
+    }
   } catch (error) {
     next(error);
   }

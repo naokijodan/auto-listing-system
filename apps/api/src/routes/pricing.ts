@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import IORedis from 'ioredis';
+import { Queue } from 'bullmq';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 
@@ -9,6 +10,15 @@ const log = logger.child({ module: 'pricing' });
 // Redis client
 const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379');
 const PRICE_RULES_KEY = 'rakuda:price-rules';
+
+// Price sync queue (uses scrape queue for processing)
+const priceSyncQueue = new Queue('scrape-queue', {
+  connection: redis,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 5000 },
+  },
+});
 
 // Default price rules
 const DEFAULT_PRICE_RULES = {
@@ -316,7 +326,17 @@ router.post('/recommendations/:listingId/approve', async (req, res, next) => {
 
     log.info(`Price updated for listing ${listingId}: $${oldPrice} -> $${newPrice}`);
 
-    // TODO: eBay APIで実際に価格を更新
+    // マーケットプレイスAPIで価格を同期（非同期ジョブ）
+    if (listing.externalId) {
+      await priceSyncQueue.add('sync-price', {
+        listingId,
+        marketplace: listing.marketplace,
+        externalId: listing.externalId,
+        newPrice,
+        currency: listing.currency,
+      });
+      log.info(`Price sync job queued for listing ${listingId}`);
+    }
 
     res.json({
       success: true,
@@ -325,6 +345,7 @@ router.post('/recommendations/:listingId/approve', async (req, res, next) => {
         oldPrice,
         newPrice,
         updatedAt: new Date().toISOString(),
+        syncQueued: !!listing.externalId,
       },
     });
   } catch (error) {
