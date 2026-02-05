@@ -79,3 +79,182 @@ export function useDashboardStats() {
     isLoading: !products || !listings || !queueStats,
   };
 }
+
+// Analytics Types
+export interface KpiData {
+  totalProducts: number;
+  totalListings: number;
+  activeListings: number;
+  soldToday: number;
+  soldThisWeek: number;
+  soldThisMonth: number;
+  revenue: {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+  };
+  grossProfit: {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+  };
+  outOfStockCount: number;
+  staleListings30: number;
+  staleListings60: number;
+  staleRate: number;
+  healthScore: number;
+  healthScoreBreakdown: {
+    staleScore: number;
+    stockScore: number;
+    profitScore: number;
+  };
+  productsByStatus: Record<string, number>;
+  calculatedAt: string;
+}
+
+export interface SalesTrendData {
+  date: string;
+  listings: number;
+  sold: number;
+  revenue: number;
+}
+
+export interface RankingItem {
+  category?: string;
+  brand?: string;
+  soldCount: number;
+  revenue: number;
+  profit: number;
+}
+
+export interface PnlData {
+  period: { start: string; end: string; label: string };
+  summary: {
+    orderCount: number;
+    itemCount: number;
+    avgOrderValue: number;
+    avgItemValue: number;
+    avgProfitPerOrder: number;
+  };
+  revenue: { gross: number; shipping: number; total: number };
+  costs: {
+    cogs: number;
+    marketplaceFees: number;
+    paymentFees: number;
+    totalFees: number;
+    shipping: number;
+    tax: number;
+  };
+  profit: {
+    gross: number;
+    grossMargin: number;
+    operating: number;
+    operatingMargin: number;
+    net: number;
+    netMargin: number;
+  };
+  currency: string;
+  exchangeRate: number;
+}
+
+export interface FinancialDailyData {
+  date: string;
+  orders: number;
+  items: number;
+  revenue: number;
+  cost: number;
+  fees: number;
+  profit: number;
+}
+
+// Analytics Hooks
+export function useKpi() {
+  return useSWR<ApiResponse<KpiData>>(api.getKpi(), fetcher, {
+    refreshInterval: 60000, // 1分ごと
+  });
+}
+
+export function useSalesTrends(days = 14) {
+  return useSWR<ApiResponse<SalesTrendData[]>>(
+    api.getSalesTrends(days),
+    fetcher,
+    { refreshInterval: 60000 }
+  );
+}
+
+export function useCategoryRankings(params?: { limit?: number; period?: string }) {
+  return useSWR<ApiResponse<RankingItem[]>>(
+    api.getCategoryRankings(params),
+    fetcher,
+    { refreshInterval: 300000 } // 5分ごと
+  );
+}
+
+export function useBrandRankings(params?: { limit?: number; period?: string }) {
+  return useSWR<ApiResponse<RankingItem[]>>(
+    api.getBrandRankings(params),
+    fetcher,
+    { refreshInterval: 300000 }
+  );
+}
+
+export function usePnl(params?: { period?: string; startDate?: string; endDate?: string }) {
+  return useSWR<ApiResponse<PnlData>>(api.getPnl(params), fetcher, {
+    refreshInterval: 300000,
+  });
+}
+
+export function useFinancialDaily(days = 30) {
+  return useSWR<ApiResponse<FinancialDailyData[]>>(
+    api.getFinancialDaily(days),
+    fetcher,
+    { refreshInterval: 300000 }
+  );
+}
+
+// Order Stats
+export interface OrderStats {
+  totalOrders: number;
+  pendingOrders: number;
+  paidOrders: number;
+  shippedOrders: number;
+  totalRevenue: number;
+  totalProfit: number;
+  avgOrderValue: number;
+  recentOrders: number;
+}
+
+export function useOrderStats() {
+  return useSWR<ApiResponse<OrderStats>>(api.getOrderStats(), fetcher, {
+    refreshInterval: 60000,
+  });
+}
+
+// Notification Channels
+export interface NotificationChannel {
+  id: string;
+  channel: 'SLACK' | 'DISCORD' | 'LINE' | 'EMAIL';
+  name: string;
+  webhookUrl?: string;
+  token?: string;
+  enabledTypes: string[];
+  minSeverity: string;
+  isActive: boolean;
+  lastUsedAt?: string;
+  lastError?: string;
+  errorCount: number;
+}
+
+export function useNotificationChannels() {
+  return useSWR<ApiResponse<NotificationChannel[]>>(
+    api.getNotificationChannels(),
+    fetcher
+  );
+}
+
+export function useNotificationChannel(id: string | null) {
+  return useSWR<ApiResponse<NotificationChannel>>(
+    id ? api.getNotificationChannel(id) : null,
+    fetcher
+  );
+}

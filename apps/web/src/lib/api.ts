@@ -172,6 +172,68 @@ export const api = {
 
   // Health / Dashboard
   getHealth: () => `/api/health`,
+
+  // Analytics
+  getKpi: () => `/api/analytics/kpi`,
+  getSalesTrends: (days = 14) => `/api/analytics/trends/sales?days=${days}`,
+  getCategoryRankings: (params?: { limit?: number; period?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', params.limit.toString());
+    if (params?.period) query.set('period', params.period);
+    return `/api/analytics/rankings/category?${query.toString()}`;
+  },
+  getBrandRankings: (params?: { limit?: number; period?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', params.limit.toString());
+    if (params?.period) query.set('period', params.period);
+    return `/api/analytics/rankings/brand?${query.toString()}`;
+  },
+
+  // Financial Reports
+  getPnl: (params?: { period?: string; startDate?: string; endDate?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.period) query.set('period', params.period);
+    if (params?.startDate) query.set('startDate', params.startDate);
+    if (params?.endDate) query.set('endDate', params.endDate);
+    return `/api/analytics/financial/pnl?${query.toString()}`;
+  },
+  getFees: (params?: { period?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.period) query.set('period', params.period);
+    return `/api/analytics/financial/fees?${query.toString()}`;
+  },
+  getRoi: (params?: { groupBy?: string; period?: string; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.groupBy) query.set('groupBy', params.groupBy);
+    if (params?.period) query.set('period', params.period);
+    if (params?.limit) query.set('limit', params.limit.toString());
+    return `/api/analytics/financial/roi?${query.toString()}`;
+  },
+  getFinancialDaily: (days = 30) => `/api/analytics/financial/daily?days=${days}`,
+  getTaxExport: (params?: { year?: number; quarter?: number; format?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.year) query.set('year', params.year.toString());
+    if (params?.quarter) query.set('quarter', params.quarter.toString());
+    if (params?.format) query.set('format', params.format);
+    return `/api/analytics/financial/tax-export?${query.toString()}`;
+  },
+
+  // Notification Channels
+  getNotificationChannels: () => `/api/notification-channels`,
+  getNotificationChannel: (id: string) => `/api/notification-channels/${id}`,
+  getEventTypes: () => `/api/notification-channels/config/event-types`,
+  getChannelStats: () => `/api/notification-channels/stats/summary`,
+
+  // Orders
+  getOrders: (params?: { status?: string; marketplace?: string; limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.marketplace) query.set('marketplace', params.marketplace);
+    if (params?.limit) query.set('limit', params.limit.toString());
+    if (params?.offset) query.set('offset', params.offset.toString());
+    return `/api/orders?${query.toString()}`;
+  },
+  getOrderStats: () => `/api/orders/stats/summary`,
 };
 
 // POST/PUT/DELETE helpers

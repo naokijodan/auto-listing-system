@@ -1,22 +1,29 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
+  useKpi,
+  useSalesTrends,
+  useCategoryRankings,
+  usePnl,
+  useFinancialDaily,
+} from '@/lib/hooks';
+import { fetcher, api } from '@/lib/api';
+import {
   BarChart3,
   TrendingUp,
-  TrendingDown,
-  Calendar,
   Download,
-  RefreshCw,
   Package,
   ShoppingCart,
   DollarSign,
   AlertCircle,
   CheckCircle,
   Clock,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import {
   BarChart,
@@ -33,69 +40,90 @@ import {
   Cell,
 } from 'recharts';
 
-type Period = 'day' | 'week' | 'month';
+type Period = 'week' | 'month' | 'quarter';
 
 const periods: { id: Period; label: string }[] = [
-  { id: 'day', label: '今日' },
   { id: 'week', label: '今週' },
   { id: 'month', label: '今月' },
+  { id: 'quarter', label: '四半期' },
 ];
 
-// Mock data for reports
-const generateMockData = (period: Period) => {
-  const days = period === 'day' ? 24 : period === 'week' ? 7 : 30;
-  const labels = period === 'day'
-    ? Array.from({ length: 24 }, (_, i) => `${i}:00`)
-    : period === 'week'
-    ? ['月', '火', '水', '木', '金', '土', '日']
-    : Array.from({ length: 30 }, (_, i) => `${i + 1}日`);
-
-  return {
-    summary: {
-      totalProducts: 1234 + Math.floor(Math.random() * 100),
-      newProducts: 45 + Math.floor(Math.random() * 20),
-      totalListings: 856 + Math.floor(Math.random() * 50),
-      newListings: 23 + Math.floor(Math.random() * 10),
-      soldItems: 12 + Math.floor(Math.random() * 5),
-      revenue: 125000 + Math.floor(Math.random() * 50000),
-      averagePrice: 98.5 + Math.random() * 20,
-      jobsCompleted: 450 + Math.floor(Math.random() * 100),
-      jobsFailed: 5 + Math.floor(Math.random() * 3),
-    },
-    salesData: labels.map((label, i) => ({
-      name: label,
-      listings: Math.floor(Math.random() * 20) + 5,
-      sold: Math.floor(Math.random() * 5),
-    })),
-    categoryData: [
-      { name: '時計', value: 45, color: '#f59e0b' },
-      { name: 'アクセサリー', value: 25, color: '#10b981' },
-      { name: 'バッグ', value: 15, color: '#3b82f6' },
-      { name: 'その他', value: 15, color: '#8b5cf6' },
-    ],
-    statusData: [
-      { name: 'アクティブ', value: 650, color: '#10b981' },
-      { name: '処理中', value: 120, color: '#f59e0b' },
-      { name: 'エラー', value: 15, color: '#ef4444' },
-      { name: '下書き', value: 71, color: '#6b7280' },
-    ],
-    revenueData: labels.map((label) => ({
-      name: label,
-      revenue: Math.floor(Math.random() * 50000) + 10000,
-    })),
-    topProducts: [
-      { title: 'SEIKO SKX007', sold: 5, revenue: 1495.00 },
-      { title: 'ORIENT Bambino', sold: 3, revenue: 897.00 },
-      { title: 'G-SHOCK GA-2100', sold: 2, revenue: 398.00 },
-      { title: 'CITIZEN Promaster', sold: 2, revenue: 378.00 },
-      { title: 'Hermes Silk Tie', sold: 1, revenue: 189.00 },
-    ],
-  };
+// ステータス別の色設定
+const statusColors: Record<string, string> = {
+  ACTIVE: '#10b981',
+  PROCESSING: '#f59e0b',
+  PENDING_SCRAPE: '#3b82f6',
+  ERROR: '#ef4444',
+  DRAFT: '#6b7280',
+  SOLD: '#8b5cf6',
+  OUT_OF_STOCK: '#f97316',
 };
 
 export default function ReportsPage() {
-  const [period, setPeriod] = useState<Period>('week');
-  const data = useMemo(() => generateMockData(period), [period]);
+  const [period, setPeriod] = useState<Period>('month');
+  const [isExporting, setIsExporting] = useState(false);
+
+  // API データ取得
+  const { data: kpiResponse, isLoading: kpiLoading, mutate: mutateKpi } = useKpi();
+  const { data: trendsResponse, isLoading: trendsLoading } = useSalesTrends(period === 'week' ? 7 : period === 'month' ? 30 : 90);
+  const { data: categoryResponse } = useCategoryRankings({ limit: 5, period });
+  const { data: pnlResponse, isLoading: pnlLoading } = usePnl({ period });
+  const { data: dailyResponse } = useFinancialDaily(period === 'week' ? 7 : period === 'month' ? 30 : 90);
+
+  const kpi = kpiResponse?.data;
+  const trends = trendsResponse?.data || [];
+  const categories = categoryResponse?.data || [];
+  const pnl = pnlResponse?.data;
+  const dailyData = dailyResponse?.data || [];
+
+  const isLoading = kpiLoading || trendsLoading || pnlLoading;
+
+  // ステータスデータを変換
+  const statusData = kpi?.productsByStatus
+    ? Object.entries(kpi.productsByStatus).map(([name, value]) => ({
+        name: getStatusLabel(name),
+        value,
+        color: statusColors[name] || '#6b7280',
+      }))
+    : [];
+
+  // カテゴリデータを変換
+  const categoryData = categories.map((cat, i) => ({
+    name: cat.category || '未分類',
+    value: cat.soldCount,
+    revenue: cat.revenue,
+    color: ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'][i] || '#6b7280',
+  }));
+
+  // エクスポート処理
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}${api.getTaxExport({ format: 'csv' })}`
+      );
+      if (!res.ok) throw new Error('Export failed');
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report_${period}_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // リフレッシュ
+  const handleRefresh = () => {
+    mutateKpi();
+  };
 
   return (
     <div className="space-y-6">
@@ -125,44 +153,103 @@ export default function ReportsPage() {
               </button>
             ))}
           </div>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4" />
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
+            <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
+            {isExporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
             エクスポート
           </Button>
         </div>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+        </div>
+      )}
+
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard
-          title="新規商品"
-          value={data.summary.newProducts}
-          total={data.summary.totalProducts}
-          icon={Package}
-          color="blue"
-        />
-        <SummaryCard
-          title="新規出品"
-          value={data.summary.newListings}
-          total={data.summary.totalListings}
-          icon={ShoppingCart}
-          color="amber"
-        />
-        <SummaryCard
-          title="販売数"
-          value={data.summary.soldItems}
-          subtext={`平均 $${data.summary.averagePrice.toFixed(2)}`}
-          icon={TrendingUp}
-          color="emerald"
-        />
-        <SummaryCard
-          title="売上"
-          value={`¥${(data.summary.revenue / 10000).toFixed(1)}万`}
-          subtext={`${data.summary.soldItems}件の販売`}
-          icon={DollarSign}
-          color="purple"
-        />
-      </div>
+      {!isLoading && kpi && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <SummaryCard
+            title="新規出品"
+            value={kpi.activeListings}
+            total={kpi.totalListings}
+            icon={ShoppingCart}
+            color="amber"
+          />
+          <SummaryCard
+            title="販売数"
+            value={period === 'week' ? kpi.soldThisWeek : kpi.soldThisMonth}
+            subtext={`今日: ${kpi.soldToday}件`}
+            icon={TrendingUp}
+            color="emerald"
+          />
+          <SummaryCard
+            title="売上"
+            value={`$${(period === 'week' ? kpi.revenue.thisWeek : kpi.revenue.thisMonth).toLocaleString()}`}
+            subtext={`利益: $${(period === 'week' ? kpi.grossProfit.thisWeek : kpi.grossProfit.thisMonth).toLocaleString()}`}
+            icon={DollarSign}
+            color="purple"
+          />
+          <SummaryCard
+            title="健全性"
+            value={`${kpi.healthScore}%`}
+            subtext={`滞留率: ${kpi.staleRate}%`}
+            icon={Package}
+            color="blue"
+          />
+        </div>
+      )}
+
+      {/* Financial Summary */}
+      {!isLoading && pnl && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-emerald-500" />
+              損益サマリー
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                <p className="text-sm text-zinc-500">売上高</p>
+                <p className="text-2xl font-bold">${pnl.revenue.gross.toLocaleString()}</p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                <p className="text-sm text-zinc-500">粗利</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  ${pnl.profit.gross.toLocaleString()}
+                </p>
+                <p className="text-xs text-zinc-400">{pnl.profit.grossMargin}%</p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                <p className="text-sm text-zinc-500">手数料</p>
+                <p className="text-2xl font-bold text-amber-600">
+                  ${pnl.costs.totalFees.toLocaleString()}
+                </p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                <p className="text-sm text-zinc-500">純利益</p>
+                <p className={cn(
+                  'text-2xl font-bold',
+                  pnl.profit.net >= 0 ? 'text-emerald-600' : 'text-red-600'
+                )}>
+                  ${pnl.profit.net.toLocaleString()}
+                </p>
+                <p className="text-xs text-zinc-400">{pnl.profit.netMargin}%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Charts Row 1 */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -176,23 +263,29 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.salesData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-700" />
-                  <XAxis dataKey="name" className="text-xs" tick={{ fill: '#71717a' }} />
-                  <YAxis className="text-xs" tick={{ fill: '#71717a' }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#18181b',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: '#fff',
-                    }}
-                  />
-                  <Bar dataKey="listings" fill="#f59e0b" name="出品数" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="sold" fill="#10b981" name="販売数" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {trends.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={trends}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-700" />
+                    <XAxis dataKey="date" className="text-xs" tick={{ fill: '#71717a' }} />
+                    <YAxis className="text-xs" tick={{ fill: '#71717a' }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#18181b',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#fff',
+                      }}
+                    />
+                    <Bar dataKey="listings" fill="#f59e0b" name="出品数" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="sold" fill="#10b981" name="販売数" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-zinc-400">
+                  データがありません
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -202,35 +295,49 @@ export default function ReportsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-emerald-500" />
-              売上推移
+              売上・利益推移
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-700" />
-                  <XAxis dataKey="name" className="text-xs" tick={{ fill: '#71717a' }} />
-                  <YAxis className="text-xs" tick={{ fill: '#71717a' }} tickFormatter={(v) => `¥${v / 1000}k`} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#18181b',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: '#fff',
-                    }}
-                    formatter={(value: number) => [`¥${value.toLocaleString()}`, '売上']}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {dailyData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dailyData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-zinc-200 dark:stroke-zinc-700" />
+                    <XAxis dataKey="date" className="text-xs" tick={{ fill: '#71717a' }} />
+                    <YAxis className="text-xs" tick={{ fill: '#71717a' }} tickFormatter={(v) => `$${v}`} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#18181b',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#fff',
+                      }}
+                      formatter={(value: number) => [`$${value.toLocaleString()}`, '']}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={false}
+                      name="売上"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="profit"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={false}
+                      name="利益"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-zinc-400">
+                  データがありません
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -241,38 +348,48 @@ export default function ReportsPage() {
         {/* Category Pie Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>カテゴリ別</CardTitle>
+            <CardTitle>カテゴリ別売上</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={data.categoryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={70}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {data.categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#18181b',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: '#fff',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {categoryData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={categoryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {categoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#18181b',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#fff',
+                      }}
+                      formatter={(value: number, name: string, props: any) => [
+                        `${value}件 ($${props.payload.revenue?.toLocaleString() || 0})`,
+                        props.payload.name,
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-zinc-400">
+                  データがありません
+                </div>
+              )}
             </div>
             <div className="mt-4 flex flex-wrap justify-center gap-3">
-              {data.categoryData.map((item) => (
+              {categoryData.map((item) => (
                 <div key={item.name} className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                   <span className="text-xs text-zinc-600 dark:text-zinc-400">{item.name}</span>
@@ -289,34 +406,40 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={data.statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={70}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {data.statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#18181b',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: '#fff',
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {statusData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {statusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#18181b',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#fff',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center text-zinc-400">
+                  データがありません
+                </div>
+              )}
             </div>
             <div className="mt-4 flex flex-wrap justify-center gap-3">
-              {data.statusData.map((item) => (
+              {statusData.map((item) => (
                 <div key={item.name} className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
                   <span className="text-xs text-zinc-600 dark:text-zinc-400">{item.name}</span>
@@ -326,90 +449,98 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        {/* Top Products */}
+        {/* Top Categories */}
         <Card>
           <CardHeader>
-            <CardTitle>売上トップ商品</CardTitle>
+            <CardTitle>売上トップカテゴリ</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.topProducts.map((product, index) => (
-                <div key={product.title} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className={cn(
-                      'flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold',
-                      index === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                      index === 1 ? 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300' :
-                      index === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                      'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
-                    )}>
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium text-zinc-900 dark:text-white truncate max-w-[120px]">
-                        {product.title}
-                      </p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {product.sold}件販売
-                      </p>
+              {categories.length > 0 ? (
+                categories.slice(0, 5).map((cat, index) => (
+                  <div key={cat.category || index} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className={cn(
+                        'flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold',
+                        index === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                        index === 1 ? 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300' :
+                        index === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                        'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400'
+                      )}>
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-zinc-900 dark:text-white truncate max-w-[120px]">
+                          {cat.category || '未分類'}
+                        </p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {cat.soldCount}件販売
+                        </p>
+                      </div>
                     </div>
+                    <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                      ${cat.revenue.toFixed(2)}
+                    </span>
                   </div>
-                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                    ${product.revenue.toFixed(2)}
-                  </span>
+                ))
+              ) : (
+                <div className="py-8 text-center text-zinc-400">
+                  データがありません
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Job Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-blue-500" />
-            ジョブ実行状況
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="flex items-center gap-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
-                <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+      {!isLoading && pnl && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-blue-500" />
+              注文サマリー
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="flex items-center gap-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                  <ShoppingCart className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                    {pnl.summary.orderCount}
+                  </p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">注文数</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-zinc-900 dark:text-white">
-                  {data.summary.jobsCompleted}
-                </p>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">完了</p>
+              <div className="flex items-center gap-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+                  <DollarSign className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                    ${pnl.summary.avgOrderValue.toFixed(2)}
+                  </p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">平均注文額</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                  <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                    ${pnl.summary.avgProfitPerOrder.toFixed(2)}
+                  </p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">平均利益/注文</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20">
-                <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-zinc-900 dark:text-white">
-                  {data.summary.jobsFailed}
-                </p>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">失敗</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                <TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-zinc-900 dark:text-white">
-                  {((data.summary.jobsCompleted / (data.summary.jobsCompleted + data.summary.jobsFailed)) * 100).toFixed(1)}%
-                </p>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">成功率</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -456,4 +587,23 @@ function SummaryCard({ title, value, total, subtext, icon: Icon, color }: Summar
       </CardContent>
     </Card>
   );
+}
+
+function getStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    PENDING_SCRAPE: '取込待ち',
+    SCRAPED: '取込済',
+    PROCESSING_IMAGES: '画像処理中',
+    TRANSLATING: '翻訳中',
+    READY_TO_REVIEW: 'レビュー待ち',
+    APPROVED: '承認済',
+    PUBLISHING: '出品中',
+    ACTIVE: 'アクティブ',
+    SOLD: '販売済',
+    OUT_OF_STOCK: '在庫切れ',
+    ERROR: 'エラー',
+    DELETED: '削除済',
+    DRAFT: '下書き',
+  };
+  return labels[status] || status;
 }

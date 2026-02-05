@@ -225,28 +225,45 @@ function ListingSettings() {
 }
 
 function NotificationSettings() {
+  const settingsLinks = [
+    {
+      href: '/settings/notifications',
+      icon: Bell,
+      title: '通知チャンネル管理',
+      description: 'Slack、Discord、LINE 通知チャンネルを設定',
+    },
+    {
+      href: '/settings/rate-limits',
+      icon: Shield,
+      title: 'レート制限',
+      description: 'スクレイピング・API呼び出しの制限を管理',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>通知チャンネル</CardTitle>
+          <CardTitle>通知設定</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {[
-            { label: 'Slack Webhook URL', placeholder: 'https://hooks.slack.com/services/...' },
-            { label: 'Discord Webhook URL', placeholder: 'https://discord.com/api/webhooks/...' },
-            { label: 'LINE Notify Token', placeholder: 'xxx' },
-          ].map((item) => (
-            <div key={item.label}>
-              <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                {item.label}
-              </label>
-              <input
-                type="text"
-                placeholder={item.placeholder}
-                className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
-              />
-            </div>
+        <CardContent className="space-y-2">
+          {settingsLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex items-center justify-between rounded-lg border border-zinc-200 p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            >
+              <div className="flex items-center gap-4">
+                <div className="rounded-lg bg-amber-50 p-2 dark:bg-amber-900/20">
+                  <link.icon className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-zinc-900 dark:text-white">{link.title}</h3>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">{link.description}</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-zinc-400" />
+            </Link>
           ))}
         </CardContent>
       </Card>
@@ -271,71 +288,15 @@ function NotificationSettings() {
               className="h-10 w-32 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
             />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                リトライ回数
-              </label>
-              <input
-                type="number"
-                defaultValue={3}
-                min={1}
-                max={10}
-                className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                リトライ間隔 (秒)
-              </label>
-              <input
-                type="number"
-                defaultValue={5}
-                min={1}
-                max={60}
-                className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
-              />
-            </div>
-          </div>
           <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
             <p className="text-sm text-amber-700 dark:text-amber-400">
-              在庫監視は指数バックオフ付きリトライを行い、エラー時は自動的に再試行されます。
-              通知タイムラグは約5分以内です。
+              通知チャンネルを設定すると、在庫切れや価格変動を自動的に通知します。
             </p>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>通知イベント</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {[
-            { label: '在庫切れ検知', description: '仕入元で在庫切れを検知した時' },
-            { label: '価格変動', description: '仕入価格が変動した時（閾値超過時）' },
-            { label: '出品成功', description: '出品が完了した時' },
-            { label: '出品エラー', description: '出品に失敗した時' },
-            { label: '日次レポート', description: '毎日21時にレポートを送信' },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
-              <div>
-                <p className="text-sm font-medium text-zinc-900 dark:text-white">{item.label}</p>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">{item.description}</p>
-              </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input type="checkbox" className="peer sr-only" defaultChecked />
-                <div className="h-6 w-11 rounded-full bg-zinc-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-amber-500 peer-checked:after:translate-x-full dark:bg-zinc-700"></div>
-              </label>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end gap-2">
-        <Button variant="outline">
-          テスト送信
-        </Button>
+      <div className="flex justify-end">
         <Button>
           <Save className="h-4 w-4" />
           保存
