@@ -483,7 +483,7 @@ export class EbayApiClient {
     // 注: 実際のeBay Taxonomy APIはBrowse APIの一部
     // GET /commerce/taxonomy/v1/category_tree/{category_tree_id}/get_category_suggestions
     try {
-      const accessToken = await this.getAccessToken();
+      const accessToken = this.accessToken;
 
       // eBay US のカテゴリツリーID
       const categoryTreeId = marketplaceId === 'EBAY_US' ? '0' : '0';
@@ -518,7 +518,7 @@ export class EbayApiClient {
           data: dbMappings.map(m => ({
             categoryId: m.ebayCategoryId,
             categoryName: m.ebayCategoryName || m.sourceCategory,
-            categoryPath: m.ebayCategoryPath || '',
+            categoryPath: m.ebayCategoryName,
           })),
         };
       }
@@ -556,7 +556,7 @@ export class EbayApiClient {
         data: dbMappings.map(m => ({
           categoryId: m.ebayCategoryId,
           categoryName: m.ebayCategoryName || m.sourceCategory,
-          categoryPath: m.ebayCategoryPath || '',
+          categoryPath: m.ebayCategoryName,
         })),
       };
     }

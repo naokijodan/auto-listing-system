@@ -186,6 +186,7 @@ describe('Scrape Processor', () => {
         sourceType: 'mercari',
         options: { limit: 10 },
       },
+      updateProgress: vi.fn(),
     } as any;
 
     it('should scrape multiple products from seller page', async () => {

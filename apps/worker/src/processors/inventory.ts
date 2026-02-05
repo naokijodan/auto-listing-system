@@ -298,7 +298,7 @@ export async function processSyncListingStatus(
       const response = await joomApi.getProduct(externalId);
       if (response.success && response.data) {
         marketplaceStatus = {
-          status: response.data.isActive ? 'ACTIVE' : 'INACTIVE',
+          status: response.data.quantity > 0 ? 'ACTIVE' : 'INACTIVE',
           price: response.data.price,
           quantity: response.data.quantity,
         };

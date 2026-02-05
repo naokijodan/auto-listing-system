@@ -157,6 +157,19 @@ router.get('/queue/:queueName/:jobId', async (req, res, next) => {
     }
 
     const state = await job.getState();
+    const progress = job.progress;
+
+    // Redisから詳細な進捗情報を取得
+    let detailedProgress = null;
+    const progressKey = `rakuda:job:${jobId}:progress`;
+    const progressData = await redis.get(progressKey);
+    if (progressData) {
+      try {
+        detailedProgress = JSON.parse(progressData);
+      } catch {
+        // ignore
+      }
+    }
 
     res.json({
       success: true,
@@ -165,12 +178,61 @@ router.get('/queue/:queueName/:jobId', async (req, res, next) => {
         name: job.name,
         data: job.data,
         state,
+        progress,
+        detailedProgress,
         timestamp: job.timestamp,
         attemptsMade: job.attemptsMade,
         processedOn: job.processedOn,
         finishedOn: job.finishedOn,
         failedReason: job.failedReason,
         returnvalue: job.returnvalue,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * ジョブ進捗取得（軽量版）
+ */
+router.get('/queue/:queueName/:jobId/progress', async (req, res, next) => {
+  try {
+    const { queueName, jobId } = req.params;
+
+    const queue = queues[queueName];
+    if (!queue) {
+      throw new AppError(404, 'Queue not found', 'QUEUE_NOT_FOUND');
+    }
+
+    const job = await queue.getJob(jobId);
+    if (!job) {
+      throw new AppError(404, 'Job not found', 'JOB_NOT_FOUND');
+    }
+
+    const state = await job.getState();
+    const progress = job.progress;
+
+    // Redisから詳細な進捗情報を取得
+    let detailedProgress = null;
+    const progressKey = `rakuda:job:${jobId}:progress`;
+    const progressData = await redis.get(progressKey);
+    if (progressData) {
+      try {
+        detailedProgress = JSON.parse(progressData);
+      } catch {
+        // ignore
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        jobId,
+        queueName,
+        state,
+        progress,
+        detailedProgress,
       },
     });
   } catch (error) {

@@ -125,18 +125,15 @@ export async function scrapeRakuten(url: string): Promise<ScraperResult> {
     const product: ScrapedProduct = {
       sourceUrl: url,
       sourceType: 'rakuten',
-      sourceId: `${shopId}:${itemId}`,
+      sourceItemId: `${shopId}:${itemId}`,
       title: productData.title,
       price: productData.price,
-      currency: 'JPY',
       description: productData.description,
       images: productData.images,
       category: productData.category || undefined,
       brand: productData.brand || undefined,
-      seller: productData.sellerName ? {
-        id: shopId,
-        name: productData.sellerName,
-      } : undefined,
+      sellerId: productData.sellerName ? shopId : undefined,
+      sellerName: productData.sellerName || undefined,
       isAvailable: productData.isAvailable,
       scrapedAt: new Date().toISOString(),
     };

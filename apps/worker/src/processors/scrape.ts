@@ -13,6 +13,44 @@ const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
 const imageQueue = new Queue(QUEUE_NAMES.IMAGE, { connection: redis });
 const translateQueue = new Queue(QUEUE_NAMES.TRANSLATE, { connection: redis });
 
+// バッチ処理設定
+const BATCH_SIZE = 10; // 並列処理数
+const BATCH_DELAY_MS = 1000; // バッチ間の遅延
+
+/**
+ * 進捗状況をRedisに保存
+ */
+async function updateJobProgress(
+  jobId: string,
+  progress: {
+    total: number;
+    processed: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    failed: number;
+  }
+): Promise<void> {
+  const key = `rakuda:job:${jobId}:progress`;
+  await redis.set(key, JSON.stringify(progress), 'EX', 3600);
+}
+
+/**
+ * 進捗状況を取得
+ */
+export async function getJobProgress(jobId: string): Promise<{
+  total: number;
+  processed: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+} | null> {
+  const key = `rakuda:job:${jobId}:progress`;
+  const data = await redis.get(key);
+  return data ? JSON.parse(data) : null;
+}
+
 /**
  * スクレイピングジョブプロセッサー
  */
@@ -213,9 +251,10 @@ async function processSellerScrape(
 ): Promise<ScrapeJobResult> {
   const { url, sourceType, options = {} } = job.data as any;
   const limit = options.limit || 50;
+  const batchSize = options.batchSize || BATCH_SIZE;
 
   try {
-    log.info({ type: 'seller_scrape_start', url, limit });
+    log.info({ type: 'seller_scrape_start', url, limit, batchSize });
 
     // セラーページから商品一覧をスクレイピング
     const result = await scrapeSellerProducts(url, sourceType as SourceType, limit);
@@ -228,114 +267,67 @@ async function processSellerScrape(
     const products = result.products;
     log.info({ type: 'seller_products_found', count: products.length });
 
-    // 各商品を処理
-    let createdCount = 0;
-    let updatedCount = 0;
-    let skippedCount = 0;
+    // 進捗追跡用
+    const progress = {
+      total: products.length,
+      processed: 0,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      failed: 0,
+    };
 
-    for (const scrapedProduct of products) {
-      const sourceHash = generateSourceHash(scrapedProduct);
+    // 初期進捗を保存
+    if (job.id) {
+      await updateJobProgress(job.id, progress);
+      await job.updateProgress(0);
+    }
 
-      // ソース取得
-      let source = await prisma.source.findFirst({
-        where: { type: sourceType.toUpperCase() as any },
-      });
+    // バッチ処理で各商品を処理
+    for (let i = 0; i < products.length; i += batchSize) {
+      const batch = products.slice(i, i + batchSize);
 
-      if (!source) {
-        source = await prisma.source.create({
-          data: {
-            type: sourceType.toUpperCase() as any,
-            name: sourceType,
-          },
-        });
-      }
+      await Promise.all(batch.map(async (scrapedProduct) => {
+        try {
+          const processResult = await processSingleProductFromBatch(
+            scrapedProduct,
+            sourceType,
+            options,
+            log
+          );
 
-      // 既存チェック
-      const existing = await prisma.product.findUnique({
-        where: {
-          sourceId_sourceItemId: {
-            sourceId: source.id,
-            sourceItemId: scrapedProduct.sourceItemId,
-          },
-        },
-      });
-
-      let product;
-
-      if (existing) {
-        if (existing.sourceHash === sourceHash) {
-          skippedCount++;
-          continue;
+          if (processResult === 'created') {
+            progress.created++;
+          } else if (processResult === 'updated') {
+            progress.updated++;
+          } else {
+            progress.skipped++;
+          }
+        } catch (error) {
+          progress.failed++;
+          log.warn({ type: 'batch_item_failed', error: (error as Error).message });
         }
+        progress.processed++;
+      }));
 
-        product = await prisma.product.update({
-          where: { id: existing.id },
-          data: {
-            title: scrapedProduct.title,
-            description: scrapedProduct.description,
-            price: scrapedProduct.price,
-            images: scrapedProduct.images,
-            sourceHash,
-            scrapedAt: new Date(),
-            status: 'SCRAPED',
-          },
-        });
-        updatedCount++;
-      } else {
-        product = await prisma.product.create({
-          data: {
-            sourceId: source.id,
-            sourceItemId: scrapedProduct.sourceItemId,
-            sourceUrl: scrapedProduct.sourceUrl,
-            sourceHash,
-            title: scrapedProduct.title,
-            description: scrapedProduct.description,
-            price: scrapedProduct.price,
-            images: scrapedProduct.images,
-            category: scrapedProduct.category,
-            brand: scrapedProduct.brand,
-            condition: scrapedProduct.condition,
-            sellerId: scrapedProduct.sellerId,
-            sellerName: scrapedProduct.sellerName,
-            scrapedAt: new Date(),
-            status: 'SCRAPED',
-          },
-        });
-        createdCount++;
+      // 進捗を更新
+      if (job.id) {
+        await updateJobProgress(job.id, progress);
+        await job.updateProgress(Math.round((progress.processed / progress.total) * 100));
       }
 
-      // 画像処理・翻訳キューに追加
-      if (options.processImages !== false) {
-        await imageQueue.add(
-          'process-images',
-          {
-            productId: product.id,
-            imageUrls: product.images,
-            removeBackground: options.removeBackground ?? true,
-          },
-          { priority: 4 }
-        );
-      }
-
-      if (options.translate !== false) {
-        await translateQueue.add(
-          'translate',
-          {
-            productId: product.id,
-            title: product.title,
-            description: product.description,
-            extractAttributes: true,
-          },
-          { priority: 3 }
-        );
+      // バッチ間の遅延
+      if (i + batchSize < products.length) {
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
       }
     }
 
     log.info({
       type: 'seller_scrape_complete',
-      created: createdCount,
-      updated: updatedCount,
-      skipped: skippedCount,
+      created: progress.created,
+      updated: progress.updated,
+      skipped: progress.skipped,
+      failed: progress.failed,
     });
 
     // ジョブログ記録
@@ -348,9 +340,7 @@ async function processSellerScrape(
         result: {
           sourceType,
           url,
-          created: createdCount,
-          updated: updatedCount,
-          skipped: skippedCount,
+          ...progress,
         },
         startedAt: new Date(),
         completedAt: new Date(),
@@ -359,8 +349,8 @@ async function processSellerScrape(
 
     return {
       success: true,
-      message: `Seller scrape completed: ${createdCount} created, ${updatedCount} updated, ${skippedCount} skipped`,
-      itemCount: createdCount + updatedCount,
+      message: `Seller scrape completed: ${progress.created} created, ${progress.updated} updated, ${progress.skipped} skipped, ${progress.failed} failed`,
+      itemCount: progress.created + progress.updated,
       timestamp: new Date().toISOString(),
     };
   } catch (error: any) {
@@ -379,4 +369,112 @@ async function processSellerScrape(
 
     throw error;
   }
+}
+
+/**
+ * バッチ内の単一商品を処理
+ */
+async function processSingleProductFromBatch(
+  scrapedProduct: any,
+  sourceType: string,
+  options: any,
+  log: ReturnType<typeof logger.child>
+): Promise<'created' | 'updated' | 'skipped'> {
+  const sourceHash = generateSourceHash(scrapedProduct);
+
+  // ソース取得
+  let source = await prisma.source.findFirst({
+    where: { type: sourceType.toUpperCase() as any },
+  });
+
+  if (!source) {
+    source = await prisma.source.create({
+      data: {
+        type: sourceType.toUpperCase() as any,
+        name: sourceType,
+      },
+    });
+  }
+
+  // 既存チェック
+  const existing = await prisma.product.findUnique({
+    where: {
+      sourceId_sourceItemId: {
+        sourceId: source.id,
+        sourceItemId: scrapedProduct.sourceItemId,
+      },
+    },
+  });
+
+  let product;
+  let result: 'created' | 'updated' | 'skipped';
+
+  if (existing) {
+    if (existing.sourceHash === sourceHash) {
+      return 'skipped';
+    }
+
+    product = await prisma.product.update({
+      where: { id: existing.id },
+      data: {
+        title: scrapedProduct.title,
+        description: scrapedProduct.description,
+        price: scrapedProduct.price,
+        images: scrapedProduct.images,
+        sourceHash,
+        scrapedAt: new Date(),
+        status: 'SCRAPED',
+      },
+    });
+    result = 'updated';
+  } else {
+    product = await prisma.product.create({
+      data: {
+        sourceId: source.id,
+        sourceItemId: scrapedProduct.sourceItemId,
+        sourceUrl: scrapedProduct.sourceUrl,
+        sourceHash,
+        title: scrapedProduct.title,
+        description: scrapedProduct.description,
+        price: scrapedProduct.price,
+        images: scrapedProduct.images,
+        category: scrapedProduct.category,
+        brand: scrapedProduct.brand,
+        condition: scrapedProduct.condition,
+        sellerId: scrapedProduct.sellerId,
+        sellerName: scrapedProduct.sellerName,
+        scrapedAt: new Date(),
+        status: 'SCRAPED',
+      },
+    });
+    result = 'created';
+  }
+
+  // 画像処理・翻訳キューに追加
+  if (options.processImages !== false) {
+    await imageQueue.add(
+      'process-images',
+      {
+        productId: product.id,
+        imageUrls: product.images,
+        removeBackground: options.removeBackground ?? true,
+      },
+      { priority: 4 }
+    );
+  }
+
+  if (options.translate !== false) {
+    await translateQueue.add(
+      'translate',
+      {
+        productId: product.id,
+        title: product.title,
+        description: product.description,
+        extractAttributes: true,
+      },
+      { priority: 3 }
+    );
+  }
+
+  return result;
 }

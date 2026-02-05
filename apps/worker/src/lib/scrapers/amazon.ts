@@ -191,24 +191,17 @@ export async function scrapeAmazon(url: string): Promise<ScraperResult> {
     const product: ScrapedProduct = {
       sourceUrl: url,
       sourceType: 'amazon',
-      sourceId: asin,
+      sourceItemId: asin,
       title: productData.title,
       price: productData.price,
-      currency: 'JPY',
       description: productData.description,
       images: productData.images.slice(0, 10), // 最大10枚
       category: productData.category || undefined,
       brand: productData.brand || undefined,
-      seller: {
-        id: 'amazon',
-        name: productData.sellerName,
-      },
+      sellerId: 'amazon',
+      sellerName: productData.sellerName,
       isAvailable: productData.isAvailable,
       scrapedAt: new Date().toISOString(),
-      metadata: {
-        rating: productData.rating,
-        reviewCount: productData.reviewCount,
-      },
     };
 
     log.info({
