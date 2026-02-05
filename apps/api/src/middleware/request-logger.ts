@@ -14,7 +14,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
   res.setHeader('X-Request-ID', requestId);
 
   // リクエストにログ出力用のIDを付与
-  (req as any).requestId = requestId;
+  req.requestId = requestId;
 
   const log = createRequestLogger(requestId, req.path);
 

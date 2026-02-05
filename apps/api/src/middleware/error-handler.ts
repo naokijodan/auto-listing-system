@@ -25,7 +25,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
-  const requestId = (req as any).requestId || 'unknown';
+  const requestId = req.requestId || 'unknown';
 
   // Zodバリデーションエラー
   if (err instanceof ZodError) {

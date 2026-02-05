@@ -3,6 +3,7 @@ import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
 import PDFDocument from 'pdfkit';
+import { withCache, CACHE_TTL, CACHE_NS, invalidateNamespace } from '../utils/cache';
 
 // 為替レートのデフォルト値（USD/JPY）
 const DEFAULT_USD_TO_JPY = 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
@@ -11,206 +12,160 @@ const router = Router();
 const log = logger.child({ module: 'analytics' });
 
 /**
- * ダッシュボードKPI取得
+ * KPIデータを取得（キャッシュなし）
+ */
+async function fetchKpiData() {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - 7);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // 並列でデータ取得
+  const [
+    totalProducts,
+    totalListings,
+    activeListings,
+    soldThisMonth,
+    soldThisWeek,
+    soldToday,
+    outOfStockCount,
+    staleListings30,
+    staleListings60,
+    salesToday,
+    salesThisWeek,
+    salesThisMonth,
+    productsByStatus,
+    latestExchangeRate,
+  ] = await Promise.all([
+    prisma.product.count(),
+    prisma.listing.count(),
+    prisma.listing.count({ where: { status: 'ACTIVE' } }),
+    prisma.listing.count({
+      where: { status: 'SOLD', soldAt: { gte: monthStart } },
+    }),
+    prisma.listing.count({
+      where: { status: 'SOLD', soldAt: { gte: weekStart } },
+    }),
+    prisma.listing.count({
+      where: { status: 'SOLD', soldAt: { gte: todayStart } },
+    }),
+    prisma.product.count({ where: { status: 'OUT_OF_STOCK' } }),
+    prisma.listing.count({
+      where: {
+        status: 'ACTIVE',
+        listedAt: { lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      },
+    }),
+    prisma.listing.count({
+      where: {
+        status: 'ACTIVE',
+        listedAt: { lte: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) },
+      },
+    }),
+    prisma.listing.findMany({
+      where: { status: 'SOLD', soldAt: { gte: todayStart } },
+      select: { listingPrice: true, product: { select: { price: true } } },
+    }),
+    prisma.listing.findMany({
+      where: { status: 'SOLD', soldAt: { gte: weekStart } },
+      select: { listingPrice: true, product: { select: { price: true } } },
+    }),
+    prisma.listing.findMany({
+      where: { status: 'SOLD', soldAt: { gte: monthStart } },
+      select: { listingPrice: true, product: { select: { price: true } } },
+    }),
+    prisma.product.groupBy({ by: ['status'], _count: true }),
+    prisma.exchangeRate.findFirst({
+      where: { fromCurrency: 'JPY', toCurrency: 'USD' },
+      orderBy: { fetchedAt: 'desc' },
+    }),
+  ]);
+
+  const exchangeRate = latestExchangeRate ? (1 / latestExchangeRate.rate) : DEFAULT_USD_TO_JPY;
+
+  const calculateRevenue = (sales: typeof salesToday) => {
+    let revenue = 0;
+    let cost = 0;
+    for (const sale of sales) {
+      revenue += sale.listingPrice;
+      cost += sale.product?.price || 0;
+    }
+    const profit = revenue - (cost / exchangeRate);
+    return { revenue, profit };
+  };
+
+  const todayStats = calculateRevenue(salesToday);
+  const weekStats = calculateRevenue(salesThisWeek);
+  const monthStats = calculateRevenue(salesThisMonth);
+
+  const staleRate = activeListings > 0 ? (staleListings30 / activeListings) * 100 : 0;
+  const staleScore = Math.max(0, 100 - staleRate * 2);
+  const stockScore = totalProducts > 0 ? Math.max(0, 100 - (outOfStockCount / totalProducts) * 200) : 100;
+  const profitScore = monthStats.revenue > 0 ? Math.min(100, (monthStats.profit / monthStats.revenue) * 300) : 50;
+  const healthScore = Math.round((staleScore + stockScore + profitScore) / 3);
+
+  return {
+    totalProducts,
+    totalListings,
+    activeListings,
+    soldToday,
+    soldThisWeek,
+    soldThisMonth,
+    revenue: {
+      today: Math.round(todayStats.revenue * 100) / 100,
+      thisWeek: Math.round(weekStats.revenue * 100) / 100,
+      thisMonth: Math.round(monthStats.revenue * 100) / 100,
+    },
+    grossProfit: {
+      today: Math.round(todayStats.profit * 100) / 100,
+      thisWeek: Math.round(weekStats.profit * 100) / 100,
+      thisMonth: Math.round(monthStats.profit * 100) / 100,
+    },
+    outOfStockCount,
+    staleListings30,
+    staleListings60,
+    staleRate: Math.round(staleRate * 10) / 10,
+    healthScore,
+    healthScoreBreakdown: {
+      staleScore: Math.round(staleScore),
+      stockScore: Math.round(stockScore),
+      profitScore: Math.round(profitScore),
+    },
+    productsByStatus: productsByStatus.reduce((acc, item) => {
+      acc[item.status] = item._count;
+      return acc;
+    }, {} as Record<string, number>),
+    calculatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * ダッシュボードKPI取得（キャッシュ対応）
  */
 router.get('/kpi', async (req, res, next) => {
   try {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = new Date(todayStart);
-    weekStart.setDate(weekStart.getDate() - 7);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    // キャッシュを使用してKPIデータを取得
+    const data = await withCache(
+      CACHE_NS.ANALYTICS,
+      'kpi',
+      fetchKpiData,
+      CACHE_TTL.KPI
+    );
 
-    // 並列でデータ取得
-    const [
-      totalProducts,
-      totalListings,
-      activeListings,
-      soldThisMonth,
-      soldThisWeek,
-      soldToday,
-      outOfStockCount,
-      staleListings30,
-      staleListings60,
-      salesToday,
-      salesThisWeek,
-      salesThisMonth,
-      productsByStatus,
-      latestExchangeRate,
-    ] = await Promise.all([
-      // 総商品数
-      prisma.product.count(),
-      // 総出品数
-      prisma.listing.count(),
-      // アクティブ出品数
-      prisma.listing.count({ where: { status: 'ACTIVE' } }),
-      // 今月の販売数
-      prisma.listing.count({
-        where: {
-          status: 'SOLD',
-          soldAt: { gte: monthStart },
-        },
-      }),
-      // 今週の販売数
-      prisma.listing.count({
-        where: {
-          status: 'SOLD',
-          soldAt: { gte: weekStart },
-        },
-      }),
-      // 今日の販売数
-      prisma.listing.count({
-        where: {
-          status: 'SOLD',
-          soldAt: { gte: todayStart },
-        },
-      }),
-      // 在庫切れ商品数
-      prisma.product.count({ where: { status: 'OUT_OF_STOCK' } }),
-      // 30日以上滞留（出品から30日経過で売れていない）
-      prisma.listing.count({
-        where: {
-          status: 'ACTIVE',
-          listedAt: { lte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-        },
-      }),
-      // 60日以上滞留
-      prisma.listing.count({
-        where: {
-          status: 'ACTIVE',
-          listedAt: { lte: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) },
-        },
-      }),
-      // 今日の売上（利益計算用）
-      prisma.listing.findMany({
-        where: {
-          status: 'SOLD',
-          soldAt: { gte: todayStart },
-        },
-        select: {
-          listingPrice: true,
-          product: {
-            select: { price: true },
-          },
-        },
-      }),
-      // 今週の売上
-      prisma.listing.findMany({
-        where: {
-          status: 'SOLD',
-          soldAt: { gte: weekStart },
-        },
-        select: {
-          listingPrice: true,
-          product: {
-            select: { price: true },
-          },
-        },
-      }),
-      // 今月の売上
-      prisma.listing.findMany({
-        where: {
-          status: 'SOLD',
-          soldAt: { gte: monthStart },
-        },
-        select: {
-          listingPrice: true,
-          product: {
-            select: { price: true },
-          },
-        },
-      }),
-      // ステータス別商品数
-      prisma.product.groupBy({
-        by: ['status'],
-        _count: true,
-      }),
-      // 最新の為替レート
-      prisma.exchangeRate.findFirst({
-        where: { fromCurrency: 'JPY', toCurrency: 'USD' },
-        orderBy: { fetchedAt: 'desc' },
-      }),
-    ]);
+    res.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+});
 
-    // 為替レート（DBから取得、なければフォールバック）
-    const exchangeRate = latestExchangeRate ? (1 / latestExchangeRate.rate) : DEFAULT_USD_TO_JPY;
-
-    // 売上・利益計算関数
-    const calculateRevenue = (sales: typeof salesToday) => {
-      let revenue = 0;
-      let cost = 0;
-      for (const sale of sales) {
-        revenue += sale.listingPrice;
-        cost += sale.product?.price || 0;
-      }
-      const profit = revenue - (cost / exchangeRate);
-      return { revenue, profit };
-    };
-
-    // 各期間の売上・利益を計算
-    const todayStats = calculateRevenue(salesToday);
-    const weekStats = calculateRevenue(salesThisWeek);
-    const monthStats = calculateRevenue(salesThisMonth);
-
-    // 滞留率計算
-    const staleRate = activeListings > 0 ? (staleListings30 / activeListings) * 100 : 0;
-
-    // ストア健全性スコア（0-100）
-    // 滞留率が低い、在庫切れが少ない、利益率が高いほど高スコア
-    const staleScore = Math.max(0, 100 - staleRate * 2);
-    const stockScore = totalProducts > 0 ? Math.max(0, 100 - (outOfStockCount / totalProducts) * 200) : 100;
-    const profitScore = monthStats.revenue > 0 ? Math.min(100, (monthStats.profit / monthStats.revenue) * 300) : 50;
-    const healthScore = Math.round((staleScore + stockScore + profitScore) / 3);
-
-    res.json({
-      success: true,
-      data: {
-        // 基本KPI
-        totalProducts,
-        totalListings,
-        activeListings,
-
-        // 販売KPI
-        soldToday,
-        soldThisWeek,
-        soldThisMonth,
-
-        // 売上・利益
-        revenue: {
-          today: Math.round(todayStats.revenue * 100) / 100,
-          thisWeek: Math.round(weekStats.revenue * 100) / 100,
-          thisMonth: Math.round(monthStats.revenue * 100) / 100,
-        },
-        grossProfit: {
-          today: Math.round(todayStats.profit * 100) / 100,
-          thisWeek: Math.round(weekStats.profit * 100) / 100,
-          thisMonth: Math.round(monthStats.profit * 100) / 100,
-        },
-
-        // 在庫KPI
-        outOfStockCount,
-        staleListings30,
-        staleListings60,
-        staleRate: Math.round(staleRate * 10) / 10,
-
-        // 健全性スコア
-        healthScore,
-        healthScoreBreakdown: {
-          staleScore: Math.round(staleScore),
-          stockScore: Math.round(stockScore),
-          profitScore: Math.round(profitScore),
-        },
-
-        // ステータス別
-        productsByStatus: productsByStatus.reduce((acc, item) => {
-          acc[item.status] = item._count;
-          return acc;
-        }, {} as Record<string, number>),
-
-        // メタデータ
-        calculatedAt: new Date().toISOString(),
-      },
-    });
+/**
+ * キャッシュを無効化するエンドポイント（管理用）
+ */
+router.post('/cache/invalidate', async (req, res, next) => {
+  try {
+    await invalidateNamespace(CACHE_NS.ANALYTICS);
+    res.json({ success: true, message: 'Analytics cache invalidated' });
   } catch (error) {
     next(error);
   }

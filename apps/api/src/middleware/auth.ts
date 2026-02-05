@@ -173,8 +173,8 @@ export async function apiKeyAuth(
   await resetFailedAttempts(clientIp);
 
   // リクエストに認証情報を付与
-  (req as any).authenticated = true;
-  (req as any).clientIp = clientIp;
+  req.authenticated = true;
+  req.clientIp = clientIp;
 
   next();
 }
@@ -203,7 +203,7 @@ export function requireAdmin(
   next: NextFunction
 ): void {
   // 現時点では認証済みであれば管理者とみなす
-  if (!(req as any).authenticated) {
+  if (!req.authenticated) {
     res.status(403).json({
       success: false,
       error: 'Admin access required.',
@@ -221,8 +221,8 @@ export function getAuthStatus(req: Request): {
   clientIp: string;
 } {
   return {
-    authenticated: (req as any).authenticated || false,
-    clientIp: (req as any).clientIp || getClientIp(req),
+    authenticated: req.authenticated || false,
+    clientIp: req.clientIp || getClientIp(req),
   };
 }
 
