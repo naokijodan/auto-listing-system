@@ -4,6 +4,9 @@ import { http, HttpResponse } from 'msw';
 const EBAY_SANDBOX_API = 'https://api.sandbox.ebay.com';
 const EBAY_SANDBOX_AUTH = 'https://auth.sandbox.ebay.com';
 
+// Joom API Base URL
+const JOOM_API = 'https://api-merchant.joom.com/api/v3';
+
 // 外部API
 const EXCHANGE_RATE_API = 'https://api.exchangerate-api.com';
 
@@ -197,6 +200,62 @@ export const handlers = [
         GBP: 0.79,
       },
     });
+  }),
+
+  // ========================================
+  // Joom API
+  // ========================================
+  http.post(`${JOOM_API}/products`, async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+
+    if (!body.name) {
+      return HttpResponse.json(
+        { code: 'VALIDATION_ERROR', message: 'Product name is required' },
+        { status: 400 }
+      );
+    }
+
+    return HttpResponse.json({
+      id: `joom-product-${Date.now()}`,
+    });
+  }),
+
+  http.put(`${JOOM_API}/products/:productId`, async ({ params }) => {
+    const { productId } = params;
+    return HttpResponse.json({ id: productId });
+  }),
+
+  http.get(`${JOOM_API}/products/:productId`, async ({ params }) => {
+    const { productId } = params;
+
+    if (productId === 'non-existent') {
+      return HttpResponse.json(
+        { code: 'NOT_FOUND', message: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    return HttpResponse.json({
+      id: productId,
+      name: 'Test Product',
+      price: 29.99,
+    });
+  }),
+
+  http.post(`${JOOM_API}/products/:productId/enable`, () => {
+    return HttpResponse.json({});
+  }),
+
+  http.post(`${JOOM_API}/products/:productId/disable`, () => {
+    return HttpResponse.json({});
+  }),
+
+  http.put(`${JOOM_API}/products/:productId/variants/:sku/inventory`, () => {
+    return HttpResponse.json({});
+  }),
+
+  http.put(`${JOOM_API}/products/:productId/variants/:sku/price`, () => {
+    return HttpResponse.json({});
   }),
 ];
 
