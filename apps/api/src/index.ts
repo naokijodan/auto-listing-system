@@ -25,6 +25,9 @@ import { analyticsRouter } from './routes/analytics';
 import { inventoryRouter } from './routes/inventory';
 import { pricingRouter } from './routes/pricing';
 import { competitorsRouter } from './routes/competitors';
+import { rateLimitsRouter } from './routes/rate-limits';
+import { monitoringRouter } from './routes/monitoring';
+import { concurrencyRouter } from './routes/concurrency';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 
@@ -71,6 +74,9 @@ app.use('/api/analytics', analyticsRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/pricing', pricingRouter);
 app.use('/api/competitors', competitorsRouter);
+app.use('/api/rate-limits', rateLimitsRouter);
+app.use('/api/monitoring', monitoringRouter);
+app.use('/api/concurrency', concurrencyRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
