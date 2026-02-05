@@ -1,20 +1,25 @@
-version: '3.8'
+# =============================================================================
+# RAKUDA Docker Compose - 開発環境
+# =============================================================================
+# 使用方法: docker compose up -d
+# =============================================================================
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: rakuda-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: als_user
-      POSTGRES_PASSWORD: als_password
-      POSTGRES_DB: als_development
+      POSTGRES_USER: rakuda
+      POSTGRES_PASSWORD: rakuda_dev_password
+      POSTGRES_DB: rakuda_development
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U als_user -d als_development"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U rakuda -d rakuda_development"]
+      interval: 10s
       timeout: 5s
       retries: 5
     networks:

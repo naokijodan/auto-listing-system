@@ -30,6 +30,7 @@ import { monitoringRouter } from './routes/monitoring';
 import { concurrencyRouter } from './routes/concurrency';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
+import { apiKeyAuth } from './middleware/auth';
 
 const app = express();
 const PORT = process.env.API_PORT || 3000;
@@ -59,6 +60,9 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
+
+// API認証（ヘルスチェック以外）
+app.use(apiKeyAuth);
 
 // ルート
 app.use('/api/health', healthRouter);

@@ -1,0 +1,88 @@
+# =============================================================================
+# RAKUDA Docker Ignore
+# =============================================================================
+
+# Dependencies
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+**/dist
+.next
+**/.next
+.turbo
+**/.turbo
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (本番の秘密情報を含む)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Test files
+coverage
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Development tools
+.eslintcache
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Backup files
+backups
+*.bak
+*.backup
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Prisma
+packages/database/prisma/*.db
+packages/database/prisma/*.db-journal
+
+# Docker files (prevent recursive copy)
+Dockerfile
+Dockerfile.*
+docker-compose*.yml
+.dockerignore
+
+# Scripts
+scripts
+
+# Example files
+*.example
+
+# CI/CD
+.github

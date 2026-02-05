@@ -1,0 +1,149 @@
+# =============================================================================
+# RAKUDA Deploy
+# =============================================================================
+# Deploys the application to production server via SSH
+# Triggered manually or after successful Docker build
+# =============================================================================
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deployment environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+
+  workflow_run:
+    workflows: ["Docker Build"]
+    types:
+      - completed
+    branches: [main]
+
+env:
+  DEPLOY_PATH: /opt/rakuda
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'production' }}
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to server
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
+            set -e
+
+            echo "=== RAKUDA Deployment Started ==="
+            cd ${{ env.DEPLOY_PATH }}
+
+            # Pull latest images
+            echo "Pulling latest images..."
+            docker compose -f docker-compose.prod.yml pull
+
+            # Run database migrations
+            echo "Running database migrations..."
+            docker compose -f docker-compose.prod.yml run --rm api \
+              npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma
+
+            # Restart services with zero downtime
+            echo "Restarting services..."
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Wait for health checks
+            echo "Waiting for health checks..."
+            sleep 10
+
+            # Verify deployment
+            echo "Verifying deployment..."
+            curl -sf http://localhost:3000/api/health || exit 1
+
+            # Cleanup old images
+            echo "Cleaning up old images..."
+            docker image prune -af --filter "until=24h"
+
+            echo "=== Deployment Complete ==="
+          ENDSSH
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "Deployment successful to ${{ github.event.inputs.environment || 'production' }}"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "Deployment failed!"
+          exit 1
+
+  # ---------------------------------------------------------------------------
+  # Rollback Job (Manual trigger only)
+  # ---------------------------------------------------------------------------
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && failure() }}
+    needs: deploy
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Rollback to previous version
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
+            set -e
+
+            echo "=== RAKUDA Rollback Started ==="
+            cd ${{ env.DEPLOY_PATH }}
+
+            # Get previous image tags from backup
+            if [ -f .previous-deploy ]; then
+              source .previous-deploy
+
+              echo "Rolling back to previous version..."
+              docker compose -f docker-compose.prod.yml down
+
+              # Restore previous image tags
+              docker compose -f docker-compose.prod.yml up -d
+
+              echo "=== Rollback Complete ==="
+            else
+              echo "No previous deployment found. Manual intervention required."
+              exit 1
+            fi
+          ENDSSH
