@@ -25,7 +25,13 @@ export const mockPrisma = {
     findFirst: vi.fn(),
     findMany: vi.fn(),
     findUnique: vi.fn(),
+    create: vi.fn(),
     update: vi.fn(),
+  },
+  source: {
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
   },
   listing: {
     findFirst: vi.fn(),
