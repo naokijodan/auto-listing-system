@@ -1,6 +1,8 @@
 import { ScrapedProduct } from '@rakuda/schema';
 import { scrapeMercari, scrapeMercariSeller } from './mercari';
 import { scrapeYahooAuction, scrapeYahooAuctionSeller } from './yahoo-auction';
+import { scrapePayPayFlea, scrapePayPayFleaSeller } from './paypay-flea';
+import { scrapeRakuma, scrapeRakumaSeller } from './rakuma';
 
 export type SourceType = 'mercari' | 'yahoo_auction' | 'yahoo_flea' | 'rakuma' | 'rakuten' | 'amazon';
 
@@ -21,11 +23,9 @@ export async function scrapeProduct(url: string, sourceType: SourceType): Promis
     case 'yahoo_auction':
       return scrapeYahooAuction(url);
     case 'yahoo_flea':
-      // PayPayフリマ（TODO: 実装）
-      return { success: false, error: 'yahoo_flea scraper not implemented yet' };
+      return scrapePayPayFlea(url);
     case 'rakuma':
-      // ラクマ（TODO: 実装）
-      return { success: false, error: 'rakuma scraper not implemented yet' };
+      return scrapeRakuma(url);
     case 'rakuten':
       // 楽天（TODO: 実装）
       return { success: false, error: 'rakuten scraper not implemented yet' };
@@ -50,6 +50,10 @@ export async function scrapeSellerProducts(
       return scrapeMercariSeller(url, limit);
     case 'yahoo_auction':
       return scrapeYahooAuctionSeller(url, limit);
+    case 'yahoo_flea':
+      return scrapePayPayFleaSeller(url, limit);
+    case 'rakuma':
+      return scrapeRakumaSeller(url, limit);
     default:
       return { success: false, error: `Seller scraping not supported for: ${sourceType}` };
   }

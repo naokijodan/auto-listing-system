@@ -89,6 +89,18 @@ export const mockPrisma = {
     delete: vi.fn(),
     aggregate: vi.fn(),
   },
+  notificationChannel: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+  exchangeRate: {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+  },
 };
 
 // Prisma モジュールをモック

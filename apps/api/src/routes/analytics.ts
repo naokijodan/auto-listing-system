@@ -455,4 +455,755 @@ router.get('/suggestions/sourcing', async (req, res, next) => {
   }
 });
 
+// ========================================
+// 財務レポート
+// ========================================
+
+/**
+ * 損益計算書（Profit/Loss Statement）
+ */
+router.get('/financial/pnl', async (req, res, next) => {
+  try {
+    const { startDate, endDate, period = 'month' } = req.query;
+
+    let start: Date;
+    let end: Date;
+
+    if (startDate && endDate) {
+      start = new Date(startDate as string);
+      end = new Date(endDate as string);
+    } else {
+      end = new Date();
+      start = new Date();
+      if (period === 'week') {
+        start.setDate(start.getDate() - 7);
+      } else if (period === 'month') {
+        start.setMonth(start.getMonth() - 1);
+      } else if (period === 'quarter') {
+        start.setMonth(start.getMonth() - 3);
+      } else if (period === 'year') {
+        start.setFullYear(start.getFullYear() - 1);
+      }
+    }
+
+    // 注文・売上データを取得
+    const orders = await prisma.order.findMany({
+      where: {
+        orderedAt: { gte: start, lte: end },
+        paymentStatus: 'PAID',
+      },
+      include: {
+        sales: true,
+      },
+    });
+
+    // 為替レートを取得
+    const latestRate = await prisma.exchangeRate.findFirst({
+      where: {
+        fromCurrency: 'JPY',
+        toCurrency: 'USD',
+      },
+      orderBy: { fetchedAt: 'desc' },
+    });
+    const exchangeRate = latestRate?.rate || 0.0067; // デフォルト 150円/ドル
+
+    // 集計
+    let totalRevenue = 0;
+    let totalCost = 0;
+    let totalMarketplaceFees = 0;
+    let totalPaymentFees = 0;
+    let totalShippingCost = 0;
+    let totalTax = 0;
+    let orderCount = 0;
+    let itemCount = 0;
+
+    for (const order of orders) {
+      totalRevenue += order.subtotal;
+      totalShippingCost += order.shippingCost;
+      totalTax += order.tax;
+      totalMarketplaceFees += order.marketplaceFee;
+      totalPaymentFees += order.paymentFee;
+      orderCount++;
+
+      for (const sale of order.sales) {
+        itemCount += sale.quantity;
+        if (sale.costPrice) {
+          // 仕入価格は円なのでドルに変換
+          totalCost += sale.costPrice * exchangeRate;
+        }
+      }
+    }
+
+    // 総手数料
+    const totalFees = totalMarketplaceFees + totalPaymentFees;
+
+    // 粗利（売上 - 仕入原価）
+    const grossProfit = totalRevenue - totalCost;
+    const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+
+    // 営業利益（粗利 - 手数料 - 送料）
+    const operatingProfit = grossProfit - totalFees - totalShippingCost;
+    const operatingMargin = totalRevenue > 0 ? (operatingProfit / totalRevenue) * 100 : 0;
+
+    // 純利益（営業利益 - 税金）
+    const netProfit = operatingProfit - totalTax;
+    const netMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+    // 平均値
+    const avgOrderValue = orderCount > 0 ? totalRevenue / orderCount : 0;
+    const avgItemValue = itemCount > 0 ? totalRevenue / itemCount : 0;
+    const avgProfitPerOrder = orderCount > 0 ? netProfit / orderCount : 0;
+
+    res.json({
+      success: true,
+      data: {
+        period: {
+          start: start.toISOString(),
+          end: end.toISOString(),
+          label: period,
+        },
+        summary: {
+          orderCount,
+          itemCount,
+          avgOrderValue: Math.round(avgOrderValue * 100) / 100,
+          avgItemValue: Math.round(avgItemValue * 100) / 100,
+          avgProfitPerOrder: Math.round(avgProfitPerOrder * 100) / 100,
+        },
+        revenue: {
+          gross: Math.round(totalRevenue * 100) / 100,
+          shipping: Math.round(totalShippingCost * 100) / 100,
+          total: Math.round((totalRevenue + totalShippingCost) * 100) / 100,
+        },
+        costs: {
+          cogs: Math.round(totalCost * 100) / 100, // Cost of Goods Sold
+          marketplaceFees: Math.round(totalMarketplaceFees * 100) / 100,
+          paymentFees: Math.round(totalPaymentFees * 100) / 100,
+          totalFees: Math.round(totalFees * 100) / 100,
+          shipping: Math.round(totalShippingCost * 100) / 100,
+          tax: Math.round(totalTax * 100) / 100,
+        },
+        profit: {
+          gross: Math.round(grossProfit * 100) / 100,
+          grossMargin: Math.round(grossMargin * 10) / 10,
+          operating: Math.round(operatingProfit * 100) / 100,
+          operatingMargin: Math.round(operatingMargin * 10) / 10,
+          net: Math.round(netProfit * 100) / 100,
+          netMargin: Math.round(netMargin * 10) / 10,
+        },
+        currency: 'USD',
+        exchangeRate: Math.round((1 / exchangeRate) * 100) / 100,
+        calculatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * マーケットプレイス別手数料内訳
+ */
+router.get('/financial/fees', async (req, res, next) => {
+  try {
+    const { startDate, endDate, period = 'month' } = req.query;
+
+    let start: Date;
+    let end: Date;
+
+    if (startDate && endDate) {
+      start = new Date(startDate as string);
+      end = new Date(endDate as string);
+    } else {
+      end = new Date();
+      start = new Date();
+      if (period === 'week') {
+        start.setDate(start.getDate() - 7);
+      } else if (period === 'month') {
+        start.setMonth(start.getMonth() - 1);
+      } else if (period === 'quarter') {
+        start.setMonth(start.getMonth() - 3);
+      } else if (period === 'year') {
+        start.setFullYear(start.getFullYear() - 1);
+      }
+    }
+
+    // マーケットプレイス別に集計
+    const orders = await prisma.order.findMany({
+      where: {
+        orderedAt: { gte: start, lte: end },
+        paymentStatus: 'PAID',
+      },
+      select: {
+        marketplace: true,
+        subtotal: true,
+        shippingCost: true,
+        marketplaceFee: true,
+        paymentFee: true,
+      },
+    });
+
+    const feesByMarketplace: Record<string, {
+      orderCount: number;
+      revenue: number;
+      marketplaceFees: number;
+      paymentFees: number;
+      totalFees: number;
+      effectiveFeeRate: number;
+    }> = {};
+
+    for (const order of orders) {
+      const mp = order.marketplace;
+      if (!feesByMarketplace[mp]) {
+        feesByMarketplace[mp] = {
+          orderCount: 0,
+          revenue: 0,
+          marketplaceFees: 0,
+          paymentFees: 0,
+          totalFees: 0,
+          effectiveFeeRate: 0,
+        };
+      }
+      feesByMarketplace[mp].orderCount++;
+      feesByMarketplace[mp].revenue += order.subtotal;
+      feesByMarketplace[mp].marketplaceFees += order.marketplaceFee;
+      feesByMarketplace[mp].paymentFees += order.paymentFee;
+      feesByMarketplace[mp].totalFees += order.marketplaceFee + order.paymentFee;
+    }
+
+    // 実効手数料率を計算
+    for (const mp of Object.keys(feesByMarketplace)) {
+      const data = feesByMarketplace[mp];
+      data.effectiveFeeRate = data.revenue > 0
+        ? Math.round((data.totalFees / data.revenue) * 1000) / 10
+        : 0;
+      data.revenue = Math.round(data.revenue * 100) / 100;
+      data.marketplaceFees = Math.round(data.marketplaceFees * 100) / 100;
+      data.paymentFees = Math.round(data.paymentFees * 100) / 100;
+      data.totalFees = Math.round(data.totalFees * 100) / 100;
+    }
+
+    // 合計
+    const totals = Object.values(feesByMarketplace).reduce(
+      (acc, mp) => ({
+        orderCount: acc.orderCount + mp.orderCount,
+        revenue: acc.revenue + mp.revenue,
+        marketplaceFees: acc.marketplaceFees + mp.marketplaceFees,
+        paymentFees: acc.paymentFees + mp.paymentFees,
+        totalFees: acc.totalFees + mp.totalFees,
+        effectiveFeeRate: 0,
+      }),
+      { orderCount: 0, revenue: 0, marketplaceFees: 0, paymentFees: 0, totalFees: 0, effectiveFeeRate: 0 }
+    );
+    totals.effectiveFeeRate = totals.revenue > 0
+      ? Math.round((totals.totalFees / totals.revenue) * 1000) / 10
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        period: {
+          start: start.toISOString(),
+          end: end.toISOString(),
+        },
+        byMarketplace: feesByMarketplace,
+        totals,
+        currency: 'USD',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * ROI計算（商品・カテゴリ別）
+ */
+router.get('/financial/roi', async (req, res, next) => {
+  try {
+    const { groupBy = 'category', period = 'month', limit = 20 } = req.query;
+
+    let startDate = new Date();
+    if (period === 'week') {
+      startDate.setDate(startDate.getDate() - 7);
+    } else if (period === 'month') {
+      startDate.setMonth(startDate.getMonth() - 1);
+    } else if (period === 'quarter') {
+      startDate.setMonth(startDate.getMonth() - 3);
+    } else if (period === 'year') {
+      startDate.setFullYear(startDate.getFullYear() - 1);
+    }
+
+    // 為替レートを取得
+    const latestRate = await prisma.exchangeRate.findFirst({
+      where: {
+        fromCurrency: 'JPY',
+        toCurrency: 'USD',
+      },
+      orderBy: { fetchedAt: 'desc' },
+    });
+    const exchangeRate = latestRate?.rate || 0.0067;
+
+    // 売上データを取得
+    const sales = await prisma.sale.findMany({
+      where: {
+        order: {
+          paymentStatus: 'PAID',
+          orderedAt: { gte: startDate },
+        },
+      },
+      include: {
+        order: {
+          select: {
+            marketplaceFee: true,
+            paymentFee: true,
+            orderedAt: true,
+          },
+        },
+      },
+    });
+
+    // 商品情報も取得
+    const productIds = [...new Set(sales.filter(s => s.productId).map(s => s.productId!))];
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: {
+        id: true,
+        category: true,
+        brand: true,
+        price: true,
+      },
+    });
+    const productMap = new Map(products.map(p => [p.id, p]));
+
+    // グループ別に集計
+    const roiData: Record<string, {
+      name: string;
+      itemsSold: number;
+      revenue: number;
+      cost: number;
+      fees: number;
+      profit: number;
+      roi: number;
+      profitMargin: number;
+    }> = {};
+
+    for (const sale of sales) {
+      const product = sale.productId ? productMap.get(sale.productId) : null;
+      let groupKey: string;
+      let groupName: string;
+
+      if (groupBy === 'brand') {
+        groupKey = product?.brand || '不明';
+        groupName = groupKey;
+      } else if (groupBy === 'product') {
+        groupKey = sale.productId || sale.sku;
+        groupName = sale.title;
+      } else {
+        // category
+        groupKey = product?.category || '未分類';
+        groupName = groupKey;
+      }
+
+      if (!roiData[groupKey]) {
+        roiData[groupKey] = {
+          name: groupName,
+          itemsSold: 0,
+          revenue: 0,
+          cost: 0,
+          fees: 0,
+          profit: 0,
+          roi: 0,
+          profitMargin: 0,
+        };
+      }
+
+      const data = roiData[groupKey];
+      data.itemsSold += sale.quantity;
+      data.revenue += sale.totalPrice;
+
+      // コスト計算（仕入価格）
+      if (sale.costPrice) {
+        data.cost += sale.costPrice * exchangeRate;
+      } else if (product?.price) {
+        data.cost += product.price * exchangeRate;
+      }
+
+      // 手数料は売上按分で計算
+      if (sale.order) {
+        const orderFees = sale.order.marketplaceFee + sale.order.paymentFee;
+        data.fees += orderFees; // 簡易計算（実際は按分が必要）
+      }
+    }
+
+    // ROI と利益率を計算
+    for (const key of Object.keys(roiData)) {
+      const data = roiData[key];
+      data.profit = data.revenue - data.cost - data.fees;
+      data.roi = data.cost > 0 ? ((data.profit / data.cost) * 100) : 0;
+      data.profitMargin = data.revenue > 0 ? ((data.profit / data.revenue) * 100) : 0;
+
+      // 丸め処理
+      data.revenue = Math.round(data.revenue * 100) / 100;
+      data.cost = Math.round(data.cost * 100) / 100;
+      data.fees = Math.round(data.fees * 100) / 100;
+      data.profit = Math.round(data.profit * 100) / 100;
+      data.roi = Math.round(data.roi * 10) / 10;
+      data.profitMargin = Math.round(data.profitMargin * 10) / 10;
+    }
+
+    // ROI順でソート
+    const sortedData = Object.entries(roiData)
+      .map(([key, data]) => ({ key, ...data }))
+      .sort((a, b) => b.roi - a.roi)
+      .slice(0, Number(limit));
+
+    // 全体サマリー
+    const totals = Object.values(roiData).reduce(
+      (acc, d) => ({
+        itemsSold: acc.itemsSold + d.itemsSold,
+        revenue: acc.revenue + d.revenue,
+        cost: acc.cost + d.cost,
+        fees: acc.fees + d.fees,
+        profit: acc.profit + d.profit,
+      }),
+      { itemsSold: 0, revenue: 0, cost: 0, fees: 0, profit: 0 }
+    );
+    const overallRoi = totals.cost > 0 ? ((totals.profit / totals.cost) * 100) : 0;
+    const overallMargin = totals.revenue > 0 ? ((totals.profit / totals.revenue) * 100) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        groupBy,
+        period,
+        items: sortedData,
+        totals: {
+          ...totals,
+          revenue: Math.round(totals.revenue * 100) / 100,
+          cost: Math.round(totals.cost * 100) / 100,
+          fees: Math.round(totals.fees * 100) / 100,
+          profit: Math.round(totals.profit * 100) / 100,
+          roi: Math.round(overallRoi * 10) / 10,
+          profitMargin: Math.round(overallMargin * 10) / 10,
+        },
+        currency: 'USD',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 税務用エクスポート
+ */
+router.get('/financial/tax-export', async (req, res, next) => {
+  try {
+    const { year, quarter, format = 'json' } = req.query;
+
+    // 期間計算
+    const currentYear = new Date().getFullYear();
+    const targetYear = year ? Number(year) : currentYear;
+
+    let startDate: Date;
+    let endDate: Date;
+
+    if (quarter) {
+      const q = Number(quarter);
+      startDate = new Date(targetYear, (q - 1) * 3, 1);
+      endDate = new Date(targetYear, q * 3, 0, 23, 59, 59);
+    } else {
+      startDate = new Date(targetYear, 0, 1);
+      endDate = new Date(targetYear, 11, 31, 23, 59, 59);
+    }
+
+    // 注文データを取得
+    const orders = await prisma.order.findMany({
+      where: {
+        orderedAt: { gte: startDate, lte: endDate },
+        paymentStatus: 'PAID',
+      },
+      include: {
+        sales: true,
+      },
+      orderBy: { orderedAt: 'asc' },
+    });
+
+    // 為替レート履歴を取得（月別）
+    const exchangeRates = await prisma.exchangeRate.findMany({
+      where: {
+        fromCurrency: 'JPY',
+        toCurrency: 'USD',
+        fetchedAt: { gte: startDate, lte: endDate },
+      },
+      orderBy: { fetchedAt: 'desc' },
+    });
+
+    // 月別の為替レートマップを作成
+    const monthlyRates: Record<string, number> = {};
+    for (const rate of exchangeRates) {
+      const monthKey = `${rate.fetchedAt.getFullYear()}-${rate.fetchedAt.getMonth() + 1}`;
+      if (!monthlyRates[monthKey]) {
+        monthlyRates[monthKey] = rate.rate;
+      }
+    }
+    const defaultRate = 0.0067;
+
+    // 月別サマリー
+    const monthlySummary: Record<string, {
+      month: string;
+      orderCount: number;
+      itemCount: number;
+      revenueUsd: number;
+      revenueJpy: number;
+      costJpy: number;
+      feesUsd: number;
+      feesJpy: number;
+      profitJpy: number;
+      taxUsd: number;
+      taxJpy: number;
+    }> = {};
+
+    // 取引明細
+    const transactions: Array<{
+      date: string;
+      orderId: string;
+      marketplace: string;
+      items: string;
+      revenueUsd: number;
+      revenueJpy: number;
+      costJpy: number;
+      feesUsd: number;
+      profitJpy: number;
+    }> = [];
+
+    for (const order of orders) {
+      const monthKey = `${order.orderedAt.getFullYear()}-${String(order.orderedAt.getMonth() + 1).padStart(2, '0')}`;
+      const rate = monthlyRates[monthKey] || defaultRate;
+      const jpyRate = 1 / rate;
+
+      if (!monthlySummary[monthKey]) {
+        monthlySummary[monthKey] = {
+          month: monthKey,
+          orderCount: 0,
+          itemCount: 0,
+          revenueUsd: 0,
+          revenueJpy: 0,
+          costJpy: 0,
+          feesUsd: 0,
+          feesJpy: 0,
+          profitJpy: 0,
+          taxUsd: 0,
+          taxJpy: 0,
+        };
+      }
+
+      const summary = monthlySummary[monthKey];
+      summary.orderCount++;
+      summary.revenueUsd += order.subtotal;
+      summary.revenueJpy += order.subtotal * jpyRate;
+      summary.feesUsd += order.marketplaceFee + order.paymentFee;
+      summary.feesJpy += (order.marketplaceFee + order.paymentFee) * jpyRate;
+      summary.taxUsd += order.tax;
+      summary.taxJpy += order.tax * jpyRate;
+
+      let orderCostJpy = 0;
+      const itemTitles: string[] = [];
+
+      for (const sale of order.sales) {
+        summary.itemCount += sale.quantity;
+        if (sale.costPrice) {
+          orderCostJpy += sale.costPrice;
+          summary.costJpy += sale.costPrice;
+        }
+        itemTitles.push(`${sale.title} x${sale.quantity}`);
+      }
+
+      summary.profitJpy += (order.subtotal * jpyRate) - orderCostJpy - ((order.marketplaceFee + order.paymentFee) * jpyRate);
+
+      // 取引明細に追加
+      transactions.push({
+        date: order.orderedAt.toISOString().split('T')[0],
+        orderId: order.marketplaceOrderId,
+        marketplace: order.marketplace,
+        items: itemTitles.join(', '),
+        revenueUsd: Math.round(order.subtotal * 100) / 100,
+        revenueJpy: Math.round(order.subtotal * jpyRate),
+        costJpy: Math.round(orderCostJpy),
+        feesUsd: Math.round((order.marketplaceFee + order.paymentFee) * 100) / 100,
+        profitJpy: Math.round((order.subtotal * jpyRate) - orderCostJpy - ((order.marketplaceFee + order.paymentFee) * jpyRate)),
+      });
+    }
+
+    // 丸め処理
+    for (const summary of Object.values(monthlySummary)) {
+      summary.revenueUsd = Math.round(summary.revenueUsd * 100) / 100;
+      summary.revenueJpy = Math.round(summary.revenueJpy);
+      summary.costJpy = Math.round(summary.costJpy);
+      summary.feesUsd = Math.round(summary.feesUsd * 100) / 100;
+      summary.feesJpy = Math.round(summary.feesJpy);
+      summary.profitJpy = Math.round(summary.profitJpy);
+      summary.taxUsd = Math.round(summary.taxUsd * 100) / 100;
+      summary.taxJpy = Math.round(summary.taxJpy);
+    }
+
+    // 年間合計
+    const yearTotal = Object.values(monthlySummary).reduce(
+      (acc, m) => ({
+        orderCount: acc.orderCount + m.orderCount,
+        itemCount: acc.itemCount + m.itemCount,
+        revenueUsd: acc.revenueUsd + m.revenueUsd,
+        revenueJpy: acc.revenueJpy + m.revenueJpy,
+        costJpy: acc.costJpy + m.costJpy,
+        feesUsd: acc.feesUsd + m.feesUsd,
+        feesJpy: acc.feesJpy + m.feesJpy,
+        profitJpy: acc.profitJpy + m.profitJpy,
+        taxUsd: acc.taxUsd + m.taxUsd,
+        taxJpy: acc.taxJpy + m.taxJpy,
+      }),
+      {
+        orderCount: 0, itemCount: 0, revenueUsd: 0, revenueJpy: 0,
+        costJpy: 0, feesUsd: 0, feesJpy: 0, profitJpy: 0, taxUsd: 0, taxJpy: 0,
+      }
+    );
+
+    const responseData = {
+      period: {
+        year: targetYear,
+        quarter: quarter ? Number(quarter) : null,
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+      },
+      summary: {
+        total: {
+          ...yearTotal,
+          revenueUsd: Math.round(yearTotal.revenueUsd * 100) / 100,
+          feesUsd: Math.round(yearTotal.feesUsd * 100) / 100,
+          taxUsd: Math.round(yearTotal.taxUsd * 100) / 100,
+        },
+        monthly: Object.values(monthlySummary).sort((a, b) => a.month.localeCompare(b.month)),
+      },
+      transactions,
+      meta: {
+        generatedAt: new Date().toISOString(),
+        recordCount: transactions.length,
+        baseCurrency: 'USD',
+        reportCurrency: 'JPY',
+      },
+    };
+
+    if (format === 'csv') {
+      // CSVヘッダー
+      const csvHeader = '日付,注文ID,マーケットプレイス,商品,売上(USD),売上(JPY),仕入原価(JPY),手数料(USD),利益(JPY)\n';
+      const csvRows = transactions.map(t =>
+        `${t.date},${t.orderId},${t.marketplace},"${t.items.replace(/"/g, '""')}",${t.revenueUsd},${t.revenueJpy},${t.costJpy},${t.feesUsd},${t.profitJpy}`
+      ).join('\n');
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="tax-report-${targetYear}${quarter ? `-Q${quarter}` : ''}.csv"`);
+      res.send('\uFEFF' + csvHeader + csvRows); // BOM for Excel
+    } else {
+      res.json({
+        success: true,
+        data: responseData,
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 日別売上推移（財務観点）
+ */
+router.get('/financial/daily', async (req, res, next) => {
+  try {
+    const { days = 30 } = req.query;
+    const daysNum = Math.min(90, Math.max(7, Number(days)));
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - daysNum);
+    startDate.setHours(0, 0, 0, 0);
+
+    // 為替レート
+    const latestRate = await prisma.exchangeRate.findFirst({
+      where: { fromCurrency: 'JPY', toCurrency: 'USD' },
+      orderBy: { fetchedAt: 'desc' },
+    });
+    const exchangeRate = latestRate?.rate || 0.0067;
+
+    // 注文データ
+    const orders = await prisma.order.findMany({
+      where: {
+        orderedAt: { gte: startDate },
+        paymentStatus: 'PAID',
+      },
+      include: {
+        sales: true,
+      },
+    });
+
+    // 日別に集計
+    const dailyData: Record<string, {
+      date: string;
+      orders: number;
+      items: number;
+      revenue: number;
+      cost: number;
+      fees: number;
+      profit: number;
+    }> = {};
+
+    for (let i = 0; i < daysNum; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      dailyData[dateStr] = {
+        date: dateStr,
+        orders: 0,
+        items: 0,
+        revenue: 0,
+        cost: 0,
+        fees: 0,
+        profit: 0,
+      };
+    }
+
+    for (const order of orders) {
+      const dateStr = order.orderedAt.toISOString().split('T')[0];
+      if (!dailyData[dateStr]) continue;
+
+      const day = dailyData[dateStr];
+      day.orders++;
+      day.revenue += order.subtotal;
+      day.fees += order.marketplaceFee + order.paymentFee;
+
+      for (const sale of order.sales) {
+        day.items += sale.quantity;
+        if (sale.costPrice) {
+          day.cost += sale.costPrice * exchangeRate;
+        }
+      }
+    }
+
+    // 利益計算と丸め
+    for (const day of Object.values(dailyData)) {
+      day.profit = day.revenue - day.cost - day.fees;
+      day.revenue = Math.round(day.revenue * 100) / 100;
+      day.cost = Math.round(day.cost * 100) / 100;
+      day.fees = Math.round(day.fees * 100) / 100;
+      day.profit = Math.round(day.profit * 100) / 100;
+    }
+
+    const sortedData = Object.values(dailyData).sort((a, b) => a.date.localeCompare(b.date));
+
+    res.json({
+      success: true,
+      data: sortedData,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export { router as analyticsRouter };

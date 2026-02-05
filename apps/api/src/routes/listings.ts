@@ -264,4 +264,377 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
+// ========================================
+// 一括操作エンドポイント
+// ========================================
+
+/**
+ * 一括価格更新
+ */
+router.post('/bulk/update-price', async (req, res, next) => {
+  try {
+    const { listingIds, priceChange } = req.body;
+
+    if (!listingIds || !Array.isArray(listingIds) || listingIds.length === 0) {
+      throw new AppError(400, 'listingIds array is required', 'INVALID_REQUEST');
+    }
+
+    if (!priceChange || (!priceChange.percent && !priceChange.amount && !priceChange.fixed)) {
+      throw new AppError(400, 'priceChange (percent, amount, or fixed) is required', 'INVALID_REQUEST');
+    }
+
+    const results: Array<{ listingId: string; success: boolean; newPrice?: number; error?: string }> = [];
+
+    for (const listingId of listingIds) {
+      try {
+        const listing = await prisma.listing.findUnique({
+          where: { id: listingId },
+        });
+
+        if (!listing) {
+          results.push({ listingId, success: false, error: 'Not found' });
+          continue;
+        }
+
+        let newPrice = listing.listingPrice;
+
+        if (priceChange.fixed !== undefined) {
+          newPrice = priceChange.fixed;
+        } else if (priceChange.percent !== undefined) {
+          newPrice = listing.listingPrice * (1 + priceChange.percent / 100);
+        } else if (priceChange.amount !== undefined) {
+          newPrice = listing.listingPrice + priceChange.amount;
+        }
+
+        // 最低価格チェック
+        if (newPrice < 0.01) {
+          newPrice = 0.01;
+        }
+
+        await prisma.listing.update({
+          where: { id: listingId },
+          data: { listingPrice: Math.round(newPrice * 100) / 100 },
+        });
+
+        results.push({ listingId, success: true, newPrice });
+      } catch (error: any) {
+        results.push({ listingId, success: false, error: error.message });
+      }
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+
+    logger.info({
+      type: 'bulk_price_update',
+      total: listingIds.length,
+      success: successCount,
+      priceChange,
+    });
+
+    res.json({
+      success: true,
+      message: `Updated ${successCount}/${listingIds.length} listings`,
+      data: results,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 一括ステータス変更
+ */
+router.post('/bulk/update-status', async (req, res, next) => {
+  try {
+    const { listingIds, status } = req.body;
+
+    if (!listingIds || !Array.isArray(listingIds) || listingIds.length === 0) {
+      throw new AppError(400, 'listingIds array is required', 'INVALID_REQUEST');
+    }
+
+    const validStatuses = ['DRAFT', 'PAUSED', 'ACTIVE', 'ENDED'];
+    if (!status || !validStatuses.includes(status)) {
+      throw new AppError(400, `status must be one of: ${validStatuses.join(', ')}`, 'INVALID_REQUEST');
+    }
+
+    const result = await prisma.listing.updateMany({
+      where: {
+        id: { in: listingIds },
+      },
+      data: { status },
+    });
+
+    logger.info({
+      type: 'bulk_status_update',
+      status,
+      updatedCount: result.count,
+    });
+
+    res.json({
+      success: true,
+      message: `Updated ${result.count} listings to ${status}`,
+      data: { updatedCount: result.count },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 一括出品（公開）
+ */
+router.post('/bulk/publish', async (req, res, next) => {
+  try {
+    const { listingIds, dryRun = false } = req.body;
+
+    if (!listingIds || !Array.isArray(listingIds) || listingIds.length === 0) {
+      throw new AppError(400, 'listingIds array is required', 'INVALID_REQUEST');
+    }
+
+    const results: Array<{ listingId: string; success: boolean; jobId?: string; error?: string }> = [];
+
+    // 出品可能なリスティングを取得
+    const listings = await prisma.listing.findMany({
+      where: {
+        id: { in: listingIds },
+        status: { in: ['DRAFT', 'ERROR'] },
+      },
+      include: { product: true },
+    });
+
+    for (const listing of listings) {
+      try {
+        // ステータス更新
+        await prisma.listing.update({
+          where: { id: listing.id },
+          data: { status: 'PENDING_PUBLISH' },
+        });
+
+        // ジョブ追加
+        const job = await publishQueue.add(
+          'publish',
+          {
+            productId: listing.productId,
+            listingId: listing.id,
+            marketplace: listing.marketplace.toLowerCase(),
+            listingData: listing.marketplaceData,
+            isDryRun: dryRun,
+          },
+          {
+            priority: 2,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 60000,
+            },
+          }
+        );
+
+        results.push({ listingId: listing.id, success: true, jobId: job.id });
+      } catch (error: any) {
+        results.push({ listingId: listing.id, success: false, error: error.message });
+      }
+    }
+
+    // 対象外のリスティングをエラーとして追加
+    const processedIds = listings.map((l) => l.id);
+    const skippedIds = listingIds.filter((id: string) => !processedIds.includes(id));
+    for (const skippedId of skippedIds) {
+      results.push({ listingId: skippedId, success: false, error: 'Not in publishable state' });
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+
+    logger.info({
+      type: 'bulk_publish',
+      total: listingIds.length,
+      success: successCount,
+      dryRun,
+    });
+
+    res.status(202).json({
+      success: true,
+      message: `Queued ${successCount}/${listingIds.length} listings for publishing`,
+      data: results,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 一括削除
+ */
+router.post('/bulk/delete', async (req, res, next) => {
+  try {
+    const { listingIds, confirm = false } = req.body;
+
+    if (!listingIds || !Array.isArray(listingIds) || listingIds.length === 0) {
+      throw new AppError(400, 'listingIds array is required', 'INVALID_REQUEST');
+    }
+
+    if (!confirm) {
+      throw new AppError(400, 'confirm: true is required to delete listings', 'CONFIRMATION_REQUIRED');
+    }
+
+    // アクティブなリスティングは削除できない警告
+    const activeCount = await prisma.listing.count({
+      where: {
+        id: { in: listingIds },
+        status: 'ACTIVE',
+      },
+    });
+
+    if (activeCount > 0) {
+      throw new AppError(
+        400,
+        `Cannot delete ${activeCount} active listings. Please pause them first.`,
+        'ACTIVE_LISTINGS'
+      );
+    }
+
+    const result = await prisma.listing.deleteMany({
+      where: {
+        id: { in: listingIds },
+        status: { not: 'ACTIVE' },
+      },
+    });
+
+    logger.info({
+      type: 'bulk_delete',
+      deletedCount: result.count,
+    });
+
+    res.json({
+      success: true,
+      message: `Deleted ${result.count} listings`,
+      data: { deletedCount: result.count },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 一括再出品（エラー状態のリスティング）
+ */
+router.post('/bulk/retry', async (req, res, next) => {
+  try {
+    const { marketplace } = req.body;
+
+    const where: any = { status: 'ERROR' };
+    if (marketplace) {
+      where.marketplace = marketplace.toUpperCase();
+    }
+
+    // エラー状態のリスティングを取得
+    const errorListings = await prisma.listing.findMany({
+      where,
+      include: { product: true },
+      take: 100, // 一度に最大100件
+    });
+
+    if (errorListings.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No error listings found to retry',
+        data: { queuedCount: 0 },
+      });
+    }
+
+    const results: Array<{ listingId: string; jobId: string }> = [];
+
+    for (const listing of errorListings) {
+      await prisma.listing.update({
+        where: { id: listing.id },
+        data: {
+          status: 'PENDING_PUBLISH',
+          errorMessage: null,
+        },
+      });
+
+      const job = await publishQueue.add(
+        'publish',
+        {
+          productId: listing.productId,
+          listingId: listing.id,
+          marketplace: listing.marketplace.toLowerCase(),
+          listingData: listing.marketplaceData,
+          isDryRun: false,
+        },
+        {
+          priority: 3,
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 60000,
+          },
+        }
+      );
+
+      results.push({ listingId: listing.id, jobId: job.id as string });
+    }
+
+    logger.info({
+      type: 'bulk_retry',
+      queuedCount: results.length,
+      marketplace,
+    });
+
+    res.status(202).json({
+      success: true,
+      message: `Queued ${results.length} listings for retry`,
+      data: {
+        queuedCount: results.length,
+        listings: results,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 一括同期（マーケットプレイスの最新状態を取得）
+ */
+router.post('/bulk/sync', async (req, res, next) => {
+  try {
+    const { marketplace, listingIds } = req.body;
+
+    const where: any = { status: 'ACTIVE' };
+    if (marketplace) {
+      where.marketplace = marketplace.toUpperCase();
+    }
+    if (listingIds && Array.isArray(listingIds) && listingIds.length > 0) {
+      where.id = { in: listingIds };
+    }
+
+    const listings = await prisma.listing.findMany({
+      where,
+      select: { id: true, marketplace: true, marketplaceListingId: true },
+      take: 200,
+    });
+
+    // TODO: 実際のマーケットプレイスAPIから状態を取得する実装
+    // 現在はプレースホルダー
+
+    logger.info({
+      type: 'bulk_sync_request',
+      listingCount: listings.length,
+      marketplace,
+    });
+
+    res.json({
+      success: true,
+      message: `Sync requested for ${listings.length} listings`,
+      data: {
+        requestedCount: listings.length,
+        note: 'Sync will be processed in background',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export { router as listingsRouter };

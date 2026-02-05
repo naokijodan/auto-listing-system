@@ -489,6 +489,67 @@ enum NotificationSeverity {
 }
 
 // ========================================
+// 通知チャンネル設定
+// ========================================
+model NotificationChannel {
+  id String @id @default(cuid())
+
+  channel NotificationChannelType
+  name    String // チャンネル名（例: "メイン Slack", "緊急用 LINE"）
+
+  // 認証情報
+  webhookUrl String? // Slack, Discord
+  token      String? // LINE Notify
+
+  // 通知設定
+  enabledTypes NotificationChannelEventType[] // 有効な通知タイプ
+  minSeverity  NotificationSeverity @default(INFO) // 最低重要度
+
+  // 状態
+  isActive     Boolean   @default(true)
+  lastUsedAt   DateTime?
+  lastError    String?
+  errorCount   Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([channel, isActive])
+  @@map("notification_channels")
+}
+
+enum NotificationChannelType {
+  SLACK
+  DISCORD
+  LINE
+  EMAIL
+}
+
+enum NotificationChannelEventType {
+  // ジョブ関連
+  JOB_COMPLETE
+  JOB_FAILED
+  // 注文関連
+  ORDER_RECEIVED
+  ORDER_PAID
+  ORDER_SHIPPED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  // 在庫関連
+  OUT_OF_STOCK
+  PRICE_CHANGE
+  INVENTORY_LOW
+  // 出品関連
+  LISTING_PUBLISHED
+  LISTING_ERROR
+  LISTING_SOLD
+  // システム
+  DAILY_REPORT
+  SYSTEM_ERROR
+  EXCHANGE_RATE
+}
+
+// ========================================
 // 注文管理
 // ========================================
 model Order {
