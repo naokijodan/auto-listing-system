@@ -471,6 +471,14 @@ enum NotificationType {
   OUT_OF_STOCK
   PRICE_CHANGE
   SYSTEM
+  // 注文関連
+  ORDER_RECEIVED
+  ORDER_PAID
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  ORDER_DISPUTE
 }
 
 enum NotificationSeverity {
@@ -478,4 +486,165 @@ enum NotificationSeverity {
   WARNING
   ERROR
   SUCCESS
+}
+
+// ========================================
+// 注文管理
+// ========================================
+model Order {
+  id String @id @default(cuid())
+
+  // マーケットプレイス情報
+  marketplace        Marketplace
+  marketplaceOrderId String // eBay/Joomの注文ID
+
+  // 購入者情報
+  buyerUsername String
+  buyerEmail    String?
+  buyerName     String?
+
+  // 配送先住所
+  shippingAddress Json // { street, city, state, postalCode, country }
+
+  // 金額情報
+  subtotal     Float // 商品小計
+  shippingCost Float // 送料
+  tax          Float @default(0) // 税金
+  total        Float // 合計金額
+  currency     String @default("USD")
+
+  // マーケット手数料
+  marketplaceFee Float @default(0)
+  paymentFee     Float @default(0)
+
+  // ステータス
+  status        OrderStatus     @default(PENDING)
+  paymentStatus PaymentStatus   @default(PENDING)
+  fulfillmentStatus FulfillmentStatus @default(UNFULFILLED)
+
+  // 追跡情報
+  trackingNumber  String?
+  trackingCarrier String?
+  shippedAt       DateTime?
+
+  // 生データ（デバッグ・参照用）
+  rawData Json @default("{}")
+
+  // タイムスタンプ
+  orderedAt DateTime // マーケットプレイスでの注文日時
+  paidAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 関連
+  sales Sale[]
+
+  @@unique([marketplace, marketplaceOrderId])
+  @@index([status])
+  @@index([marketplace, orderedAt])
+  @@index([buyerUsername])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+  DISPUTE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  RETURNED
+}
+
+// ========================================
+// 売上明細
+// ========================================
+model Sale {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  listingId String?
+  productId String?
+
+  // 商品情報
+  sku          String
+  title        String
+  quantity     Int    @default(1)
+  unitPrice    Float
+  totalPrice   Float
+
+  // 利益計算
+  costPrice    Float? // 仕入価格（円）
+  profitJpy    Float? // 利益（円）
+  profitRate   Float? // 利益率（%）
+
+  // マーケットプレイス商品ID
+  marketplaceItemId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([listingId])
+  @@index([productId])
+  @@index([sku])
+  @@map("sales")
+}
+
+// ========================================
+// Webhookイベント（履歴・デバッグ用）
+// ========================================
+model WebhookEvent {
+  id String @id @default(cuid())
+
+  // ソース情報
+  provider  String // EBAY, JOOM
+  eventType String // ORDER_CREATED, PAYMENT_COMPLETE, etc.
+
+  // ペイロード
+  payload       Json
+  headers       Json @default("{}")
+  signature     String?
+
+  // 処理状態
+  status        WebhookEventStatus @default(PENDING)
+  processedAt   DateTime?
+  errorMessage  String?            @db.Text
+  retryCount    Int                @default(0)
+
+  // 関連
+  orderId   String?
+  listingId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([provider, eventType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("webhook_events")
+}
+
+enum WebhookEventStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  IGNORED
 }

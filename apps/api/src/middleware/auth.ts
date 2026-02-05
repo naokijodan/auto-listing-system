@@ -34,6 +34,7 @@ const config: AuthConfig = {
     '/api/health',
     '/api/health/live',
     '/api/health/ready',
+    '/api/webhooks', // Webhookは独自の署名検証を使用
   ],
 };
 

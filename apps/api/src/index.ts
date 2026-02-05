@@ -30,6 +30,8 @@ import { monitoringRouter } from './routes/monitoring';
 import { concurrencyRouter } from './routes/concurrency';
 import { authRouter } from './routes/auth';
 import { marketplacesRouter } from './routes/marketplaces';
+import { webhooksRouter } from './routes/webhooks';
+import { ordersRouter } from './routes/orders';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -85,6 +87,8 @@ app.use('/api/monitoring', monitoringRouter);
 app.use('/api/concurrency', concurrencyRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/marketplaces', marketplacesRouter);
+app.use('/api/webhooks', webhooksRouter);
+app.use('/api/orders', ordersRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
