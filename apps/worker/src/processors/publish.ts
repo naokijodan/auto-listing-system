@@ -6,6 +6,7 @@ import { joomApi, isJoomConfigured } from '../lib/joom-api';
 import { ebayApi, isEbayConfigured, mapConditionToEbay } from '../lib/ebay-api';
 import { calculatePrice } from '../lib/price-calculator';
 import { alertManager } from '../lib/alert-manager';
+import { eventBus } from '../lib/event-bus';
 
 /**
  * 出品ジョブプロセッサー
@@ -106,6 +107,17 @@ export async function processPublishJob(
       listingUrl,
     });
 
+    // Phase 27: リアルタイムイベント発火（出品成功）
+    if (listingId) {
+      await eventBus.publishListingUpdate(listingId, 'created', {
+        productId,
+        marketplace,
+        marketplaceListingId,
+        listingUrl,
+        title: product.title,
+      });
+    }
+
     return {
       success: true,
       message: 'Published successfully',
@@ -159,6 +171,17 @@ export async function processPublishJob(
       },
       timestamp: new Date().toISOString(),
     });
+
+    // Phase 27: リアルタイムイベント発火（出品失敗）
+    if (listingId) {
+      await eventBus.publishListingUpdate(listingId, 'updated', {
+        productId,
+        marketplace,
+        status: 'error',
+        error: error.message,
+        title: product.title,
+      });
+    }
 
     throw error;
   }

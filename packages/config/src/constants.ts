@@ -166,3 +166,19 @@ export const IMAGE_CONFIG = {
   format: 'jpeg',
   removeBackground: true,
 } as const;
+
+// リアルタイムイベントチャネル（Phase 27）
+export const EVENT_CHANNELS = {
+  INVENTORY: 'rakuda:realtime:inventory',
+  ORDERS: 'rakuda:realtime:orders',
+  PRICING: 'rakuda:realtime:pricing',
+  LISTINGS: 'rakuda:realtime:listings',
+  ALL: 'rakuda:realtime:*',
+} as const;
+
+// SSE設定（Phase 27）
+export const SSE_CONFIG = {
+  heartbeatInterval: parseInt(process.env.SSE_HEARTBEAT_INTERVAL || '30000', 10),
+  debounceWindow: parseInt(process.env.SSE_DEBOUNCE_WINDOW || '500', 10),
+  enabled: process.env.REALTIME_ENABLED !== 'false',
+} as const;

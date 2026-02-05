@@ -7,6 +7,7 @@ import { scrapeMercari } from './scrapers/mercari';
 import { scrapeYahooAuction } from './scrapers/yahoo-auction';
 import { notifyOutOfStock, notifyPriceChanged } from './notifications';
 import { alertManager } from './alert-manager';
+import { eventBus } from './event-bus';
 import crypto from 'crypto';
 
 const log = logger.child({ module: 'inventory-checker' });
@@ -250,6 +251,13 @@ export async function checkSingleProductInventory(
         },
         timestamp: new Date().toISOString(),
       });
+
+      // Phase 27: リアルタイムイベント発火
+      await eventBus.publishInventoryChange(productId, 'updated', {
+        status: 'out_of_stock',
+        title: product.title,
+        affectedListings: activeListings.length,
+      });
     }
 
     // 価格変動通知（閾値を超えた場合のみ）
@@ -291,6 +299,14 @@ export async function checkSingleProductInventory(
           timestamp: new Date().toISOString(),
         });
       }
+
+      // Phase 27: リアルタイムイベント発火
+      await eventBus.publishPriceChange(productId, {
+        oldPrice: product.price,
+        newPrice: currentPrice,
+        changePercent: priceChangePercent,
+        title: product.title,
+      });
     }
 
     log.info({

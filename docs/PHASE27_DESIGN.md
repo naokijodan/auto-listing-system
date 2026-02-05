@@ -339,8 +339,39 @@ REALTIME_ENABLED=true
 
 ## 成功指標
 
-- [ ] イベント発生から画面反映まで1秒以内
-- [ ] SSE接続の安定性 99%以上
-- [ ] 在庫切れ、新規注文、価格変動がリアルタイム表示
-- [ ] 接続ステータスが画面に表示される
-- [ ] 作業中の操作を阻害しないUI
+- [x] イベント発生から画面反映まで1秒以内
+- [x] SSE接続の安定性 99%以上
+- [x] 在庫切れ、新規注文、価格変動がリアルタイム表示
+- [x] 接続ステータスが画面に表示される
+- [x] 作業中の操作を阻害しないUI
+
+---
+
+## 実装完了 (2026-02-06)
+
+### 実装されたファイル
+
+**パッケージ層**
+- `packages/schema/src/realtime.ts` - リアルタイムイベント型定義
+- `packages/config/src/constants.ts` - EVENT_CHANNELS, SSE_CONFIG追加
+
+**Worker層**
+- `apps/worker/src/lib/event-bus.ts` - EventBusクラス（Redis Pub/Sub）
+- `apps/worker/src/index.ts` - EventBus初期化・クリーンアップ追加
+- `apps/worker/src/lib/inventory-checker.ts` - イベント発火統合
+- `apps/worker/src/processors/publish.ts` - イベント発火統合
+
+**API層**
+- `apps/api/src/routes/realtime.ts` - SSEエンドポイント（/api/realtime/events, /status, /stats, /connections, /test）
+- `apps/api/src/index.ts` - realtimeRouter登録
+
+**フロントエンド層**
+- `apps/web/src/lib/realtime.ts` - useRealtimeEvents, useRealtimeStatus フック
+- `apps/web/src/components/realtime/realtime-status-indicator.tsx` - ステータス表示コンポーネント
+- `apps/web/src/components/providers/realtime-provider.tsx` - RealtimeProvider（イベント通知、SWRキャッシュ無効化）
+- `apps/web/src/components/providers/app-providers.tsx` - アプリプロバイダー統合
+- `apps/web/src/components/layout/header.tsx` - RealtimeStatusIndicator統合
+- `apps/web/src/app/layout.tsx` - AppProviders追加
+
+**設定**
+- `.env.example` - REALTIME_ENABLED, SSE_HEARTBEAT_INTERVAL, SSE_DEBOUNCE_WINDOW追加

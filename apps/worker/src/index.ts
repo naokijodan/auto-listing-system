@@ -6,6 +6,7 @@ import { createConnection, closeConnection } from './lib/redis';
 import { startWorkers, stopWorkers } from './lib/worker-manager';
 import { setupGracefulShutdown } from './lib/graceful-shutdown';
 import { initializeScheduler } from './lib/scheduler';
+import { eventBus } from './lib/event-bus';
 
 async function main() {
   logger.info('🚀 Starting worker process...');
@@ -19,6 +20,10 @@ async function main() {
     const connection = createConnection();
     await connection.ping();
     logger.info('✅ Redis connected');
+
+    // EventBus初期化（Phase 27: リアルタイムイベント）
+    await eventBus.initialize();
+    logger.info('✅ EventBus initialized');
 
     // ワーカー起動
     await startWorkers(connection);
@@ -46,6 +51,7 @@ async function main() {
     setupGracefulShutdown(async () => {
       logger.info('Stopping workers...');
       await stopWorkers();
+      await eventBus.close();
       await closeConnection();
       await prisma.$disconnect();
       logger.info('✅ Cleanup completed');

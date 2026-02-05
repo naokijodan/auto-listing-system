@@ -9,3 +9,6 @@ export * from './job';
 
 // Alert schemas (Phase 26)
 export * from './alert';
+
+// Realtime schemas (Phase 27)
+export * from './realtime';

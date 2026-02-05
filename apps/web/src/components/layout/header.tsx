@@ -6,6 +6,7 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import { Button } from '../ui/button';
 import { fetcher } from '@/lib/api';
+import { RealtimeStatusIndicator } from '../realtime/realtime-status-indicator';
 
 interface UnreadCountResponse {
   success: boolean;
@@ -74,6 +75,9 @@ export function Header() {
 
       {/* Actions */}
       <div className="flex items-center gap-2">
+        {/* Realtime Status (Phase 27) */}
+        <RealtimeStatusIndicator className="mr-2" />
+
         <Button variant="ghost" size="sm" onClick={toggleTheme}>
           {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </Button>

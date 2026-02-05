@@ -4,6 +4,7 @@ import './globals.css';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { ToastProvider } from '@/components/providers/toast-provider';
+import { AppProviders } from '@/components/providers/app-providers';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -33,12 +34,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-zinc-50 font-sans antialiased dark:bg-zinc-950`}
       >
-        <Sidebar />
-        <div className="pl-64">
-          <Header />
-          <main className="p-6">{children}</main>
-        </div>
-        <ToastProvider />
+        <AppProviders>
+          <Sidebar />
+          <div className="pl-64">
+            <Header />
+            <main className="p-6">{children}</main>
+          </div>
+          <ToastProvider />
+        </AppProviders>
       </body>
     </html>
   );
