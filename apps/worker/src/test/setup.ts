@@ -10,6 +10,7 @@ export const mockPrisma = {
   },
   priceSetting: {
     findFirst: vi.fn(),
+    updateMany: vi.fn(),
   },
   shippingPolicy: {
     findFirst: vi.fn(),
