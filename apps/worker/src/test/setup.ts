@@ -30,11 +30,18 @@ export const mockPrisma = {
   listing: {
     findFirst: vi.fn(),
     findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
   },
   notification: {
     create: vi.fn(),
+  },
+  jobLog: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+    count: vi.fn(),
   },
 };
 
@@ -89,9 +96,17 @@ export function setupDefaultMocks() {
 
   // Listing
   mockPrisma.listing.updateMany.mockResolvedValue({ count: 0 });
+  mockPrisma.listing.update.mockResolvedValue({ id: '1' });
+  mockPrisma.listing.findUnique.mockResolvedValue(null);
+  mockPrisma.listing.create.mockResolvedValue({ id: '1' });
 
   // Notification
   mockPrisma.notification.create.mockResolvedValue({ id: '1' });
+
+  // JobLog
+  mockPrisma.jobLog.create.mockResolvedValue({ id: '1' });
+  mockPrisma.jobLog.findMany.mockResolvedValue([]);
+  mockPrisma.jobLog.count.mockResolvedValue(0);
 }
 
 // モックをリセット

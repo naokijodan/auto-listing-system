@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { productsRouter } from '../../routes/products';
 import { healthRouter } from '../../routes/health';
+import { listingsRouter } from '../../routes/listings';
+import { jobsRouter } from '../../routes/jobs';
 import { errorHandler } from '../../middleware/error-handler';
 
 /**
@@ -18,6 +20,8 @@ export function createTestApp() {
   // ルート
   app.use('/api/health', healthRouter);
   app.use('/api/products', productsRouter);
+  app.use('/api/listings', listingsRouter);
+  app.use('/api/jobs', jobsRouter);
 
   // エラーハンドラー
   app.use(errorHandler);
