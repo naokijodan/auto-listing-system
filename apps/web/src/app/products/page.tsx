@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { useProducts } from '@/lib/hooks';
+import { useProducts, useExchangeRate } from '@/lib/hooks';
 import { Product, productApi } from '@/lib/api';
 import { addToast } from '@/components/ui/toast';
 import {
@@ -80,6 +80,10 @@ export default function ProductsPage() {
 
   const products = data?.data ?? [];
   const totalCount = data?.pagination?.total ?? 0;
+
+  // Fetch exchange rate from API
+  const { data: rateData } = useExchangeRate();
+  const exchangeRate = rateData?.currentRate?.usdToJpy ?? 150; // Fallback to 150
 
   // Virtual scroll setup
   const virtualizer = useVirtualizer({
@@ -571,7 +575,6 @@ export default function ProductsPage() {
                       {viewMode === 'price' && (() => {
                         const costJpy = product.price;
                         const priceUsd = listingPrice || 0;
-                        const exchangeRate = 150; // Assumed exchange rate
                         const costUsd = costJpy / exchangeRate;
                         const profit = priceUsd - costUsd;
                         const profitRate = priceUsd > 0 ? (profit / priceUsd) * 100 : 0;

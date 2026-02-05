@@ -53,4 +53,16 @@ test.describe('Navigation', () => {
 
     await expect(page.locator('body')).toBeVisible();
   });
+
+  test('should navigate to orders page', async ({ page }) => {
+    await page.goto('/orders');
+
+    await expect(page.locator('body')).toBeVisible();
+  });
+
+  test('should navigate to reports page', async ({ page }) => {
+    await page.goto('/reports');
+
+    await expect(page.locator('body')).toBeVisible();
+  });
 });

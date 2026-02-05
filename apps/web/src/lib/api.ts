@@ -225,6 +225,9 @@ export const api = {
   getEventTypes: () => `/api/notification-channels/config/event-types`,
   getChannelStats: () => `/api/notification-channels/stats/summary`,
 
+  // Exchange Rate
+  getExchangeRate: () => `/api/admin/exchange-rates`,
+
   // Orders
   getOrders: (params?: { status?: string; marketplace?: string; limit?: number; offset?: number }) => {
     const query = new URLSearchParams();

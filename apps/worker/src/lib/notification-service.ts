@@ -587,6 +587,47 @@ export async function notifyExchangeRateUpdate(
 }
 
 /**
+ * 競合価格変動通知
+ */
+export async function notifyCompetitorPriceChange(
+  productTitle: string,
+  competitorSeller: string,
+  oldPrice: number,
+  newPrice: number,
+  myPrice: number,
+  currency: string = 'USD'
+): Promise<void> {
+  const changePercent = ((newPrice - oldPrice) / oldPrice) * 100;
+  const direction = newPrice > oldPrice ? '上昇' : '下落';
+  const severity = Math.abs(changePercent) > 10 ? 'WARNING' : 'INFO';
+
+  // 自分の価格との比較
+  const priceDiff = myPrice - newPrice;
+  const priceComparison =
+    priceDiff > 0
+      ? `⚠️ 自分の方が$${priceDiff.toFixed(2)}高い`
+      : priceDiff < 0
+        ? `✅ 自分の方が$${Math.abs(priceDiff).toFixed(2)}安い`
+        : '同価格';
+
+  await sendNotification({
+    eventType: 'COMPETITOR_PRICE_CHANGE',
+    title: `📊 競合価格${direction}`,
+    message: `「${productTitle}」の競合価格が${Math.abs(changePercent).toFixed(1)}%${direction}しました。`,
+    severity,
+    data: {
+      商品名: productTitle.substring(0, 50),
+      競合出品者: competitorSeller,
+      旧価格: `${currency === 'USD' ? '$' : ''}${oldPrice.toFixed(2)}`,
+      新価格: `${currency === 'USD' ? '$' : ''}${newPrice.toFixed(2)}`,
+      変動率: `${changePercent > 0 ? '+' : ''}${changePercent.toFixed(1)}%`,
+      自分の価格: `${currency === 'USD' ? '$' : ''}${myPrice.toFixed(2)}`,
+      価格比較: priceComparison,
+    },
+  });
+}
+
+/**
  * システムエラー通知
  */
 export async function notifySystemError(

@@ -3,6 +3,7 @@ import IORedis from 'ioredis';
 import { logger } from '@rakuda/logger';
 import { prisma } from '@rakuda/database';
 import { createRateLimiter, RateLimiter } from '../lib/rate-limiter';
+import { notifyCompetitorPriceChange } from '../lib/notification-service';
 
 const log = logger.child({ module: 'competitor-scraper' });
 
@@ -95,7 +96,7 @@ async function updateCompetitorPrice(
   competitorId: string,
   rateLimiter: RateLimiter,
   redis: IORedis
-): Promise<{ price: number; updated: boolean }> {
+): Promise<{ price: number; updated: boolean; priceChanged: boolean }> {
   // Redisから競合情報を取得
   const competitorStr = await redis.hget('rakuda:competitors', competitorId);
   if (!competitorStr) {
@@ -104,6 +105,7 @@ async function updateCompetitorPrice(
 
   const competitor = JSON.parse(competitorStr);
   const url = competitor.competitorUrl;
+  const oldPrice = competitor.competitorPrice;
 
   log.info(`Updating competitor price: ${competitorId}`);
 
@@ -113,22 +115,49 @@ async function updateCompetitorPrice(
   // 注: 実際の実装では fetch + HTML パース を使用
   // ここではモック価格を返す
   const newPrice = competitor.competitorPrice * (0.95 + Math.random() * 0.1); // ±5%変動
+  const roundedNewPrice = Math.round(newPrice * 100) / 100;
+
+  // 価格変動をチェック（5%以上の変動で通知）
+  const changePercent = ((roundedNewPrice - oldPrice) / oldPrice) * 100;
+  const priceChanged = Math.abs(changePercent) >= 5;
 
   // 価格履歴を更新
   competitor.priceHistory = competitor.priceHistory || [];
   competitor.priceHistory.push({
-    price: Math.round(newPrice * 100) / 100,
+    price: roundedNewPrice,
     date: new Date().toISOString(),
   });
-  competitor.competitorPrice = Math.round(newPrice * 100) / 100;
+  competitor.competitorPrice = roundedNewPrice;
   competitor.lastChecked = new Date().toISOString();
 
   // Redisに保存
   await redis.hset('rakuda:competitors', competitorId, JSON.stringify(competitor));
 
+  // 価格変動が大きい場合は通知を送信
+  if (priceChanged) {
+    try {
+      await notifyCompetitorPriceChange(
+        competitor.productTitle || '商品',
+        competitor.seller || '不明',
+        oldPrice,
+        roundedNewPrice,
+        competitor.myPrice || 0,
+        competitor.currency || 'USD'
+      );
+      log.info(`Sent price change notification for competitor: ${competitorId}`, {
+        oldPrice,
+        newPrice: roundedNewPrice,
+        changePercent: changePercent.toFixed(2),
+      });
+    } catch (notifyError) {
+      log.error('Failed to send competitor price change notification', notifyError);
+    }
+  }
+
   return {
-    price: competitor.competitorPrice,
+    price: roundedNewPrice,
     updated: true,
+    priceChanged,
   };
 }
 
@@ -176,9 +205,6 @@ export function createCompetitorScraperWorker(redis: IORedis): Worker {
           }
 
           const result = await updateCompetitorPrice(competitorId, rateLimiter, redis);
-
-          // 価格変動が大きい場合は通知を作成
-          // TODO: 通知ロジックを追加
 
           return { type: 'update', ...result };
         }

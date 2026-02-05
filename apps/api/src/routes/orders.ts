@@ -325,8 +325,12 @@ router.patch('/sales/:saleId', async (req, res, next) => {
       throw new AppError(404, 'Sale not found', 'NOT_FOUND');
     }
 
-    // 利益を計算（為替レートは別途取得する必要がある）
-    const exchangeRate = 150; // TODO: 為替レート取得
+    // 利益を計算（データベースから最新の為替レートを取得）
+    const latestRate = await prisma.exchangeRate.findFirst({
+      where: { fromCurrency: 'JPY', toCurrency: 'USD' },
+      orderBy: { fetchedAt: 'desc' },
+    });
+    const exchangeRate = latestRate ? (1 / latestRate.rate) : 150; // フォールバック: 150円/USD
     const costPriceUsd = costPrice ? costPrice / exchangeRate : null;
     const profitUsd = costPriceUsd ? sale.totalPrice - costPriceUsd : null;
     const profitJpy = profitUsd ? profitUsd * exchangeRate : null;

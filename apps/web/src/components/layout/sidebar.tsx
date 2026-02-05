@@ -18,6 +18,7 @@ const navigation = [
   { name: 'ダッシュボード', href: '/', icon: LayoutDashboard },
   { name: '商品管理', href: '/products', icon: Package },
   { name: '出品管理', href: '/listings', icon: ShoppingCart },
+  { name: '注文管理', href: '/orders', icon: Truck },
   { name: 'ジョブ監視', href: '/jobs', icon: Activity },
   { name: 'レポート', href: '/reports', icon: BarChart3 },
   { name: '通知', href: '/notifications', icon: Bell },

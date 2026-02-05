@@ -299,6 +299,7 @@ router.get('/config/event-types', async (req, res) => {
     { value: 'OUT_OF_STOCK', label: '在庫切れ', category: 'inventory' },
     { value: 'PRICE_CHANGE', label: '価格変動', category: 'inventory' },
     { value: 'INVENTORY_LOW', label: '在庫低下', category: 'inventory' },
+    { value: 'COMPETITOR_PRICE_CHANGE', label: '競合価格変動', category: 'inventory' },
     { value: 'LISTING_PUBLISHED', label: '出品完了', category: 'listing' },
     { value: 'LISTING_ERROR', label: '出品エラー', category: 'listing' },
     { value: 'LISTING_SOLD', label: '商品売却', category: 'listing' },

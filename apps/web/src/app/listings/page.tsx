@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { useListings } from '@/lib/hooks';
+import { useListings, useExchangeRate } from '@/lib/hooks';
 import { Listing } from '@/lib/api';
 import {
   Search,
@@ -70,6 +70,10 @@ export default function ListingsPage() {
 
   const listings = data?.data ?? [];
   const totalCount = data?.pagination?.total ?? 0;
+
+  // Fetch exchange rate from API
+  const { data: rateData } = useExchangeRate();
+  const exchangeRate = rateData?.currentRate?.usdToJpy ?? 150; // Fallback to 150
 
   // Set initial focus when listings load
   useEffect(() => {
@@ -472,7 +476,6 @@ export default function ListingsPage() {
                       {viewMode === 'price' && (() => {
                         const costJpy = listing.product?.price || 0;
                         const priceUsd = listing.listingPrice;
-                        const exchangeRate = 150; // Assumed exchange rate
                         const costUsd = costJpy / exchangeRate;
                         const profit = priceUsd - costUsd - (listing.shippingCost || 0);
                         const profitRate = priceUsd > 0 ? (profit / priceUsd) * 100 : 0;

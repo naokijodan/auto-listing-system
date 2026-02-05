@@ -212,6 +212,30 @@ export function useFinancialDaily(days = 30) {
   );
 }
 
+// Exchange Rate
+export interface ExchangeRateData {
+  currentRate: {
+    jpyToUsd: number;
+    usdToJpy: number;
+    fetchedAt: string | null;
+    source: string;
+  };
+  history: Array<{
+    id: string;
+    fromCurrency: string;
+    toCurrency: string;
+    rate: number;
+    source: string;
+    fetchedAt: string;
+  }>;
+}
+
+export function useExchangeRate() {
+  return useSWR<ExchangeRateData>(api.getExchangeRate(), fetcher, {
+    refreshInterval: 300000, // 5分ごと
+  });
+}
+
 // Order Stats
 export interface OrderStats {
   totalOrders: number;
@@ -255,6 +279,69 @@ export function useNotificationChannels() {
 export function useNotificationChannel(id: string | null) {
   return useSWR<ApiResponse<NotificationChannel>>(
     id ? api.getNotificationChannel(id) : null,
+    fetcher
+  );
+}
+
+// Orders
+export interface Order {
+  id: string;
+  marketplace: 'EBAY' | 'JOOM';
+  marketplaceOrderId: string;
+  buyerUsername: string;
+  buyerEmail?: string;
+  buyerName?: string;
+  shippingAddress: {
+    street?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
+  subtotal: number;
+  shippingCost: number;
+  tax: number;
+  total: number;
+  currency: string;
+  marketplaceFee: number;
+  paymentFee: number;
+  status: string;
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  trackingNumber?: string;
+  trackingCarrier?: string;
+  shippedAt?: string;
+  orderedAt: string;
+  paidAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  sales: Array<{
+    id: string;
+    sku: string;
+    title: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    costPrice?: number;
+    profitJpy?: number;
+    profitRate?: number;
+  }>;
+}
+
+export function useOrders(params?: {
+  status?: string;
+  marketplace?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  return useSWR<ApiResponse<Order[]>>(api.getOrders(params), fetcher, {
+    refreshInterval: 30000,
+  });
+}
+
+export function useOrder(id: string | null) {
+  return useSWR<ApiResponse<Order>>(
+    id ? `/api/orders/${id}` : null,
     fetcher
   );
 }
