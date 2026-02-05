@@ -34,9 +34,11 @@ export const mockPrisma = {
   },
   notification: {
     findMany: vi.fn(),
+    findUnique: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
+    delete: vi.fn(),
     count: vi.fn(),
   },
 };
