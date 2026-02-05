@@ -28,8 +28,11 @@ router.get('/kpi', async (req, res, next) => {
       outOfStockCount,
       staleListings30,
       staleListings60,
-      recentSales,
+      salesToday,
+      salesThisWeek,
+      salesThisMonth,
       productsByStatus,
+      latestExchangeRate,
     ] = await Promise.all([
       // 総商品数
       prisma.product.count(),
@@ -74,7 +77,33 @@ router.get('/kpi', async (req, res, next) => {
           listedAt: { lte: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) },
         },
       }),
-      // 最近の売上（利益計算用）
+      // 今日の売上（利益計算用）
+      prisma.listing.findMany({
+        where: {
+          status: 'SOLD',
+          soldAt: { gte: todayStart },
+        },
+        select: {
+          listingPrice: true,
+          product: {
+            select: { price: true },
+          },
+        },
+      }),
+      // 今週の売上
+      prisma.listing.findMany({
+        where: {
+          status: 'SOLD',
+          soldAt: { gte: weekStart },
+        },
+        select: {
+          listingPrice: true,
+          product: {
+            select: { price: true },
+          },
+        },
+      }),
+      // 今月の売上
       prisma.listing.findMany({
         where: {
           status: 'SOLD',
@@ -92,16 +121,32 @@ router.get('/kpi', async (req, res, next) => {
         by: ['status'],
         _count: true,
       }),
+      // 最新の為替レート
+      prisma.exchangeRate.findFirst({
+        where: { fromCurrency: 'JPY', toCurrency: 'USD' },
+        orderBy: { fetchedAt: 'desc' },
+      }),
     ]);
 
-    // 売上・利益計算
-    let totalRevenue = 0;
-    let totalCost = 0;
-    for (const sale of recentSales) {
-      totalRevenue += sale.listingPrice;
-      totalCost += sale.product?.price || 0;
-    }
-    const grossProfit = totalRevenue - totalCost / 150; // 仮のレート変換
+    // 為替レート（DBから取得、なければフォールバック）
+    const exchangeRate = latestExchangeRate ? (1 / latestExchangeRate.rate) : 150;
+
+    // 売上・利益計算関数
+    const calculateRevenue = (sales: typeof salesToday) => {
+      let revenue = 0;
+      let cost = 0;
+      for (const sale of sales) {
+        revenue += sale.listingPrice;
+        cost += sale.product?.price || 0;
+      }
+      const profit = revenue - (cost / exchangeRate);
+      return { revenue, profit };
+    };
+
+    // 各期間の売上・利益を計算
+    const todayStats = calculateRevenue(salesToday);
+    const weekStats = calculateRevenue(salesThisWeek);
+    const monthStats = calculateRevenue(salesThisMonth);
 
     // 滞留率計算
     const staleRate = activeListings > 0 ? (staleListings30 / activeListings) * 100 : 0;
@@ -110,7 +155,7 @@ router.get('/kpi', async (req, res, next) => {
     // 滞留率が低い、在庫切れが少ない、利益率が高いほど高スコア
     const staleScore = Math.max(0, 100 - staleRate * 2);
     const stockScore = totalProducts > 0 ? Math.max(0, 100 - (outOfStockCount / totalProducts) * 200) : 100;
-    const profitScore = totalRevenue > 0 ? Math.min(100, (grossProfit / totalRevenue) * 300) : 50;
+    const profitScore = monthStats.revenue > 0 ? Math.min(100, (monthStats.profit / monthStats.revenue) * 300) : 50;
     const healthScore = Math.round((staleScore + stockScore + profitScore) / 3);
 
     res.json({
@@ -128,14 +173,14 @@ router.get('/kpi', async (req, res, next) => {
 
         // 売上・利益
         revenue: {
-          today: 0, // TODO: 実装
-          thisWeek: 0,
-          thisMonth: Math.round(totalRevenue * 100) / 100,
+          today: Math.round(todayStats.revenue * 100) / 100,
+          thisWeek: Math.round(weekStats.revenue * 100) / 100,
+          thisMonth: Math.round(monthStats.revenue * 100) / 100,
         },
         grossProfit: {
-          today: 0,
-          thisWeek: 0,
-          thisMonth: Math.round(grossProfit * 100) / 100,
+          today: Math.round(todayStats.profit * 100) / 100,
+          thisWeek: Math.round(weekStats.profit * 100) / 100,
+          thisMonth: Math.round(monthStats.profit * 100) / 100,
         },
 
         // 在庫KPI

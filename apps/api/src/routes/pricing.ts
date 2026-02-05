@@ -1,9 +1,24 @@
 import { Router } from 'express';
+import IORedis from 'ioredis';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 
 const router = Router();
 const log = logger.child({ module: 'pricing' });
+
+// Redis client
+const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379');
+const PRICE_RULES_KEY = 'rakuda:price-rules';
+
+// Default price rules
+const DEFAULT_PRICE_RULES = {
+  stale30DaysDiscount: 5,
+  stale60DaysDiscount: 15,
+  stale90DaysDiscount: 25,
+  lowViewsDiscount: 10,
+  lowViewsThreshold: 10,
+  minProfitMargin: 10,
+};
 
 interface PriceRecommendation {
   id: string;
@@ -363,17 +378,12 @@ router.post('/recommendations/bulk-approve', async (req, res, next) => {
  */
 router.get('/rules', async (req, res, next) => {
   try {
-    // TODO: DBから設定を取得
+    const rulesStr = await redis.get(PRICE_RULES_KEY);
+    const rules = rulesStr ? JSON.parse(rulesStr) : DEFAULT_PRICE_RULES;
+
     res.json({
       success: true,
-      data: {
-        stale30DaysDiscount: 5,
-        stale60DaysDiscount: 15,
-        stale90DaysDiscount: 25,
-        lowViewsDiscount: 10,
-        lowViewsThreshold: 10,
-        minProfitMargin: 10,
-      },
+      data: rules,
     });
   } catch (error) {
     next(error);
@@ -386,12 +396,24 @@ router.get('/rules', async (req, res, next) => {
 router.put('/rules', async (req, res, next) => {
   try {
     const rules = req.body;
-    // TODO: DBに設定を保存
-    log.info('Price rules updated', rules);
+
+    // Validate rules
+    const validatedRules = {
+      stale30DaysDiscount: Number(rules.stale30DaysDiscount) || DEFAULT_PRICE_RULES.stale30DaysDiscount,
+      stale60DaysDiscount: Number(rules.stale60DaysDiscount) || DEFAULT_PRICE_RULES.stale60DaysDiscount,
+      stale90DaysDiscount: Number(rules.stale90DaysDiscount) || DEFAULT_PRICE_RULES.stale90DaysDiscount,
+      lowViewsDiscount: Number(rules.lowViewsDiscount) || DEFAULT_PRICE_RULES.lowViewsDiscount,
+      lowViewsThreshold: Number(rules.lowViewsThreshold) || DEFAULT_PRICE_RULES.lowViewsThreshold,
+      minProfitMargin: Number(rules.minProfitMargin) || DEFAULT_PRICE_RULES.minProfitMargin,
+    };
+
+    // Save to Redis
+    await redis.set(PRICE_RULES_KEY, JSON.stringify(validatedRules));
+    log.info('Price rules updated', validatedRules);
 
     res.json({
       success: true,
-      data: rules,
+      data: validatedRules,
     });
   } catch (error) {
     next(error);
