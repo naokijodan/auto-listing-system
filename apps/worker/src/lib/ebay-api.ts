@@ -1,7 +1,11 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { RateLimiter, withRetry, safeFetch, createApiError, ApiError, RateLimitError } from './api-utils';
 
 const log = logger.child({ module: 'ebay-api' });
+
+// レート制限: eBay Inventory APIは100リクエスト/秒
+const ebayRateLimiter = new RateLimiter(50, 1000);
 
 // eBay API エンドポイント
 const EBAY_API_SANDBOX = 'https://api.sandbox.ebay.com';
@@ -185,7 +189,7 @@ export class EbayApiClient {
   }
 
   /**
-   * Inventory API リクエスト
+   * Inventory API リクエスト（レート制限・リトライ付き）
    */
   private async inventoryApiRequest<T>(
     method: string,
@@ -208,49 +212,79 @@ export class EbayApiClient {
     });
 
     try {
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
+      // レート制限とリトライ付きでリクエスト
+      return await withRetry(async () => {
+        await ebayRateLimiter.acquire();
 
-      if (response.status === 204) {
-        return { success: true };
-      }
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        log.error({
-          type: 'ebay_api_error',
-          status: response.status,
-          error: data,
+        const response = await safeFetch(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+          timeout: 30000,
         });
 
-        return {
-          success: false,
-          error: {
-            code: data.errors?.[0]?.errorId || 'UNKNOWN',
-            message: data.errors?.[0]?.message || 'Unknown error',
-            details: data.errors,
-          },
-        };
-      }
+        if (response.status === 204) {
+          return { success: true } as EbayApiResponse<T>;
+        }
 
-      return {
-        success: true,
-        data,
-      };
+        const data = await response.json();
+
+        if (!response.ok) {
+          // レート制限エラーの場合はリトライ可能としてスロー
+          if (response.status === 429) {
+            const retryAfter = response.headers.get('Retry-After');
+            throw new RateLimitError(
+              data.errors?.[0]?.message || 'Rate limit exceeded',
+              retryAfter ? parseInt(retryAfter) : undefined
+            );
+          }
+
+          // 5xxエラーもリトライ可能
+          if (response.status >= 500) {
+            throw new ApiError(
+              data.errors?.[0]?.message || 'Server error',
+              response.status,
+              data.errors?.[0]?.errorId
+            );
+          }
+
+          // その他のエラーはリトライ不要
+          log.error({
+            type: 'ebay_api_error',
+            status: response.status,
+            error: data,
+          });
+
+          return {
+            success: false,
+            error: {
+              code: data.errors?.[0]?.errorId || 'UNKNOWN',
+              message: data.errors?.[0]?.message || 'Unknown error',
+              details: data.errors,
+            },
+          } as EbayApiResponse<T>;
+        }
+
+        return {
+          success: true,
+          data,
+        } as EbayApiResponse<T>;
+      }, {
+        maxRetries: 3,
+        initialDelay: 1000,
+        retryableStatuses: [429, 500, 502, 503, 504],
+      });
     } catch (error: any) {
       log.error({
         type: 'ebay_api_exception',
         error: error.message,
+        code: error.code,
       });
 
       return {
         success: false,
         error: {
-          code: 'NETWORK_ERROR',
+          code: error.code || 'NETWORK_ERROR',
           message: error.message,
         },
       };

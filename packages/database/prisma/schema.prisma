@@ -396,20 +396,39 @@ model MarketplaceCredential {
   id String @id @default(cuid())
 
   marketplace Marketplace
-  name        String // アカウント名
+  name        String      @default("default") // アカウント名
 
   // 認証情報（暗号化推奨）
   credentials Json // { clientId, clientSecret, accessToken, refreshToken, ... }
 
   // トークン有効期限
-  tokenExpiresAt DateTime?
+  tokenExpiresAt        DateTime?
+  refreshTokenExpiresAt DateTime?
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([marketplace, name])
+  @@index([marketplace, isActive])
   @@map("marketplace_credentials")
+}
+
+// ========================================
+// OAuth状態管理（CSRF対策）
+// ========================================
+model OAuthState {
+  id String @id @default(cuid())
+
+  state     String   @unique
+  provider  String // EBAY, JOOM, etc.
+  expiresAt DateTime
+  metadata  Json     @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([provider, expiresAt])
+  @@map("oauth_states")
 }
 
 // ========================================

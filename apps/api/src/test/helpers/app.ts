@@ -7,6 +7,8 @@ import { jobsRouter } from '../../routes/jobs';
 import { notificationsRouter } from '../../routes/notifications';
 import { inventoryRouter } from '../../routes/inventory';
 import { pricingRouter } from '../../routes/pricing';
+import { authRouter } from '../../routes/auth';
+import { marketplacesRouter } from '../../routes/marketplaces';
 import { errorHandler } from '../../middleware/error-handler';
 
 /**
@@ -28,6 +30,8 @@ export function createTestApp() {
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/inventory', inventoryRouter);
   app.use('/api/pricing', pricingRouter);
+  app.use('/api/auth', authRouter);
+  app.use('/api/marketplaces', marketplacesRouter);
 
   // エラーハンドラー
   app.use(errorHandler);

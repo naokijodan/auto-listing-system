@@ -1,9 +1,13 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { RateLimiter, withRetry, safeFetch, ApiError, RateLimitError } from './api-utils';
 
 const log = logger.child({ module: 'joom-api' });
 
 const JOOM_API_BASE = 'https://api-merchant.joom.com/api/v3';
+
+// レート制限: Joom APIは10リクエスト/秒と仮定
+const joomRateLimiter = new RateLimiter(10, 1000);
 
 export interface JoomProduct {
   id?: string;
@@ -87,7 +91,7 @@ export class JoomApiClient {
   }
 
   /**
-   * APIリクエスト
+   * APIリクエスト（レート制限・リトライ付き）
    */
   private async request<T>(
     method: string,
@@ -109,44 +113,70 @@ export class JoomApiClient {
     });
 
     try {
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
+      return await withRetry(async () => {
+        await joomRateLimiter.acquire();
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        log.error({
-          type: 'joom_api_error',
-          status: response.status,
-          error: data,
+        const response = await safeFetch(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+          timeout: 30000,
         });
 
-        return {
-          success: false,
-          error: {
-            code: data.code || 'UNKNOWN',
-            message: data.message || 'Unknown error',
-          },
-        };
-      }
+        const data = await response.json();
 
-      return {
-        success: true,
-        data,
-      };
+        if (!response.ok) {
+          // レート制限エラーの場合はリトライ可能としてスロー
+          if (response.status === 429) {
+            throw new RateLimitError(
+              data.message || 'Rate limit exceeded'
+            );
+          }
+
+          // 5xxエラーもリトライ可能
+          if (response.status >= 500) {
+            throw new ApiError(
+              data.message || 'Server error',
+              response.status,
+              data.code
+            );
+          }
+
+          log.error({
+            type: 'joom_api_error',
+            status: response.status,
+            error: data,
+          });
+
+          return {
+            success: false,
+            error: {
+              code: data.code || 'UNKNOWN',
+              message: data.message || 'Unknown error',
+            },
+          } as JoomApiResponse<T>;
+        }
+
+        return {
+          success: true,
+          data,
+        } as JoomApiResponse<T>;
+      }, {
+        maxRetries: 3,
+        initialDelay: 1000,
+        retryableStatuses: [429, 500, 502, 503, 504],
+      });
     } catch (error: any) {
       log.error({
         type: 'joom_api_exception',
         error: error.message,
+        code: error.code,
       });
 
       return {
         success: false,
         error: {
-          code: 'NETWORK_ERROR',
+          code: error.code || 'NETWORK_ERROR',
           message: error.message,
         },
       };

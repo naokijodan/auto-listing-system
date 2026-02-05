@@ -28,6 +28,8 @@ import { competitorsRouter } from './routes/competitors';
 import { rateLimitsRouter } from './routes/rate-limits';
 import { monitoringRouter } from './routes/monitoring';
 import { concurrencyRouter } from './routes/concurrency';
+import { authRouter } from './routes/auth';
+import { marketplacesRouter } from './routes/marketplaces';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -81,6 +83,8 @@ app.use('/api/competitors', competitorsRouter);
 app.use('/api/rate-limits', rateLimitsRouter);
 app.use('/api/monitoring', monitoringRouter);
 app.use('/api/concurrency', concurrencyRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/marketplaces', marketplacesRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

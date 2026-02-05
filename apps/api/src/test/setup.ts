@@ -11,6 +11,7 @@ export const mockPrisma = {
     updateMany: vi.fn(),
     delete: vi.fn(),
     count: vi.fn(),
+    groupBy: vi.fn(),
   },
   listing: {
     findMany: vi.fn(),
@@ -21,6 +22,7 @@ export const mockPrisma = {
     updateMany: vi.fn(),
     delete: vi.fn(),
     count: vi.fn(),
+    groupBy: vi.fn(),
   },
   source: {
     findMany: vi.fn(),
@@ -40,6 +42,26 @@ export const mockPrisma = {
     updateMany: vi.fn(),
     delete: vi.fn(),
     count: vi.fn(),
+  },
+  oAuthState: {
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    delete: vi.fn(),
+  },
+  marketplaceCredential: {
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    upsert: vi.fn(),
+  },
+  ebayCategoryMapping: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    upsert: vi.fn(),
   },
 };
 
