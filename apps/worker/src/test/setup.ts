@@ -31,6 +31,10 @@ export const mockPrisma = {
     findFirst: vi.fn(),
     findMany: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
+  },
+  notification: {
+    create: vi.fn(),
   },
 };
 
@@ -82,6 +86,12 @@ export function setupDefaultMocks() {
       refreshToken: 'test-refresh-token',
     },
   });
+
+  // Listing
+  mockPrisma.listing.updateMany.mockResolvedValue({ count: 0 });
+
+  // Notification
+  mockPrisma.notification.create.mockResolvedValue({ id: '1' });
 }
 
 // モックをリセット
