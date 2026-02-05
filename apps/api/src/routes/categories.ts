@@ -251,7 +251,6 @@ router.get('/ebay/search', async (req, res, next) => {
         OR: [
           { sourceCategory: { contains: query as string, mode: 'insensitive' } },
           { ebayCategoryName: { contains: query as string, mode: 'insensitive' } },
-          { ebayCategoryPath: { contains: query as string, mode: 'insensitive' } },
         ],
       },
       take: 10,
@@ -261,7 +260,7 @@ router.get('/ebay/search', async (req, res, next) => {
     const dbCategories = dbMappings.map(m => ({
       id: m.ebayCategoryId,
       name: m.ebayCategoryName || m.sourceCategory,
-      path: m.ebayCategoryPath || '',
+      path: m.ebayCategoryName,
       source: 'database',
     }));
 

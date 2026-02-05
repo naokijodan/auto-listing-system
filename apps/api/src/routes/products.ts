@@ -10,7 +10,7 @@ import {
   generateSourceHash,
 } from '@rakuda/schema';
 import { AppError } from '../middleware/error-handler';
-import { parseCsv, rowToProduct, productsToCsv } from '../utils/csv';
+import { parseCsv, rowToProduct, productsToCsv, validateAndParseCsv, generateCsvTemplate } from '../utils/csv';
 
 // 為替レートのデフォルト値（USD/JPY）
 const DEFAULT_USD_TO_JPY = 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
@@ -28,7 +28,95 @@ const imageQueue = new Queue(QUEUE_NAMES.IMAGE, { connection: redis });
 const translateQueue = new Queue(QUEUE_NAMES.TRANSLATE, { connection: redis });
 
 /**
- * 商品一覧取得（検索機能付き）
+ * @openapi
+ * /api/products:
+ *   get:
+ *     tags:
+ *       - Products
+ *     summary: 商品一覧取得
+ *     description: フィルタリング、検索、ソート機能付きの商品一覧を取得します
+ *     parameters:
+ *       - name: status
+ *         in: query
+ *         description: 商品ステータスでフィルター
+ *         schema:
+ *           type: string
+ *           enum: [PENDING_SCRAPE, PROCESSING_IMAGE, TRANSLATING, READY_TO_REVIEW, APPROVED, PUBLISHING, ACTIVE, SOLD, OUT_OF_STOCK, ERROR, DELETED]
+ *       - name: search
+ *         in: query
+ *         description: 全文検索（タイトル、説明、ブランド）
+ *         schema:
+ *           type: string
+ *       - name: brand
+ *         in: query
+ *         description: ブランドでフィルター
+ *         schema:
+ *           type: string
+ *       - name: category
+ *         in: query
+ *         description: カテゴリでフィルター
+ *         schema:
+ *           type: string
+ *       - name: sourceType
+ *         in: query
+ *         description: 仕入れ元でフィルター
+ *         schema:
+ *           type: string
+ *           enum: [mercari, yahoo_auction, yahoo_flea, rakuma, rakuten, amazon]
+ *       - name: minPrice
+ *         in: query
+ *         description: 最低価格
+ *         schema:
+ *           type: number
+ *       - name: maxPrice
+ *         in: query
+ *         description: 最高価格
+ *         schema:
+ *           type: number
+ *       - name: sortBy
+ *         in: query
+ *         description: ソートフィールド
+ *         schema:
+ *           type: string
+ *           enum: [createdAt, price, title, updatedAt, scrapedAt]
+ *           default: createdAt
+ *       - name: sortOrder
+ *         in: query
+ *         description: ソート順
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *       - name: limit
+ *         in: query
+ *         description: 取得件数
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *           maximum: 100
+ *       - name: offset
+ *         in: query
+ *         description: オフセット
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: 商品一覧
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Product'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
  */
 router.get('/', async (req, res, next) => {
   try {
@@ -161,7 +249,35 @@ router.get('/export', async (req, res, next) => {
 });
 
 /**
- * 商品詳細取得
+ * @openapi
+ * /api/products/{id}:
+ *   get:
+ *     tags:
+ *       - Products
+ *     summary: 商品詳細取得
+ *     description: 指定したIDの商品詳細を取得します
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: 商品ID
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: 商品詳細
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Product'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
  */
 router.get('/:id', async (req, res, next) => {
   try {
@@ -191,8 +307,88 @@ router.get('/:id', async (req, res, next) => {
 });
 
 /**
- * スクレイピングリクエスト（URLから商品取得）
- * Chrome拡張から呼び出される
+ * @openapi
+ * /api/products/scrape:
+ *   post:
+ *     tags:
+ *       - Products
+ *     summary: スクレイピングリクエスト
+ *     description: |
+ *       URLから商品情報をスクレイピングしてデータベースに登録します。
+ *       Chrome拡張からも呼び出されます。
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *               - source
+ *             properties:
+ *               url:
+ *                 type: string
+ *                 format: uri
+ *                 description: スクレイピング対象のURL
+ *                 example: https://www.mercari.com/jp/items/m12345678/
+ *               source:
+ *                 type: string
+ *                 description: ソースタイプ
+ *                 enum: [mercari, yahoo_auction, yahoo_flea, rakuma, rakuten, amazon]
+ *               marketplace:
+ *                 type: array
+ *                 description: 出品先マーケットプレイス
+ *                 items:
+ *                   type: string
+ *                   enum: [joom, ebay]
+ *                 default: [joom]
+ *               options:
+ *                 type: object
+ *                 properties:
+ *                   processImages:
+ *                     type: boolean
+ *                     default: true
+ *                   translate:
+ *                     type: boolean
+ *                     default: true
+ *                   removeBackground:
+ *                     type: boolean
+ *                     default: true
+ *               priority:
+ *                 type: integer
+ *                 description: ジョブ優先度（0が最高）
+ *                 default: 0
+ *     responses:
+ *       202:
+ *         description: ジョブがキューに追加されました
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Scrape job queued
+ *                 jobId:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     jobId:
+ *                       type: string
+ *                     url:
+ *                       type: string
+ *                     source:
+ *                       type: string
+ *                     marketplace:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  */
 router.post('/scrape', async (req, res, next) => {
   try {
@@ -464,7 +660,160 @@ router.delete('/:id', async (req, res, next) => {
 });
 
 /**
- * 商品インポート（CSV）
+ * @openapi
+ * /api/products/import/template:
+ *   get:
+ *     tags:
+ *       - Products
+ *     summary: CSVテンプレート取得
+ *     description: インポート用のCSVテンプレートをダウンロードします
+ *     responses:
+ *       200:
+ *         description: CSVテンプレート
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ */
+router.get('/import/template', (_req, res) => {
+  const template = generateCsvTemplate();
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="import_template.csv"');
+  res.send(template);
+});
+
+/**
+ * @openapi
+ * /api/products/import/validate:
+ *   post:
+ *     tags:
+ *       - Products
+ *     summary: CSVバリデーション
+ *     description: インポート前にCSVをバリデーションします
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - csv
+ *             properties:
+ *               csv:
+ *                 type: string
+ *                 description: CSVデータ（文字列）
+ *     responses:
+ *       200:
+ *         description: バリデーション結果
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 valid:
+ *                   type: boolean
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       row:
+ *                         type: integer
+ *                       column:
+ *                         type: string
+ *                       message:
+ *                         type: string
+ *                       value:
+ *                         type: string
+ *                 warnings:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     totalRows:
+ *                       type: integer
+ *                     validRows:
+ *                       type: integer
+ *                     invalidRows:
+ *                       type: integer
+ *                     skippedRows:
+ *                       type: integer
+ */
+router.post('/import/validate', async (req, res, next) => {
+  try {
+    const { csv } = req.body;
+
+    if (!csv) {
+      throw new AppError(400, 'CSV data is required', 'INVALID_REQUEST');
+    }
+
+    const validationResult = validateAndParseCsv(csv);
+
+    res.json({
+      success: true,
+      valid: validationResult.valid,
+      errors: validationResult.errors,
+      warnings: validationResult.warnings,
+      stats: validationResult.stats,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @openapi
+ * /api/products/import:
+ *   post:
+ *     tags:
+ *       - Products
+ *     summary: 商品インポート（CSV）
+ *     description: CSVファイルから商品を一括インポートします
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - csv
+ *             properties:
+ *               csv:
+ *                 type: string
+ *                 description: CSVデータ（文字列）
+ *               sourceType:
+ *                 type: string
+ *                 description: ソースタイプ
+ *                 default: OTHER
+ *     responses:
+ *       200:
+ *         description: インポート結果
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     created:
+ *                       type: integer
+ *                     updated:
+ *                       type: integer
+ *                     failed:
+ *                       type: integer
+ *                     errors:
+ *                       type: array
+ *                       items:
+ *                         type: string
  */
 router.post('/import', async (req, res, next) => {
   try {
@@ -474,7 +823,19 @@ router.post('/import', async (req, res, next) => {
       throw new AppError(400, 'CSV data is required', 'INVALID_REQUEST');
     }
 
-    const rows = parseCsv(csv);
+    // まずバリデーション
+    const validationResult = validateAndParseCsv(csv);
+    if (!validationResult.valid) {
+      return res.status(400).json({
+        success: false,
+        message: 'CSV validation failed',
+        errors: validationResult.errors,
+        warnings: validationResult.warnings,
+        stats: validationResult.stats,
+      });
+    }
+
+    const rows = validationResult.data || [];
     const results = {
       created: 0,
       updated: 0,

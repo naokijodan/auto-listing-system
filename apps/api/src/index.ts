@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import swaggerUi from 'swagger-ui-express';
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { ExpressAdapter } from '@bull-board/express';
@@ -10,6 +11,7 @@ import IORedis from 'ioredis';
 
 import { logger } from '@rakuda/logger';
 import { QUEUE_NAMES } from '@rakuda/config';
+import { swaggerSpec } from './config/swagger';
 import { prisma } from '@rakuda/database';
 
 import { productsRouter } from './routes/products';
@@ -61,10 +63,36 @@ createBullBoard({
 });
 
 // ミドルウェア
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+    },
+  },
+}));
 app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
+
+// Swagger API ドキュメント（認証不要）
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'RAKUDA API Documentation',
+  customCss: '.swagger-ui .topbar { display: none }',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    docExpansion: 'list',
+    filter: true,
+  },
+}));
+
+// OpenAPI spec JSON endpoint
+app.get('/api/docs.json', (_req, res) => {
+  res.json(swaggerSpec);
+});
 
 // API認証（ヘルスチェック以外）
 app.use(apiKeyAuth);
@@ -112,6 +140,7 @@ async function start() {
     // APIサーバー起動
     app.listen(PORT, () => {
       logger.info(`API server running on http://localhost:${PORT}`);
+      logger.info(`API docs available at http://localhost:${PORT}/api/docs`);
       logger.info(`Bull Board running on http://localhost:${PORT}/admin/queues`);
     });
   } catch (error) {

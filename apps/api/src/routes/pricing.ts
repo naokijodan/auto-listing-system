@@ -331,11 +331,11 @@ router.post('/recommendations/:listingId/approve', async (req, res, next) => {
     log.info(`Price updated for listing ${listingId}: $${oldPrice} -> $${newPrice}`);
 
     // マーケットプレイスAPIで価格を同期（非同期ジョブ）
-    if (listing.externalId) {
+    if (listing.marketplaceListingId) {
       await priceSyncQueue.add('sync-price', {
         listingId,
         marketplace: listing.marketplace,
-        externalId: listing.externalId,
+        externalId: listing.marketplaceListingId,
         newPrice,
         currency: listing.currency,
       });
@@ -349,7 +349,7 @@ router.post('/recommendations/:listingId/approve', async (req, res, next) => {
         oldPrice,
         newPrice,
         updatedAt: new Date().toISOString(),
-        syncQueued: !!listing.externalId,
+        syncQueued: !!listing.marketplaceListingId,
       },
     });
   } catch (error) {
