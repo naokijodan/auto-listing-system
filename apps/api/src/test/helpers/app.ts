@@ -5,6 +5,7 @@ import { healthRouter } from '../../routes/health';
 import { listingsRouter } from '../../routes/listings';
 import { jobsRouter } from '../../routes/jobs';
 import { notificationsRouter } from '../../routes/notifications';
+import { inventoryRouter } from '../../routes/inventory';
 import { errorHandler } from '../../middleware/error-handler';
 
 /**
@@ -24,6 +25,7 @@ export function createTestApp() {
   app.use('/api/listings', listingsRouter);
   app.use('/api/jobs', jobsRouter);
   app.use('/api/notifications', notificationsRouter);
+  app.use('/api/inventory', inventoryRouter);
 
   // エラーハンドラー
   app.use(errorHandler);
