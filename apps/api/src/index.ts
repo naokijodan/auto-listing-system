@@ -39,6 +39,7 @@ import { alertsRouter } from './routes/alerts';
 import { realtimeRouter } from './routes/realtime';
 import { pricingOptimizerRouter } from './routes/pricing-optimizer';
 import { competitorMonitoringRouter } from './routes/competitor-monitoring';
+import { dashboardAnalyticsRouter } from './routes/dashboard-analytics';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -127,6 +128,7 @@ app.use('/api/alerts', alertsRouter);
 app.use('/api/realtime', realtimeRouter);
 app.use('/api/pricing-optimizer', pricingOptimizerRouter);
 app.use('/api/competitor-monitoring', competitorMonitoringRouter);
+app.use('/api/dashboard', dashboardAnalyticsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
