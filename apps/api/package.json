@@ -20,6 +20,7 @@
     "@bull-board/express": "^5.10.0",
     "@rakuda/config": "*",
     "@rakuda/database": "*",
+    "@rakuda/enrichment": "*",
     "@rakuda/logger": "*",
     "@rakuda/schema": "*",
     "@types/pdfkit": "^0.17.4",

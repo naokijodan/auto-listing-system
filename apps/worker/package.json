@@ -20,6 +20,7 @@
     "@aws-sdk/client-s3": "^3.982.0",
     "@rakuda/config": "*",
     "@rakuda/database": "*",
+    "@rakuda/enrichment": "*",
     "@rakuda/logger": "*",
     "@rakuda/schema": "*",
     "bullmq": "^5.1.0",

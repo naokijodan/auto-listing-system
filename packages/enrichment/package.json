@@ -1,0 +1,20 @@
+{
+  "name": "@rakuda/enrichment",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run src/__tests__"
+  },
+  "dependencies": {
+    "@rakuda/logger": "*",
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^1.6.0"
+  }
+}
