@@ -31,6 +31,166 @@ async function getEbayAccessToken(): Promise<string | null> {
 }
 
 // ========================================
+// eBay 接続テスト（トレーサー・バレット）
+// ========================================
+
+/**
+ * eBay接続テスト
+ * GET /api/marketplaces/ebay/test-connection
+ *
+ * トレーサー・バレット: 最小のAPI呼び出しで認証・接続を確認
+ */
+router.get('/ebay/test-connection', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // 1. 認証情報が設定されているか確認
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: {
+        marketplace: 'EBAY',
+        isActive: true,
+      },
+    });
+
+    if (!credential) {
+      res.json({
+        success: false,
+        status: 'not_configured',
+        message: 'eBay認証情報が設定されていません',
+        steps: [
+          '1. eBay Developer Programに登録',
+          '2. アプリケーションを作成してClient ID/Secretを取得',
+          '3. OAuth認証フローを完了してRefresh Tokenを取得',
+          '4. /api/marketplaces/credentials にPOSTで登録',
+        ],
+      });
+      return;
+    }
+
+    const creds = credential.credentials as {
+      clientId?: string;
+      clientSecret?: string;
+      accessToken?: string;
+      refreshToken?: string;
+    };
+
+    // 2. 必要な認証情報があるか確認
+    if (!creds.clientId || !creds.clientSecret) {
+      res.json({
+        success: false,
+        status: 'incomplete_credentials',
+        message: 'Client ID/Secretが設定されていません',
+      });
+      return;
+    }
+
+    if (!creds.accessToken && !creds.refreshToken) {
+      res.json({
+        success: false,
+        status: 'no_tokens',
+        message: 'アクセストークンが設定されていません。OAuth認証を完了してください。',
+        oauthUrl: `${EBAY_API_BASE.replace('api.', 'auth.')}/oauth2/authorize`,
+      });
+      return;
+    }
+
+    // 3. トークンの有効期限確認
+    const tokenExpired = credential.tokenExpiresAt
+      ? credential.tokenExpiresAt < new Date()
+      : false;
+
+    // 4. 実際のAPIコールでテスト（読み取り専用: プライベートリストを取得）
+    const token = creds.accessToken;
+    if (!token) {
+      res.json({
+        success: false,
+        status: 'token_refresh_needed',
+        message: 'アクセストークンの更新が必要です',
+        tokenExpired,
+      });
+      return;
+    }
+
+    // Sell Account APIで自分のアカウント情報を取得（最小のAPI呼び出し）
+    const testUrl = `${EBAY_API_BASE}/sell/account/v1/privilege`;
+    const testResponse = await fetch(testUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (testResponse.ok) {
+      const privilegeData = await testResponse.json();
+
+      log.info({
+        type: 'ebay_connection_test_success',
+        environment: IS_PRODUCTION ? 'production' : 'sandbox',
+      });
+
+      res.json({
+        success: true,
+        status: 'connected',
+        message: 'eBay APIに正常に接続できました',
+        environment: IS_PRODUCTION ? 'production' : 'sandbox',
+        tokenExpired: false,
+        privileges: privilegeData,
+        credential: {
+          id: credential.id,
+          createdAt: credential.createdAt,
+          tokenExpiresAt: credential.tokenExpiresAt,
+        },
+      });
+    } else {
+      const errorData = await testResponse.json().catch(() => ({})) as { errors?: Array<{ message?: string; errorId?: string }> };
+
+      // 401/403はトークン関連の問題
+      if (testResponse.status === 401 || testResponse.status === 403) {
+        log.warn({
+          type: 'ebay_connection_test_auth_failed',
+          status: testResponse.status,
+          error: errorData,
+        });
+
+        res.json({
+          success: false,
+          status: 'auth_failed',
+          message: 'トークンが無効または期限切れです',
+          httpStatus: testResponse.status,
+          error: errorData.errors?.[0]?.message,
+          tokenExpired: true,
+        });
+      } else {
+        log.error({
+          type: 'ebay_connection_test_api_error',
+          status: testResponse.status,
+          error: errorData,
+        });
+
+        res.json({
+          success: false,
+          status: 'api_error',
+          message: 'eBay APIエラー',
+          httpStatus: testResponse.status,
+          error: errorData.errors?.[0]?.message || 'Unknown error',
+        });
+      }
+    }
+  } catch (error: any) {
+    log.error({
+      type: 'ebay_connection_test_exception',
+      error: error.message,
+    });
+
+    res.json({
+      success: false,
+      status: 'network_error',
+      message: 'ネットワークエラー',
+      error: error.message,
+    });
+  }
+});
+
+// ========================================
 // eBay カテゴリAPI
 // ========================================
 
@@ -509,6 +669,124 @@ router.get('/overview', async (req: Request, res: Response, next: NextFunction) 
           listings: formatStats(joomStats),
         },
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ========================================
+// 認証情報管理API
+// ========================================
+
+/**
+ * マーケットプレイス認証情報を登録/更新
+ * POST /api/marketplaces/credentials
+ */
+router.post('/credentials', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { marketplace, credentials, name } = req.body;
+
+    if (!marketplace || !credentials) {
+      res.status(400).json({
+        success: false,
+        error: 'marketplace and credentials are required',
+      });
+      return;
+    }
+
+    if (!['EBAY', 'JOOM'].includes(marketplace)) {
+      res.status(400).json({
+        success: false,
+        error: 'marketplace must be EBAY or JOOM',
+      });
+      return;
+    }
+
+    // 既存の認証情報を無効化
+    await prisma.marketplaceCredential.updateMany({
+      where: { marketplace },
+      data: { isActive: false },
+    });
+
+    // 新しい認証情報を登録
+    const credential = await prisma.marketplaceCredential.create({
+      data: {
+        marketplace,
+        name: name || `${marketplace} Credentials`,
+        credentials,
+        isActive: true,
+      },
+    });
+
+    log.info({
+      type: 'marketplace_credential_created',
+      marketplace,
+      credentialId: credential.id,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        id: credential.id,
+        marketplace: credential.marketplace,
+        name: credential.name,
+        createdAt: credential.createdAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * マーケットプレイス認証情報一覧
+ * GET /api/marketplaces/credentials
+ */
+router.get('/credentials', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const credentials = await prisma.marketplaceCredential.findMany({
+      select: {
+        id: true,
+        marketplace: true,
+        name: true,
+        isActive: true,
+        tokenExpiresAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { marketplace: 'asc' },
+    });
+
+    res.json({
+      success: true,
+      data: credentials,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * マーケットプレイス認証情報を削除
+ * DELETE /api/marketplaces/credentials/:id
+ */
+router.delete('/credentials/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.marketplaceCredential.delete({
+      where: { id },
+    });
+
+    log.info({
+      type: 'marketplace_credential_deleted',
+      credentialId: id,
+    });
+
+    res.json({
+      success: true,
+      message: 'Credential deleted',
     });
   } catch (error) {
     next(error);
