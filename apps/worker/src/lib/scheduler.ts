@@ -13,6 +13,7 @@ const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
 const inventoryQueue = new Queue(QUEUE_NAMES.INVENTORY, { connection: redis });
 const scrapeQueue = new Queue(QUEUE_NAMES.SCRAPE, { connection: redis });
 const pricingQueue = new Queue(QUEUE_NAMES.PRICING, { connection: redis });
+const competitorQueue = new Queue(QUEUE_NAMES.COMPETITOR, { connection: redis });
 
 /**
  * スケジューラー設定
@@ -51,6 +52,12 @@ export interface SchedulerConfig {
     processExpiredCron: string; // 期限切れ処理
     processApprovedCron: string; // 承認済み適用
   };
+  // 競合モニタリング（Phase 29）
+  competitorMonitoring: {
+    enabled: boolean;
+    checkCron: string;        // 競合価格チェック
+    healthCheckCron: string;  // ヘルスチェック
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -80,6 +87,11 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     evaluateCron: '0 */4 * * *',      // 4時間ごとに価格評価
     processExpiredCron: '0 */2 * * *', // 2時間ごとに期限切れ処理
     processApprovedCron: '*/30 * * * *', // 30分ごとに承認済み適用
+  },
+  competitorMonitoring: {
+    enabled: true,
+    checkCron: '0 */2 * * *',         // 2時間ごとに競合チェック
+    healthCheckCron: '0 6 * * *',     // 毎日6時にヘルスチェック
   },
 };
 
@@ -344,6 +356,59 @@ async function schedulePricingOptimization(config: SchedulerConfig['pricingOptim
 }
 
 /**
+ * 競合モニタリングジョブをスケジュール（Phase 29）
+ */
+async function scheduleCompetitorMonitoring(config: SchedulerConfig['competitorMonitoring']) {
+  if (!config.enabled) {
+    log.info({ type: 'competitor_monitoring_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await competitorQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    await competitorQueue.removeRepeatableByKey(job.key);
+  }
+
+  // 競合価格チェックジョブ
+  await competitorQueue.add(
+    'check-all',
+    {
+      type: 'check_all',
+      batchSize: 50,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.checkCron,
+      },
+      jobId: 'competitor-check-all',
+    }
+  );
+
+  // ヘルスチェックジョブ
+  await competitorQueue.add(
+    'health-check',
+    {
+      type: 'health_check',
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.healthCheckCron,
+      },
+      jobId: 'competitor-health-check',
+    }
+  );
+
+  log.info({
+    type: 'competitor_monitoring_scheduled',
+    checkCron: config.checkCron,
+    healthCheckCron: config.healthCheckCron,
+  });
+}
+
+/**
  * スケジューラーを初期化
  */
 export async function initializeScheduler(config: Partial<SchedulerConfig> = {}) {
@@ -356,6 +421,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     dailyReport: { ...DEFAULT_CONFIG.dailyReport, ...config.dailyReport },
     healthCheck: { ...DEFAULT_CONFIG.healthCheck, ...config.healthCheck },
     pricingOptimization: { ...DEFAULT_CONFIG.pricingOptimization, ...config.pricingOptimization },
+    competitorMonitoring: { ...DEFAULT_CONFIG.competitorMonitoring, ...config.competitorMonitoring },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -366,6 +432,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleDailyReport(finalConfig.dailyReport);
   await scheduleHealthCheck(finalConfig.healthCheck);
   await schedulePricingOptimization(finalConfig.pricingOptimization);
+  await scheduleCompetitorMonitoring(finalConfig.competitorMonitoring);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -513,6 +580,33 @@ export async function triggerPricingApply(recommendationId: string) {
     type: 'manual_pricing_apply_triggered',
     jobId: job.id,
     recommendationId,
+  });
+
+  return job.id;
+}
+
+/**
+ * 手動で競合価格チェックをトリガー（Phase 29）
+ */
+export async function triggerCompetitorCheck(trackerId?: string) {
+  const job = await competitorQueue.add(
+    trackerId ? 'check-single' : 'check-all',
+    {
+      type: trackerId ? 'check_single' : 'check_all',
+      trackerId,
+      batchSize: 50,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_competitor_check_triggered',
+    jobId: job.id,
+    trackerId: trackerId || 'all',
   });
 
   return job.id;

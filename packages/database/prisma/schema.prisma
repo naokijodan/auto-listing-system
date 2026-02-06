@@ -788,11 +788,116 @@ model CompetitorPriceLog {
   metadata             Json?    // 追加データ
   recordedAt           DateTime @default(now())
 
+  // Phase 29: 拡張フィールド
+  conditionRank    String?  // コンディションランク (A/B/C/D/unknown)
+  matchConfidence  Float?   // マッチング確度 (0-1)
+  isVerified       Boolean  @default(false) // 人間による検証済み
+  verifiedBy       String?  // 検証者
+  verifiedAt       DateTime? // 検証日時
+  sellerRating     Float?   // 出品者評価
+  stockStatus      String?  // 在庫状態 (in_stock/low_stock/out_of_stock)
+  shippingCost     Float?   // 送料
+  priceChange      Float?   // 前回からの価格変動
+  priceChangePercent Float? // 前回からの価格変動率
+
+  // トラッカー参照
+  trackerId        String?
+  tracker          CompetitorTracker? @relation(fields: [trackerId], references: [id])
+
   @@index([listingId, recordedAt])
   @@index([productId, recordedAt])
   @@index([competitorIdentifier, recordedAt])
   @@index([recordedAt])
+  @@index([trackerId])
+  @@index([isVerified])
   @@map("competitor_price_logs")
+}
+
+// ========================================
+// 競合トラッキング設定（Phase 29）
+// ========================================
+model CompetitorTracker {
+  id                   String   @id @default(cuid())
+  listingId            String?  // 関連する自社出品
+  productId            String?  // 関連する自社商品
+  competitorIdentifier String   // 競合商品識別子
+  marketplace          String   // 競合のマーケットプレイス
+  url                  String   // 競合商品URL
+  title                String?  // 競合商品タイトル
+
+  // マッチング情報
+  matchMethod          String   @default("manual") // manual/keyword/barcode/ai
+  matchConfidence      Float    @default(1.0) // マッチング確度
+  isVerified           Boolean  @default(false) // 人間による検証済み
+  verifiedBy           String?
+  verifiedAt           DateTime?
+
+  // トラッキング設定
+  isActive             Boolean  @default(true)
+  checkInterval        Int      @default(360) // チェック間隔（分）
+  alertOnPriceDrop     Boolean  @default(true)
+  alertOnPriceRise     Boolean  @default(false)
+  alertThresholdPercent Float   @default(5.0) // アラート閾値（%）
+  autoAdjustPrice      Boolean  @default(false) // 自動価格調整
+
+  // 最終チェック情報
+  lastPrice            Float?
+  lastCheckedAt        DateTime?
+  lastError            String?
+  consecutiveErrors    Int      @default(0)
+
+  // タイムスタンプ
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // リレーション
+  priceLogs            CompetitorPriceLog[]
+
+  @@unique([listingId, competitorIdentifier])
+  @@index([listingId])
+  @@index([productId])
+  @@index([isActive])
+  @@index([lastCheckedAt])
+  @@map("competitor_trackers")
+}
+
+// ========================================
+// 競合アラート（Phase 29）
+// ========================================
+model CompetitorAlert {
+  id               String   @id @default(cuid())
+  trackerId        String
+  listingId        String?
+  productId        String?
+
+  // アラート内容
+  alertType        String   // price_drop/price_rise/out_of_stock/new_competitor
+  severity         String   @default("medium") // low/medium/high/critical
+  title            String
+  message          String   @db.Text
+
+  // 価格情報
+  ourPrice         Float?
+  competitorPrice  Float?
+  priceDiff        Float?
+  priceDiffPercent Float?
+
+  // ステータス
+  status           String   @default("pending") // pending/acknowledged/resolved/dismissed
+  acknowledgedBy   String?
+  acknowledgedAt   DateTime?
+  resolvedAt       DateTime?
+
+  // メタデータ
+  metadata         Json?
+  createdAt        DateTime @default(now())
+
+  @@index([listingId])
+  @@index([productId])
+  @@index([status])
+  @@index([alertType])
+  @@index([createdAt])
+  @@map("competitor_alerts")
 }
 
 // ========================================
