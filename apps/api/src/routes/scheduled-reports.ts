@@ -102,6 +102,155 @@ function describeCronExpression(cron: string): string {
 }
 
 // ========================================
+// 静的エンドポイント（:id より前に定義）
+// ========================================
+
+/**
+ * @swagger
+ * /api/scheduled-reports/templates:
+ *   get:
+ *     tags: [Scheduled Reports]
+ *     summary: レポートテンプレート一覧
+ *     responses:
+ *       200:
+ *         description: テンプレート一覧
+ */
+router.get('/templates', async (_req: Request, res: Response) => {
+  const templates = [
+    {
+      id: 'daily-summary',
+      name: '日次サマリー',
+      reportType: 'daily',
+      cronExpression: '0 9 * * *',
+      description: '毎日9時に前日の売上・出品状況をレポート',
+      format: 'markdown',
+    },
+    {
+      id: 'weekly-performance',
+      name: '週次パフォーマンス',
+      reportType: 'weekly',
+      cronExpression: '0 9 * * 1',
+      description: '毎週月曜9時に週間実績をレポート',
+      format: 'markdown',
+    },
+    {
+      id: 'monthly-analysis',
+      name: '月次分析',
+      reportType: 'monthly',
+      cronExpression: '0 10 1 * *',
+      description: '毎月1日10時に月間分析をレポート',
+      format: 'csv',
+    },
+    {
+      id: 'competitor-alert',
+      name: '競合価格モニタリング',
+      reportType: 'custom',
+      cronExpression: '0 8,14,20 * * *',
+      description: '1日3回（8時/14時/20時）競合価格変動をレポート',
+      format: 'json',
+    },
+  ];
+
+  res.json({
+    success: true,
+    data: templates,
+  });
+});
+
+/**
+ * @swagger
+ * /api/scheduled-reports/stats:
+ *   get:
+ *     tags: [Scheduled Reports]
+ *     summary: レポート実行統計を取得
+ *     parameters:
+ *       - name: days
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 7
+ *     responses:
+ *       200:
+ *         description: 統計情報
+ */
+router.get('/stats', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const days = parseInt(req.query.days as string, 10) || 7;
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - days);
+
+    const [totalReports, activeReports, logs, upcomingReports] = await Promise.all([
+      prisma.scheduledReport.count(),
+      prisma.scheduledReport.count({ where: { isActive: true } }),
+      prisma.scheduledReportLog.findMany({
+        where: { startedAt: { gte: fromDate } },
+        select: { status: true, duration: true },
+      }),
+      prisma.scheduledReport.findMany({
+        where: {
+          isActive: true,
+          nextRunAt: { gte: new Date() },
+        },
+        orderBy: { nextRunAt: 'asc' },
+        take: 5,
+        select: {
+          id: true,
+          name: true,
+          reportType: true,
+          nextRunAt: true,
+          cronExpression: true,
+        },
+      }),
+    ]);
+
+    // ステータス別集計
+    const statusCounts: Record<string, number> = {};
+    let totalDuration = 0;
+    let durationCount = 0;
+
+    logs.forEach((log) => {
+      statusCounts[log.status] = (statusCounts[log.status] || 0) + 1;
+      if (log.duration) {
+        totalDuration += log.duration;
+        durationCount++;
+      }
+    });
+
+    const successRate = logs.length > 0
+      ? ((statusCounts['success'] || 0) / logs.length) * 100
+      : 100;
+
+    const avgDuration = durationCount > 0
+      ? Math.round(totalDuration / durationCount)
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        totalReports,
+        activeReports,
+        executionsInPeriod: logs.length,
+        successCount: statusCounts['success'] || 0,
+        failedCount: statusCounts['failed'] || 0,
+        successRate: Math.round(successRate * 100) / 100,
+        avgDurationMs: avgDuration,
+        upcomingReports: upcomingReports.map((r) => ({
+          ...r,
+          cronDescription: describeCronExpression(r.cronExpression),
+        })),
+        period: {
+          from: fromDate.toISOString(),
+          to: new Date().toISOString(),
+          days,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ========================================
 // CRUD エンドポイント
 // ========================================
 
@@ -605,159 +754,6 @@ router.get('/:id/logs', async (req: Request, res: Response, next: NextFunction) 
   } catch (error) {
     next(error);
   }
-});
-
-// ========================================
-// 統計
-// ========================================
-
-/**
- * @swagger
- * /api/scheduled-reports/stats:
- *   get:
- *     tags: [Scheduled Reports]
- *     summary: レポート実行統計を取得
- *     parameters:
- *       - name: days
- *         in: query
- *         schema:
- *           type: integer
- *           default: 7
- *     responses:
- *       200:
- *         description: 統計情報
- */
-router.get('/stats', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const days = parseInt(req.query.days as string, 10) || 7;
-    const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - days);
-
-    const [totalReports, activeReports, logs, upcomingReports] = await Promise.all([
-      prisma.scheduledReport.count(),
-      prisma.scheduledReport.count({ where: { isActive: true } }),
-      prisma.scheduledReportLog.findMany({
-        where: { startedAt: { gte: fromDate } },
-        select: { status: true, duration: true },
-      }),
-      prisma.scheduledReport.findMany({
-        where: {
-          isActive: true,
-          nextRunAt: { gte: new Date() },
-        },
-        orderBy: { nextRunAt: 'asc' },
-        take: 5,
-        select: {
-          id: true,
-          name: true,
-          reportType: true,
-          nextRunAt: true,
-          cronExpression: true,
-        },
-      }),
-    ]);
-
-    // ステータス別集計
-    const statusCounts: Record<string, number> = {};
-    let totalDuration = 0;
-    let durationCount = 0;
-
-    logs.forEach((log) => {
-      statusCounts[log.status] = (statusCounts[log.status] || 0) + 1;
-      if (log.duration) {
-        totalDuration += log.duration;
-        durationCount++;
-      }
-    });
-
-    const successRate = logs.length > 0
-      ? ((statusCounts['success'] || 0) / logs.length) * 100
-      : 100;
-
-    const avgDuration = durationCount > 0
-      ? Math.round(totalDuration / durationCount)
-      : 0;
-
-    res.json({
-      success: true,
-      data: {
-        totalReports,
-        activeReports,
-        executionsInPeriod: logs.length,
-        successCount: statusCounts['success'] || 0,
-        failedCount: statusCounts['failed'] || 0,
-        successRate: Math.round(successRate * 100) / 100,
-        avgDurationMs: avgDuration,
-        upcomingReports: upcomingReports.map((r) => ({
-          ...r,
-          cronDescription: describeCronExpression(r.cronExpression),
-        })),
-        period: {
-          from: fromDate.toISOString(),
-          to: new Date().toISOString(),
-          days,
-        },
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ========================================
-// プリセットテンプレート
-// ========================================
-
-/**
- * @swagger
- * /api/scheduled-reports/templates:
- *   get:
- *     tags: [Scheduled Reports]
- *     summary: レポートテンプレート一覧
- *     responses:
- *       200:
- *         description: テンプレート一覧
- */
-router.get('/templates', async (_req: Request, res: Response) => {
-  const templates = [
-    {
-      id: 'daily-summary',
-      name: '日次サマリー',
-      reportType: 'daily',
-      cronExpression: '0 9 * * *',
-      description: '毎日9時に前日の売上・出品状況をレポート',
-      format: 'markdown',
-    },
-    {
-      id: 'weekly-performance',
-      name: '週次パフォーマンス',
-      reportType: 'weekly',
-      cronExpression: '0 9 * * 1',
-      description: '毎週月曜9時に週間実績をレポート',
-      format: 'markdown',
-    },
-    {
-      id: 'monthly-analysis',
-      name: '月次分析',
-      reportType: 'monthly',
-      cronExpression: '0 10 1 * *',
-      description: '毎月1日10時に月間分析をレポート',
-      format: 'csv',
-    },
-    {
-      id: 'competitor-alert',
-      name: '競合価格モニタリング',
-      reportType: 'custom',
-      cronExpression: '0 8,14,20 * * *',
-      description: '1日3回（8時/14時/20時）競合価格変動をレポート',
-      format: 'json',
-    },
-  ];
-
-  res.json({
-    success: true,
-    data: templates,
-  });
 });
 
 export { router as scheduledReportsRouter };

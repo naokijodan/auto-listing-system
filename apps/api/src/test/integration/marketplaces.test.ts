@@ -305,4 +305,237 @@ describe('Marketplaces API', () => {
       expect(response.body.success).toBe(true);
     });
   });
+
+  // ========================================
+  // Phase 34: eBay接続テスト（トレーサー・バレット）
+  // ========================================
+
+  describe('GET /api/marketplaces/ebay/test-connection', () => {
+    it('should return not_configured when no credentials exist', async () => {
+      mockPrisma.marketplaceCredential.findFirst.mockResolvedValue(null);
+
+      const response = await request(app).get('/api/marketplaces/ebay/test-connection');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(false);
+      expect(response.body.status).toBe('not_configured');
+      expect(response.body.steps).toBeDefined();
+      expect(Array.isArray(response.body.steps)).toBe(true);
+    });
+
+    it('should return no_tokens when tokens not configured', async () => {
+      mockPrisma.marketplaceCredential.findFirst.mockResolvedValue({
+        id: '1',
+        marketplace: 'EBAY',
+        credentials: {
+          clientId: 'test-client-id',
+          clientSecret: 'test-client-secret',
+          // accessToken and refreshToken missing
+        },
+      });
+
+      const response = await request(app).get('/api/marketplaces/ebay/test-connection');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(false);
+      expect(response.body.status).toBe('no_tokens');
+    });
+
+    it('should return connected when API call succeeds', async () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+
+      mockPrisma.marketplaceCredential.findFirst.mockResolvedValue({
+        id: '1',
+        marketplace: 'EBAY',
+        credentials: {
+          clientId: 'test-client-id',
+          clientSecret: 'test-client-secret',
+          accessToken: 'valid-token',
+          refreshToken: 'refresh-token',
+        },
+        tokenExpiresAt: futureDate,
+        createdAt: new Date(),
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          sellingLimit: { amount: { value: '25000', currency: 'USD' } },
+        }),
+      });
+
+      const response = await request(app).get('/api/marketplaces/ebay/test-connection');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.status).toBe('connected');
+      expect(response.body.environment).toBeDefined();
+    });
+
+    it('should return auth_failed when API returns 401', async () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+
+      mockPrisma.marketplaceCredential.findFirst.mockResolvedValue({
+        id: '1',
+        marketplace: 'EBAY',
+        credentials: {
+          clientId: 'test-client-id',
+          clientSecret: 'test-client-secret',
+          accessToken: 'invalid-token',
+          refreshToken: 'refresh-token',
+        },
+        tokenExpiresAt: futureDate,
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+        json: async () => ({
+          errors: [{ message: 'Invalid access token' }],
+        }),
+      });
+
+      const response = await request(app).get('/api/marketplaces/ebay/test-connection');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(false);
+      expect(response.body.status).toBe('auth_failed');
+    });
+
+    it('should return api_error when API returns other errors', async () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 7);
+
+      mockPrisma.marketplaceCredential.findFirst.mockResolvedValue({
+        id: '1',
+        marketplace: 'EBAY',
+        credentials: {
+          clientId: 'test-client-id',
+          clientSecret: 'test-client-secret',
+          accessToken: 'valid-token',
+          refreshToken: 'refresh-token',
+        },
+        tokenExpiresAt: futureDate,
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: async () => ({
+          errors: [{ message: 'eBay server error' }],
+        }),
+      });
+
+      const response = await request(app).get('/api/marketplaces/ebay/test-connection');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(false);
+      expect(response.body.status).toBe('api_error');
+    });
+  });
+
+  // ========================================
+  // Phase 34: 認証情報管理API
+  // ========================================
+
+  describe('POST /api/marketplaces/credentials', () => {
+    it('should create new credentials', async () => {
+      mockPrisma.marketplaceCredential.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.marketplaceCredential.create.mockResolvedValue({
+        id: 'cred-1',
+        marketplace: 'EBAY',
+        name: 'EBAY Credentials',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const response = await request(app)
+        .post('/api/marketplaces/credentials')
+        .send({
+          marketplace: 'EBAY',
+          credentials: {
+            clientId: 'test-client-id',
+            clientSecret: 'test-client-secret',
+          },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.marketplace).toBe('EBAY');
+    });
+
+    it('should reject missing required fields', async () => {
+      const response = await request(app)
+        .post('/api/marketplaces/credentials')
+        .send({
+          marketplace: 'EBAY',
+          // missing credentials object
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+    });
+
+    it('should reject invalid marketplace', async () => {
+      const response = await request(app)
+        .post('/api/marketplaces/credentials')
+        .send({
+          marketplace: 'AMAZON',
+          credentials: { key: 'value' },
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('GET /api/marketplaces/credentials', () => {
+    it('should return list of credentials without secrets', async () => {
+      mockPrisma.marketplaceCredential.findMany.mockResolvedValue([
+        {
+          id: 'cred-1',
+          marketplace: 'EBAY',
+          name: 'eBay Production',
+          isActive: true,
+          tokenExpiresAt: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      const response = await request(app).get('/api/marketplaces/credentials');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveLength(1);
+      // Credentials should not be included (just metadata)
+      expect(response.body.data[0].credentials).toBeUndefined();
+      expect(response.body.data[0].id).toBe('cred-1');
+    });
+  });
+
+  describe('DELETE /api/marketplaces/credentials/:id', () => {
+    it('should delete credentials', async () => {
+      mockPrisma.marketplaceCredential.delete.mockResolvedValue({
+        id: 'cred-1',
+      });
+
+      const response = await request(app).delete('/api/marketplaces/credentials/cred-1');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should handle non-existent credentials', async () => {
+      mockPrisma.marketplaceCredential.delete.mockRejectedValue(new Error('Record not found'));
+
+      const response = await request(app).delete('/api/marketplaces/credentials/non-existent');
+
+      expect(response.status).toBe(500);
+    });
+  });
 });

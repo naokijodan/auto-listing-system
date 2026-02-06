@@ -51,9 +51,11 @@ export const mockPrisma = {
   marketplaceCredential: {
     findFirst: vi.fn(),
     findUnique: vi.fn(),
+    findMany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
+    delete: vi.fn(),
     upsert: vi.fn(),
   },
   ebayCategoryMapping: {
