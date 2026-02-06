@@ -149,10 +149,10 @@ export default function OrdersPage() {
           />
           <StatCard
             title="売上"
-            value={`$${stats.totalRevenue.toLocaleString()}`}
+            value={`$${(stats.totalRevenue ?? 0).toLocaleString()}`}
             icon={DollarSign}
             color="emerald"
-            subtext={`利益: $${stats.totalProfit.toLocaleString()}`}
+            subtext={`利益: $${(stats.totalProfit ?? 0).toLocaleString()}`}
           />
         </div>
       )}
