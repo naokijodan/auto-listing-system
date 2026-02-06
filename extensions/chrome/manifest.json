@@ -1,16 +1,21 @@
 {
   "manifest_version": 3,
   "name": "RAKUDA - 越境EC商品登録",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "ヤフオク・メルカリ・Amazonの商品をワンクリックでRAKUDAに登録",
   "permissions": [
     "activeTab",
     "storage",
-    "contextMenus"
+    "contextMenus",
+    "notifications",
+    "scripting"
   ],
   "host_permissions": [
     "http://localhost:3000/*",
-    "https://*.rakuda.app/*"
+    "https://*.rakuda.app/*",
+    "*://*.yahoo.co.jp/*",
+    "*://*.mercari.com/*",
+    "*://*.amazon.co.jp/*"
   ],
   "action": {
     "default_popup": "popup.html",
@@ -40,5 +45,14 @@
       "js": ["content.js"],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "commands": {
+    "register-product": {
+      "suggested_key": {
+        "default": "Alt+R",
+        "mac": "Alt+R"
+      },
+      "description": "現在のページの商品をRAKUDAに登録"
+    }
+  }
 }

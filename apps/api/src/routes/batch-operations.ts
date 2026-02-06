@@ -796,7 +796,7 @@ router.get('/export/orders', async (req: Request, res: Response, next: NextFunct
  *   post:
  *     tags: [Batch]
  *     summary: 価格一括更新CSVインポート
- *     description: CSVファイルで一括価格更新。必須列: id (または listingId) と newprice (または price)
+ *     description: "CSVファイルで一括価格更新。必須列: id/listingId と newprice/price"
  */
 router.post('/import/price-update', async (req: Request, res: Response, next: NextFunction) => {
   try {
