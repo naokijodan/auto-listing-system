@@ -1,0 +1,140 @@
+# RAKUDA - 越境EC自動化システム
+
+## プロジェクト概要
+
+RAKUDAは、日本のECサイト（ヤフオク、メルカリ、Amazon JP）から商品をスクレイピングし、海外マーケットプレイス（Joom、eBay）に自動出品する越境EC自動化システム。
+
+## 技術スタック
+
+| レイヤー | 技術 |
+|---------|------|
+| Frontend | Next.js 16 (App Router), Tailwind CSS, shadcn/ui |
+| Backend | Express.js, TypeScript |
+| Database | PostgreSQL (Prisma ORM) |
+| Queue | BullMQ (Redis) |
+| Storage | MinIO/S3 |
+| AI | OpenAI GPT-4o |
+| Testing | Vitest, Playwright |
+
+## ディレクトリ構成
+
+```
+rakuda/
+├── apps/
+│   ├── api/           # Express.js APIサーバー (port 3000)
+│   ├── web/           # Next.js フロントエンド (port 3002)
+│   └── worker/        # BullMQ ワーカープロセス
+├── packages/
+│   ├── database/      # Prisma スキーマ・クライアント
+│   ├── schema/        # Zod バリデーションスキーマ
+│   ├── config/        # 共通設定
+│   └── logger/        # ロギングユーティリティ
+├── extensions/
+│   └── chrome/        # Chrome拡張機能（商品スクレイピング）
+└── docs/              # 設計書・ドキュメント
+```
+
+## 開発コマンド
+
+```bash
+# 開発サーバー起動
+npm run dev
+
+# テスト
+npm run test:unit        # 単体テスト
+npm run test:integration # 統合テスト
+npm run test:e2e         # E2Eテスト
+
+# ビルド
+npm run build
+
+# Prisma
+npx prisma generate --schema=packages/database/prisma/schema.prisma
+npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
+```
+
+## 主要機能
+
+### 完成済み
+- Chrome拡張機能（ヤフオク・メルカリ・Amazon JPスクレイピング）
+- 商品管理API
+- BullMQジョブキュー
+- 為替レート自動更新
+- 通知システム
+- E2Eテスト（Playwright）
+- CI/CD（GitHub Actions）
+
+### Joom連携（OAuth完了）
+- トークン取得済み（有効期限: 2026-03-08）
+- 出品機能は未実装（Phase 40で実装予定）
+
+### eBay連携
+- EAGLEで対応中のため後回し
+
+## 現在のPhase
+
+**Phase 40: Joom出品ワークフロー**
+
+設計書: `docs/PHASE40_JOOM_WORKFLOW_DESIGN.md`
+実装ガイド: `docs/PHASE40_IMPLEMENTATION_GUIDE.md`
+
+### 実装順序
+1. Phase 40-A: 翻訳・属性抽出エンジン
+2. Phase 40-B: 画像処理パイプライン
+3. Phase 40-C: Joom API連携
+4. Phase 40-D: UI・運用機能
+
+## コード規約
+
+### ファイル命名
+- TypeScript: `kebab-case.ts`
+- React: `PascalCase.tsx`
+- テスト: `*.test.ts`, `*.spec.ts`
+
+### コミットメッセージ
+```
+feat: 新機能
+fix: バグ修正
+refactor: リファクタリング
+test: テスト追加
+docs: ドキュメント
+chore: その他
+```
+
+### テストカバレッジ目標
+- 単体テスト: 90%
+- 統合テスト: 80%
+- E2Eテスト: 主要パス
+
+## 環境変数
+
+```env
+# Database
+DATABASE_URL=postgresql://...
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# OpenAI
+OPENAI_API_KEY=sk-...
+
+# Joom (OAuth取得済み)
+JOOM_CLIENT_ID=...
+JOOM_CLIENT_SECRET=...
+
+# S3/MinIO
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+```
+
+## 開発ログ
+
+過去の実装履歴は `/Users/naokijodan/開発ログ/rakuda_*.md` を参照。
+
+## 注意事項
+
+1. **テスト必須** - コード変更後は必ずテスト実行
+2. **コミット規約** - 上記フォーマットに従う
+3. **Obsidianノート** - 作業完了後は開発ログを作成
+4. **3者協議** - 設計判断が必要な場合は `multi_discuss` を使用
