@@ -284,6 +284,219 @@ router.delete('/ebay', async (req: Request, res: Response, next: NextFunction) =
   }
 });
 
+// Joom OAuth設定
+const JOOM_AUTH_URL = 'https://api-merchant.joom.com/api/v2/oauth/authorize';
+const JOOM_TOKEN_URL = 'https://api-merchant.joom.com/api/v2/oauth/access_token';
+
+/**
+ * Joom OAuth認証URLを生成
+ * GET /api/auth/joom/authorize
+ */
+router.get('/joom/authorize', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // 登録済みの認証情報からclientIdを取得
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: {
+        marketplace: 'JOOM',
+        isActive: true,
+      },
+    });
+
+    if (!credential) {
+      res.status(400).json({
+        success: false,
+        error: 'Joom credentials not configured. Register Client ID/Secret first.',
+      });
+      return;
+    }
+
+    const creds = credential.credentials as { clientId?: string };
+    const clientId = creds.clientId;
+
+    if (!clientId) {
+      res.status(400).json({
+        success: false,
+        error: 'Client ID not found in credentials',
+      });
+      return;
+    }
+
+    // State生成（CSRF対策）
+    const state = Buffer.from(JSON.stringify({
+      timestamp: Date.now(),
+      random: Math.random().toString(36).substring(7),
+    })).toString('base64');
+
+    // セッションに保存
+    await prisma.oAuthState.create({
+      data: {
+        state,
+        provider: 'JOOM',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10分
+      },
+    });
+
+    const redirectUri = process.env.JOOM_REDIRECT_URI || `${process.env.APP_URL || 'http://localhost:3000'}/api/auth/joom/callback`;
+
+    const authUrl = new URL(JOOM_AUTH_URL);
+    authUrl.searchParams.set('client_id', clientId);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('state', state);
+
+    log.info({
+      type: 'joom_oauth_authorize',
+      clientId: clientId.substring(0, 8) + '...',
+    });
+
+    res.json({
+      success: true,
+      authUrl: authUrl.toString(),
+      expiresIn: 600,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Joom OAuthコールバック
+ * GET /api/auth/joom/callback
+ */
+router.get('/joom/callback', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { code, state, error, error_description } = req.query;
+
+    if (error) {
+      log.error({
+        type: 'joom_oauth_error',
+        error,
+        errorDescription: error_description,
+      });
+
+      res.redirect(`${process.env.WEB_URL || 'http://localhost:3002'}/settings?error=joom_${error}`);
+      return;
+    }
+
+    if (!code || !state) {
+      res.status(400).json({
+        success: false,
+        error: 'Missing code or state',
+      });
+      return;
+    }
+
+    // State検証
+    const savedState = await prisma.oAuthState.findFirst({
+      where: {
+        state: state as string,
+        provider: 'JOOM',
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!savedState) {
+      res.status(400).json({
+        success: false,
+        error: 'Invalid or expired state',
+      });
+      return;
+    }
+
+    // State削除
+    await prisma.oAuthState.delete({ where: { id: savedState.id } });
+
+    // 認証情報を取得
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: {
+        marketplace: 'JOOM',
+        isActive: true,
+      },
+    });
+
+    if (!credential) {
+      res.status(500).json({
+        success: false,
+        error: 'Joom credentials not found',
+      });
+      return;
+    }
+
+    const creds = credential.credentials as { clientId?: string; clientSecret?: string };
+    const { clientId, clientSecret } = creds;
+
+    if (!clientId || !clientSecret) {
+      res.status(500).json({
+        success: false,
+        error: 'Joom OAuth configuration incomplete',
+      });
+      return;
+    }
+
+    const redirectUri = process.env.JOOM_REDIRECT_URI || `${process.env.APP_URL || 'http://localhost:3000'}/api/auth/joom/callback`;
+
+    // トークン交換
+    const tokenResponse = await fetch(JOOM_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'authorization_code',
+        code: code as string,
+        redirect_uri: redirectUri,
+      }),
+    });
+
+    const tokenData = await tokenResponse.json() as {
+      data?: {
+        access_token?: string;
+        refresh_token?: string;
+        expires_in?: number;
+      };
+      code?: number;
+      message?: string;
+    };
+
+    if (!tokenResponse.ok || !tokenData.data?.access_token) {
+      log.error({
+        type: 'joom_token_exchange_failed',
+        error: tokenData,
+      });
+
+      res.redirect(`${process.env.WEB_URL || 'http://localhost:3002'}/settings?error=joom_token_exchange_failed`);
+      return;
+    }
+
+    // 認証情報を更新
+    const expiresIn = tokenData.data.expires_in || 3600;
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+
+    await prisma.marketplaceCredential.update({
+      where: { id: credential.id },
+      data: {
+        credentials: {
+          ...creds,
+          accessToken: tokenData.data.access_token,
+          refreshToken: tokenData.data.refresh_token,
+        },
+        tokenExpiresAt: expiresAt,
+      },
+    });
+
+    log.info({
+      type: 'joom_oauth_success',
+      expiresAt,
+    });
+
+    res.redirect(`${process.env.WEB_URL || 'http://localhost:3002'}/settings?success=joom_connected`);
+  } catch (error) {
+    next(error);
+  }
+});
+
 /**
  * Joom認証状態を確認
  * GET /api/auth/joom/status
