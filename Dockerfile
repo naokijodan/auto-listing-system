@@ -5,48 +5,29 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Stage 1: Dependencies
-# -----------------------------------------------------------------------------
-FROM node:20-alpine AS deps
-
-WORKDIR /app
-
-# パッケージマネージャーの設定ファイルをコピー
-COPY package*.json ./
-COPY turbo.json ./
-COPY packages/config/package*.json ./packages/config/
-COPY packages/database/package*.json ./packages/database/
-COPY packages/logger/package*.json ./packages/logger/
-COPY packages/schema/package*.json ./packages/schema/
-COPY apps/api/package*.json ./apps/api/
-COPY apps/worker/package*.json ./apps/worker/
-
-# 依存関係をインストール
-RUN npm ci --legacy-peer-deps
-
-# -----------------------------------------------------------------------------
-# Stage 2: Builder
+# Stage 1: Builder
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 依存関係をコピー
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages/*/node_modules ./packages/*/node_modules 2>/dev/null || true
-COPY --from=deps /app/apps/*/node_modules ./apps/*/node_modules 2>/dev/null || true
+# 必要なツールをインストール
+RUN apk add --no-cache python3 make g++
 
 # ソースコードをコピー
 COPY . .
+
+# 依存関係をインストール
+RUN npm ci --legacy-peer-deps
 
 # Prismaクライアントを生成
 RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
 
 # TypeScriptをビルド
-RUN npm run build -- --filter=@rakuda/api --filter=@rakuda/worker
+RUN npm run build
 
 # -----------------------------------------------------------------------------
-# Stage 3: API Runner
+# Stage 2: API Runner
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS api
 
@@ -59,7 +40,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 # 本番用依存関係のみコピー
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/api ./apps/api
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/turbo.json ./
 
@@ -82,7 +64,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 CMD ["node", "apps/api/dist/index.js"]
 
 # -----------------------------------------------------------------------------
-# Stage 4: Worker Runner
+# Stage 3: Worker Runner
 # -----------------------------------------------------------------------------
 FROM node:20-alpine AS worker
 
@@ -92,10 +74,24 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 rakuda
 
+# Puppeteer用の依存関係
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Puppeteer設定
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # 本番用依存関係のみコピー
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/worker ./apps/worker
+COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
+COPY --from=builder /app/apps/worker/package.json ./apps/worker/
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/turbo.json ./
 
