@@ -1,5 +1,6 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import * as nodemailer from 'nodemailer';
 
 const log = logger.child({ module: 'notification-service' });
 
@@ -161,6 +162,118 @@ async function sendToLine(
 }
 
 /**
+ * SMTPトランスポート設定
+ */
+interface SmtpConfig {
+  host: string;
+  port: number;
+  secure: boolean;
+  user?: string;
+  pass?: string;
+}
+
+function getSmtpTransport(config?: Partial<SmtpConfig>): nodemailer.Transporter {
+  const smtpConfig: SmtpConfig = {
+    host: config?.host || process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: config?.port || parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: config?.secure ?? (process.env.SMTP_SECURE === 'true'),
+    user: config?.user || process.env.SMTP_USER,
+    pass: config?.pass || process.env.SMTP_PASS,
+  };
+
+  return nodemailer.createTransport({
+    host: smtpConfig.host,
+    port: smtpConfig.port,
+    secure: smtpConfig.secure,
+    auth: smtpConfig.user && smtpConfig.pass ? {
+      user: smtpConfig.user,
+      pass: smtpConfig.pass,
+    } : undefined,
+  });
+}
+
+/**
+ * メール通知を送信
+ */
+async function sendToEmail(
+  email: string,
+  payload: NotificationPayload,
+  smtpConfig?: Partial<SmtpConfig>
+): Promise<boolean> {
+  const severityStyles: Record<string, { color: string; icon: string }> = {
+    INFO: { color: '#2196F3', icon: 'ℹ️' },
+    WARNING: { color: '#FF9800', icon: '⚠️' },
+    ERROR: { color: '#F44336', icon: '❌' },
+    SUCCESS: { color: '#4CAF50', icon: '✅' },
+  };
+
+  const style = severityStyles[payload.severity] || severityStyles.INFO;
+
+  // HTML形式のメール本文
+  let dataTable = '';
+  if (payload.data) {
+    const rows = Object.entries(payload.data)
+      .map(([key, value]) => `<tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">${key}</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${value}</td></tr>`)
+      .join('');
+    dataTable = `<table style="width: 100%; border-collapse: collapse; margin-top: 16px;">${rows}</table>`;
+  }
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: ${style.color}; color: white; padding: 20px; }
+    .header h1 { margin: 0; font-size: 20px; }
+    .content { padding: 20px; }
+    .footer { padding: 16px 20px; background: #f9f9f9; font-size: 12px; color: #666; border-top: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>${style.icon} ${payload.title}</h1>
+    </div>
+    <div class="content">
+      <p>${payload.message}</p>
+      ${dataTable}
+    </div>
+    <div class="footer">
+      RAKUDA 越境EC自動出品システム<br>
+      ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+    </div>
+  </div>
+</body>
+</html>`;
+
+  // テキスト形式のフォールバック
+  let textContent = `${style.icon} ${payload.title}\n\n${payload.message}`;
+  if (payload.data) {
+    textContent += '\n\n';
+    for (const [key, value] of Object.entries(payload.data)) {
+      textContent += `${key}: ${value}\n`;
+    }
+  }
+  textContent += `\n\n---\nRAKUDA 越境EC自動出品システム\n${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}`;
+
+  const transporter = getSmtpTransport(smtpConfig);
+  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@rakuda.app';
+
+  await transporter.sendMail({
+    from: fromAddress,
+    to: email,
+    subject: `[RAKUDA] ${payload.title}`,
+    text: textContent,
+    html: htmlContent,
+  });
+
+  return true;
+}
+
+/**
  * 通知を送信（データベース設定に基づく）
  */
 export async function sendNotification(
@@ -216,6 +329,20 @@ export async function sendNotification(
           case 'LINE':
             if (channel.token) {
               await sendToLine(channel.token, payload);
+              result.success = true;
+            }
+            break;
+
+          case 'EMAIL':
+            if (channel.email) {
+              const smtpConfig = channel.smtpHost ? {
+                host: channel.smtpHost,
+                port: channel.smtpPort || undefined,
+                secure: channel.smtpSecure,
+                user: channel.smtpUser || undefined,
+                pass: channel.smtpPass || undefined,
+              } : undefined;
+              await sendToEmail(channel.email, payload, smtpConfig);
               result.success = true;
             }
             break;
@@ -316,6 +443,17 @@ async function sendNotificationViaEnv(
       results.push({ channelId: 'env-line', channelType: 'LINE', success: true });
     } catch (error: any) {
       results.push({ channelId: 'env-line', channelType: 'LINE', success: false, error: error.message });
+    }
+  }
+
+  // Email
+  const emailTo = process.env.NOTIFICATION_EMAIL;
+  if (emailTo && process.env.SMTP_USER) {
+    try {
+      await sendToEmail(emailTo, payload);
+      results.push({ channelId: 'env-email', channelType: 'EMAIL', success: true });
+    } catch (error: any) {
+      results.push({ channelId: 'env-email', channelType: 'EMAIL', success: false, error: error.message });
     }
   }
 
@@ -644,6 +782,126 @@ export async function notifySystemError(
       コンポーネント: component,
       エラー: errorMessage.substring(0, 200),
       ...details,
+    },
+  });
+}
+
+// ========================================
+// レポート配信関数（Phase 32）
+// ========================================
+
+/**
+ * レポートをメールで送信
+ */
+export async function sendReportByEmail(
+  emails: string[],
+  subject: string,
+  reportContent: string,
+  format: 'json' | 'markdown' | 'csv',
+  smtpConfig?: Partial<SmtpConfig>
+): Promise<{ success: boolean; errors: string[] }> {
+  const transporter = getSmtpTransport(smtpConfig);
+  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@rakuda.app';
+  const errors: string[] = [];
+
+  // フォーマットに応じたMIMEタイプと拡張子
+  const mimeTypes: Record<string, { mime: string; ext: string }> = {
+    json: { mime: 'application/json', ext: 'json' },
+    markdown: { mime: 'text/markdown', ext: 'md' },
+    csv: { mime: 'text/csv', ext: 'csv' },
+  };
+  const { mime, ext } = mimeTypes[format] || mimeTypes.markdown;
+
+  // 添付ファイル名
+  const dateStr = new Date().toISOString().split('T')[0];
+  const filename = `rakuda-report-${dateStr}.${ext}`;
+
+  // HTML本文（レポートの概要）
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #1976D2; color: white; padding: 20px; }
+    .header h1 { margin: 0; font-size: 20px; }
+    .content { padding: 20px; }
+    .footer { padding: 16px 20px; background: #f9f9f9; font-size: 12px; color: #666; border-top: 1px solid #eee; }
+    .note { background: #E3F2FD; padding: 12px; border-radius: 4px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 ${subject}</h1>
+    </div>
+    <div class="content">
+      <p>RAKUDAの定期レポートをお届けします。</p>
+      <div class="note">
+        <strong>添付ファイル:</strong> ${filename}<br>
+        <strong>形式:</strong> ${format.toUpperCase()}
+      </div>
+    </div>
+    <div class="footer">
+      RAKUDA 越境EC自動出品システム<br>
+      ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+    </div>
+  </div>
+</body>
+</html>`;
+
+  for (const email of emails) {
+    try {
+      await transporter.sendMail({
+        from: fromAddress,
+        to: email,
+        subject: `[RAKUDA] ${subject}`,
+        html: htmlContent,
+        attachments: [
+          {
+            filename,
+            content: reportContent,
+            contentType: mime,
+          },
+        ],
+      });
+      log.info({ type: 'report_email_sent', email, subject });
+    } catch (error: any) {
+      log.error({ type: 'report_email_error', email, error: error.message });
+      errors.push(`${email}: ${error.message}`);
+    }
+  }
+
+  return {
+    success: errors.length === 0,
+    errors,
+  };
+}
+
+/**
+ * スケジュールレポート通知（サマリー）
+ */
+export async function notifyScheduledReport(
+  reportName: string,
+  reportType: string,
+  recipientCount: number,
+  status: 'success' | 'failed',
+  error?: string
+): Promise<void> {
+  await sendNotification({
+    eventType: 'SCHEDULED_REPORT',
+    title: status === 'success' ? '📊 定期レポート配信完了' : '❌ 定期レポート配信失敗',
+    message: status === 'success'
+      ? `「${reportName}」を${recipientCount}件の宛先に配信しました。`
+      : `「${reportName}」の配信に失敗しました。`,
+    severity: status === 'success' ? 'INFO' : 'ERROR',
+    data: {
+      レポート名: reportName,
+      レポートタイプ: reportType,
+      配信先数: recipientCount,
+      ...(error ? { エラー: error.substring(0, 100) } : {}),
     },
   });
 }

@@ -25,6 +25,7 @@
     "@types/pdfkit": "^0.17.4",
     "bullmq": "^5.1.0",
     "cors": "^2.8.5",
+    "cron-parser": "^5.0.8",
     "dotenv": "^17.2.3",
     "express": "^4.18.2",
     "helmet": "^7.1.0",

@@ -500,6 +500,14 @@ model NotificationChannel {
   // 認証情報
   webhookUrl String? // Slack, Discord
   token      String? // LINE Notify
+  email      String? // メールアドレス（EMAIL チャンネル用）
+
+  // SMTP設定（EMAIL チャンネル用、環境変数のオーバーライド）
+  smtpHost   String?
+  smtpPort   Int?
+  smtpUser   String?
+  smtpPass   String?
+  smtpSecure Boolean @default(true)
 
   // 通知設定
   enabledTypes NotificationChannelEventType[] // 有効な通知タイプ
@@ -753,6 +761,58 @@ model AlertLog {
   @@index([status])
   @@index([batchId])
   @@map("alert_logs")
+}
+
+// ========================================
+// スケジュールレポート（Phase 32）
+// ========================================
+model ScheduledReport {
+  id        String @id @default(cuid())
+  name      String
+  reportType String // 'daily' | 'weekly' | 'monthly' | 'custom'
+
+  // スケジュール設定
+  cronExpression String           // cron式（例: "0 9 * * *" = 毎日9時）
+  timezone       String @default("Asia/Tokyo")
+  isActive       Boolean @default(true)
+
+  // レポート設定
+  format        String @default("markdown") // 'json' | 'markdown' | 'csv'
+  includeCharts Boolean @default(false)
+  customQuery   Json?  // カスタムフィルター条件
+
+  // 配信設定
+  deliveryChannels String[] // チャンネルID or 'email:xxx@example.com'
+  emailRecipients  String[] // メールアドレス
+  emailSubject     String?
+
+  // 実行履歴
+  lastRunAt      DateTime?
+  lastRunStatus  String?   // 'success' | 'failed'
+  lastRunError   String?
+  nextRunAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, nextRunAt])
+  @@index([reportType])
+  @@map("scheduled_reports")
+}
+
+// スケジュールレポート実行ログ
+model ScheduledReportLog {
+  id        String   @id @default(cuid())
+  reportId  String
+  status    String   // 'running' | 'success' | 'failed'
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  duration  Int?     // 実行時間（ミリ秒）
+  error     String?
+  metadata  Json?    // 結果サマリーなど
+
+  @@index([reportId, startedAt])
+  @@map("scheduled_report_logs")
 }
 
 // ========================================
