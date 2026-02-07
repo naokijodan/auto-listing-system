@@ -12,11 +12,15 @@ import {
   Bell,
   BarChart3,
   Truck,
+  Store,
+  ClipboardCheck,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'ダッシュボード', href: '/', icon: LayoutDashboard },
   { name: '商品管理', href: '/products', icon: Package },
+  { name: '商品レビュー', href: '/products/review', icon: ClipboardCheck },
+  { name: 'Joom管理', href: '/joom', icon: Store },
   { name: '出品管理', href: '/listings', icon: ShoppingCart },
   { name: '注文管理', href: '/orders', icon: Truck },
   { name: 'ジョブ監視', href: '/jobs', icon: Activity },

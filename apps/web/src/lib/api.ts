@@ -329,4 +329,76 @@ export const productApi = {
       { ids }
     );
   },
+
+  // Phase 40-D: Joom Preview
+  previewJoom: async (productId: string) => {
+    return postApi<{
+      success: boolean;
+      data: {
+        product: {
+          id: string;
+          title: string;
+          titleEn?: string;
+          price: number;
+          status: string;
+        };
+        joomPreview: {
+          id: string;
+          name: string;
+          description: string;
+          mainImage: string;
+          extraImages: string[];
+          price: number;
+          currency: string;
+          quantity: number;
+          shipping: { price: number; time: string };
+          tags: string[];
+          parentSku: string;
+          sku: string;
+        };
+        pricing: {
+          originalPriceJpy: number;
+          costUsd: number;
+          shippingCost: number;
+          platformFee: number;
+          paymentFee: number;
+          profit: number;
+          finalPriceUsd: number;
+          exchangeRate: number;
+        };
+        validation: {
+          passed: boolean;
+          warnings: string[];
+        };
+        seo: {
+          score: number;
+          estimatedVisibility: 'high' | 'medium' | 'low';
+        };
+      };
+    }>(`/api/products/${productId}/preview-joom`);
+  },
+
+  // Approve product for Joom listing
+  approve: async (productId: string) => {
+    return patchApi<{ success: boolean }>(`/api/products/bulk`, {
+      ids: [productId],
+      updates: { status: 'APPROVED' },
+    });
+  },
+
+  // Bulk approve
+  bulkApprove: async (ids: string[]) => {
+    return patchApi<{ success: boolean; data: { updatedCount: number } }>(
+      '/api/products/bulk',
+      { ids, updates: { status: 'APPROVED' } }
+    );
+  },
+
+  // Bulk reject
+  bulkReject: async (ids: string[]) => {
+    return patchApi<{ success: boolean; data: { updatedCount: number } }>(
+      '/api/products/bulk',
+      { ids, updates: { status: 'REJECTED' } }
+    );
+  },
 };
