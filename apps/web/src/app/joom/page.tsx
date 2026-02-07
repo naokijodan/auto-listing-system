@@ -90,6 +90,18 @@ interface PriceSyncStatus {
   };
 }
 
+interface ExchangeRateData {
+  success: boolean;
+  data: {
+    fromCurrency: string;
+    toCurrency: string;
+    rate: number;
+    usdToJpy: number;
+    source: string;
+    fetchedAt: string | null;
+  };
+}
+
 export default function JoomPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState('');
@@ -117,6 +129,13 @@ export default function JoomPage() {
     showPriceSyncStatus ? '/api/pricing/sync/status' : null,
     fetcher,
     { refreshInterval: showPriceSyncStatus ? 5000 : 0 }
+  );
+
+  // Fetch exchange rate
+  const { data: exchangeRate, mutate: mutateExchangeRate } = useSWR<ExchangeRateData>(
+    '/api/pricing/exchange-rate',
+    fetcher,
+    { refreshInterval: 60000 } // 1分ごとに更新
   );
 
   const listings = data?.data ?? [];
@@ -304,7 +323,7 @@ export default function JoomPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="mb-4 grid grid-cols-4 gap-4">
+      <div className="mb-4 grid grid-cols-5 gap-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30">
@@ -346,6 +365,19 @@ export default function JoomPage() {
             <div>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">売上</p>
               <p className="text-xl font-bold text-green-600 dark:text-green-400">${stats.revenue.toFixed(0)}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/30">
+              <DollarSign className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">USD/JPY</p>
+              <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                {exchangeRate?.data?.usdToJpy?.toFixed(2) || '---'}
+              </p>
             </div>
           </div>
         </Card>
