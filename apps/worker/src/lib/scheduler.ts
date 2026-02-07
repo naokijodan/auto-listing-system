@@ -738,7 +738,8 @@ export async function triggerOrderSync(options?: {
 }
 
 /**
- * 在庫同期ジョブをスケジュール（Phase 41-F）
+ * 在庫同期ジョブをスケジュール（Phase 41-F/41-H）
+ * Joom/eBay両対応
  */
 async function scheduleInventorySync(config: SchedulerConfig['inventorySync']) {
   if (!config.enabled) {
@@ -749,12 +750,12 @@ async function scheduleInventorySync(config: SchedulerConfig['inventorySync']) {
   // 既存のリピートジョブを削除
   const repeatableJobs = await inventoryQueue.getRepeatableJobs();
   for (const job of repeatableJobs) {
-    if (job.name === 'inventory-sync') {
+    if (job.name === 'inventory-sync' || job.name === 'inventory-sync-joom' || job.name === 'inventory-sync-ebay') {
       await inventoryQueue.removeRepeatableByKey(job.key);
     }
   }
 
-  // 在庫同期ジョブを追加
+  // Joom在庫同期ジョブを追加
   await inventoryQueue.add(
     'inventory-sync',
     {
@@ -767,13 +768,37 @@ async function scheduleInventorySync(config: SchedulerConfig['inventorySync']) {
       repeat: {
         pattern: config.cronExpression,
       },
-      jobId: 'inventory-sync-scheduled',
+      jobId: 'inventory-sync-joom-scheduled',
+    }
+  );
+
+  // eBay在庫同期ジョブを追加（15分後にずらして実行）
+  // 例: '30 */6 * * *' → '45 */6 * * *'
+  const ebayOffset = config.cronExpression.replace(/^(\d+)/, (match) => {
+    const minute = parseInt(match, 10);
+    return String((minute + 15) % 60);
+  });
+
+  await inventoryQueue.add(
+    'inventory-sync',
+    {
+      marketplace: 'ebay',
+      maxListings: config.maxListings,
+      syncOutOfStock: true,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: ebayOffset,
+      },
+      jobId: 'inventory-sync-ebay-scheduled',
     }
   );
 
   log.info({
     type: 'inventory_sync_scheduled',
-    cronExpression: config.cronExpression,
+    joomCron: config.cronExpression,
+    ebayCron: ebayOffset,
     maxListings: config.maxListings,
   });
 }

@@ -2,16 +2,26 @@ import { Job } from 'bullmq';
 import { prisma, Marketplace } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { JoomApiClient } from '../lib/joom-api';
+import { EbayApiClient } from '../lib/ebay-api';
 
 const log = logger.child({ processor: 'inventory-sync' });
 
-// Joom APIクライアントのシングルトン
+// APIクライアントのシングルトン
 let joomClient: JoomApiClient | null = null;
+let ebayClient: EbayApiClient | null = null;
+
 function getJoomClient(): JoomApiClient {
   if (!joomClient) {
     joomClient = new JoomApiClient();
   }
   return joomClient;
+}
+
+function getEbayClient(): EbayApiClient {
+  if (!ebayClient) {
+    ebayClient = new EbayApiClient();
+  }
+  return ebayClient;
 }
 
 export interface InventorySyncJobPayload {
@@ -72,10 +82,10 @@ export async function processInventorySyncJob(
   let totalErrors = 0;
 
   try {
-    if (marketplace !== 'joom') {
+    if (marketplace !== 'joom' && marketplace !== 'ebay') {
       return {
         success: false,
-        message: 'Only Joom marketplace is currently supported',
+        message: 'Supported marketplaces: joom, ebay',
         summary: {
           totalProcessed: 0,
           totalSynced: 0,
@@ -87,9 +97,12 @@ export async function processInventorySyncJob(
       };
     }
 
+    // マーケットプレイス名をDBの値に変換
+    const dbMarketplace = marketplace === 'joom' ? 'JOOM' : 'EBAY';
+
     // 同期対象の出品を取得
     const whereClause: any = {
-      marketplace: 'JOOM' as Marketplace,
+      marketplace: dbMarketplace as Marketplace,
       marketplaceListingId: { not: null },
     };
 
@@ -112,9 +125,12 @@ export async function processInventorySyncJob(
     log.info({
       type: 'inventory_sync_listings_found',
       count: listings.length,
+      marketplace,
     });
 
-    const joom = getJoomClient();
+    // マーケットプレイスに応じたAPIクライアント
+    const joom = marketplace === 'joom' ? getJoomClient() : null;
+    const ebay = marketplace === 'ebay' ? getEbayClient() : null;
 
     for (const listing of listings) {
       const product = listing.product;
@@ -150,15 +166,25 @@ export async function processInventorySyncJob(
           continue;
         }
 
-        // Joomに在庫を同期
-        const marketplaceData = listing.marketplaceData as { sku?: string; variantSku?: string } | null;
-        const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+        // マーケットプレイスに在庫を同期
+        const marketplaceData = listing.marketplaceData as { sku?: string; variantSku?: string; offerId?: string } | null;
+        let result: { success: boolean; error?: { message: string } };
 
-        const result = await joom.updateInventory(
-          listing.marketplaceListingId!,
-          sku,
-          localQuantity
-        );
+        if (marketplace === 'joom' && joom) {
+          // Joom: productId + variantSku で更新
+          const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+          result = await joom.updateInventory(
+            listing.marketplaceListingId!,
+            sku,
+            localQuantity
+          );
+        } else if (marketplace === 'ebay' && ebay) {
+          // eBay: SKUで更新
+          const sku = marketplaceData?.sku || listing.marketplaceListingId!;
+          result = await ebay.updateInventory(sku, localQuantity);
+        } else {
+          result = { success: false, error: { message: 'Invalid marketplace client' } };
+        }
 
         if (result.success) {
           updates.push({
@@ -172,6 +198,7 @@ export async function processInventorySyncJob(
           log.info({
             type: 'inventory_synced',
             listingId: listing.id,
+            marketplace,
             localQuantity,
           });
         } else {
@@ -197,6 +224,7 @@ export async function processInventorySyncJob(
         log.error({
           type: 'inventory_sync_error',
           listingId: listing.id,
+          marketplace,
           error: error.message,
         });
       }
@@ -264,7 +292,8 @@ export async function processInventorySyncJob(
 }
 
 /**
- * 単一出品の在庫をJoomに同期
+ * 単一出品の在庫をマーケットプレイスに同期
+ * Joom / eBay 両対応
  */
 export async function syncListingInventory(
   listingId: string,
@@ -274,25 +303,39 @@ export async function syncListingInventory(
     where: { id: listingId },
   });
 
-  if (!listing || listing.marketplace !== 'JOOM' || !listing.marketplaceListingId) {
-    return { success: false, error: 'Invalid listing or not a Joom listing' };
+  if (!listing || !listing.marketplaceListingId) {
+    return { success: false, error: 'Invalid listing or no marketplace listing ID' };
+  }
+
+  // Joom / eBayのみ対応
+  if (listing.marketplace !== 'JOOM' && listing.marketplace !== 'EBAY') {
+    return { success: false, error: `Unsupported marketplace: ${listing.marketplace}` };
   }
 
   try {
-    const joom = getJoomClient();
     const marketplaceData = listing.marketplaceData as { sku?: string; variantSku?: string } | null;
-    const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+    let result: { success: boolean; error?: { message: string } };
 
-    const result = await joom.updateInventory(
-      listing.marketplaceListingId,
-      sku,
-      quantity
-    );
+    if (listing.marketplace === 'JOOM') {
+      const joom = getJoomClient();
+      const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+      result = await joom.updateInventory(
+        listing.marketplaceListingId,
+        sku,
+        quantity
+      );
+    } else {
+      // eBay
+      const ebay = getEbayClient();
+      const sku = marketplaceData?.sku || listing.marketplaceListingId;
+      result = await ebay.updateInventory(sku, quantity);
+    }
 
     if (result.success) {
       log.info({
         type: 'single_inventory_synced',
         listingId,
+        marketplace: listing.marketplace,
         quantity,
       });
       return { success: true };
@@ -303,6 +346,7 @@ export async function syncListingInventory(
     log.error({
       type: 'single_inventory_sync_error',
       listingId,
+      marketplace: listing.marketplace,
       error: error.message,
     });
     return { success: false, error: error.message };

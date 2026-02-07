@@ -218,31 +218,34 @@ export async function checkSingleProductInventory(
         },
       });
 
-      // Joom出品の在庫を0に同期（Phase 41-G）
-      const joomListings = activeListings.filter(
-        l => l.marketplace === 'JOOM' && l.marketplaceListingId
+      // Joom/eBay出品の在庫を0に同期（Phase 41-G/41-H）
+      const marketplaceListings = activeListings.filter(
+        l => (l.marketplace === 'JOOM' || l.marketplace === 'EBAY') && l.marketplaceListingId
       );
-      for (const joomListing of joomListings) {
+      for (const listing of marketplaceListings) {
         try {
-          const syncResult = await syncListingInventory(joomListing.id, 0);
+          const syncResult = await syncListingInventory(listing.id, 0);
           if (syncResult.success) {
             log.info({
-              type: 'joom_inventory_synced_on_out_of_stock',
-              listingId: joomListing.id,
+              type: 'marketplace_inventory_synced_on_out_of_stock',
+              listingId: listing.id,
+              marketplace: listing.marketplace,
               productId,
             });
           } else {
             log.warn({
-              type: 'joom_inventory_sync_failed',
-              listingId: joomListing.id,
+              type: 'marketplace_inventory_sync_failed',
+              listingId: listing.id,
+              marketplace: listing.marketplace,
               productId,
               error: syncResult.error,
             });
           }
         } catch (syncError: any) {
           log.error({
-            type: 'joom_inventory_sync_error',
-            listingId: joomListing.id,
+            type: 'marketplace_inventory_sync_error',
+            listingId: listing.id,
+            marketplace: listing.marketplace,
             productId,
             error: syncError.message,
           });
