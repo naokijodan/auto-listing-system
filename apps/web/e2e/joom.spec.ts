@@ -48,16 +48,18 @@ test.describe('Joom Management Page - Stats Cards', () => {
     await page.goto('/joom');
     await page.waitForTimeout(1000);
 
-    const activeCard = page.getByText(/出品中/i);
-    await expect(activeCard).toBeVisible();
+    // 「出品中」は統計カードとステータスフィルターに存在
+    const activeText = page.locator('text=出品中').first();
+    await expect(activeText).toBeVisible();
   });
 
   test('should display pending listings count', async ({ page }) => {
     await page.goto('/joom');
     await page.waitForTimeout(1000);
 
-    const pendingCard = page.getByText(/出品待ち/i);
-    await expect(pendingCard).toBeVisible();
+    // 「出品待ち」は統計カードとステータスフィルターに存在
+    const pendingText = page.locator('text=出品待ち').first();
+    await expect(pendingText).toBeVisible();
   });
 
   test('should display revenue', async ({ page }) => {
@@ -109,9 +111,9 @@ test.describe('Joom Management Page - Listings Table', () => {
     await page.goto('/joom');
     await page.waitForTimeout(1000);
 
-    // テーブルヘッダーが表示される
-    const tableHeader = page.getByText(/商品名|画像|出品価格|ステータス/i).first();
-    await expect(tableHeader).toBeVisible();
+    // テーブルヘッダーが表示される（複数のカラムヘッダー）
+    const tableHeader = page.locator('.bg-zinc-50, [class*="border-b"]').filter({ hasText: '商品名' });
+    await expect(tableHeader.first()).toBeVisible();
   });
 
   test('should display listing items or empty state', async ({ page }) => {
