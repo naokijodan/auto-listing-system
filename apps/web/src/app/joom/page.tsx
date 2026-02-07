@@ -24,6 +24,8 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  Upload,
+  Activity,
 } from 'lucide-react';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
@@ -42,15 +44,47 @@ interface ListingStats {
   revenue: number;
 }
 
+interface BatchPublishStatus {
+  success: boolean;
+  queue: {
+    name: string;
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+  };
+  recentJobs: {
+    statusCounts: Record<string, number>;
+    jobs: Array<{
+      jobId: string;
+      productId: string;
+      productTitle: string;
+      status: string;
+      result?: { listingUrl?: string; marketplaceListingId?: string };
+      errorMessage?: string;
+      completedAt?: string;
+    }>;
+  };
+}
+
 export default function JoomPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isBatchPublishing, setIsBatchPublishing] = useState(false);
+  const [showBatchStatus, setShowBatchStatus] = useState(false);
 
   // Fetch Joom listings
   const { data, error, isLoading, mutate } = useSWR<{ success: boolean; data: Listing[]; pagination: { total: number } }>(
     api.getListings({ marketplace: 'JOOM', status: statusFilter || undefined, limit: 100 }),
     fetcher
+  );
+
+  // Fetch batch publish status
+  const { data: batchStatus, mutate: mutateBatchStatus } = useSWR<BatchPublishStatus>(
+    showBatchStatus ? '/api/batch/publish/status' : null,
+    fetcher,
+    { refreshInterval: showBatchStatus ? 5000 : 0 }
   );
 
   const listings = data?.data ?? [];
@@ -123,6 +157,30 @@ export default function JoomPage() {
     }
   }, [selectedIds, mutate]);
 
+  // Batch publish new products
+  const handleBatchPublish = useCallback(async () => {
+    setIsBatchPublishing(true);
+    try {
+      const response = await postApi('/api/batch/publish', {
+        marketplace: 'joom',
+        options: { maxProducts: 20, skipExisting: true },
+      }) as { success: boolean; summary: { totalQueued: number } };
+      if (response.success) {
+        addToast({
+          type: 'success',
+          message: `${response.summary.totalQueued}件をキューに追加しました`,
+        });
+        setShowBatchStatus(true);
+        mutate();
+        mutateBatchStatus();
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: 'バッチ出品に失敗しました' });
+    } finally {
+      setIsBatchPublishing(false);
+    }
+  }, [mutate, mutateBatchStatus]);
+
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
       {/* Header */}
@@ -138,9 +196,33 @@ export default function JoomPage() {
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => mutate()}>
-          <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBatchStatus(!showBatchStatus)}
+            className={showBatchStatus ? 'border-amber-500 text-amber-600' : ''}
+          >
+            <Activity className="h-4 w-4 mr-1" />
+            ジョブ状況
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleBatchPublish}
+            disabled={isBatchPublishing}
+          >
+            {isBatchPublishing ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <Upload className="h-4 w-4 mr-1" />
+            )}
+            新規バッチ出品
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => mutate()}>
+            <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -190,6 +272,72 @@ export default function JoomPage() {
           </div>
         </Card>
       </div>
+
+      {/* Batch Publish Status */}
+      {showBatchStatus && batchStatus && (
+        <Card className="mb-4 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-zinc-900 dark:text-white flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              出品ジョブステータス
+            </h3>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                待機: {batchStatus.queue.waiting}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                処理中: {batchStatus.queue.active}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                完了: {batchStatus.queue.completed}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+                失敗: {batchStatus.queue.failed}
+              </span>
+            </div>
+          </div>
+          {batchStatus.recentJobs.jobs.length > 0 && (
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {batchStatus.recentJobs.jobs.slice(0, 5).map((job) => (
+                <div
+                  key={job.jobId}
+                  className="flex items-center justify-between text-xs bg-zinc-50 dark:bg-zinc-800 rounded px-3 py-2"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {job.status === 'COMPLETED' ? (
+                      <CheckCircle className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                    ) : job.status === 'FAILED' ? (
+                      <XCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                    ) : (
+                      <Loader2 className="h-3 w-3 text-blue-500 animate-spin flex-shrink-0" />
+                    )}
+                    <span className="truncate text-zinc-700 dark:text-zinc-300">
+                      {job.productTitle}
+                    </span>
+                  </div>
+                  {job.result?.listingUrl && (
+                    <a
+                      href={job.result.listingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-amber-600 hover:text-amber-700 flex-shrink-0"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                  {job.errorMessage && (
+                    <span className="text-red-500 truncate max-w-32">{job.errorMessage}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Filters */}
       <div className="mb-4 flex items-center gap-3">
