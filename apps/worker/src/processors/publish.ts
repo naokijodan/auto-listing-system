@@ -188,7 +188,73 @@ export async function processPublishJob(
 }
 
 /**
- * Joomに出品
+ * [EN]プレフィックスを除去
+ */
+function removeTranslationPrefix(text: string): string {
+  if (!text) return '';
+  return text.replace(/^\[(EN|RU|JA)\]\s*/i, '').trim();
+}
+
+/**
+ * 説明文を最小長に達するまで拡張
+ */
+function ensureMinimumDescription(description: string, attributes: any): string {
+  if (!description) description = '';
+  if (description.length >= 100) return description;
+
+  const additions: string[] = [];
+  if (attributes?.brand) additions.push(`Brand: ${attributes.brand}.`);
+  if (attributes?.condition) {
+    const conditionMap: Record<string, string> = {
+      'new': 'Brand new condition',
+      'like_new': 'Like new condition',
+      'good': 'Good condition',
+      'fair': 'Fair condition'
+    };
+    additions.push(conditionMap[attributes.condition] || `Condition: ${attributes.condition}.`);
+  }
+  additions.push('Ships from Japan with careful packaging.');
+  additions.push('Authentic Japanese product.');
+
+  let enhanced = description;
+  for (const addition of additions) {
+    if (enhanced.length >= 100) break;
+    enhanced = enhanced ? `${enhanced} ${addition}` : addition;
+  }
+  return enhanced;
+}
+
+/**
+ * タグを属性から生成
+ */
+function generateTagsFromAttributes(product: any): string[] {
+  const tags: string[] = [];
+  const attributes = product.attributes || {};
+
+  if (product.brand || attributes.brand) tags.push(product.brand || attributes.brand);
+  if (product.category || attributes.category) tags.push(product.category || attributes.category);
+  if (product.condition || attributes.condition) tags.push(product.condition || attributes.condition);
+  tags.push('Japanese');
+  tags.push('Authentic');
+
+  return [...new Set(tags.filter(Boolean))].slice(0, 10);
+}
+
+/**
+ * 外部アクセス可能な画像URLを選択
+ */
+function selectExternalImage(processed: string | undefined, original: string | undefined): string {
+  if (processed && !processed.includes('localhost') && !processed.includes('127.0.0.1')) {
+    return processed;
+  }
+  if (original && !original.includes('localhost') && !original.includes('127.0.0.1')) {
+    return original;
+  }
+  return processed || original || '';
+}
+
+/**
+ * Joomに出品（Phase 41-C: API v3対応版）
  */
 async function publishToJoom(
   product: any,
@@ -197,7 +263,6 @@ async function publishToJoom(
 ): Promise<{ id: string; url?: string }> {
   if (!(await isJoomConfigured())) {
     log.warn({ type: 'joom_not_configured' });
-    // プレースホルダーを返す
     return {
       id: `joom-placeholder-${Date.now()}`,
       url: undefined,
@@ -212,19 +277,48 @@ async function publishToJoom(
     marketplace: 'joom',
   });
 
-  // SKU生成
-  const sku = `ALS-${product.id.substring(0, 8)}`;
+  // SKU生成（RAKUDA形式）
+  const parentSku = `RAKUDA-${product.sourceItemId || product.id.substring(0, 8)}`;
+
+  // タイトル・説明文の処理
+  const rawTitle = product.titleEn || product.title;
+  const title = removeTranslationPrefix(rawTitle);
+  const rawDescription = product.descriptionEn || product.description;
+  const cleanDescription = removeTranslationPrefix(rawDescription);
+  const description = ensureMinimumDescription(cleanDescription, product.attributes);
+
+  // 画像URL（外部アクセス可能なURLを優先）
+  const processedImages = (product.processedImages || []) as string[];
+  const originalImages = (product.images || []) as string[];
+  const mainImage = selectExternalImage(processedImages[0], originalImages[0]);
+  const extraImages = [];
+  for (let i = 1; i < 6; i++) {
+    const img = selectExternalImage(processedImages[i], originalImages[i]);
+    if (img) extraImages.push(img);
+  }
+
+  // タグ生成
+  const tags = generateTagsFromAttributes(product);
+
+  log.info({
+    type: 'joom_publish_preparing',
+    title: title.substring(0, 50),
+    mainImage: mainImage.substring(0, 60),
+    price: priceResult.listingPrice,
+  });
 
   // Joom商品作成
   const result = await joomApi.createProduct({
-    name: product.titleEn || product.title,
-    description: product.descriptionEn || product.description,
-    mainImage: product.processedImages?.[0] || product.images[0],
-    extraImages: (product.processedImages || product.images).slice(1, 10),
+    name: title,
+    description: description,
+    mainImage: mainImage,
+    extraImages: extraImages,
     price: priceResult.listingPrice,
     currency: 'USD',
     quantity: 1,
-    sku,
+    sku: parentSku,
+    parentSku: parentSku,
+    tags: tags,
     shipping: {
       price: priceResult.shippingCost,
       time: '15-30',
@@ -232,24 +326,50 @@ async function publishToJoom(
   });
 
   if (!result.success) {
+    // 既に存在する場合はエラーではなく既存IDを返す
+    if (result.error?.message?.includes('already_exists')) {
+      const match = result.error.message.match(/productID=([a-f0-9]+)/);
+      if (match) {
+        log.info({
+          type: 'joom_product_already_exists',
+          existingProductId: match[1],
+        });
+        return {
+          id: match[1],
+          url: `https://www.joom.com/en/products/${match[1]}`,
+        };
+      }
+    }
     throw new Error(`Joom API error: ${result.error?.message}`);
   }
 
+  const joomProductId = result.data?.id;
+
   // 商品を有効化
-  if (result.data?.id) {
-    await joomApi.enableProduct(result.data.id);
+  if (joomProductId) {
+    try {
+      await joomApi.enableProduct(joomProductId);
+      log.info({ type: 'joom_product_enabled', joomProductId });
+    } catch (enableError: any) {
+      log.warn({
+        type: 'joom_enable_failed',
+        joomProductId,
+        error: enableError.message,
+      });
+    }
   }
 
   log.info({
     type: 'joom_published',
-    joomProductId: result.data?.id,
+    joomProductId,
     price: priceResult.listingPrice,
+    sku: parentSku,
   });
 
   return {
-    id: result.data?.id || `joom-${Date.now()}`,
-    url: result.data?.id
-      ? `https://www.joom.com/en/products/${result.data.id}`
+    id: joomProductId || `joom-${Date.now()}`,
+    url: joomProductId
+      ? `https://www.joom.com/en/products/${joomProductId}`
       : undefined,
   };
 }

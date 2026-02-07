@@ -26,7 +26,9 @@
     "bootstrap": "./scripts/bootstrap.sh",
     "verify:joom": "npx tsx scripts/verify-joom-connection.ts",
     "joom:dry-run": "npx tsx scripts/phase41-dry-run.ts",
-    "joom:test-listing": "npx tsx scripts/phase41b-test-listing.ts"
+    "joom:test-listing": "npx tsx scripts/phase41b-test-listing.ts",
+    "joom:batch-publish": "npx tsx scripts/phase41c-batch-publish.ts",
+    "joom:batch-publish:dry": "npx tsx scripts/phase41c-batch-publish.ts --dry-run"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.1",

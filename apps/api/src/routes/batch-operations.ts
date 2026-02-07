@@ -1,15 +1,26 @@
 /**
- * バッチ操作API（Phase 31）
+ * バッチ操作API（Phase 31 + Phase 41-C）
  *
- * 一括価格変更、出品操作、CSV import/export
+ * 一括価格変更、出品操作、バッチ出品、CSV import/export
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { prisma } from '@rakuda/database';
+import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
+import { prisma, ProductStatus, Marketplace } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { QUEUE_NAMES } from '@rakuda/config';
 
 const router = Router();
 const log = logger.child({ route: 'batch-operations' });
+
+// Redis接続
+const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
+
+// 出品キュー
+const publishQueue = new Queue(QUEUE_NAMES.PUBLISH, { connection: redis });
 
 // ========================================
 // 一括価格変更
@@ -576,6 +587,507 @@ router.post('/listing-operation', async (req: Request, res: Response, next: Next
         totalFailed,
       },
       results: results.slice(0, 100),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ========================================
+// バッチ出品（Phase 41-C）
+// ========================================
+
+interface BatchPublishRequest {
+  // 対象商品
+  filter?: {
+    productIds?: string[];
+    category?: string;
+    status?: string[];
+    minPrice?: number;
+    maxPrice?: number;
+    hasTranslation?: boolean;
+    hasProcessedImages?: boolean;
+  };
+  // 出品先
+  marketplace: 'joom' | 'ebay';
+  // オプション
+  options?: {
+    dryRun?: boolean;
+    maxProducts?: number;
+    skipExisting?: boolean; // 既存出品をスキップ
+  };
+}
+
+interface BatchPublishResult {
+  success: boolean;
+  dryRun: boolean;
+  marketplace: string;
+  summary: {
+    totalMatched: number;
+    totalQueued: number;
+    totalSkipped: number;
+    estimatedTime: string;
+  };
+  products: Array<{
+    productId: string;
+    title: string;
+    listingId?: string;
+    jobId?: string;
+    status: 'queued' | 'skipped';
+    skipReason?: string;
+  }>;
+}
+
+/**
+ * @swagger
+ * /api/batch/publish:
+ *   post:
+ *     tags: [Batch]
+ *     summary: バッチ出品（複数商品を一括でマーケットプレイスに出品）
+ *     description: |
+ *       商品フィルター条件に基づいて複数の商品を一括で出品キューに追加します。
+ *       各商品に対してListingレコードを作成し、出品ジョブをキューイングします。
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - marketplace
+ *             properties:
+ *               filter:
+ *                 type: object
+ *                 properties:
+ *                   productIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   category:
+ *                     type: string
+ *                   status:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   minPrice:
+ *                     type: number
+ *                   maxPrice:
+ *                     type: number
+ *               marketplace:
+ *                 type: string
+ *                 enum: [joom, ebay]
+ *               options:
+ *                 type: object
+ *                 properties:
+ *                   dryRun:
+ *                     type: boolean
+ *                   maxProducts:
+ *                     type: number
+ *                   skipExisting:
+ *                     type: boolean
+ */
+router.post('/publish', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const body = req.body as BatchPublishRequest;
+    const { filter = {}, marketplace, options = {} } = body;
+
+    if (!marketplace || !['joom', 'ebay'].includes(marketplace)) {
+      return res.status(400).json({
+        success: false,
+        error: 'marketplace is required (joom or ebay)',
+      });
+    }
+
+    const {
+      dryRun = false,
+      maxProducts = 100,
+      skipExisting = true,
+    } = options;
+
+    log.info({
+      type: 'batch_publish_start',
+      marketplace,
+      filter,
+      dryRun,
+      maxProducts,
+    });
+
+    // フィルター条件で商品を取得
+    const whereClause: any = {};
+
+    if (filter.productIds?.length) {
+      whereClause.id = { in: filter.productIds };
+    }
+
+    if (filter.category) {
+      whereClause.category = filter.category;
+    }
+
+    if (filter.status?.length) {
+      whereClause.status = { in: filter.status };
+    } else {
+      // デフォルト: APPROVED または READY_TO_REVIEW の商品のみ
+      whereClause.status = {
+        in: [ProductStatus.APPROVED, ProductStatus.READY_TO_REVIEW],
+      };
+    }
+
+    if (filter.minPrice !== undefined || filter.maxPrice !== undefined) {
+      whereClause.price = {};
+      if (filter.minPrice !== undefined) {
+        whereClause.price.gte = filter.minPrice;
+      }
+      if (filter.maxPrice !== undefined) {
+        whereClause.price.lte = filter.maxPrice;
+      }
+    }
+
+    if (filter.hasTranslation) {
+      whereClause.titleEn = { not: null };
+    }
+
+    if (filter.hasProcessedImages) {
+      whereClause.processedImages = { not: [] };
+    }
+
+    // マーケットプレイス文字列をenumに変換
+    const marketplaceEnum = marketplace.toUpperCase() as Marketplace;
+
+    const products = await prisma.product.findMany({
+      where: whereClause,
+      include: {
+        listings: {
+          where: {
+            marketplace: marketplaceEnum,
+          },
+        },
+      },
+      take: maxProducts,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    log.info({
+      type: 'batch_publish_products_found',
+      count: products.length,
+    });
+
+    const results: BatchPublishResult['products'] = [];
+    let totalQueued = 0;
+    let totalSkipped = 0;
+
+    for (const product of products) {
+      // 既存出品チェック
+      if (skipExisting && product.listings.length > 0) {
+        results.push({
+          productId: product.id,
+          title: product.titleEn || product.title || 'Unknown',
+          status: 'skipped',
+          skipReason: 'Already listed on this marketplace',
+        });
+        totalSkipped++;
+        continue;
+      }
+
+      // 翻訳チェック
+      if (!product.titleEn) {
+        results.push({
+          productId: product.id,
+          title: product.title || 'Unknown',
+          status: 'skipped',
+          skipReason: 'No English translation',
+        });
+        totalSkipped++;
+        continue;
+      }
+
+      // 画像チェック
+      const images = (product.processedImages as string[]) || (product.images as string[]) || [];
+      if (images.length === 0) {
+        results.push({
+          productId: product.id,
+          title: product.titleEn || product.title || 'Unknown',
+          status: 'skipped',
+          skipReason: 'No images available',
+        });
+        totalSkipped++;
+        continue;
+      }
+
+      if (!dryRun) {
+        // Listingレコード作成
+        const listing = await prisma.listing.create({
+          data: {
+            productId: product.id,
+            marketplace: marketplaceEnum,
+            status: 'PENDING_PUBLISH',
+            listingPrice: 0, // 出品時にprice-calculatorで計算
+            shippingCost: 0,
+            currency: 'USD',
+            marketplaceData: {
+              batchPublish: true,
+              createdAt: new Date().toISOString(),
+            },
+          },
+        });
+
+        // 出品ジョブをキューに追加
+        const job = await publishQueue.add(
+          'publish',
+          {
+            productId: product.id,
+            listingId: listing.id,
+            marketplace: marketplace,
+            listingData: {},
+            isDryRun: false,
+          },
+          {
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 5000,
+            },
+            removeOnComplete: 100,
+            removeOnFail: 50,
+          }
+        );
+
+        results.push({
+          productId: product.id,
+          title: product.titleEn || product.title || 'Unknown',
+          listingId: listing.id,
+          jobId: job.id,
+          status: 'queued',
+        });
+      } else {
+        // Dry run: ジョブを作成せずに結果のみ返す
+        results.push({
+          productId: product.id,
+          title: product.titleEn || product.title || 'Unknown',
+          status: 'queued',
+        });
+      }
+
+      totalQueued++;
+    }
+
+    // 推定時間を計算（1商品あたり約5秒と仮定）
+    const estimatedSeconds = totalQueued * 5;
+    const estimatedTime = estimatedSeconds < 60
+      ? `${estimatedSeconds} seconds`
+      : `${Math.ceil(estimatedSeconds / 60)} minutes`;
+
+    const result: BatchPublishResult = {
+      success: true,
+      dryRun,
+      marketplace,
+      summary: {
+        totalMatched: products.length,
+        totalQueued,
+        totalSkipped,
+        estimatedTime,
+      },
+      products: results.slice(0, 100), // レスポンスサイズ制限
+    };
+
+    log.info({
+      type: 'batch_publish_complete',
+      dryRun,
+      marketplace,
+      totalMatched: products.length,
+      totalQueued,
+      totalSkipped,
+    });
+
+    res.status(202).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /api/batch/publish/preview:
+ *   post:
+ *     tags: [Batch]
+ *     summary: バッチ出品プレビュー
+ *     description: 実際に出品せずに対象商品を確認
+ */
+router.post('/publish/preview', async (req: Request, res: Response, next: NextFunction) => {
+  // dryRunを強制的にtrueにして同じロジックを実行
+  req.body.options = { ...req.body.options, dryRun: true };
+
+  // /publish エンドポイントにリダイレクト
+  const body = req.body as BatchPublishRequest;
+  const { filter = {}, marketplace, options = {} } = body;
+
+  if (!marketplace || !['joom', 'ebay'].includes(marketplace)) {
+    return res.status(400).json({
+      success: false,
+      error: 'marketplace is required (joom or ebay)',
+    });
+  }
+
+  const { maxProducts = 50, skipExisting = true } = options;
+
+  // フィルター条件で商品を取得
+  const whereClause: any = {};
+
+  if (filter.productIds?.length) {
+    whereClause.id = { in: filter.productIds };
+  }
+
+  if (filter.category) {
+    whereClause.category = filter.category;
+  }
+
+  if (filter.status?.length) {
+    whereClause.status = { in: filter.status };
+  } else {
+    whereClause.status = {
+      in: [ProductStatus.APPROVED, ProductStatus.READY_TO_REVIEW],
+    };
+  }
+
+  // マーケットプレイス文字列をenumに変換
+  const marketplaceEnum = marketplace.toUpperCase() as Marketplace;
+
+  const products = await prisma.product.findMany({
+    where: whereClause,
+    include: {
+      listings: {
+        where: {
+          marketplace: marketplaceEnum,
+        },
+      },
+    },
+    take: maxProducts,
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const preview = products.map((product) => {
+    const hasExistingListing = product.listings.length > 0;
+    const hasTranslation = !!product.titleEn;
+    const images = (product.processedImages as string[]) || (product.images as string[]) || [];
+    const hasImages = images.length > 0;
+
+    let status: 'ready' | 'skipped' = 'ready';
+    let skipReason: string | undefined;
+
+    if (skipExisting && hasExistingListing) {
+      status = 'skipped';
+      skipReason = 'Already listed';
+    } else if (!hasTranslation) {
+      status = 'skipped';
+      skipReason = 'No translation';
+    } else if (!hasImages) {
+      status = 'skipped';
+      skipReason = 'No images';
+    }
+
+    return {
+      productId: product.id,
+      title: product.titleEn || product.title || 'Unknown',
+      price: product.price,
+      category: product.category,
+      hasTranslation,
+      hasImages,
+      imageCount: images.length,
+      hasExistingListing,
+      status,
+      skipReason,
+    };
+  });
+
+  const readyCount = preview.filter((p) => p.status === 'ready').length;
+  const skippedCount = preview.filter((p) => p.status === 'skipped').length;
+
+  res.json({
+    success: true,
+    dryRun: true,
+    marketplace,
+    summary: {
+      totalMatched: products.length,
+      totalReady: readyCount,
+      totalSkipped: skippedCount,
+    },
+    preview,
+  });
+});
+
+/**
+ * @swagger
+ * /api/batch/publish/status:
+ *   get:
+ *     tags: [Batch]
+ *     summary: バッチ出品ステータス確認
+ *     description: 最近のバッチ出品ジョブのステータスを取得
+ */
+router.get('/publish/status', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { marketplace, limit = '50' } = req.query;
+
+    // 最近のジョブログを取得
+    const whereClause: any = {
+      queueName: 'publish',
+    };
+
+    const jobLogs = await prisma.jobLog.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit as string, 10),
+      include: {
+        product: {
+          select: {
+            id: true,
+            title: true,
+            titleEn: true,
+          },
+        },
+      },
+    });
+
+    // ステータス集計
+    const statusCounts = {
+      PENDING: 0,
+      PROCESSING: 0,
+      COMPLETED: 0,
+      FAILED: 0,
+    };
+
+    for (const log of jobLogs) {
+      if (log.status in statusCounts) {
+        statusCounts[log.status as keyof typeof statusCounts]++;
+      }
+    }
+
+    // キューの状態を取得
+    const waiting = await publishQueue.getWaitingCount();
+    const active = await publishQueue.getActiveCount();
+    const completed = await publishQueue.getCompletedCount();
+    const failed = await publishQueue.getFailedCount();
+
+    res.json({
+      success: true,
+      queue: {
+        name: 'publish',
+        waiting,
+        active,
+        completed,
+        failed,
+      },
+      recentJobs: {
+        statusCounts,
+        jobs: jobLogs.map((log) => ({
+          jobId: log.jobId,
+          productId: log.productId,
+          productTitle: log.product?.titleEn || log.product?.title || 'Unknown',
+          status: log.status,
+          result: log.result,
+          errorMessage: log.errorMessage,
+          startedAt: log.startedAt,
+          completedAt: log.completedAt,
+        })),
+      },
     });
   } catch (error) {
     next(error);
