@@ -257,6 +257,72 @@ export const handlers = [
   http.put(`${JOOM_API}/products/:productId/variants/:sku/price`, () => {
     return HttpResponse.json({});
   }),
+
+  // Phase 40-C: Delete product
+  http.delete(`${JOOM_API}/products/:productId`, ({ params }) => {
+    const { productId } = params;
+
+    if (productId === 'non-existent') {
+      return HttpResponse.json(
+        { code: 'NOT_FOUND', message: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    return HttpResponse.json({});
+  }),
+
+  // Phase 40-C: List products
+  http.get(`${JOOM_API}/products`, ({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const limit = parseInt(url.searchParams.get('limit') || '20');
+
+    const products = [
+      { id: 'joom-1', name: 'Product 1', price: 19.99, status: 'enabled' },
+      { id: 'joom-2', name: 'Product 2', price: 29.99, status: 'enabled' },
+      { id: 'joom-3', name: 'Product 3', price: 39.99, status: 'disabled' },
+    ].filter(p => !status || p.status === status).slice(0, limit);
+
+    return HttpResponse.json({
+      products,
+      total: products.length,
+    });
+  }),
+
+  // Phase 40-C: Upload image
+  http.post(`${JOOM_API}/images`, () => {
+    return HttpResponse.json({
+      imageId: `img-${Date.now()}`,
+      url: 'https://cdn.joom.com/uploaded-image.jpg',
+    });
+  }),
+
+  // Phase 40-C: Add product image
+  http.post(`${JOOM_API}/products/:productId/images`, () => {
+    return HttpResponse.json({});
+  }),
+
+  // Phase 40-C: Remove product image
+  http.delete(`${JOOM_API}/products/:productId/images/:imageId`, () => {
+    return HttpResponse.json({});
+  }),
+
+  // Phase 40-C: Get orders
+  http.get(`${JOOM_API}/orders`, ({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+
+    const orders = [
+      { id: 'order-1', status: 'pending', total: 29.99 },
+      { id: 'order-2', status: 'shipped', total: 49.99 },
+    ].filter(o => !status || o.status === status);
+
+    return HttpResponse.json({
+      orders,
+      total: orders.length,
+    });
+  }),
 ];
 
 // エラーハンドラー（テスト用）

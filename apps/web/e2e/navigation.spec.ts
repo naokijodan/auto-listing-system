@@ -65,4 +65,22 @@ test.describe('Navigation', () => {
 
     await expect(page.locator('body')).toBeVisible();
   });
+
+  test('should navigate to products review page', async ({ page }) => {
+    await page.goto('/products/review');
+
+    await expect(page.locator('body')).toBeVisible();
+    // ページ固有の要素を確認
+    const heading = page.getByRole('heading', { name: /レビュー|review/i });
+    await expect(heading).toBeVisible();
+  });
+
+  test('should navigate to joom page', async ({ page }) => {
+    await page.goto('/joom');
+
+    await expect(page.locator('body')).toBeVisible();
+    // ページ固有の要素を確認
+    const heading = page.getByRole('heading', { name: /Joom/i });
+    await expect(heading).toBeVisible();
+  });
 });

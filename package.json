@@ -23,7 +23,8 @@
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
-    "bootstrap": "./scripts/bootstrap.sh"
+    "bootstrap": "./scripts/bootstrap.sh",
+    "verify:joom": "npx tsx scripts/verify-joom-connection.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.1",
