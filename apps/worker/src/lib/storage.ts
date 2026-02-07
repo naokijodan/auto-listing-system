@@ -10,6 +10,7 @@ import {
   HeadObjectCommand,
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import fs from 'fs/promises';
 import path from 'path';
 import { logger } from '@rakuda/logger';
@@ -325,6 +326,111 @@ export function buildPublicUrl(bucket: string, key: string): string {
   // CDN URLが設定されている場合はそれを使用
   const baseUrl = CDN_URL.replace(/\/$/, '');
   return `${baseUrl}/${bucket}/${key}`;
+}
+
+/**
+ * Phase 41: プリサインURLを生成（外部アクセス用）
+ * 有効期限付きの署名付きURLを生成し、外部サービスからのアクセスを許可
+ */
+export async function getPresignedUrl(
+  key: string,
+  bucket: string = DEFAULT_BUCKET,
+  expiresIn: number = 7 * 24 * 60 * 60 // デフォルト: 7日間
+): Promise<string> {
+  try {
+    const command = new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    });
+
+    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+
+    log.debug({
+      type: 'presigned_url_generated',
+      key,
+      bucket,
+      expiresIn,
+    });
+
+    return presignedUrl;
+  } catch (error: any) {
+    log.error({
+      type: 'presigned_url_error',
+      key,
+      bucket,
+      error: error.message,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Phase 41: ローカルURLを外部アクセス可能なURLに変換
+ * localhost URLを検出し、プリサインURLに置換する
+ */
+export async function convertToExternalUrl(
+  localUrl: string,
+  expiresIn: number = 7 * 24 * 60 * 60
+): Promise<string> {
+  // localhostまたはinternal URLでない場合はそのまま返す
+  const isLocalUrl = localUrl.includes('localhost') ||
+                     localUrl.includes('127.0.0.1') ||
+                     localUrl.includes('minio:');
+
+  if (!isLocalUrl) {
+    return localUrl;
+  }
+
+  // URLからバケットとキーを抽出
+  // 形式: http://localhost:9000/bucket-name/key/path/file.ext
+  try {
+    const url = new URL(localUrl);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+
+    if (pathParts.length < 2) {
+      log.warn({
+        type: 'invalid_local_url',
+        url: localUrl,
+      });
+      return localUrl;
+    }
+
+    const bucket = pathParts[0];
+    const key = pathParts.slice(1).join('/');
+
+    // CDN_URLがlocalhostでない場合はそちらを使用
+    const cdnUrl = CDN_URL.replace(/\/$/, '');
+    const isExternalCdn = !cdnUrl.includes('localhost') &&
+                          !cdnUrl.includes('127.0.0.1') &&
+                          !cdnUrl.includes('minio:');
+
+    if (isExternalCdn) {
+      return `${cdnUrl}/${bucket}/${key}`;
+    }
+
+    // プリサインURLを生成
+    return await getPresignedUrl(key, bucket, expiresIn);
+  } catch (error: any) {
+    log.error({
+      type: 'url_conversion_error',
+      url: localUrl,
+      error: error.message,
+    });
+    return localUrl;
+  }
+}
+
+/**
+ * Phase 41: 複数の画像URLを外部アクセス可能なURLに変換
+ */
+export async function convertImagesToExternalUrls(
+  imageUrls: string[],
+  expiresIn: number = 7 * 24 * 60 * 60
+): Promise<string[]> {
+  const results = await Promise.all(
+    imageUrls.map(url => convertToExternalUrl(url, expiresIn))
+  );
+  return results;
 }
 
 /**

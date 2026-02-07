@@ -11,10 +11,16 @@
  *   3. バリデーションチェック
  *   4. ペイロードのログ出力（スキーマ確認用）
  *   5. 問題点のレポート
+ *
+ * Phase 41-A 修正対応:
+ *   - 画像URLの外部アクセス変換
+ *   - [EN]プレフィックス除去
+ *   - タグ・説明文の改善
  */
 
 import { prisma, ProductStatus } from '@rakuda/database';
 import { joomApi, calculateJoomPrice, JoomProduct } from '../apps/worker/src/lib/joom-api';
+import { convertToExternalUrl, convertImagesToExternalUrls } from '../apps/worker/src/lib/storage';
 
 interface ValidationResult {
   field: string;
@@ -39,6 +45,114 @@ interface DryRunReport {
 
 const reports: DryRunReport[] = [];
 
+/**
+ * [EN]プレフィックスを除去
+ */
+function removeTranslationPrefix(text: string): string {
+  if (!text) return '';
+  // [EN], [RU], [JA] などのプレフィックスを除去
+  return text.replace(/^\[(EN|RU|JA)\]\s*/i, '').trim();
+}
+
+/**
+ * 説明文を最小長に達するまで拡張
+ */
+function ensureMinimumDescription(description: string, title: string, attributes: any): string {
+  if (!description) {
+    description = '';
+  }
+
+  // 既に十分な長さがある場合はそのまま返す
+  if (description.length >= 100) {
+    return description;
+  }
+
+  const additions: string[] = [];
+
+  // 属性情報から追加テキストを生成
+  if (attributes?.brand) {
+    additions.push(`Brand: ${attributes.brand}.`);
+  }
+  if (attributes?.condition) {
+    const conditionMap: Record<string, string> = {
+      'new': 'Brand new condition',
+      'like_new': 'Like new condition',
+      'good': 'Good condition',
+      'fair': 'Fair condition'
+    };
+    additions.push(conditionMap[attributes.condition] || `Condition: ${attributes.condition}.`);
+  }
+  if (attributes?.material) {
+    additions.push(`Material: ${attributes.material}.`);
+  }
+  if (attributes?.color) {
+    additions.push(`Color: ${attributes.color}.`);
+  }
+  if (attributes?.size) {
+    additions.push(`Size: ${attributes.size}.`);
+  }
+
+  // 標準的な説明を追加
+  additions.push('Ships from Japan with careful packaging.');
+  additions.push('Authentic Japanese product.');
+
+  // 元の説明文と追加テキストを結合
+  let enhanced = description;
+  for (const addition of additions) {
+    if (enhanced.length >= 100) break;
+    enhanced = enhanced ? `${enhanced} ${addition}` : addition;
+  }
+
+  return enhanced;
+}
+
+/**
+ * タグを属性から生成
+ */
+function generateTagsFromAttributes(product: any): string[] {
+  const tags: string[] = [];
+  const attributes = product.attributes || {};
+
+  // ブランド
+  if (product.brand || attributes.brand) {
+    tags.push(product.brand || attributes.brand);
+  }
+
+  // カテゴリ
+  if (product.category || attributes.category) {
+    tags.push(product.category || attributes.category);
+  }
+
+  // 状態
+  if (product.condition || attributes.condition) {
+    const conditionTag = product.condition || attributes.condition;
+    tags.push(conditionTag);
+  }
+
+  // 素材
+  if (attributes.material) {
+    tags.push(attributes.material);
+  }
+
+  // 色
+  if (attributes.color) {
+    tags.push(attributes.color);
+  }
+
+  // 日本製品タグ
+  tags.push('Japanese');
+  tags.push('Authentic');
+
+  // モデル（ある場合）
+  if (attributes.model) {
+    tags.push(attributes.model);
+  }
+
+  // 重複を除去し、最大10個に制限
+  const uniqueTags = [...new Set(tags.filter(Boolean))].slice(0, 10);
+  return uniqueTags;
+}
+
 function log(message: string) {
   console.log(`[${new Date().toISOString()}] ${message}`);
 }
@@ -50,27 +164,33 @@ function logSection(title: string) {
 }
 
 /**
- * Joom用の商品ペイロードを生成
+ * Joom用の商品ペイロードを生成（修正版）
  */
-function generateJoomPayload(product: any, pricing: any): JoomProduct {
-  // 翻訳済みタイトル（英語）を優先
-  const title = product.titleEn || product.title || '';
+async function generateJoomPayload(product: any, pricing: any): Promise<JoomProduct> {
+  // 翻訳済みタイトル（英語）を優先し、[EN]プレフィックスを除去
+  const rawTitle = product.titleEn || product.title || '';
+  const title = removeTranslationPrefix(rawTitle);
 
-  // 翻訳済み説明（英語）を優先
-  const description = product.descriptionEn || product.description || '';
+  // 翻訳済み説明（英語）を優先し、[EN]プレフィックスを除去
+  const rawDescription = product.descriptionEn || product.description || '';
+  const cleanDescription = removeTranslationPrefix(rawDescription);
+
+  // 説明文を最小長に達するまで拡張
+  const description = ensureMinimumDescription(cleanDescription, title, product.attributes);
 
   // 画像（処理済みを優先）
-  const mainImage = product.processedImages?.[0] || product.images?.[0] || '';
-  const extraImages = (product.processedImages || product.images || []).slice(1, 6);
+  const rawMainImage = product.processedImages?.[0] || product.images?.[0] || '';
+  const rawExtraImages = (product.processedImages || product.images || []).slice(1, 6);
+
+  // 画像URLを外部アクセス可能な形式に変換
+  const mainImage = await convertToExternalUrl(rawMainImage);
+  const extraImages = await convertImagesToExternalUrls(rawExtraImages);
 
   // SKU生成
   const sku = `RAKUDA-${product.sourceItemId || product.id.slice(0, 8)}`;
 
-  // タグ生成
-  const tags: string[] = [];
-  if (product.brand) tags.push(product.brand);
-  if (product.category) tags.push(product.category);
-  if (product.condition) tags.push(product.condition);
+  // タグを属性から生成（拡張版）
+  const tags = generateTagsFromAttributes(product);
 
   return {
     name: title,
@@ -95,6 +215,15 @@ function generateJoomPayload(product: any, pricing: any): JoomProduct {
  */
 function validatePayload(payload: JoomProduct): ValidationResult[] {
   const results: ValidationResult[] = [];
+
+  // 0. 画像URLのアクセス可能性チェック
+  if (payload.mainImage && (payload.mainImage.includes('localhost') || payload.mainImage.includes('127.0.0.1'))) {
+    results.push({
+      field: 'mainImage',
+      status: 'warning',
+      message: 'Image URL contains localhost - not accessible externally. Configure CDN_URL for production.',
+    });
+  }
 
   // 1. タイトルチェック
   if (!payload.name || payload.name.length === 0) {
@@ -203,8 +332,8 @@ async function processProduct(product: any): Promise<DryRunReport> {
   // 価格計算
   const pricing = await calculateJoomPrice(product.price, product.weight || 200);
 
-  // ペイロード生成
-  const payload = generateJoomPayload(product, pricing);
+  // ペイロード生成（非同期: 画像URL変換を含む）
+  const payload = await generateJoomPayload(product, pricing);
 
   // バリデーション
   const validations = validatePayload(payload);
