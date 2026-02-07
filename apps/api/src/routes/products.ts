@@ -1080,6 +1080,162 @@ router.post('/bulk/publish', async (req, res, next) => {
 });
 
 /**
+ * Phase 40-C: Joom出品プレビュー（Dry-Run）
+ * 実際にJoomに出品せず、プレビューと検証を行う
+ */
+router.post('/:id/preview-joom', async (req, res, next) => {
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: req.params.id },
+      include: { source: true },
+    });
+
+    if (!product) {
+      throw new AppError(404, 'Product not found', 'PRODUCT_NOT_FOUND');
+    }
+
+    // 翻訳済みコンテンツを取得
+    const title = product.titleEn || product.title;
+    const description = product.descriptionEn || product.description || '';
+
+    // 画像URL取得（処理済み画像を優先）
+    const processedImages = product.processedImages as string[] || [];
+    const images = processedImages.length > 0 ? processedImages : (product.images as string[] || []);
+    const mainImage = images[0] || '';
+    const extraImages = images.slice(1);
+
+    // バリデーションチェック
+    const warnings: string[] = [];
+
+    if (title.length < 10) {
+      warnings.push('Title is too short (minimum 10 characters recommended)');
+    }
+    if (title.length > 200) {
+      warnings.push('Title is too long (maximum 200 characters)');
+    }
+    if (description.length < 50) {
+      warnings.push('Description is too short (minimum 50 characters recommended)');
+    }
+    if (!mainImage) {
+      warnings.push('Main image is required');
+    }
+    if (extraImages.length < 2) {
+      warnings.push('More images recommended for better visibility');
+    }
+    if (!product.titleEn) {
+      warnings.push('English title not translated yet');
+    }
+    if (!product.descriptionEn) {
+      warnings.push('English description not translated yet');
+    }
+
+    // 価格計算
+    const exchangeRateRecord = await prisma.exchangeRate.findFirst({
+      where: { fromCurrency: 'JPY', toCurrency: 'USD' },
+      orderBy: { fetchedAt: 'desc' },
+    });
+    const exchangeRate = exchangeRateRecord?.rate || 0.0067; // デフォルト: 1円 = 0.0067ドル
+
+    const priceSetting = await prisma.priceSetting.findFirst({
+      where: { marketplace: 'JOOM', isDefault: true },
+    });
+
+    const platformFeeRate = priceSetting?.platformFeeRate ?? 0.15;
+    const paymentFeeRate = priceSetting?.paymentFeeRate ?? 0.03;
+    const profitRate = priceSetting?.targetProfitRate ?? 0.30;
+
+    const costUsd = product.price * exchangeRate;
+    const weight = product.weight || 200;
+    const shippingCost = 5 + (weight * 0.01);
+    const baseCost = costUsd + shippingCost;
+    const totalDeduction = platformFeeRate + paymentFeeRate + profitRate;
+    const finalPriceUsd = baseCost / (1 - totalDeduction);
+
+    // 価格チェック
+    if (finalPriceUsd < 1) {
+      warnings.push('Calculated price is too low (minimum $1.00)');
+    }
+    if (finalPriceUsd > 1000) {
+      warnings.push('High-priced items may have lower visibility');
+    }
+
+    // SEOスコア計算
+    let seoScore = 50;
+    if (title.length >= 30) seoScore += 10;
+    if (description.length >= 200) seoScore += 15;
+    if (extraImages.length >= 3) seoScore += 15;
+    const attributes = product.attributes as Record<string, any> || {};
+    const tags = attributes.tags || [];
+    if (tags.length >= 3) seoScore += 10;
+
+    let estimatedVisibility: 'high' | 'medium' | 'low' = 'medium';
+    if (seoScore >= 80) estimatedVisibility = 'high';
+    else if (seoScore < 50) estimatedVisibility = 'low';
+
+    // Joom商品プレビュー
+    const joomProductPreview = {
+      id: `dry-run-${product.id}`,
+      name: title,
+      description,
+      mainImage,
+      extraImages,
+      price: Math.ceil(finalPriceUsd * 100) / 100,
+      currency: 'USD',
+      quantity: 1,
+      shipping: {
+        price: Math.round(shippingCost * 100) / 100,
+        time: '15-30',
+      },
+      tags,
+      parentSku: product.sourceItemId,
+      sku: `RAKUDA-${product.id.slice(0, 8)}`,
+    };
+
+    logger.info({
+      type: 'joom_preview',
+      productId: product.id,
+      seoScore,
+      estimatedVisibility,
+      warningsCount: warnings.length,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        product: {
+          id: product.id,
+          title: product.title,
+          titleEn: product.titleEn,
+          price: product.price,
+          status: product.status,
+        },
+        joomPreview: joomProductPreview,
+        pricing: {
+          originalPriceJpy: product.price,
+          costUsd: Math.round(costUsd * 100) / 100,
+          shippingCost: Math.round(shippingCost * 100) / 100,
+          platformFee: Math.round(finalPriceUsd * platformFeeRate * 100) / 100,
+          paymentFee: Math.round(finalPriceUsd * paymentFeeRate * 100) / 100,
+          profit: Math.round(finalPriceUsd * profitRate * 100) / 100,
+          finalPriceUsd: Math.ceil(finalPriceUsd * 100) / 100,
+          exchangeRate,
+        },
+        validation: {
+          passed: warnings.length === 0,
+          warnings,
+        },
+        seo: {
+          score: seoScore,
+          estimatedVisibility,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * 削除を取り消し（復元）
  */
 router.post('/restore', async (req, res, next) => {

@@ -299,6 +299,166 @@ export class JoomApiClient {
       price,
     });
   }
+
+  /**
+   * Phase 40-C: 商品を削除
+   */
+  async deleteProduct(productId: string): Promise<JoomApiResponse<void>> {
+    log.info({
+      type: 'joom_delete_product',
+      productId,
+    });
+
+    return this.request<void>('DELETE', `/products/${productId}`);
+  }
+
+  /**
+   * Phase 40-C: 商品一覧を取得
+   */
+  async listProducts(params?: {
+    status?: 'enabled' | 'disabled' | 'pending';
+    limit?: number;
+    offset?: number;
+  }): Promise<JoomApiResponse<{ products: JoomProduct[]; total: number }>> {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.set('status', params.status);
+    if (params?.limit) queryParams.set('limit', params.limit.toString());
+    if (params?.offset) queryParams.set('offset', params.offset.toString());
+
+    const endpoint = `/products${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    return this.request<{ products: JoomProduct[]; total: number }>('GET', endpoint);
+  }
+
+  /**
+   * Phase 40-C: 画像をURL経由でアップロード
+   */
+  async uploadImageByUrl(imageUrl: string): Promise<JoomApiResponse<{ imageId: string; url: string }>> {
+    log.info({
+      type: 'joom_upload_image',
+      imageUrl,
+    });
+
+    return this.request<{ imageId: string; url: string }>('POST', '/images', {
+      url: imageUrl,
+    });
+  }
+
+  /**
+   * Phase 40-C: 商品に画像を追加
+   */
+  async addProductImage(
+    productId: string,
+    imageUrl: string,
+    isMain: boolean = false
+  ): Promise<JoomApiResponse<void>> {
+    log.info({
+      type: 'joom_add_product_image',
+      productId,
+      imageUrl,
+      isMain,
+    });
+
+    return this.request<void>('POST', `/products/${productId}/images`, {
+      url: imageUrl,
+      is_main: isMain,
+    });
+  }
+
+  /**
+   * Phase 40-C: 商品の画像を削除
+   */
+  async removeProductImage(
+    productId: string,
+    imageId: string
+  ): Promise<JoomApiResponse<void>> {
+    log.info({
+      type: 'joom_remove_product_image',
+      productId,
+      imageId,
+    });
+
+    return this.request<void>('DELETE', `/products/${productId}/images/${imageId}`);
+  }
+
+  /**
+   * Phase 40-C: 注文一覧を取得
+   */
+  async getOrders(params?: {
+    status?: string;
+    since?: string;
+    limit?: number;
+  }): Promise<JoomApiResponse<{ orders: any[]; total: number }>> {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.set('status', params.status);
+    if (params?.since) queryParams.set('since', params.since);
+    if (params?.limit) queryParams.set('limit', params.limit.toString());
+
+    const endpoint = `/orders${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    return this.request<{ orders: any[]; total: number }>('GET', endpoint);
+  }
+
+  /**
+   * Phase 40-C: Dry-Runモード（実際にはAPIを呼ばず、シミュレーション結果を返す）
+   */
+  async dryRunCreateProduct(product: JoomProduct): Promise<{
+    wouldCreate: JoomProduct;
+    validation: { passed: boolean; warnings: string[] };
+    estimatedVisibility: 'high' | 'medium' | 'low';
+  }> {
+    log.info({
+      type: 'joom_dry_run',
+      name: product.name,
+      price: product.price,
+    });
+
+    const warnings: string[] = [];
+
+    // バリデーションチェック
+    if (product.name.length < 10) {
+      warnings.push('Title is too short (minimum 10 characters recommended)');
+    }
+    if (product.name.length > 200) {
+      warnings.push('Title is too long (maximum 200 characters)');
+    }
+    if (product.description.length < 50) {
+      warnings.push('Description is too short (minimum 50 characters recommended)');
+    }
+    if (product.price < 1) {
+      warnings.push('Price is too low (minimum $1.00)');
+    }
+    if (product.price > 1000) {
+      warnings.push('High-priced items may have lower visibility');
+    }
+    if (!product.mainImage) {
+      warnings.push('Main image is required');
+    }
+    if ((product.extraImages?.length || 0) < 2) {
+      warnings.push('More images recommended for better visibility');
+    }
+
+    // SEOスコア計算（簡易版）
+    let seoScore = 50;
+    if (product.name.length >= 30) seoScore += 10;
+    if (product.description.length >= 200) seoScore += 15;
+    if ((product.extraImages?.length || 0) >= 3) seoScore += 15;
+    if (product.tags && product.tags.length >= 3) seoScore += 10;
+
+    let estimatedVisibility: 'high' | 'medium' | 'low' = 'medium';
+    if (seoScore >= 80) estimatedVisibility = 'high';
+    else if (seoScore < 50) estimatedVisibility = 'low';
+
+    return {
+      wouldCreate: {
+        ...product,
+        id: `dry-run-${Date.now()}`,
+      },
+      validation: {
+        passed: warnings.length === 0,
+        warnings,
+      },
+      estimatedVisibility,
+    };
+  }
 }
 
 // シングルトンインスタンス
@@ -316,4 +476,60 @@ export async function isJoomConfigured(): Promise<boolean> {
   });
 
   return !!credential;
+}
+
+/**
+ * Phase 40-C: Joom用の価格を計算
+ */
+export async function calculateJoomPrice(
+  costJpy: number,
+  weight: number = 200,
+  category?: string
+): Promise<{
+  finalPriceUsd: number;
+  breakdown: {
+    costJpy: number;
+    costUsd: number;
+    shippingCost: number;
+    platformFee: number;
+    paymentFee: number;
+    profit: number;
+    exchangeRate: number;
+  };
+}> {
+  // 為替レート取得
+  const rateRecord = await prisma.exchangeRate.findFirst({
+    where: { fromCurrency: 'JPY', toCurrency: 'USD' },
+    orderBy: { fetchedAt: 'desc' },
+  });
+  const exchangeRate = rateRecord?.rate || 0.0067; // デフォルト: 1円 = 0.0067ドル
+
+  // 価格設定取得
+  const priceSetting = await prisma.priceSetting.findFirst({
+    where: { marketplace: 'JOOM', isDefault: true },
+  });
+
+  const platformFeeRate = priceSetting?.platformFeeRate ?? 0.15;
+  const paymentFeeRate = priceSetting?.paymentFeeRate ?? 0.03;
+  const profitRate = priceSetting?.targetProfitRate ?? 0.30;
+
+  // 計算
+  const costUsd = costJpy * exchangeRate;
+  const shippingCost = 5 + (weight * 0.01); // 基本送料 + 重量ベース
+  const baseCost = costUsd + shippingCost;
+  const totalDeduction = platformFeeRate + paymentFeeRate + profitRate;
+  const finalPriceUsd = baseCost / (1 - totalDeduction);
+
+  return {
+    finalPriceUsd: Math.ceil(finalPriceUsd * 100) / 100,
+    breakdown: {
+      costJpy,
+      costUsd: Math.round(costUsd * 100) / 100,
+      shippingCost: Math.round(shippingCost * 100) / 100,
+      platformFee: Math.round(finalPriceUsd * platformFeeRate * 100) / 100,
+      paymentFee: Math.round(finalPriceUsd * paymentFeeRate * 100) / 100,
+      profit: Math.round(finalPriceUsd * profitRate * 100) / 100,
+      exchangeRate,
+    },
+  };
 }
