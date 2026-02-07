@@ -395,7 +395,7 @@ router.get('/:id', async (req, res, next) => {
  */
 router.patch('/:id/shipping', async (req, res, next) => {
   try {
-    const { trackingNumber, trackingCarrier } = req.body;
+    const { trackingNumber, trackingCarrier, syncToMarketplace = true } = req.body;
 
     const order = await prisma.order.findUnique({
       where: { id: req.params.id },
@@ -416,17 +416,50 @@ router.patch('/:id/shipping', async (req, res, next) => {
       },
     });
 
+    // マーケットプレイスへの出荷通知（Joomの場合）
+    let marketplaceSynced = false;
+    let marketplaceError: string | undefined;
+
+    if (syncToMarketplace && order.marketplace === 'JOOM' && order.marketplaceOrderId) {
+      try {
+        // Joom APIに出荷通知をジョブとして追加
+        await inventoryQueue.add('ship-to-marketplace', {
+          orderId: order.id,
+          marketplaceOrderId: order.marketplaceOrderId,
+          marketplace: 'JOOM',
+          trackingNumber,
+          trackingCarrier,
+        }, {
+          priority: 1,
+          attempts: 3,
+        });
+        marketplaceSynced = true;
+        log.info({
+          orderId: order.id,
+          marketplace: 'JOOM',
+        }, 'Shipment sync queued');
+      } catch (syncError: any) {
+        marketplaceError = syncError.message;
+        log.error({
+          orderId: order.id,
+          error: syncError.message,
+        }, 'Failed to queue shipment sync');
+      }
+    }
+
     // 通知を作成
     await prisma.notification.create({
       data: {
         type: 'ORDER_SHIPPED',
         title: '出荷完了',
-        message: `注文 ${order.marketplaceOrderId} を出荷しました（追跡番号: ${trackingNumber}）`,
+        message: `注文 ${order.marketplaceOrderId} を出荷しました（追跡番号: ${trackingNumber}）${marketplaceSynced ? ' - マーケットプレイスに同期中' : ''}`,
         severity: 'SUCCESS',
         metadata: {
           orderId: order.id,
           trackingNumber,
           trackingCarrier,
+          marketplaceSynced,
+          marketplaceError,
         },
       },
     });
@@ -435,11 +468,16 @@ router.patch('/:id/shipping', async (req, res, next) => {
       orderId: order.id,
       trackingNumber,
       trackingCarrier,
+      marketplaceSynced,
     }, 'Order shipped');
 
     res.json({
       success: true,
-      data: updatedOrder,
+      data: {
+        ...updatedOrder,
+        marketplaceSynced,
+        marketplaceError,
+      },
     });
   } catch (error) {
     next(error);

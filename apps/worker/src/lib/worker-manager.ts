@@ -13,6 +13,7 @@ import { pricingProcessor } from '../processors/pricing';
 import { competitorProcessor } from '../processors/competitor';
 import { processOrderSyncJob } from '../processors/order-sync';
 import { processPriceSyncJob } from '../processors/price-sync';
+import { JoomApiClient } from './joom-api';
 import { alertManager } from './alert-manager';
 import { updateExchangeRate } from './exchange-rate';
 import { syncAllPrices } from './price-sync';
@@ -92,6 +93,10 @@ export async function startWorkers(connection: IORedis): Promise<void> {
       // 注文同期ジョブ
       if (job.name === 'order-sync' || job.name === 'sync-orders') {
         return processOrderSyncJob(job);
+      }
+      // 出荷通知ジョブ（Phase 41-E）
+      if (job.name === 'ship-to-marketplace') {
+        return handleShipToMarketplace(job);
       }
       // 出品状態同期
       if (job.name === 'sync-listing-status') {
@@ -326,6 +331,65 @@ async function handleHealthCheck(job: any): Promise<any> {
     };
   } catch (error: any) {
     log.error({ type: 'health_check_job_error', error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * マーケットプレイスへの出荷通知ジョブのハンドラー（Phase 41-E）
+ */
+async function handleShipToMarketplace(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'ship-to-marketplace' });
+  const { orderId, marketplaceOrderId, marketplace, trackingNumber, trackingCarrier } = job.data;
+
+  log.info({
+    type: 'ship_to_marketplace_start',
+    orderId,
+    marketplace,
+    trackingNumber,
+  });
+
+  try {
+    if (marketplace === 'JOOM') {
+      const joomClient = new JoomApiClient();
+      const result = await joomClient.shipOrder(marketplaceOrderId, {
+        trackingNumber,
+        carrier: trackingCarrier,
+      });
+
+      if (result.success) {
+        log.info({
+          type: 'ship_to_marketplace_success',
+          orderId,
+          marketplace: 'JOOM',
+        });
+
+        return {
+          success: true,
+          orderId,
+          marketplace,
+          synced: true,
+          timestamp: new Date().toISOString(),
+        };
+      } else {
+        throw new Error(result.error?.message || 'Failed to sync shipment to Joom');
+      }
+    }
+
+    // eBayは後日対応
+    return {
+      success: false,
+      orderId,
+      marketplace,
+      error: `Marketplace ${marketplace} not supported`,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({
+      type: 'ship_to_marketplace_error',
+      orderId,
+      error: error.message,
+    });
     throw error;
   }
 }

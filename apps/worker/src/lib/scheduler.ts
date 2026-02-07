@@ -58,6 +58,13 @@ export interface SchedulerConfig {
     checkCron: string;        // 競合価格チェック
     healthCheckCron: string;  // ヘルスチェック
   };
+  // 注文同期（Phase 41-E）
+  orderSync: {
+    enabled: boolean;
+    cronExpression: string;
+    sinceDays: number;        // 何日前までの注文を取得
+    maxOrders: number;        // 最大取得件数
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -92,6 +99,12 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     enabled: true,
     checkCron: '0 */2 * * *',         // 2時間ごとに競合チェック
     healthCheckCron: '0 6 * * *',     // 毎日6時にヘルスチェック
+  },
+  orderSync: {
+    enabled: true,
+    cronExpression: '0 */4 * * *',    // 4時間ごとに注文同期
+    sinceDays: 7,                      // 7日前までの注文
+    maxOrders: 100,                    // 最大100件
   },
 };
 
@@ -422,6 +435,47 @@ async function scheduleCompetitorMonitoring(config: SchedulerConfig['competitorM
 }
 
 /**
+ * 注文同期ジョブをスケジュール（Phase 41-E）
+ */
+async function scheduleOrderSync(config: SchedulerConfig['orderSync']) {
+  if (!config.enabled) {
+    log.info({ type: 'order_sync_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await inventoryQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'order-sync') {
+      await inventoryQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // 注文同期ジョブを追加
+  await inventoryQueue.add(
+    'order-sync',
+    {
+      marketplace: 'joom',
+      sinceDays: config.sinceDays,
+      maxOrders: config.maxOrders,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'order-sync-scheduled',
+    }
+  );
+
+  log.info({
+    type: 'order_sync_scheduled',
+    cronExpression: config.cronExpression,
+    sinceDays: config.sinceDays,
+  });
+}
+
+/**
  * スケジューラーを初期化
  */
 export async function initializeScheduler(config: Partial<SchedulerConfig> = {}) {
@@ -435,6 +489,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     healthCheck: { ...DEFAULT_CONFIG.healthCheck, ...config.healthCheck },
     pricingOptimization: { ...DEFAULT_CONFIG.pricingOptimization, ...config.pricingOptimization },
     competitorMonitoring: { ...DEFAULT_CONFIG.competitorMonitoring, ...config.competitorMonitoring },
+    orderSync: { ...DEFAULT_CONFIG.orderSync, ...config.orderSync },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -446,6 +501,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleHealthCheck(finalConfig.healthCheck);
   await schedulePricingOptimization(finalConfig.pricingOptimization);
   await scheduleCompetitorMonitoring(finalConfig.competitorMonitoring);
+  await scheduleOrderSync(finalConfig.orderSync);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -632,6 +688,37 @@ export async function triggerCompetitorCheck(trackerId?: string) {
     type: 'manual_competitor_check_triggered',
     jobId: job.id,
     trackerId: trackerId || 'all',
+  });
+
+  return job.id;
+}
+
+/**
+ * 手動で注文同期をトリガー（Phase 41-E）
+ */
+export async function triggerOrderSync(options?: {
+  marketplace?: 'joom' | 'ebay';
+  sinceDays?: number;
+  maxOrders?: number;
+}) {
+  const job = await inventoryQueue.add(
+    'order-sync',
+    {
+      marketplace: options?.marketplace || 'joom',
+      sinceDays: options?.sinceDays || 7,
+      maxOrders: options?.maxOrders || 100,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_order_sync_triggered',
+    jobId: job.id,
+    options,
   });
 
   return job.id;

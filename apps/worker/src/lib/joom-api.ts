@@ -435,6 +435,57 @@ export class JoomApiClient {
   }
 
   /**
+   * Phase 41-E: 注文の出荷通知（追跡番号をJoomに送信）
+   */
+  async shipOrder(
+    orderId: string,
+    trackingInfo: {
+      trackingNumber: string;
+      carrier: string;
+      shippingProvider?: string;
+    }
+  ): Promise<JoomApiResponse<void>> {
+    log.info({
+      type: 'joom_ship_order',
+      orderId,
+      trackingNumber: trackingInfo.trackingNumber,
+      carrier: trackingInfo.carrier,
+    });
+
+    // Joom APIの出荷通知エンドポイント
+    return this.request<void>('POST', `/orders/${orderId}/fulfill`, {
+      tracking_number: trackingInfo.trackingNumber,
+      tracking_provider: trackingInfo.carrier,
+      shipping_provider: trackingInfo.shippingProvider || trackingInfo.carrier,
+    });
+  }
+
+  /**
+   * Phase 41-E: 注文詳細を取得
+   */
+  async getOrder(orderId: string): Promise<JoomApiResponse<any>> {
+    return this.request<any>('GET', `/orders/${orderId}`);
+  }
+
+  /**
+   * Phase 41-E: 注文をキャンセル
+   */
+  async cancelOrder(
+    orderId: string,
+    reason: string
+  ): Promise<JoomApiResponse<void>> {
+    log.info({
+      type: 'joom_cancel_order',
+      orderId,
+      reason,
+    });
+
+    return this.request<void>('POST', `/orders/${orderId}/cancel`, {
+      reason,
+    });
+  }
+
+  /**
    * Phase 40-C: Dry-Runモード（実際にはAPIを呼ばず、シミュレーション結果を返す）
    */
   async dryRunCreateProduct(product: JoomProduct): Promise<{
