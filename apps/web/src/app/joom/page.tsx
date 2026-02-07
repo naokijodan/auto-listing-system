@@ -67,12 +67,37 @@ interface BatchPublishStatus {
   };
 }
 
+interface PriceSyncStatus {
+  success: boolean;
+  queue: {
+    name: string;
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+  };
+  recentChanges: Array<{
+    listingId: string;
+    productTitle: string;
+    oldPrice: number;
+    newPrice: number;
+    changePercent: number;
+    createdAt: string;
+  }>;
+  stats24h: {
+    totalChanges: number;
+    averageChangePercent: number;
+  };
+}
+
 export default function JoomPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
   const [showBatchStatus, setShowBatchStatus] = useState(false);
+  const [isPriceSyncing, setIsPriceSyncing] = useState(false);
+  const [showPriceSyncStatus, setShowPriceSyncStatus] = useState(false);
 
   // Fetch Joom listings
   const { data, error, isLoading, mutate } = useSWR<{ success: boolean; data: Listing[]; pagination: { total: number } }>(
@@ -85,6 +110,13 @@ export default function JoomPage() {
     showBatchStatus ? '/api/batch/publish/status' : null,
     fetcher,
     { refreshInterval: showBatchStatus ? 5000 : 0 }
+  );
+
+  // Fetch price sync status
+  const { data: priceSyncStatus, mutate: mutatePriceSyncStatus } = useSWR<PriceSyncStatus>(
+    showPriceSyncStatus ? '/api/pricing/sync/status' : null,
+    fetcher,
+    { refreshInterval: showPriceSyncStatus ? 5000 : 0 }
   );
 
   const listings = data?.data ?? [];
@@ -181,6 +213,30 @@ export default function JoomPage() {
     }
   }, [mutate, mutateBatchStatus]);
 
+  // Price sync
+  const handlePriceSync = useCallback(async () => {
+    setIsPriceSyncing(true);
+    try {
+      const response = await postApi('/api/pricing/sync', {
+        marketplace: 'joom',
+        priceChangeThreshold: 2,
+        maxListings: 100,
+      }) as { success: boolean; message: string; jobId: string };
+      if (response.success) {
+        addToast({
+          type: 'success',
+          message: '価格同期ジョブを開始しました',
+        });
+        setShowPriceSyncStatus(true);
+        mutatePriceSyncStatus();
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: '価格同期に失敗しました' });
+    } finally {
+      setIsPriceSyncing(false);
+    }
+  }, [mutatePriceSyncStatus]);
+
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
       {/* Header */}
@@ -207,6 +263,15 @@ export default function JoomPage() {
             ジョブ状況
           </Button>
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPriceSyncStatus(!showPriceSyncStatus)}
+            className={showPriceSyncStatus ? 'border-blue-500 text-blue-600' : ''}
+          >
+            <DollarSign className="h-4 w-4 mr-1" />
+            価格同期
+          </Button>
+          <Button
             variant="primary"
             size="sm"
             onClick={handleBatchPublish}
@@ -218,6 +283,19 @@ export default function JoomPage() {
               <Upload className="h-4 w-4 mr-1" />
             )}
             新規バッチ出品
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePriceSync}
+            disabled={isPriceSyncing}
+          >
+            {isPriceSyncing ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <TrendingUp className="h-4 w-4 mr-1" />
+            )}
+            価格更新
           </Button>
           <Button variant="ghost" size="sm" onClick={() => mutate()}>
             <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
@@ -332,6 +410,62 @@ export default function JoomPage() {
                   {job.errorMessage && (
                     <span className="text-red-500 truncate max-w-32">{job.errorMessage}</span>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Price Sync Status */}
+      {showPriceSyncStatus && priceSyncStatus && (
+        <Card className="mb-4 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-zinc-900 dark:text-white flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              価格同期ステータス
+            </h3>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                待機: {priceSyncStatus.queue.waiting}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                処理中: {priceSyncStatus.queue.active}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                完了: {priceSyncStatus.queue.completed}
+              </span>
+              <span className="text-zinc-500">
+                24h変更: {priceSyncStatus.stats24h.totalChanges}件 (平均{priceSyncStatus.stats24h.averageChangePercent}%)
+              </span>
+            </div>
+          </div>
+          {priceSyncStatus.recentChanges.length > 0 && (
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {priceSyncStatus.recentChanges.slice(0, 5).map((change, idx) => (
+                <div
+                  key={`${change.listingId}-${idx}`}
+                  className="flex items-center justify-between text-xs bg-zinc-50 dark:bg-zinc-800 rounded px-3 py-2"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="truncate text-zinc-700 dark:text-zinc-300">
+                      {change.productTitle}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className="text-zinc-500">${change.oldPrice.toFixed(2)}</span>
+                    <span className="text-zinc-400">→</span>
+                    <span className="text-zinc-900 dark:text-white font-medium">${change.newPrice.toFixed(2)}</span>
+                    <span className={cn(
+                      'text-xs font-medium',
+                      change.changePercent >= 0 ? 'text-emerald-600' : 'text-red-600'
+                    )}>
+                      {change.changePercent >= 0 ? '+' : ''}{change.changePercent.toFixed(1)}%
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

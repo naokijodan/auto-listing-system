@@ -181,6 +181,7 @@ async function scheduleExchangeRateUpdate(config: SchedulerConfig['exchangeRate'
 
 /**
  * 価格同期ジョブをスケジュール
+ * 為替レート変動に基づく価格自動更新
  */
 async function schedulePriceSync(config: SchedulerConfig['priceSync']) {
   if (!config.enabled) {
@@ -188,24 +189,36 @@ async function schedulePriceSync(config: SchedulerConfig['priceSync']) {
     return;
   }
 
-  // 既存のリピートジョブを削除
-  const repeatableJobs = await scrapeQueue.getRepeatableJobs();
-  for (const job of repeatableJobs) {
+  // 既存のリピートジョブを削除（旧scrapeQueue）
+  const scrapeRepeatableJobs = await scrapeQueue.getRepeatableJobs();
+  for (const job of scrapeRepeatableJobs) {
     if (job.name === 'sync-prices') {
       await scrapeQueue.removeRepeatableByKey(job.key);
     }
   }
 
-  await scrapeQueue.add(
-    'sync-prices',
+  // 既存のリピートジョブを削除（pricingQueue）
+  const pricingRepeatableJobs = await pricingQueue.getRepeatableJobs();
+  for (const job of pricingRepeatableJobs) {
+    if (job.name === 'price-sync') {
+      await pricingQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // pricingQueueにジョブを追加（price-syncプロセッサーで処理）
+  await pricingQueue.add(
+    'price-sync',
     {
+      type: 'price-sync',
       scheduledAt: new Date().toISOString(),
+      priceChangeThreshold: 2, // 2%以上の変動で更新
+      maxListings: 100,
     },
     {
       repeat: {
         pattern: config.cronExpression,
       },
-      jobId: 'price-sync',
+      jobId: 'price-sync-scheduled',
     }
   );
 
@@ -465,13 +478,24 @@ export async function triggerInventoryCheck(productIds?: string[]) {
 
 /**
  * 手動で価格同期をトリガー
+ * 為替レート変動に基づく価格自動更新
  */
-export async function triggerPriceSync(listingIds?: string[]) {
-  const job = await scrapeQueue.add(
-    'manual-price-sync',
+export async function triggerPriceSync(options?: {
+  marketplace?: 'joom' | 'ebay';
+  forceUpdate?: boolean;
+  maxListings?: number;
+  priceChangeThreshold?: number;
+}) {
+  const job = await pricingQueue.add(
+    'price-sync',
     {
+      type: 'price-sync',
       triggeredAt: new Date().toISOString(),
-      listingIds,
+      marketplace: options?.marketplace,
+      forceUpdate: options?.forceUpdate || false,
+      maxListings: options?.maxListings || 100,
+      priceChangeThreshold: options?.priceChangeThreshold || 2,
+      manual: true,
     },
     {
       priority: 1,
@@ -481,6 +505,7 @@ export async function triggerPriceSync(listingIds?: string[]) {
   log.info({
     type: 'manual_price_sync_triggered',
     jobId: job.id,
+    options,
   });
 
   return job.id;
