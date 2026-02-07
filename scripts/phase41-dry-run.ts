@@ -178,13 +178,37 @@ async function generateJoomPayload(product: any, pricing: any): Promise<JoomProd
   // 説明文を最小長に達するまで拡張
   const description = ensureMinimumDescription(cleanDescription, title, product.attributes);
 
-  // 画像（処理済みを優先）
-  const rawMainImage = product.processedImages?.[0] || product.images?.[0] || '';
-  const rawExtraImages = (product.processedImages || product.images || []).slice(1, 6);
+  // 画像（外部URLを優先、ローカルURLは変換を試みる）
+  const processedImages = (product.processedImages || []) as string[];
+  const originalImages = (product.images || []) as string[];
 
-  // 画像URLを外部アクセス可能な形式に変換
-  const mainImage = await convertToExternalUrl(rawMainImage);
-  const extraImages = await convertImagesToExternalUrls(rawExtraImages);
+  // 外部アクセス可能な画像を選択するヘルパー
+  const selectBestImage = async (processed: string | undefined, original: string | undefined): Promise<string> => {
+    // 処理済み画像が外部URLならそれを使用
+    if (processed && !processed.includes('localhost') && !processed.includes('127.0.0.1')) {
+      return processed;
+    }
+    // 元画像が外部URLならそれを使用
+    if (original && !original.includes('localhost') && !original.includes('127.0.0.1')) {
+      return original;
+    }
+    // ローカルURLの場合は変換を試みる
+    if (processed) {
+      return await convertToExternalUrl(processed);
+    }
+    if (original) {
+      return original;
+    }
+    return '';
+  };
+
+  // メイン画像と追加画像を選択
+  const mainImage = await selectBestImage(processedImages[0], originalImages[0]);
+  const extraImagePromises = [];
+  for (let i = 1; i < 6; i++) {
+    extraImagePromises.push(selectBestImage(processedImages[i], originalImages[i]));
+  }
+  const extraImages = (await Promise.all(extraImagePromises)).filter(Boolean);
 
   // SKU生成
   const sku = `RAKUDA-${product.sourceItemId || product.id.slice(0, 8)}`;

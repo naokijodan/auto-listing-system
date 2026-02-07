@@ -123,7 +123,15 @@ export class JoomApiClient {
           timeout: 30000,
         });
 
-        const data = await response.json();
+        // レスポンスボディを取得（JSONでない場合もハンドル）
+        const responseText = await response.text();
+        let data: any;
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          // JSONパースに失敗した場合
+          data = { message: responseText || 'Unknown error', code: 'PARSE_ERROR' };
+        }
 
         if (!response.ok) {
           // レート制限エラーの場合はリトライ可能としてスロー
@@ -157,9 +165,12 @@ export class JoomApiClient {
           } as JoomApiResponse<T>;
         }
 
+        // Joom APIのレスポンスは { code: 0, data: { id: "..." } } 形式
+        // data.data から実際のデータを取り出す
+        const actualData = data.data || data;
         return {
           success: true,
-          data,
+          data: actualData,
         } as JoomApiResponse<T>;
       }, {
         maxRetries: 3,
@@ -185,6 +196,7 @@ export class JoomApiClient {
 
   /**
    * 商品を作成
+   * Joom API v3 では POST /products/create エンドポイントを使用
    */
   async createProduct(product: JoomProduct): Promise<JoomApiResponse<{ id: string }>> {
     log.info({
@@ -193,25 +205,50 @@ export class JoomApiClient {
       price: product.price,
     });
 
-    return this.request<{ id: string }>('POST', '/products', {
+    // Joom API v3 のリクエストボディ形式
+    // 注意: priceフィールドは文字列型、画像URLは複数形式で送信
+    const shippingPrice = product.shipping?.price || 0;
+    const parentSku = product.parentSku || product.sku;
+    const variantSku = `${parentSku}-V1`;  // バリアントSKUは親SKUと異なる必要あり
+    const imageUrl = product.mainImage;
+
+    const requestBody = {
       name: product.name,
       description: product.description,
-      main_image: product.mainImage,
-      extra_images: product.extraImages || [],
-      parent_sku: product.parentSku || product.sku,
+      // 画像URL: 複数形式で送信（APIが認識するフィールドを確保）
+      orig_main_image_url: imageUrl,
+      origMainImageUrl: imageUrl,
+      mainImage: imageUrl,
+      main_image: imageUrl,
+      extra_images: product.extraImages || [],  // 文字列配列
+      sku: parentSku,
+      parent_sku: parentSku,
+      tags: product.tags || [],
       variants: [
         {
-          sku: product.sku,
-          price: product.price,
+          sku: variantSku,
+          price: String(product.price),
           inventory: product.quantity,
-          shipping: product.shipping || {
-            price: 0,
-            time: '15-30',
-          },
+          shippingPrice: String(shippingPrice),
+          shippingWeight: 200,  // 重量（グラム）- 必須
+          // バリアントにも画像URL
+          origMainImageUrl: imageUrl,
+          mainImage: imageUrl,
         },
       ],
-      tags: product.tags || [],
-    });
+    };
+
+    // まず /products/create を試す（v3形式）
+    let response = await this.request<{ id: string }>('POST', '/products/create', requestBody);
+
+    // 404の場合は /products を試す（v2形式）
+    if (!response.success && response.error?.code === 'NETWORK_ERROR' &&
+        response.error?.message?.includes('Not Found')) {
+      log.info({ type: 'joom_api_fallback', from: '/products/create', to: '/products' });
+      response = await this.request<{ id: string }>('POST', '/products', requestBody);
+    }
+
+    return response;
   }
 
   /**
