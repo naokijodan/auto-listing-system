@@ -456,7 +456,13 @@ router.put('/rules', async (req, res, next) => {
  */
 router.post('/sync', async (req, res, next) => {
   try {
-    const { marketplace, forceUpdate = false, maxListings = 100, priceChangeThreshold = 2 } = req.body;
+    const {
+      marketplace,
+      forceUpdate = false,
+      maxListings = 100,
+      priceChangeThreshold = 2,
+      syncToMarketplace = false, // マーケットプレイスAPIにも同期するか
+    } = req.body;
 
     const job = await priceSyncQueue.add(
       'price-sync',
@@ -465,6 +471,7 @@ router.post('/sync', async (req, res, next) => {
         forceUpdate,
         maxListings,
         priceChangeThreshold,
+        syncToMarketplace,
       },
       {
         attempts: 3,
@@ -477,17 +484,21 @@ router.post('/sync', async (req, res, next) => {
       jobId: job.id,
       marketplace,
       forceUpdate,
+      syncToMarketplace,
     });
 
     res.status(202).json({
       success: true,
-      message: 'Price sync job queued',
+      message: syncToMarketplace
+        ? 'Price sync job queued (will sync to marketplace)'
+        : 'Price sync job queued (database only)',
       data: {
         jobId: job.id,
         marketplace: marketplace || 'all',
         forceUpdate,
         maxListings,
         priceChangeThreshold,
+        syncToMarketplace,
       },
     });
   } catch (error) {

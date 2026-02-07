@@ -2,14 +2,25 @@ import { Job } from 'bullmq';
 import { prisma, Marketplace } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { calculatePrice } from '../lib/price-calculator';
+import { JoomApiClient } from '../lib/joom-api';
 
 const log = logger.child({ processor: 'price-sync' });
+
+// Joom APIクライアントのシングルトン
+let joomClient: JoomApiClient | null = null;
+function getJoomClient(): JoomApiClient {
+  if (!joomClient) {
+    joomClient = new JoomApiClient();
+  }
+  return joomClient;
+}
 
 export interface PriceSyncJobPayload {
   marketplace?: 'joom' | 'ebay';
   forceUpdate?: boolean;
   maxListings?: number;
   priceChangeThreshold?: number; // 価格変更の閾値（%）
+  syncToMarketplace?: boolean; // マーケットプレイスAPIにも同期するか
 }
 
 export interface PriceSyncJobResult {
@@ -21,6 +32,8 @@ export interface PriceSyncJobResult {
     totalSkipped: number;
     totalErrors: number;
     averagePriceChange: number;
+    marketplaceSynced?: number; // マーケットプレイスに同期した数
+    marketplaceFailed?: number; // マーケットプレイス同期に失敗した数
   };
   updates: Array<{
     listingId: string;
@@ -30,6 +43,7 @@ export interface PriceSyncJobResult {
     changePercent: number;
     status: 'updated' | 'skipped' | 'error';
     reason?: string;
+    marketplaceSynced?: boolean; // マーケットプレイスに同期されたか
   }>;
   timestamp: string;
 }
@@ -49,6 +63,7 @@ export async function processPriceSyncJob(
     forceUpdate = false,
     maxListings = 100,
     priceChangeThreshold = 2, // デフォルト: 2%以上の変動で更新
+    syncToMarketplace = false, // デフォルト: DBのみ更新
   } = job.data;
 
   log.info({
@@ -57,6 +72,7 @@ export async function processPriceSyncJob(
     marketplace,
     forceUpdate,
     maxListings,
+    syncToMarketplace,
   });
 
   const updates: PriceSyncJobResult['updates'] = [];
@@ -64,6 +80,8 @@ export async function processPriceSyncJob(
   let totalSkipped = 0;
   let totalErrors = 0;
   let sumPriceChange = 0;
+  let marketplaceSynced = 0;
+  let marketplaceFailed = 0;
 
   try {
     // アクティブな出品を取得
@@ -146,6 +164,49 @@ export async function processPriceSyncJob(
             }),
           ]);
 
+          // マーケットプレイスへの価格同期
+          let marketplaceSyncSuccess = false;
+          if (syncToMarketplace && listing.marketplaceListingId) {
+            try {
+              if (listing.marketplace === 'JOOM') {
+                const joom = getJoomClient();
+                // JoomのSKUはmarketplaceDataから取得するか、デフォルト形式を使用
+                const marketplaceData = listing.marketplaceData as { sku?: string; variantSku?: string } | null;
+                const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+                const result = await joom.updatePrice(
+                  listing.marketplaceListingId,
+                  sku,
+                  newPrice
+                );
+                if (result.success) {
+                  marketplaceSyncSuccess = true;
+                  marketplaceSynced++;
+                  log.info({
+                    type: 'marketplace_price_synced',
+                    listingId: listing.id,
+                    marketplace: 'JOOM',
+                    newPrice,
+                  });
+                } else {
+                  marketplaceFailed++;
+                  log.warn({
+                    type: 'marketplace_price_sync_failed',
+                    listingId: listing.id,
+                    error: result.error?.message,
+                  });
+                }
+              }
+              // eBay対応は後日追加
+            } catch (syncError: any) {
+              marketplaceFailed++;
+              log.error({
+                type: 'marketplace_sync_error',
+                listingId: listing.id,
+                error: syncError.message,
+              });
+            }
+          }
+
           updates.push({
             listingId: listing.id,
             productTitle: product.titleEn || product.title || 'Unknown',
@@ -153,6 +214,7 @@ export async function processPriceSyncJob(
             newPrice,
             changePercent: Math.round(changePercent * 100) / 100,
             status: 'updated',
+            marketplaceSynced: marketplaceSyncSuccess,
           });
 
           totalUpdated++;
@@ -164,6 +226,7 @@ export async function processPriceSyncJob(
             oldPrice,
             newPrice,
             changePercent: changePercent.toFixed(2),
+            marketplaceSynced: marketplaceSyncSuccess,
           });
         } else {
           updates.push({
@@ -217,6 +280,8 @@ export async function processPriceSyncJob(
           totalSkipped,
           totalErrors,
           averagePriceChange,
+          marketplaceSynced,
+          marketplaceFailed,
           hasErrors: totalErrors > 0,
         },
         startedAt: new Date(),
@@ -231,17 +296,21 @@ export async function processPriceSyncJob(
       totalSkipped,
       totalErrors,
       averagePriceChange,
+      marketplaceSynced,
+      marketplaceFailed,
     });
 
     return {
       success: true,
-      message: `Price sync completed: ${totalUpdated} updated, ${totalSkipped} skipped, ${totalErrors} errors`,
+      message: `Price sync completed: ${totalUpdated} updated, ${totalSkipped} skipped, ${totalErrors} errors${syncToMarketplace ? `, ${marketplaceSynced} synced to marketplace` : ''}`,
       summary: {
         totalProcessed,
         totalUpdated,
         totalSkipped,
         totalErrors,
         averagePriceChange,
+        marketplaceSynced: syncToMarketplace ? marketplaceSynced : undefined,
+        marketplaceFailed: syncToMarketplace ? marketplaceFailed : undefined,
       },
       updates: updates.slice(0, 50), // レスポンスサイズ制限
       timestamp: new Date().toISOString(),

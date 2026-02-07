@@ -232,7 +232,7 @@ export default function JoomPage() {
     }
   }, [mutate, mutateBatchStatus]);
 
-  // Price sync
+  // Price sync (DB only)
   const handlePriceSync = useCallback(async () => {
     setIsPriceSyncing(true);
     try {
@@ -240,11 +240,37 @@ export default function JoomPage() {
         marketplace: 'joom',
         priceChangeThreshold: 2,
         maxListings: 100,
-      }) as { success: boolean; message: string; jobId: string };
+        syncToMarketplace: false,
+      }) as { success: boolean; message: string; data: { jobId: string } };
       if (response.success) {
         addToast({
           type: 'success',
-          message: '価格同期ジョブを開始しました',
+          message: '価格同期ジョブを開始しました（DB更新のみ）',
+        });
+        setShowPriceSyncStatus(true);
+        mutatePriceSyncStatus();
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: '価格同期に失敗しました' });
+    } finally {
+      setIsPriceSyncing(false);
+    }
+  }, [mutatePriceSyncStatus]);
+
+  // Price sync with marketplace API
+  const handlePriceSyncWithMarketplace = useCallback(async () => {
+    setIsPriceSyncing(true);
+    try {
+      const response = await postApi('/api/pricing/sync', {
+        marketplace: 'joom',
+        priceChangeThreshold: 2,
+        maxListings: 100,
+        syncToMarketplace: true, // Joom APIにも同期
+      }) as { success: boolean; message: string; data: { jobId: string } };
+      if (response.success) {
+        addToast({
+          type: 'success',
+          message: '価格同期ジョブを開始しました（Joomにも同期）',
         });
         setShowPriceSyncStatus(true);
         mutatePriceSyncStatus();
@@ -308,13 +334,28 @@ export default function JoomPage() {
             size="sm"
             onClick={handlePriceSync}
             disabled={isPriceSyncing}
+            title="DBの価格のみ更新"
           >
             {isPriceSyncing ? (
               <Loader2 className="h-4 w-4 animate-spin mr-1" />
             ) : (
               <TrendingUp className="h-4 w-4 mr-1" />
             )}
-            価格更新
+            価格計算
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handlePriceSyncWithMarketplace}
+            disabled={isPriceSyncing}
+            title="JoomのAPIにも価格を反映"
+          >
+            {isPriceSyncing ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <TrendingUp className="h-4 w-4 mr-1" />
+            )}
+            Joom同期
           </Button>
           <Button variant="ghost" size="sm" onClick={() => mutate()}>
             <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
