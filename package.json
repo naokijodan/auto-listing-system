@@ -24,7 +24,8 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "bootstrap": "./scripts/bootstrap.sh",
-    "verify:joom": "npx tsx scripts/verify-joom-connection.ts"
+    "verify:joom": "npx tsx scripts/verify-joom-connection.ts",
+    "joom:dry-run": "npx tsx scripts/phase41-dry-run.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.1",
