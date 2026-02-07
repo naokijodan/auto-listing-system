@@ -1,4 +1,4 @@
-import { prisma } from '@rakuda/database';
+import { prisma, Marketplace } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
@@ -8,6 +8,7 @@ import { scrapeYahooAuction } from './scrapers/yahoo-auction';
 import { notifyOutOfStock, notifyPriceChanged } from './notifications';
 import { alertManager } from './alert-manager';
 import { eventBus } from './event-bus';
+import { syncListingInventory } from '../processors/inventory-sync';
 import crypto from 'crypto';
 
 const log = logger.child({ module: 'inventory-checker' });
@@ -216,6 +217,37 @@ export async function checkSingleProductInventory(
           updatedAt: new Date(),
         },
       });
+
+      // Joom出品の在庫を0に同期（Phase 41-G）
+      const joomListings = activeListings.filter(
+        l => l.marketplace === 'JOOM' && l.marketplaceListingId
+      );
+      for (const joomListing of joomListings) {
+        try {
+          const syncResult = await syncListingInventory(joomListing.id, 0);
+          if (syncResult.success) {
+            log.info({
+              type: 'joom_inventory_synced_on_out_of_stock',
+              listingId: joomListing.id,
+              productId,
+            });
+          } else {
+            log.warn({
+              type: 'joom_inventory_sync_failed',
+              listingId: joomListing.id,
+              productId,
+              error: syncResult.error,
+            });
+          }
+        } catch (syncError: any) {
+          log.error({
+            type: 'joom_inventory_sync_error',
+            listingId: joomListing.id,
+            productId,
+            error: syncError.message,
+          });
+        }
+      }
     }
 
     // 通知作成とアラート送信
