@@ -656,4 +656,98 @@ router.post('/bulk/sync', async (req, res, next) => {
   }
 });
 
+/**
+ * Joom在庫同期（Phase 41-F）
+ * RAKUDAの在庫情報をJoomに同期
+ */
+router.post('/inventory/sync', async (req, res, next) => {
+  try {
+    const {
+      marketplace = 'joom',
+      listingIds,
+      syncOutOfStock = true,
+      maxListings = 100,
+    } = req.body;
+
+    // ジョブを追加
+    const job = await inventoryQueue.add('inventory-sync', {
+      marketplace,
+      listingIds,
+      syncOutOfStock,
+      maxListings,
+    }, {
+      priority: 2,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 10000,
+      },
+    });
+
+    logger.info({
+      type: 'inventory_sync_queued',
+      jobId: job.id,
+      marketplace,
+      listingCount: listingIds?.length || 'all',
+    });
+
+    res.status(202).json({
+      success: true,
+      message: 'Inventory sync job queued',
+      data: {
+        jobId: job.id,
+        marketplace,
+        listingCount: listingIds?.length || 'all (up to ' + maxListings + ')',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 在庫同期ステータス取得
+ */
+router.get('/inventory/sync/status', async (req, res, next) => {
+  try {
+    // 最近のジョブログ
+    const recentJobs = await prisma.jobLog.findMany({
+      where: {
+        jobType: 'INVENTORY_SYNC',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    // キュー状態
+    const [waiting, active, completed, failed] = await Promise.all([
+      inventoryQueue.getWaitingCount(),
+      inventoryQueue.getActiveCount(),
+      inventoryQueue.getCompletedCount(),
+      inventoryQueue.getFailedCount(),
+    ]);
+
+    res.json({
+      success: true,
+      queue: {
+        waiting,
+        active,
+        completed,
+        failed,
+      },
+      recentJobs: recentJobs.map(job => ({
+        id: job.id,
+        jobId: job.jobId,
+        status: job.status,
+        result: job.result,
+        errorMessage: job.errorMessage,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export { router as listingsRouter };

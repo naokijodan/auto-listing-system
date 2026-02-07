@@ -13,6 +13,7 @@ import { pricingProcessor } from '../processors/pricing';
 import { competitorProcessor } from '../processors/competitor';
 import { processOrderSyncJob } from '../processors/order-sync';
 import { processPriceSyncJob } from '../processors/price-sync';
+import { processInventorySyncJob } from '../processors/inventory-sync';
 import { JoomApiClient } from './joom-api';
 import { alertManager } from './alert-manager';
 import { updateExchangeRate } from './exchange-rate';
@@ -93,6 +94,10 @@ export async function startWorkers(connection: IORedis): Promise<void> {
       // 注文同期ジョブ
       if (job.name === 'order-sync' || job.name === 'sync-orders') {
         return processOrderSyncJob(job);
+      }
+      // 在庫同期ジョブ（Phase 41-F）
+      if (job.name === 'inventory-sync' || job.name === 'sync-inventory') {
+        return processInventorySyncJob(job);
       }
       // 出荷通知ジョブ（Phase 41-E）
       if (job.name === 'ship-to-marketplace') {

@@ -65,6 +65,12 @@ export interface SchedulerConfig {
     sinceDays: number;        // 何日前までの注文を取得
     maxOrders: number;        // 最大取得件数
   };
+  // 在庫同期（Phase 41-F）
+  inventorySync: {
+    enabled: boolean;
+    cronExpression: string;
+    maxListings: number;      // 最大同期件数
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -105,6 +111,11 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     cronExpression: '0 */4 * * *',    // 4時間ごとに注文同期
     sinceDays: 7,                      // 7日前までの注文
     maxOrders: 100,                    // 最大100件
+  },
+  inventorySync: {
+    enabled: true,
+    cronExpression: '30 */6 * * *',   // 6時間ごとに在庫同期（毎時30分）
+    maxListings: 100,                  // 最大100件
   },
 };
 
@@ -490,6 +501,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     pricingOptimization: { ...DEFAULT_CONFIG.pricingOptimization, ...config.pricingOptimization },
     competitorMonitoring: { ...DEFAULT_CONFIG.competitorMonitoring, ...config.competitorMonitoring },
     orderSync: { ...DEFAULT_CONFIG.orderSync, ...config.orderSync },
+    inventorySync: { ...DEFAULT_CONFIG.inventorySync, ...config.inventorySync },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -502,6 +514,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await schedulePricingOptimization(finalConfig.pricingOptimization);
   await scheduleCompetitorMonitoring(finalConfig.competitorMonitoring);
   await scheduleOrderSync(finalConfig.orderSync);
+  await scheduleInventorySync(finalConfig.inventorySync);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -717,6 +730,80 @@ export async function triggerOrderSync(options?: {
 
   log.info({
     type: 'manual_order_sync_triggered',
+    jobId: job.id,
+    options,
+  });
+
+  return job.id;
+}
+
+/**
+ * 在庫同期ジョブをスケジュール（Phase 41-F）
+ */
+async function scheduleInventorySync(config: SchedulerConfig['inventorySync']) {
+  if (!config.enabled) {
+    log.info({ type: 'inventory_sync_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await inventoryQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'inventory-sync') {
+      await inventoryQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // 在庫同期ジョブを追加
+  await inventoryQueue.add(
+    'inventory-sync',
+    {
+      marketplace: 'joom',
+      maxListings: config.maxListings,
+      syncOutOfStock: true,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'inventory-sync-scheduled',
+    }
+  );
+
+  log.info({
+    type: 'inventory_sync_scheduled',
+    cronExpression: config.cronExpression,
+    maxListings: config.maxListings,
+  });
+}
+
+/**
+ * 手動で在庫同期をトリガー（Phase 41-F）
+ */
+export async function triggerInventorySync(options?: {
+  marketplace?: 'joom' | 'ebay';
+  listingIds?: string[];
+  syncOutOfStock?: boolean;
+  maxListings?: number;
+}) {
+  const job = await inventoryQueue.add(
+    'inventory-sync',
+    {
+      marketplace: options?.marketplace || 'joom',
+      listingIds: options?.listingIds,
+      syncOutOfStock: options?.syncOutOfStock ?? true,
+      maxListings: options?.maxListings || 100,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_inventory_sync_triggered',
     jobId: job.id,
     options,
   });
