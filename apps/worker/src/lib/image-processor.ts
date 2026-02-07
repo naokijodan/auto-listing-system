@@ -1,3 +1,7 @@
+/**
+ * Phase 40-B: 統合画像処理パイプライン
+ * ダウンロード → 最適化 → 保存
+ */
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
@@ -5,24 +9,13 @@ import path from 'path';
 import os from 'os';
 import sharp from 'sharp';
 import { logger } from '@rakuda/logger';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { downloadImage, isValidImageUrl } from './image-downloader';
+import { optimizeImage, validateForJoom, OptimizationOptions } from './image-optimizer';
+import { uploadFile, generateProductImageKey, deleteProductImages } from './storage';
 
 const execAsync = promisify(exec);
 
 const log = logger.child({ module: 'image-processor' });
-
-// S3/MinIOクライアント
-const s3Client = new S3Client({
-  endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
-  region: process.env.S3_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY || 'minio_access_key',
-    secretAccessKey: process.env.S3_SECRET_KEY || 'minio_secret_key',
-  },
-  forcePathStyle: true,
-});
-
-const BUCKET_NAME = process.env.S3_BUCKET || 'images';
 
 export interface ProcessedImage {
   originalUrl: string;
@@ -34,15 +27,14 @@ export interface ProcessedImage {
 }
 
 /**
- * 画像をダウンロード
+ * 画像をダウンロード（シンプル版・後方互換性用）
  */
-async function downloadImage(url: string, destPath: string): Promise<void> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to download image: ${response.status}`);
+async function doDownloadImage(url: string, destPath: string): Promise<void> {
+  // 新しいdownloaderモジュールを使用
+  const result = await downloadImage(url, destPath, { timeout: 30000, retries: 3 });
+  if (!result.success) {
+    throw new Error(result.error || 'Download failed');
   }
-  const buffer = await response.arrayBuffer();
-  await fs.writeFile(destPath, Buffer.from(buffer));
 }
 
 /**
@@ -99,36 +91,31 @@ async function addWhiteBackground(inputPath: string, outputPath: string): Promis
 }
 
 /**
- * 画像をリサイズ・最適化
+ * 画像をリサイズ・最適化（シンプル版・後方互換性用）
  */
-async function optimizeImage(inputPath: string, outputPath: string): Promise<void> {
-  await sharp(inputPath)
-    .resize(1200, 1200, {
-      fit: 'inside',
-      withoutEnlargement: true,
-    })
-    .jpeg({ quality: 85, progressive: true })
-    .toFile(outputPath);
+async function doOptimizeImage(inputPath: string, outputPath: string): Promise<void> {
+  // 新しいoptimizerモジュールを使用
+  const result = await optimizeImage(inputPath, outputPath, {
+    maxWidth: 1200,
+    maxHeight: 1200,
+    format: 'jpeg',
+    quality: 85,
+    background: 'white',
+  });
+  if (!result.success) {
+    throw new Error(result.error || 'Optimization failed');
+  }
 }
 
 /**
- * S3/MinIOにアップロード
+ * S3/MinIOにアップロード（新モジュールを使用）
  */
 async function uploadToS3(filePath: string, key: string): Promise<string> {
-  const fileContent = await fs.readFile(filePath);
-
-  await s3Client.send(
-    new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: key,
-      Body: fileContent,
-      ContentType: 'image/jpeg',
-    })
-  );
-
-  // URLを構築
-  const endpoint = process.env.S3_ENDPOINT || 'http://localhost:9000';
-  return `${endpoint}/${BUCKET_NAME}/${key}`;
+  const result = await uploadFile(filePath, key);
+  if (!result.success || !result.url) {
+    throw new Error(result.error || 'Upload failed');
+  }
+  return result.url;
 }
 
 /**
@@ -149,8 +136,8 @@ export async function processImage(
   try {
     log.info({ type: 'process_image_start', imageUrl, productId, index });
 
-    // 1. ダウンロード
-    await downloadImage(imageUrl, originalPath);
+    // 1. ダウンロード（リトライ付き）
+    await doDownloadImage(imageUrl, originalPath);
     log.debug({ type: 'image_downloaded', index });
 
     let finalPath = originalPath;
@@ -167,7 +154,7 @@ export async function processImage(
     }
 
     // 4. 最適化
-    await optimizeImage(finalPath, optimizedPath);
+    await doOptimizeImage(finalPath, optimizedPath);
     log.debug({ type: 'image_optimized', index });
 
     // 5. S3にアップロード
@@ -237,6 +224,159 @@ export async function processImages(
       errors: errors.slice(0, 5),
     });
   }
+
+  return results;
+}
+
+/**
+ * Phase 40-B: Joom用の画像処理パイプライン
+ * WebP優先、白背景、Joom要件に準拠
+ */
+export interface JoomProcessedImage extends ProcessedImage {
+  format: 'webp' | 'jpeg';
+  joomCompliant: boolean;
+  validationIssues: string[];
+}
+
+/**
+ * Joom出品用に画像を処理
+ */
+export async function processImageForJoom(
+  imageUrl: string,
+  productId: string,
+  index: number
+): Promise<JoomProcessedImage> {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'joom-image-'));
+  const originalPath = path.join(tempDir, `original-${index}.tmp`);
+  const optimizedPath = path.join(tempDir, `optimized-${index}`);
+
+  try {
+    log.info({ type: 'joom_image_start', imageUrl, productId, index });
+
+    // URLの検証
+    if (!isValidImageUrl(imageUrl)) {
+      throw new Error(`Invalid image URL: ${imageUrl}`);
+    }
+
+    // 1. ダウンロード（リトライ付き）
+    const downloadResult = await downloadImage(imageUrl, originalPath, {
+      timeout: 30000,
+      retries: 3,
+    });
+
+    if (!downloadResult.success) {
+      throw new Error(downloadResult.error || 'Download failed');
+    }
+
+    // 2. WebP形式で最適化（Joom推奨）
+    const optimizeResult = await optimizeImage(originalPath, optimizedPath, {
+      maxWidth: 1200,
+      maxHeight: 1200,
+      format: 'webp',
+      quality: 85,
+      background: 'white',
+    });
+
+    if (!optimizeResult.success || !optimizeResult.outputPath) {
+      throw new Error(optimizeResult.error || 'Optimization failed');
+    }
+
+    // 3. Joom要件の検証
+    const validation = validateForJoom(
+      optimizeResult.width || 0,
+      optimizeResult.height || 0,
+      optimizeResult.optimizedSize || 0
+    );
+
+    // 4. S3にアップロード
+    const key = generateProductImageKey(productId, index, 'webp');
+    const uploadResult = await uploadFile(optimizeResult.outputPath, key, {
+      contentType: 'image/webp',
+    });
+
+    if (!uploadResult.success || !uploadResult.url) {
+      throw new Error(uploadResult.error || 'Upload failed');
+    }
+
+    log.info({
+      type: 'joom_image_complete',
+      productId,
+      index,
+      format: 'webp',
+      joomCompliant: validation.valid,
+      issues: validation.issues,
+    });
+
+    return {
+      originalUrl: imageUrl,
+      processedKey: key,
+      processedUrl: uploadResult.url,
+      width: optimizeResult.width || 0,
+      height: optimizeResult.height || 0,
+      size: optimizeResult.optimizedSize || 0,
+      format: 'webp',
+      joomCompliant: validation.valid,
+      validationIssues: validation.issues,
+    };
+  } finally {
+    // 一時ファイル削除
+    try {
+      await fs.rm(tempDir, { recursive: true });
+    } catch {
+      // 無視
+    }
+  }
+}
+
+/**
+ * 複数画像をJoom用に並列処理
+ */
+export async function processImagesForJoom(
+  imageUrls: string[],
+  productId: string,
+  concurrency: number = 3
+): Promise<JoomProcessedImage[]> {
+  const results: JoomProcessedImage[] = [];
+  const errors: string[] = [];
+
+  // 並列処理（制限付き）
+  for (let i = 0; i < imageUrls.length; i += concurrency) {
+    const batch = imageUrls.slice(i, i + concurrency);
+    const batchResults = await Promise.allSettled(
+      batch.map((url, batchIndex) =>
+        processImageForJoom(url, productId, i + batchIndex)
+      )
+    );
+
+    for (const result of batchResults) {
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+      } else {
+        errors.push(result.reason?.message || 'Unknown error');
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    log.warn({
+      type: 'joom_some_images_failed',
+      productId,
+      successCount: results.length,
+      errorCount: errors.length,
+      errors: errors.slice(0, 5),
+    });
+  }
+
+  // Joom準拠チェック結果をログ
+  const compliantCount = results.filter(r => r.joomCompliant).length;
+  log.info({
+    type: 'joom_images_processed',
+    productId,
+    total: imageUrls.length,
+    processed: results.length,
+    joomCompliant: compliantCount,
+    failed: errors.length,
+  });
 
   return results;
 }
