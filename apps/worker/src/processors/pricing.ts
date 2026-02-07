@@ -10,15 +10,21 @@ import { logger } from '@rakuda/logger';
 import { pricingRuleEngine, PricingContext, PricingRule } from '../lib/pricing/rule-engine';
 import { approvalWorkflow } from '../lib/pricing/approval-workflow';
 import { eventBus } from '../lib/event-bus';
+import { processPriceSyncJob, PriceSyncJobPayload } from './price-sync';
 
 const log = logger.child({ processor: 'pricing' });
 
 export interface PricingJobData {
-  type: 'evaluate' | 'apply' | 'process_expired' | 'process_approved';
+  type: 'evaluate' | 'apply' | 'process_expired' | 'process_approved' | 'price-sync';
   listingId?: string;
   listingIds?: string[];
   ruleIds?: string[];
   recommendationId?: string;
+  // price-sync用のパラメータ
+  marketplace?: 'joom' | 'ebay';
+  forceUpdate?: boolean;
+  maxListings?: number;
+  priceChangeThreshold?: number;
 }
 
 export interface PricingJobResult {
@@ -52,6 +58,21 @@ export async function pricingProcessor(job: Job<PricingJobData>): Promise<Pricin
         return await processExpiredRecommendations();
       case 'process_approved':
         return await processApprovedRecommendations();
+      case 'price-sync':
+        // 為替レート変動に基づく価格同期
+        const syncPayload: PriceSyncJobPayload = {
+          marketplace: job.data.marketplace,
+          forceUpdate: job.data.forceUpdate,
+          maxListings: job.data.maxListings,
+          priceChangeThreshold: job.data.priceChangeThreshold,
+        };
+        const syncResult = await processPriceSyncJob({ ...job, data: syncPayload } as Job<PriceSyncJobPayload>);
+        return {
+          success: syncResult.success,
+          processedCount: syncResult.summary.totalProcessed,
+          applied: syncResult.summary.totalUpdated,
+          failed: syncResult.summary.totalErrors,
+        };
       default:
         throw new Error(`Unknown job type: ${type}`);
     }

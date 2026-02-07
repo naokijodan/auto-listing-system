@@ -3,7 +3,7 @@ import IORedis from 'ioredis';
 import { Queue } from 'bullmq';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
-import { EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
+import { EXCHANGE_RATE_DEFAULTS, QUEUE_NAMES } from '@rakuda/config';
 
 // 為替レートのデフォルト値（USD/JPY）
 const DEFAULT_USD_TO_JPY = 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
@@ -12,11 +12,13 @@ const router = Router();
 const log = logger.child({ module: 'pricing' });
 
 // Redis client
-const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379');
+const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
 const PRICE_RULES_KEY = 'rakuda:price-rules';
 
-// Price sync queue (uses scrape queue for processing)
-const priceSyncQueue = new Queue('scrape-queue', {
+// Price sync queue
+const priceSyncQueue = new Queue(QUEUE_NAMES.PRICING, {
   connection: redis,
   defaultJobOptions: {
     attempts: 3,
@@ -441,6 +443,229 @@ router.put('/rules', async (req, res, next) => {
       data: validatedRules,
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+// ========================================
+// 価格自動同期（Phase 42）
+// ========================================
+
+/**
+ * 価格同期をトリガー
+ */
+router.post('/sync', async (req, res, next) => {
+  try {
+    const { marketplace, forceUpdate = false, maxListings = 100, priceChangeThreshold = 2 } = req.body;
+
+    const job = await priceSyncQueue.add(
+      'price-sync',
+      {
+        marketplace,
+        forceUpdate,
+        maxListings,
+        priceChangeThreshold,
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+      }
+    );
+
+    log.info({
+      type: 'price_sync_triggered',
+      jobId: job.id,
+      marketplace,
+      forceUpdate,
+    });
+
+    res.status(202).json({
+      success: true,
+      message: 'Price sync job queued',
+      data: {
+        jobId: job.id,
+        marketplace: marketplace || 'all',
+        forceUpdate,
+        maxListings,
+        priceChangeThreshold,
+      },
+    });
+  } catch (error) {
+    log.error('Failed to trigger price sync', error);
+    next(error);
+  }
+});
+
+/**
+ * 価格同期ステータス取得
+ */
+router.get('/sync/status', async (req, res, next) => {
+  try {
+    // キューの状態
+    const waiting = await priceSyncQueue.getWaitingCount();
+    const active = await priceSyncQueue.getActiveCount();
+    const completed = await priceSyncQueue.getCompletedCount();
+    const failed = await priceSyncQueue.getFailedCount();
+
+    // 最近の同期ジョブ
+    const recentJobs = await prisma.jobLog.findMany({
+      where: {
+        queueName: 'pricing',
+        jobType: 'PRICE_SYNC',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    // 最近の価格変更
+    const recentChanges = await prisma.priceChangeLog.findMany({
+      where: {
+        source: 'auto_sync',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    // リスティング情報を別途取得
+    const listingIds = recentChanges.map((c) => c.listingId);
+    const listings = await prisma.listing.findMany({
+      where: { id: { in: listingIds } },
+      include: {
+        product: {
+          select: { title: true, titleEn: true },
+        },
+      },
+    });
+    const listingMap = new Map(listings.map((l) => [l.id, l]));
+
+    // 統計
+    const stats = await prisma.priceChangeLog.aggregate({
+      where: {
+        source: 'auto_sync',
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+      _count: true,
+      _avg: { changePercent: true },
+    });
+
+    res.json({
+      success: true,
+      queue: {
+        name: QUEUE_NAMES.PRICING,
+        waiting,
+        active,
+        completed,
+        failed,
+      },
+      recentJobs: recentJobs.map((job) => ({
+        jobId: job.jobId,
+        status: job.status,
+        result: job.result,
+        errorMessage: job.errorMessage,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+      })),
+      recentChanges: recentChanges.map((change) => {
+        const listing = listingMap.get(change.listingId);
+        return {
+          listingId: change.listingId,
+          productTitle: listing?.product?.titleEn || listing?.product?.title || 'Unknown',
+          oldPrice: change.oldPrice,
+          newPrice: change.newPrice,
+          changePercent: change.changePercent,
+          createdAt: change.createdAt,
+        };
+      }),
+      stats24h: {
+        totalChanges: stats._count,
+        averageChangePercent: stats._avg.changePercent
+          ? Math.round(stats._avg.changePercent * 100) / 100
+          : 0,
+      },
+    });
+  } catch (error) {
+    log.error('Failed to get price sync status', error);
+    next(error);
+  }
+});
+
+/**
+ * 為替レート取得
+ */
+router.get('/exchange-rate', async (req, res, next) => {
+  try {
+    const rate = await prisma.exchangeRate.findFirst({
+      where: {
+        fromCurrency: 'JPY',
+        toCurrency: 'USD',
+      },
+      orderBy: { fetchedAt: 'desc' },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        fromCurrency: 'JPY',
+        toCurrency: 'USD',
+        rate: rate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD,
+        usdToJpy: rate ? 1 / rate.rate : 1 / EXCHANGE_RATE_DEFAULTS.JPY_TO_USD,
+        source: rate?.source || 'default',
+        fetchedAt: rate?.fetchedAt || null,
+      },
+    });
+  } catch (error) {
+    log.error('Failed to get exchange rate', error);
+    next(error);
+  }
+});
+
+/**
+ * 為替レート更新をトリガー
+ */
+router.post('/exchange-rate/refresh', async (req, res, next) => {
+  try {
+    // 外部APIから為替レート取得
+    const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    const data = await response.json() as { rates?: { JPY?: number } };
+    const jpyRate = data.rates?.JPY;
+
+    if (!jpyRate) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch exchange rate from API',
+      });
+    }
+
+    const usdToJpy = 1 / jpyRate; // JPY → USD
+
+    await prisma.exchangeRate.create({
+      data: {
+        fromCurrency: 'JPY',
+        toCurrency: 'USD',
+        rate: usdToJpy,
+        source: 'exchangerate-api',
+      },
+    });
+
+    log.info({
+      type: 'exchange_rate_updated',
+      rate: usdToJpy,
+      jpyPerUsd: jpyRate,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        fromCurrency: 'JPY',
+        toCurrency: 'USD',
+        rate: usdToJpy,
+        usdToJpy: jpyRate,
+        source: 'exchangerate-api',
+        fetchedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    log.error('Failed to refresh exchange rate', error);
     next(error);
   }
 });
