@@ -26,6 +26,7 @@ import {
   XCircle,
   Upload,
   Activity,
+  ShoppingCart,
 } from 'lucide-react';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
@@ -102,6 +103,31 @@ interface ExchangeRateData {
   };
 }
 
+interface OrderSyncStatus {
+  success: boolean;
+  queue: {
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+  };
+  recentJobs: Array<{
+    id: string;
+    jobId: string;
+    status: string;
+    result?: {
+      totalFetched?: number;
+      totalCreated?: number;
+      totalUpdated?: number;
+    };
+    errorMessage?: string;
+    completedAt?: string;
+  }>;
+  stats24h: {
+    newOrders: number;
+  };
+}
+
 export default function JoomPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState('');
@@ -110,6 +136,8 @@ export default function JoomPage() {
   const [showBatchStatus, setShowBatchStatus] = useState(false);
   const [isPriceSyncing, setIsPriceSyncing] = useState(false);
   const [showPriceSyncStatus, setShowPriceSyncStatus] = useState(false);
+  const [isOrderSyncing, setIsOrderSyncing] = useState(false);
+  const [showOrderSyncStatus, setShowOrderSyncStatus] = useState(false);
 
   // Fetch Joom listings
   const { data, error, isLoading, mutate } = useSWR<{ success: boolean; data: Listing[]; pagination: { total: number } }>(
@@ -136,6 +164,13 @@ export default function JoomPage() {
     '/api/pricing/exchange-rate',
     fetcher,
     { refreshInterval: 60000 } // 1分ごとに更新
+  );
+
+  // Fetch order sync status
+  const { data: orderSyncStatus, mutate: mutateOrderSyncStatus } = useSWR<OrderSyncStatus>(
+    showOrderSyncStatus ? '/api/orders/sync/status' : null,
+    fetcher,
+    { refreshInterval: showOrderSyncStatus ? 5000 : 0 }
   );
 
   const listings = data?.data ?? [];
@@ -282,6 +317,30 @@ export default function JoomPage() {
     }
   }, [mutatePriceSyncStatus]);
 
+  // Order sync from Joom
+  const handleOrderSync = useCallback(async () => {
+    setIsOrderSyncing(true);
+    try {
+      const response = await postApi('/api/orders/sync', {
+        marketplace: 'joom',
+        sinceDays: 7,
+        maxOrders: 100,
+      }) as { success: boolean; message: string; data: { jobId: string } };
+      if (response.success) {
+        addToast({
+          type: 'success',
+          message: '注文同期ジョブを開始しました',
+        });
+        setShowOrderSyncStatus(true);
+        mutateOrderSyncStatus();
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: '注文同期に失敗しました' });
+    } finally {
+      setIsOrderSyncing(false);
+    }
+  }, [mutateOrderSyncStatus]);
+
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
       {/* Header */}
@@ -306,6 +365,15 @@ export default function JoomPage() {
           >
             <Activity className="h-4 w-4 mr-1" />
             ジョブ状況
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowOrderSyncStatus(!showOrderSyncStatus)}
+            className={showOrderSyncStatus ? 'border-green-500 text-green-600' : ''}
+          >
+            <ShoppingCart className="h-4 w-4 mr-1" />
+            注文
           </Button>
           <Button
             variant="outline"
@@ -356,6 +424,20 @@ export default function JoomPage() {
               <TrendingUp className="h-4 w-4 mr-1" />
             )}
             Joom同期
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOrderSync}
+            disabled={isOrderSyncing}
+            title="Joomから注文を取得"
+          >
+            {isOrderSyncing ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <ShoppingCart className="h-4 w-4 mr-1" />
+            )}
+            注文取得
           </Button>
           <Button variant="ghost" size="sm" onClick={() => mutate()}>
             <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
@@ -539,6 +621,68 @@ export default function JoomPage() {
                       {change.changePercent >= 0 ? '+' : ''}{change.changePercent.toFixed(1)}%
                     </span>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Order Sync Status */}
+      {showOrderSyncStatus && orderSyncStatus && (
+        <Card className="mb-4 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-zinc-900 dark:text-white flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              注文同期ステータス
+            </h3>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                待機: {orderSyncStatus.queue.waiting}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                処理中: {orderSyncStatus.queue.active}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                完了: {orderSyncStatus.queue.completed}
+              </span>
+              <span className="text-zinc-500">
+                24h新規注文: {orderSyncStatus.stats24h.newOrders}件
+              </span>
+            </div>
+          </div>
+          {orderSyncStatus.recentJobs.length > 0 && (
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {orderSyncStatus.recentJobs.slice(0, 5).map((job) => (
+                <div
+                  key={job.id}
+                  className="flex items-center justify-between text-xs bg-zinc-50 dark:bg-zinc-800 rounded px-3 py-2"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {job.status === 'COMPLETED' ? (
+                      <CheckCircle className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                    ) : job.status === 'FAILED' ? (
+                      <XCircle className="h-3 w-3 text-red-500 flex-shrink-0" />
+                    ) : (
+                      <Loader2 className="h-3 w-3 text-blue-500 animate-spin flex-shrink-0" />
+                    )}
+                    <span className="text-zinc-700 dark:text-zinc-300">
+                      ジョブ {job.jobId}
+                    </span>
+                  </div>
+                  {job.result && (
+                    <div className="flex items-center gap-3 text-zinc-500">
+                      <span>取得: {job.result.totalFetched || 0}</span>
+                      <span className="text-emerald-600">新規: {job.result.totalCreated || 0}</span>
+                      <span className="text-blue-600">更新: {job.result.totalUpdated || 0}</span>
+                    </div>
+                  )}
+                  {job.errorMessage && (
+                    <span className="text-red-500 truncate max-w-40">{job.errorMessage}</span>
+                  )}
                 </div>
               ))}
             </div>

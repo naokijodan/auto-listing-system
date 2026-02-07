@@ -11,6 +11,8 @@ import { processInventoryJob, processScheduledInventoryCheck, processSyncListing
 import { processNotificationJob } from '../processors/notification';
 import { pricingProcessor } from '../processors/pricing';
 import { competitorProcessor } from '../processors/competitor';
+import { processOrderSyncJob } from '../processors/order-sync';
+import { processPriceSyncJob } from '../processors/price-sync';
 import { alertManager } from './alert-manager';
 import { updateExchangeRate } from './exchange-rate';
 import { syncAllPrices } from './price-sync';
@@ -87,6 +89,10 @@ export async function startWorkers(connection: IORedis): Promise<void> {
   const inventoryWorker = createWorker(
     QUEUE_NAMES.INVENTORY,
     async (job) => {
+      // 注文同期ジョブ
+      if (job.name === 'order-sync' || job.name === 'sync-orders') {
+        return processOrderSyncJob(job);
+      }
       // 出品状態同期
       if (job.name === 'sync-listing-status') {
         return processSyncListingStatus(job);
@@ -115,7 +121,14 @@ export async function startWorkers(connection: IORedis): Promise<void> {
   // 価格最適化ワーカー（Phase 28）
   const pricingWorker = createWorker(
     QUEUE_NAMES.PRICING,
-    pricingProcessor,
+    async (job) => {
+      // 価格同期ジョブ（Phase 41-C）
+      if (job.name === 'price-sync' || job.name === 'sync-prices') {
+        return processPriceSyncJob(job);
+      }
+      // 通常の価格最適化
+      return pricingProcessor(job);
+    },
     connection,
     QUEUE_CONFIG[QUEUE_NAMES.PRICING]
   );

@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import { Queue } from 'bullmq';
+import Redis from 'ioredis';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
-import { EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
+import { EXCHANGE_RATE_DEFAULTS, QUEUE_NAMES } from '@rakuda/config';
 import { AppError } from '../middleware/error-handler';
 
 // 為替レートのデフォルト値（USD/JPY）
@@ -498,6 +500,116 @@ router.get('/:orderId/sales', async (req, res, next) => {
     res.json({
       success: true,
       data: sales,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Redis接続（注文同期用）
+const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
+const inventoryQueue = new Queue(QUEUE_NAMES.INVENTORY, { connection: redisConnection });
+
+/**
+ * マーケットプレイスから注文を同期
+ */
+router.post('/sync', async (req, res, next) => {
+  try {
+    const {
+      marketplace = 'joom',
+      sinceDays = 7,
+      maxOrders = 100,
+    } = req.body;
+
+    // ジョブを追加
+    const job = await inventoryQueue.add('order-sync', {
+      marketplace,
+      sinceDays,
+      maxOrders,
+    }, {
+      priority: 2,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 10000,
+      },
+    });
+
+    log.info({
+      type: 'order_sync_queued',
+      jobId: job.id,
+      marketplace,
+      sinceDays,
+    });
+
+    res.status(202).json({
+      success: true,
+      message: 'Order sync job queued',
+      data: {
+        jobId: job.id,
+        marketplace,
+        sinceDays,
+        maxOrders,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 注文同期ステータス取得
+ */
+router.get('/sync/status', async (req, res, next) => {
+  try {
+    // 最近のジョブログ
+    const recentJobs = await prisma.jobLog.findMany({
+      where: {
+        jobType: 'ORDER_SYNC',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    // キュー状態
+    const [waiting, active, completed, failed] = await Promise.all([
+      inventoryQueue.getWaitingCount(),
+      inventoryQueue.getActiveCount(),
+      inventoryQueue.getCompletedCount(),
+      inventoryQueue.getFailedCount(),
+    ]);
+
+    // 24時間の同期統計
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const syncStats = await prisma.order.aggregate({
+      where: {
+        createdAt: { gte: oneDayAgo },
+      },
+      _count: true,
+    });
+
+    res.json({
+      success: true,
+      queue: {
+        waiting,
+        active,
+        completed,
+        failed,
+      },
+      recentJobs: recentJobs.map(job => ({
+        id: job.id,
+        jobId: job.jobId,
+        status: job.status,
+        result: job.result,
+        errorMessage: job.errorMessage,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+      })),
+      stats24h: {
+        newOrders: syncStats._count,
+      },
     });
   } catch (error) {
     next(error);
