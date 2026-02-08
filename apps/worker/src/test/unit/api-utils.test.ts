@@ -9,6 +9,10 @@ import {
   safeFetch,
   apiRequest,
   DEFAULT_RETRY_CONFIG,
+  CircuitBreaker,
+  CircuitBreakerError,
+  getCircuitBreaker,
+  withRetryAndCircuitBreaker,
 } from '../../lib/api-utils';
 
 describe('api-utils', () => {
@@ -270,6 +274,233 @@ describe('api-utils', () => {
       expect(DEFAULT_RETRY_CONFIG.backoffMultiplier).toBe(2);
       expect(DEFAULT_RETRY_CONFIG.retryableStatuses).toContain(429);
       expect(DEFAULT_RETRY_CONFIG.retryableStatuses).toContain(503);
+      expect(DEFAULT_RETRY_CONFIG.jitter).toBe(true);
+    });
+  });
+
+  // ========================================
+  // サーキットブレーカーテスト（Phase 45）
+  // ========================================
+  describe('CircuitBreaker', () => {
+    it('should start in CLOSED state', () => {
+      const cb = new CircuitBreaker('test-closed');
+      expect(cb.getState()).toBe('CLOSED');
+      expect(cb.isOpen()).toBe(false);
+    });
+
+    it('should open after failure threshold', async () => {
+      const cb = new CircuitBreaker('test-open', { failureThreshold: 3 });
+
+      // 3回失敗させる
+      for (let i = 0; i < 3; i++) {
+        try {
+          await cb.execute(async () => {
+            throw new Error('Test error');
+          });
+        } catch {
+          // 期待通り
+        }
+      }
+
+      expect(cb.getState()).toBe('OPEN');
+      expect(cb.isOpen()).toBe(true);
+    });
+
+    it('should block requests when OPEN', async () => {
+      const cb = new CircuitBreaker('test-block', { failureThreshold: 2 });
+
+      // 2回失敗させてOPENに
+      for (let i = 0; i < 2; i++) {
+        try {
+          await cb.execute(async () => {
+            throw new Error('Test error');
+          });
+        } catch {
+          // 期待通り
+        }
+      }
+
+      // OPENなのでブロックされる
+      await expect(
+        cb.execute(async () => 'success')
+      ).rejects.toThrow(CircuitBreakerError);
+    });
+
+    it('should transition to HALF_OPEN after timeout', async () => {
+      vi.useRealTimers();
+
+      const cb = new CircuitBreaker('test-half-open', {
+        failureThreshold: 2,
+        timeout: 100,
+      });
+
+      // 2回失敗させてOPENに
+      for (let i = 0; i < 2; i++) {
+        try {
+          await cb.execute(async () => {
+            throw new Error('Test error');
+          });
+        } catch {
+          // 期待通り
+        }
+      }
+
+      expect(cb.getState()).toBe('OPEN');
+
+      // タイムアウト待機
+      await sleep(150);
+
+      // HALF_OPENに遷移
+      expect(cb.getState()).toBe('HALF_OPEN');
+    });
+
+    it('should close after success threshold in HALF_OPEN', async () => {
+      vi.useRealTimers();
+
+      const cb = new CircuitBreaker('test-close-after-success', {
+        failureThreshold: 2,
+        successThreshold: 2,
+        timeout: 50,
+      });
+
+      // 2回失敗させてOPENに
+      for (let i = 0; i < 2; i++) {
+        try {
+          await cb.execute(async () => {
+            throw new Error('Test error');
+          });
+        } catch {
+          // 期待通り
+        }
+      }
+
+      // タイムアウト待機でHALF_OPENに
+      await sleep(100);
+      expect(cb.getState()).toBe('HALF_OPEN');
+
+      // 2回成功させてCLOSEDに
+      for (let i = 0; i < 2; i++) {
+        await cb.execute(async () => 'success');
+      }
+
+      expect(cb.getState()).toBe('CLOSED');
+    });
+
+    it('should reopen on failure in HALF_OPEN', async () => {
+      vi.useRealTimers();
+
+      const cb = new CircuitBreaker('test-reopen', {
+        failureThreshold: 2,
+        timeout: 50,
+      });
+
+      // OPENに
+      for (let i = 0; i < 2; i++) {
+        try {
+          await cb.execute(async () => {
+            throw new Error('Test error');
+          });
+        } catch {
+          // 期待通り
+        }
+      }
+
+      // HALF_OPENに
+      await sleep(100);
+      expect(cb.getState()).toBe('HALF_OPEN');
+
+      // 失敗してOPENに戻る
+      try {
+        await cb.execute(async () => {
+          throw new Error('Another error');
+        });
+      } catch {
+        // 期待通り
+      }
+
+      expect(cb.getState()).toBe('OPEN');
+    });
+
+    it('should reset manually', async () => {
+      const cb = new CircuitBreaker('test-reset', { failureThreshold: 2 });
+
+      // OPENに
+      for (let i = 0; i < 2; i++) {
+        try {
+          await cb.execute(async () => {
+            throw new Error('Test error');
+          });
+        } catch {
+          // 期待通り
+        }
+      }
+
+      expect(cb.getState()).toBe('OPEN');
+
+      // リセット
+      cb.reset();
+
+      expect(cb.getState()).toBe('CLOSED');
+      expect(cb.isOpen()).toBe(false);
+    });
+
+    it('should return stats', async () => {
+      const cb = new CircuitBreaker('test-stats', { failureThreshold: 3 });
+
+      // 1回失敗
+      try {
+        await cb.execute(async () => {
+          throw new Error('Test error');
+        });
+      } catch {
+        // 期待通り
+      }
+
+      const stats = cb.getStats();
+      expect(stats.name).toBe('test-stats');
+      expect(stats.state).toBe('CLOSED');
+      expect(stats.failureCount).toBe(1);
+    });
+  });
+
+  describe('getCircuitBreaker', () => {
+    it('should create new circuit breaker', () => {
+      const cb = getCircuitBreaker('new-cb');
+      expect(cb.getState()).toBe('CLOSED');
+    });
+
+    it('should return same instance for same name', () => {
+      const cb1 = getCircuitBreaker('same-cb');
+      const cb2 = getCircuitBreaker('same-cb');
+      expect(cb1).toBe(cb2);
+    });
+  });
+
+  describe('withRetryAndCircuitBreaker', () => {
+    it('should combine retry and circuit breaker', async () => {
+      vi.useRealTimers();
+
+      const fn = vi.fn()
+        .mockRejectedValueOnce(new ApiError('Server error', 500))
+        .mockResolvedValue('success');
+
+      const result = await withRetryAndCircuitBreaker(
+        fn,
+        'combined-test',
+        { maxRetries: 3, initialDelay: 10, jitter: false },
+        { failureThreshold: 5 }
+      );
+
+      expect(result).toBe('success');
+      expect(fn).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('CircuitBreakerError', () => {
+    it('should create circuit breaker error', () => {
+      const error = new CircuitBreakerError('Circuit is open');
+      expect(error.name).toBe('CircuitBreakerError');
+      expect(error.message).toBe('Circuit is open');
     });
   });
 });
