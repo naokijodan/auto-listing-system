@@ -21,6 +21,7 @@ export const mockPrisma = {
     update: vi.fn(),
     updateMany: vi.fn(),
     delete: vi.fn(),
+    deleteMany: vi.fn(),
     count: vi.fn(),
     groupBy: vi.fn(),
   },
@@ -186,6 +187,7 @@ const createMockJob = (id: string, data: any) => ({
 
 export const mockQueue = {
   add: vi.fn().mockResolvedValue({ id: 'mock-job-id' }),
+  addBulk: vi.fn().mockResolvedValue([]),
   close: vi.fn(),
   getWaitingCount: vi.fn().mockResolvedValue(0),
   getActiveCount: vi.fn().mockResolvedValue(0),

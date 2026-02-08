@@ -174,4 +174,45 @@ describe('Auth API', () => {
       });
     });
   });
+
+  describe('GET /api/auth/ebay/callback', () => {
+    it('should return 400 when code is missing', async () => {
+      const response = await request(app)
+        .get('/api/auth/ebay/callback')
+        .query({ state: 'test-state' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Missing code or state');
+    });
+
+    it('should return 400 when state is missing', async () => {
+      const response = await request(app)
+        .get('/api/auth/ebay/callback')
+        .query({ code: 'test-code' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Missing code or state');
+    });
+
+    it('should return 400 for invalid state', async () => {
+      mockPrisma.oAuthState.findFirst.mockResolvedValue(null);
+
+      const response = await request(app)
+        .get('/api/auth/ebay/callback')
+        .query({ code: 'test-code', state: 'invalid-state' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error).toContain('Invalid or expired state');
+    });
+
+    it('should redirect on OAuth error', async () => {
+      const response = await request(app)
+        .get('/api/auth/ebay/callback')
+        .query({ error: 'access_denied', error_description: 'User denied access' });
+
+      expect(response.status).toBe(302); // Redirect
+      expect(response.headers.location).toContain('error=access_denied');
+    });
+  });
+
 });

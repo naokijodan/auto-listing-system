@@ -1,7 +1,33 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { createTestApp } from '../helpers/app';
 import { mockPrisma } from '../setup';
+
+// Mock CSV utilities
+vi.mock('../../utils/csv', () => ({
+  productsToCsv: vi.fn().mockReturnValue('title,price\nTest,1000'),
+  parseCsv: vi.fn().mockReturnValue([]),
+  rowToProduct: vi.fn(),
+  validateAndParseCsv: vi.fn().mockReturnValue({
+    valid: true,
+    errors: [],
+    warnings: [],
+    stats: { totalRows: 1, validRows: 1, invalidRows: 0, skippedRows: 0 },
+  }),
+  generateCsvTemplate: vi.fn().mockReturnValue('title,price,sourceUrl,description,category,brand,condition'),
+}));
+
+// Mock schema utilities with hoisting
+const { mockGenerateSourceHash, mockParseScrapedProduct } = vi.hoisted(() => ({
+  mockGenerateSourceHash: vi.fn().mockReturnValue('test-hash'),
+  mockParseScrapedProduct: vi.fn((data) => data),
+}));
+
+vi.mock('@rakuda/schema', () => ({
+  ScrapedProductSchema: {},
+  parseScrapedProduct: mockParseScrapedProduct,
+  generateSourceHash: mockGenerateSourceHash,
+}));
 
 const app = createTestApp();
 
@@ -284,6 +310,225 @@ describe('Products API', () => {
         where: { id: { in: ['product-1', 'product-2'] }, status: 'DELETED' },
         data: { status: 'SCRAPED' },
       });
+    });
+  });
+
+  describe('GET /api/products/export', () => {
+    it('should export products as CSV', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([
+        {
+          id: 'product-1',
+          title: 'Test Product',
+          price: 1000,
+          status: 'ACTIVE',
+          source: { type: 'MERCARI' },
+          listings: [],
+        },
+      ]);
+
+      const response = await request(app)
+        .get('/api/products/export')
+        .expect(200);
+
+      expect(response.headers['content-type']).toContain('text/csv');
+      expect(response.headers['content-disposition']).toContain('attachment');
+    });
+
+    it('should filter export by status', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([]);
+
+      await request(app)
+        .get('/api/products/export?status=ACTIVE')
+        .expect(200);
+
+      expect(mockPrisma.product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status: 'ACTIVE' },
+        })
+      );
+    });
+
+    it('should filter export by ids', async () => {
+      mockPrisma.product.findMany.mockResolvedValue([]);
+
+      await request(app)
+        .get('/api/products/export?ids=p1,p2,p3')
+        .expect(200);
+
+      expect(mockPrisma.product.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: { in: ['p1', 'p2', 'p3'] } },
+        })
+      );
+    });
+  });
+
+  describe('POST /api/products/scrape-seller', () => {
+    it('should queue seller scrape job', async () => {
+      const response = await request(app)
+        .post('/api/products/scrape-seller')
+        .send({
+          url: 'https://jp.mercari.com/user/profile/123',
+          source: 'MERCARI',
+          marketplace: ['joom'],
+        })
+        .expect(202);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.jobId).toBeDefined();
+      expect(response.body.count).toBe(50); // default limit
+    });
+
+    it('should accept custom limit', async () => {
+      const response = await request(app)
+        .post('/api/products/scrape-seller')
+        .send({
+          url: 'https://jp.mercari.com/user/profile/123',
+          source: 'MERCARI',
+          options: { limit: 100 },
+        })
+        .expect(202);
+
+      expect(response.body.count).toBe(100);
+    });
+
+    it('should return 400 when url is missing', async () => {
+      const response = await request(app)
+        .post('/api/products/scrape-seller')
+        .send({ source: 'MERCARI' })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+    });
+  });
+
+  describe('POST /api/products', () => {
+    const mockScrapedProduct = {
+      sourceType: 'mercari',
+      sourceItemId: 'm12345',
+      sourceUrl: 'https://jp.mercari.com/item/m12345',
+      title: 'Test Product',
+      description: 'Test description',
+      price: 1500,
+      images: ['https://example.com/image1.jpg'],
+      category: 'Electronics',
+      brand: 'TestBrand',
+      condition: 'LIKE_NEW',
+    };
+
+    it('should create new product', async () => {
+      mockPrisma.source.findFirst.mockResolvedValue({ id: 'source-1', type: 'MERCARI' });
+      mockPrisma.product.findUnique.mockResolvedValue(null);
+      mockPrisma.product.create.mockResolvedValue({
+        id: 'product-1',
+        ...mockScrapedProduct,
+        sourceId: 'source-1',
+      });
+
+      const response = await request(app)
+        .post('/api/products')
+        .send(mockScrapedProduct)
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('Product created');
+      expect(response.body.data.id).toBe('product-1');
+    });
+
+    it('should return existing product if no changes', async () => {
+      // Set mock to return same hash as existing product
+      mockGenerateSourceHash.mockReturnValueOnce('same-hash');
+      const existingProduct = {
+        id: 'product-1',
+        ...mockScrapedProduct,
+        sourceHash: 'same-hash', // same as generated hash
+      };
+      mockPrisma.source.findFirst.mockResolvedValue({ id: 'source-1', type: 'MERCARI' });
+      mockPrisma.product.findUnique.mockResolvedValue(existingProduct);
+
+      const response = await request(app)
+        .post('/api/products')
+        .send(mockScrapedProduct)
+        .expect(200);
+
+      expect(response.body.message).toContain('already exists');
+    });
+
+    it('should update existing product if changed', async () => {
+      // Set mock to return different hash than existing
+      mockGenerateSourceHash.mockReturnValueOnce('new-hash');
+      const existingProduct = {
+        id: 'product-1',
+        ...mockScrapedProduct,
+        sourceHash: 'old-hash', // different from generated hash
+      };
+      mockPrisma.source.findFirst.mockResolvedValue({ id: 'source-1', type: 'MERCARI' });
+      mockPrisma.product.findUnique.mockResolvedValue(existingProduct);
+      mockPrisma.product.update.mockResolvedValue({
+        ...existingProduct,
+        title: 'Updated Title',
+      });
+
+      const response = await request(app)
+        .post('/api/products')
+        .send({ ...mockScrapedProduct, title: 'Updated Title' })
+        .expect(200);
+
+      expect(response.body.message).toBe('Product updated');
+    });
+
+    it('should create source if not exists', async () => {
+      mockPrisma.source.findFirst.mockResolvedValue(null);
+      mockPrisma.source.create.mockResolvedValue({ id: 'source-new', type: 'MERCARI' });
+      mockPrisma.product.findUnique.mockResolvedValue(null);
+      mockPrisma.product.create.mockResolvedValue({
+        id: 'product-1',
+        ...mockScrapedProduct,
+      });
+
+      const response = await request(app)
+        .post('/api/products')
+        .send(mockScrapedProduct)
+        .expect(201);
+
+      expect(mockPrisma.source.create).toHaveBeenCalled();
+      expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('GET /api/products/import/template', () => {
+    it('should return CSV template', async () => {
+      const response = await request(app)
+        .get('/api/products/import/template')
+        .expect(200);
+
+      expect(response.headers['content-type']).toContain('text/csv');
+      expect(response.headers['content-disposition']).toContain('attachment');
+      expect(response.text).toContain('title');
+      expect(response.text).toContain('price');
+    });
+  });
+
+  describe('POST /api/products/import/validate', () => {
+    it('should validate CSV data', async () => {
+      const csv = 'title,price,sourceUrl\nTest Product,1000,https://example.com';
+
+      const response = await request(app)
+        .post('/api/products/import/validate')
+        .send({ csv })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.stats).toBeDefined();
+    });
+
+    it('should return 400 when csv is missing', async () => {
+      const response = await request(app)
+        .post('/api/products/import/validate')
+        .send({})
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
     });
   });
 });

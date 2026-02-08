@@ -352,4 +352,167 @@ describe('Webhooks API', () => {
       expect(response.status).toBe(404);
     });
   });
+
+  describe('eBay Payment Event', () => {
+    beforeEach(() => {
+      process.env.NODE_ENV = 'test';
+      mockPrisma.webhookEvent.create.mockResolvedValue({
+        id: 'webhook-event-payment',
+        provider: 'EBAY',
+        eventType: 'MARKETPLACE_ORDER_PAYMENT_COMPLETE',
+        status: 'PENDING',
+      });
+      mockPrisma.webhookEvent.update.mockResolvedValue({});
+    });
+
+    it('should process payment complete event', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-1',
+        marketplace: 'EBAY',
+        marketplaceOrderId: 'ebay-order-123',
+      });
+      mockPrisma.order.update.mockResolvedValue({
+        id: 'order-1',
+        paymentStatus: 'PAID',
+      });
+      mockPrisma.notification.create.mockResolvedValue({});
+
+      const response = await request(app)
+        .post('/api/webhooks/ebay')
+        .send({
+          metadata: { topic: 'MARKETPLACE_ORDER_PAYMENT_COMPLETE' },
+          notification: { data: { orderId: 'ebay-order-123' } },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.received).toBe(true);
+    });
+  });
+
+  describe('eBay Cancellation Event', () => {
+    beforeEach(() => {
+      process.env.NODE_ENV = 'test';
+      mockPrisma.webhookEvent.create.mockResolvedValue({
+        id: 'webhook-event-cancel',
+        provider: 'EBAY',
+        eventType: 'MARKETPLACE_ORDER_CANCELLED',
+        status: 'PENDING',
+      });
+      mockPrisma.webhookEvent.update.mockResolvedValue({});
+    });
+
+    it('should process order cancelled event', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-1',
+        marketplace: 'EBAY',
+        marketplaceOrderId: 'ebay-order-123',
+      });
+      mockPrisma.order.update.mockResolvedValue({
+        id: 'order-1',
+        status: 'CANCELLED',
+      });
+      mockPrisma.notification.create.mockResolvedValue({});
+
+      const response = await request(app)
+        .post('/api/webhooks/ebay')
+        .send({
+          metadata: { topic: 'MARKETPLACE_ORDER_CANCELLED' },
+          notification: { data: { orderId: 'ebay-order-123' } },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.received).toBe(true);
+    });
+  });
+
+  describe('eBay Out of Stock Event', () => {
+    beforeEach(() => {
+      process.env.NODE_ENV = 'test';
+      mockPrisma.webhookEvent.create.mockResolvedValue({
+        id: 'webhook-event-oos',
+        provider: 'EBAY',
+        eventType: 'ITEM_OUT_OF_STOCK',
+        status: 'PENDING',
+      });
+      mockPrisma.webhookEvent.update.mockResolvedValue({});
+    });
+
+    it('should process out of stock event', async () => {
+      mockPrisma.listing.findFirst.mockResolvedValue({
+        id: 'listing-1',
+        marketplaceListingId: 'ebay-item-123',
+      });
+      mockPrisma.listing.update.mockResolvedValue({
+        id: 'listing-1',
+        status: 'OUT_OF_STOCK',
+      });
+      mockPrisma.notification.create.mockResolvedValue({});
+
+      const response = await request(app)
+        .post('/api/webhooks/ebay')
+        .send({
+          metadata: { topic: 'ITEM_OUT_OF_STOCK' },
+          notification: { data: { itemId: 'ebay-item-123' } },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.received).toBe(true);
+    });
+  });
+
+  describe('Filter by status', () => {
+    it('should filter events by status', async () => {
+      mockPrisma.webhookEvent.findMany.mockResolvedValue([]);
+      mockPrisma.webhookEvent.count.mockResolvedValue(0);
+
+      const response = await request(app)
+        .get('/api/webhooks/events')
+        .query({ status: 'FAILED' });
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.webhookEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: 'FAILED' }),
+        })
+      );
+    });
+  });
+
+  describe('Joom order status update', () => {
+    beforeEach(() => {
+      process.env.NODE_ENV = 'test';
+      mockPrisma.webhookEvent.create.mockResolvedValue({
+        id: 'webhook-event-joom-update',
+        provider: 'JOOM',
+        eventType: 'order.status_updated',
+        status: 'PENDING',
+      });
+      mockPrisma.webhookEvent.update.mockResolvedValue({});
+    });
+
+    it('should process Joom order status update', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 'order-joom-1',
+        marketplace: 'JOOM',
+        marketplaceOrderId: 'joom-order-123',
+      });
+      mockPrisma.order.update.mockResolvedValue({
+        id: 'order-joom-1',
+        status: 'SHIPPED',
+      });
+
+      const response = await request(app)
+        .post('/api/webhooks/joom')
+        .send({
+          event: 'order.status_updated',
+          order: {
+            id: 'joom-order-123',
+            status: 'shipped',
+          },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.received).toBe(true);
+    });
+  });
 });

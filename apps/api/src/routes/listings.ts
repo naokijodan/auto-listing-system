@@ -66,31 +66,6 @@ router.get('/', async (req, res, next) => {
 });
 
 /**
- * 出品詳細取得
- */
-router.get('/:id', async (req, res, next) => {
-  try {
-    const listing = await prisma.listing.findUnique({
-      where: { id: req.params.id },
-      include: {
-        product: true,
-      },
-    });
-
-    if (!listing) {
-      throw new AppError(404, 'Listing not found', 'LISTING_NOT_FOUND');
-    }
-
-    res.json({
-      success: true,
-      data: listing,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
  * 出品作成（ドラフト）
  */
 router.post('/', async (req, res, next) => {
@@ -153,120 +128,9 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-/**
- * 出品を公開（APIに送信）
- */
-router.post('/:id/publish', async (req, res, next) => {
-  try {
-    const listing = await prisma.listing.findUnique({
-      where: { id: req.params.id },
-      include: { product: true },
-    });
-
-    if (!listing) {
-      throw new AppError(404, 'Listing not found', 'LISTING_NOT_FOUND');
-    }
-
-    if (listing.status !== 'DRAFT' && listing.status !== 'ERROR') {
-      throw new AppError(
-        400,
-        'Listing is not in publishable state',
-        'INVALID_STATUS'
-      );
-    }
-
-    // ステータス更新
-    await prisma.listing.update({
-      where: { id: listing.id },
-      data: { status: 'PENDING_PUBLISH' },
-    });
-
-    // 出品ジョブ追加
-    const job = await publishQueue.add(
-      'publish',
-      {
-        productId: listing.productId,
-        listingId: listing.id,
-        marketplace: listing.marketplace.toLowerCase(),
-        listingData: listing.marketplaceData,
-        isDryRun: req.body.dryRun || false,
-      },
-      {
-        priority: 1,
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 60000,
-        },
-      }
-    );
-
-    logger.info({
-      type: 'publish_job_added',
-      jobId: job.id,
-      listingId: listing.id,
-      marketplace: listing.marketplace,
-    });
-
-    res.status(202).json({
-      success: true,
-      message: 'Publish job queued',
-      data: {
-        listingId: listing.id,
-        jobId: job.id,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * 出品更新
- */
-router.patch('/:id', async (req, res, next) => {
-  try {
-    const { listingPrice, shippingCost, marketplaceData } = req.body;
-
-    const listing = await prisma.listing.update({
-      where: { id: req.params.id },
-      data: {
-        ...(listingPrice !== undefined && { listingPrice }),
-        ...(shippingCost !== undefined && { shippingCost }),
-        ...(marketplaceData && { marketplaceData }),
-      },
-    });
-
-    res.json({
-      success: true,
-      message: 'Listing updated',
-      data: listing,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * 出品削除
- */
-router.delete('/:id', async (req, res, next) => {
-  try {
-    await prisma.listing.delete({
-      where: { id: req.params.id },
-    });
-
-    res.json({
-      success: true,
-      message: 'Listing deleted',
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
 // ========================================
 // 一括操作エンドポイント
+// 注意: /:id ルートより前に定義すること
 // ========================================
 
 /**
@@ -656,6 +520,56 @@ router.post('/bulk/sync', async (req, res, next) => {
   }
 });
 
+// ========================================
+// 在庫同期エンドポイント
+// 注意: /:id ルートより前に定義すること
+// ========================================
+
+/**
+ * 在庫同期ステータス取得
+ */
+router.get('/inventory/sync/status', async (req, res, next) => {
+  try {
+    // 最近のジョブログ
+    const recentJobs = await prisma.jobLog.findMany({
+      where: {
+        jobType: 'INVENTORY_SYNC',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    // キュー状態
+    const [waiting, active, completed, failed] = await Promise.all([
+      inventoryQueue.getWaitingCount(),
+      inventoryQueue.getActiveCount(),
+      inventoryQueue.getCompletedCount(),
+      inventoryQueue.getFailedCount(),
+    ]);
+
+    res.json({
+      success: true,
+      queue: {
+        waiting,
+        active,
+        completed,
+        failed,
+      },
+      recentJobs: recentJobs.map(job => ({
+        id: job.id,
+        jobId: job.jobId,
+        status: job.status,
+        result: job.result,
+        errorMessage: job.errorMessage,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 /**
  * Joom在庫同期（Phase 41-F）
  * RAKUDAの在庫情報をJoomに同期
@@ -705,45 +619,142 @@ router.post('/inventory/sync', async (req, res, next) => {
   }
 });
 
+// ========================================
+// 個別リスティング操作エンドポイント
+// 注意: /bulk/* と /inventory/* の後に定義すること
+// ========================================
+
 /**
- * 在庫同期ステータス取得
+ * 出品詳細取得
  */
-router.get('/inventory/sync/status', async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
-    // 最近のジョブログ
-    const recentJobs = await prisma.jobLog.findMany({
-      where: {
-        jobType: 'INVENTORY_SYNC',
+    const listing = await prisma.listing.findUnique({
+      where: { id: req.params.id },
+      include: {
+        product: true,
       },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
     });
 
-    // キュー状態
-    const [waiting, active, completed, failed] = await Promise.all([
-      inventoryQueue.getWaitingCount(),
-      inventoryQueue.getActiveCount(),
-      inventoryQueue.getCompletedCount(),
-      inventoryQueue.getFailedCount(),
-    ]);
+    if (!listing) {
+      throw new AppError(404, 'Listing not found', 'LISTING_NOT_FOUND');
+    }
 
     res.json({
       success: true,
-      queue: {
-        waiting,
-        active,
-        completed,
-        failed,
+      data: listing,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 出品を公開（APIに送信）
+ */
+router.post('/:id/publish', async (req, res, next) => {
+  try {
+    const listing = await prisma.listing.findUnique({
+      where: { id: req.params.id },
+      include: { product: true },
+    });
+
+    if (!listing) {
+      throw new AppError(404, 'Listing not found', 'LISTING_NOT_FOUND');
+    }
+
+    if (listing.status !== 'DRAFT' && listing.status !== 'ERROR') {
+      throw new AppError(
+        400,
+        'Listing is not in publishable state',
+        'INVALID_STATUS'
+      );
+    }
+
+    // ステータス更新
+    await prisma.listing.update({
+      where: { id: listing.id },
+      data: { status: 'PENDING_PUBLISH' },
+    });
+
+    // 出品ジョブ追加
+    const job = await publishQueue.add(
+      'publish',
+      {
+        productId: listing.productId,
+        listingId: listing.id,
+        marketplace: listing.marketplace.toLowerCase(),
+        listingData: listing.marketplaceData,
+        isDryRun: req.body.dryRun || false,
       },
-      recentJobs: recentJobs.map(job => ({
-        id: job.id,
-        jobId: job.jobId,
-        status: job.status,
-        result: job.result,
-        errorMessage: job.errorMessage,
-        startedAt: job.startedAt,
-        completedAt: job.completedAt,
-      })),
+      {
+        priority: 1,
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 60000,
+        },
+      }
+    );
+
+    logger.info({
+      type: 'publish_job_added',
+      jobId: job.id,
+      listingId: listing.id,
+      marketplace: listing.marketplace,
+    });
+
+    res.status(202).json({
+      success: true,
+      message: 'Publish job queued',
+      data: {
+        listingId: listing.id,
+        jobId: job.id,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 出品更新
+ */
+router.patch('/:id', async (req, res, next) => {
+  try {
+    const { listingPrice, shippingCost, marketplaceData } = req.body;
+
+    const listing = await prisma.listing.update({
+      where: { id: req.params.id },
+      data: {
+        ...(listingPrice !== undefined && { listingPrice }),
+        ...(shippingCost !== undefined && { shippingCost }),
+        ...(marketplaceData && { marketplaceData }),
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'Listing updated',
+      data: listing,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * 出品削除
+ */
+router.delete('/:id', async (req, res, next) => {
+  try {
+    await prisma.listing.delete({
+      where: { id: req.params.id },
+    });
+
+    res.json({
+      success: true,
+      message: 'Listing deleted',
     });
   } catch (error) {
     next(error);

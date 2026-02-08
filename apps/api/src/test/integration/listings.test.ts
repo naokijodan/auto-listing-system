@@ -311,4 +311,421 @@ describe('Listings API', () => {
       expect(response.body.message).toBe('Listing deleted');
     });
   });
+
+  describe('POST /api/listings/bulk/update-price', () => {
+    it('should update prices with percent change', async () => {
+      mockPrisma.listing.findUnique
+        .mockResolvedValueOnce({ id: 'listing-1', listingPrice: 100 })
+        .mockResolvedValueOnce({ id: 'listing-2', listingPrice: 200 });
+      mockPrisma.listing.update.mockResolvedValue({});
+
+      const response = await request(app)
+        .post('/api/listings/bulk/update-price')
+        .send({
+          listingIds: ['listing-1', 'listing-2'],
+          priceChange: { percent: 10 },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toContain('2/2');
+      expect(response.body.data).toHaveLength(2);
+      expect(response.body.data[0].newPrice).toBeCloseTo(110, 2);
+      expect(response.body.data[1].newPrice).toBeCloseTo(220, 2);
+    });
+
+    it('should update prices with fixed value', async () => {
+      mockPrisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', listingPrice: 100 });
+      mockPrisma.listing.update.mockResolvedValue({});
+
+      const response = await request(app)
+        .post('/api/listings/bulk/update-price')
+        .send({
+          listingIds: ['listing-1'],
+          priceChange: { fixed: 150 },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data[0].newPrice).toBe(150);
+    });
+
+    it('should update prices with amount change', async () => {
+      mockPrisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', listingPrice: 100 });
+      mockPrisma.listing.update.mockResolvedValue({});
+
+      const response = await request(app)
+        .post('/api/listings/bulk/update-price')
+        .send({
+          listingIds: ['listing-1'],
+          priceChange: { amount: -20 },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data[0].newPrice).toBe(80);
+    });
+
+    it('should enforce minimum price of 0.01', async () => {
+      mockPrisma.listing.findUnique.mockResolvedValue({ id: 'listing-1', listingPrice: 10 });
+      mockPrisma.listing.update.mockResolvedValue({});
+
+      const response = await request(app)
+        .post('/api/listings/bulk/update-price')
+        .send({
+          listingIds: ['listing-1'],
+          priceChange: { amount: -100 },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data[0].newPrice).toBe(0.01);
+    });
+
+    it('should handle not found listings', async () => {
+      mockPrisma.listing.findUnique.mockResolvedValue(null);
+
+      const response = await request(app)
+        .post('/api/listings/bulk/update-price')
+        .send({
+          listingIds: ['non-existent'],
+          priceChange: { percent: 10 },
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.data[0].success).toBe(false);
+      expect(response.body.data[0].error).toBe('Not found');
+    });
+
+    it('should return 400 when listingIds is missing', async () => {
+      const response = await request(app)
+        .post('/api/listings/bulk/update-price')
+        .send({ priceChange: { percent: 10 } });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe('INVALID_REQUEST');
+    });
+
+    it('should return 400 when priceChange is missing', async () => {
+      const response = await request(app)
+        .post('/api/listings/bulk/update-price')
+        .send({ listingIds: ['listing-1'] });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe('INVALID_REQUEST');
+    });
+  });
+
+  describe('POST /api/listings/bulk/update-status', () => {
+    it('should update status for multiple listings', async () => {
+      mockPrisma.listing.updateMany.mockResolvedValue({ count: 3 });
+
+      const response = await request(app)
+        .post('/api/listings/bulk/update-status')
+        .send({
+          listingIds: ['listing-1', 'listing-2', 'listing-3'],
+          status: 'PAUSED',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toContain('3 listings to PAUSED');
+      expect(response.body.data.updatedCount).toBe(3);
+    });
+
+    it('should return 400 for invalid status', async () => {
+      const response = await request(app)
+        .post('/api/listings/bulk/update-status')
+        .send({
+          listingIds: ['listing-1'],
+          status: 'INVALID_STATUS',
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe('INVALID_REQUEST');
+    });
+
+    it('should return 400 when listingIds is empty', async () => {
+      const response = await request(app)
+        .post('/api/listings/bulk/update-status')
+        .send({
+          listingIds: [],
+          status: 'PAUSED',
+        });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/listings/bulk/publish', () => {
+    it('should queue publish jobs for draft listings', async () => {
+      const mockListings = [
+        { id: 'listing-1', productId: 'p1', marketplace: 'JOOM', status: 'DRAFT', marketplaceData: {}, product: {} },
+        { id: 'listing-2', productId: 'p2', marketplace: 'EBAY', status: 'ERROR', marketplaceData: {}, product: {} },
+      ];
+      mockPrisma.listing.findMany.mockResolvedValue(mockListings);
+      mockPrisma.listing.update.mockResolvedValue({});
+
+      const response = await request(app)
+        .post('/api/listings/bulk/publish')
+        .send({
+          listingIds: ['listing-1', 'listing-2', 'listing-3'],
+        });
+
+      expect(response.status).toBe(202);
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toContain('2/3');
+      // listing-3 should be marked as not in publishable state
+      const failedListing = response.body.data.find((r: any) => r.listingId === 'listing-3');
+      expect(failedListing.success).toBe(false);
+      expect(failedListing.error).toContain('Not in publishable state');
+    });
+
+    it('should support dry run mode', async () => {
+      mockPrisma.listing.findMany.mockResolvedValue([
+        { id: 'listing-1', productId: 'p1', marketplace: 'JOOM', status: 'DRAFT', marketplaceData: {}, product: {} },
+      ]);
+      mockPrisma.listing.update.mockResolvedValue({});
+
+      const response = await request(app)
+        .post('/api/listings/bulk/publish')
+        .send({
+          listingIds: ['listing-1'],
+          dryRun: true,
+        });
+
+      expect(response.status).toBe(202);
+      expect(response.body.success).toBe(true);
+    });
+
+    it('should return 400 when listingIds is missing', async () => {
+      const response = await request(app)
+        .post('/api/listings/bulk/publish')
+        .send({});
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/listings/bulk/delete', () => {
+    it('should delete non-active listings with confirmation', async () => {
+      mockPrisma.listing.count.mockResolvedValue(0); // No active listings
+      mockPrisma.listing.deleteMany.mockResolvedValue({ count: 2 });
+
+      const response = await request(app)
+        .post('/api/listings/bulk/delete')
+        .send({
+          listingIds: ['listing-1', 'listing-2'],
+          confirm: true,
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.deletedCount).toBe(2);
+    });
+
+    it('should return 400 when confirm is false', async () => {
+      const response = await request(app)
+        .post('/api/listings/bulk/delete')
+        .send({
+          listingIds: ['listing-1'],
+          confirm: false,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe('CONFIRMATION_REQUIRED');
+    });
+
+    it('should return 400 when trying to delete active listings', async () => {
+      mockPrisma.listing.count.mockResolvedValue(2); // 2 active listings
+
+      const response = await request(app)
+        .post('/api/listings/bulk/delete')
+        .send({
+          listingIds: ['listing-1', 'listing-2'],
+          confirm: true,
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe('ACTIVE_LISTINGS');
+    });
+
+    it('should return 400 when listingIds is empty', async () => {
+      const response = await request(app)
+        .post('/api/listings/bulk/delete')
+        .send({
+          listingIds: [],
+          confirm: true,
+        });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/listings/bulk/retry', () => {
+    it('should retry error listings', async () => {
+      const errorListings = [
+        { id: 'listing-1', productId: 'p1', marketplace: 'JOOM', marketplaceData: {}, product: {} },
+        { id: 'listing-2', productId: 'p2', marketplace: 'EBAY', marketplaceData: {}, product: {} },
+      ];
+      mockPrisma.listing.findMany.mockResolvedValue(errorListings);
+      mockPrisma.listing.update.mockResolvedValue({});
+
+      const response = await request(app)
+        .post('/api/listings/bulk/retry')
+        .send({});
+
+      expect(response.status).toBe(202);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.queuedCount).toBe(2);
+      expect(response.body.data.listings).toHaveLength(2);
+    });
+
+    it('should filter by marketplace', async () => {
+      mockPrisma.listing.findMany.mockResolvedValue([]);
+
+      const response = await request(app)
+        .post('/api/listings/bulk/retry')
+        .send({ marketplace: 'joom' });
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.listing.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status: 'ERROR', marketplace: 'JOOM' },
+        })
+      );
+    });
+
+    it('should return success with zero count when no error listings', async () => {
+      mockPrisma.listing.findMany.mockResolvedValue([]);
+
+      const response = await request(app)
+        .post('/api/listings/bulk/retry')
+        .send({});
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toContain('No error listings');
+      expect(response.body.data.queuedCount).toBe(0);
+    });
+  });
+
+  describe('POST /api/listings/bulk/sync', () => {
+    it('should sync active listings', async () => {
+      const activeListings = [
+        { id: 'listing-1', marketplace: 'JOOM', marketplaceListingId: 'joom-1' },
+        { id: 'listing-2', marketplace: 'EBAY', marketplaceListingId: 'ebay-1' },
+      ];
+      mockPrisma.listing.findMany.mockResolvedValue(activeListings);
+
+      const response = await request(app)
+        .post('/api/listings/bulk/sync')
+        .send({});
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.requestedCount).toBe(2);
+      expect(response.body.data.jobsQueued).toBe(2);
+    });
+
+    it('should filter by marketplace', async () => {
+      mockPrisma.listing.findMany.mockResolvedValue([]);
+
+      const response = await request(app)
+        .post('/api/listings/bulk/sync')
+        .send({ marketplace: 'joom' });
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.listing.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ marketplace: 'JOOM' }),
+        })
+      );
+    });
+
+    it('should filter by specific listing IDs', async () => {
+      mockPrisma.listing.findMany.mockResolvedValue([]);
+
+      const response = await request(app)
+        .post('/api/listings/bulk/sync')
+        .send({ listingIds: ['listing-1', 'listing-2'] });
+
+      expect(response.status).toBe(200);
+      expect(mockPrisma.listing.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: { in: ['listing-1', 'listing-2'] },
+          }),
+        })
+      );
+    });
+  });
+
+  describe('POST /api/listings/inventory/sync', () => {
+    it('should queue inventory sync job', async () => {
+      const response = await request(app)
+        .post('/api/listings/inventory/sync')
+        .send({});
+
+      expect(response.status).toBe(202);
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('Inventory sync job queued');
+      expect(response.body.data.jobId).toBeDefined();
+    });
+
+    it('should accept marketplace parameter', async () => {
+      const response = await request(app)
+        .post('/api/listings/inventory/sync')
+        .send({ marketplace: 'ebay' });
+
+      expect(response.status).toBe(202);
+      expect(response.body.data.marketplace).toBe('ebay');
+    });
+
+    it('should accept listing IDs', async () => {
+      const response = await request(app)
+        .post('/api/listings/inventory/sync')
+        .send({
+          listingIds: ['listing-1', 'listing-2'],
+          syncOutOfStock: false,
+          maxListings: 50,
+        });
+
+      expect(response.status).toBe(202);
+      expect(response.body.data.listingCount).toBe(2);
+    });
+  });
+
+  describe('GET /api/listings/inventory/sync/status', () => {
+    it('should return sync status', async () => {
+      mockPrisma.jobLog.findMany.mockResolvedValue([
+        {
+          id: 'job-1',
+          jobId: 'bullmq-1',
+          jobType: 'INVENTORY_SYNC',
+          status: 'COMPLETED',
+          result: { synced: 10 },
+          errorMessage: null,
+          startedAt: new Date(),
+          completedAt: new Date(),
+        },
+      ]);
+
+      const response = await request(app)
+        .get('/api/listings/inventory/sync/status');
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.queue).toBeDefined();
+      expect(response.body.queue.waiting).toBeDefined();
+      expect(response.body.queue.active).toBeDefined();
+      expect(response.body.recentJobs).toHaveLength(1);
+    });
+
+    it('should return empty jobs when none exist', async () => {
+      mockPrisma.jobLog.findMany.mockResolvedValue([]);
+
+      const response = await request(app)
+        .get('/api/listings/inventory/sync/status');
+
+      expect(response.status).toBe(200);
+      expect(response.body.recentJobs).toHaveLength(0);
+    });
+  });
 });
