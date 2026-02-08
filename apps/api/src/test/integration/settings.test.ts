@@ -563,7 +563,7 @@ describe('Settings API', () => {
       });
     });
 
-    const invalidMarketplaces = ['amazon', 'rakuten', 'aliexpress', ''];
+    const invalidMarketplaces = ['amazon', 'rakuten', 'aliexpress'];
 
     invalidMarketplaces.forEach((marketplace) => {
       it(`should reject invalid marketplace: "${marketplace}"`, async () => {
@@ -575,7 +575,15 @@ describe('Settings API', () => {
       });
     });
 
-    const invalidSyncTypes = ['listing', 'shipping', 'notification', ''];
+    // Empty string marketplace returns 404 (route not found)
+    it('should return 404 for empty marketplace', async () => {
+      const response = await request(app)
+        .get('/api/settings/sync-schedule//inventory');
+
+      expect(response.status).toBe(404);
+    });
+
+    const invalidSyncTypes = ['listing', 'shipping', 'notification'];
 
     invalidSyncTypes.forEach((syncType) => {
       it(`should reject invalid syncType: "${syncType}"`, async () => {
@@ -585,6 +593,14 @@ describe('Settings API', () => {
         expect(response.status).toBe(400);
         expect(response.body.error).toBe('Invalid marketplace or syncType');
       });
+    });
+
+    // Empty string syncType returns 404 (route not found)
+    it('should return 404 for empty syncType', async () => {
+      const response = await request(app)
+        .get('/api/settings/sync-schedule/joom/');
+
+      expect(response.status).toBe(404);
     });
   });
 
