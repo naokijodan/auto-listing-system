@@ -205,6 +205,26 @@ export const handlers = [
   // ========================================
   // Joom API
   // ========================================
+  // v3形式: /products/create
+  http.post(`${JOOM_API}/products/create`, async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+
+    if (!body.name) {
+      return HttpResponse.json(
+        { code: 'VALIDATION_ERROR', message: 'Product name is required' },
+        { status: 400 }
+      );
+    }
+
+    return HttpResponse.json({
+      code: 0,
+      data: {
+        id: `joom-product-${Date.now()}`,
+      },
+    });
+  }),
+
+  // v2形式: /products
   http.post(`${JOOM_API}/products`, async ({ request }) => {
     const body = await request.json() as Record<string, unknown>;
 
@@ -216,7 +236,10 @@ export const handlers = [
     }
 
     return HttpResponse.json({
-      id: `joom-product-${Date.now()}`,
+      code: 0,
+      data: {
+        id: `joom-product-${Date.now()}`,
+      },
     });
   }),
 
