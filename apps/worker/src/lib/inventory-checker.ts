@@ -2,7 +2,12 @@ import { prisma, Marketplace } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { QUEUE_NAMES } from '@rakuda/config';
+import {
+  QUEUE_NAMES,
+  processBatch,
+  BatchProcessorConfig,
+  BatchProgressInfo,
+} from '@rakuda/config';
 import { scrapeMercari } from './scrapers/mercari';
 import { scrapeYahooAuction } from './scrapers/yahoo-auction';
 import { notifyOutOfStock, notifyPriceChanged } from './notifications';
@@ -98,12 +103,17 @@ export interface BatchCheckConfig {
   batchSize: number;
   delayBetweenChecks: number; // ミリ秒
   maxConcurrent: number;
+  /** 進捗コールバック */
+  onProgress?: (info: BatchProgressInfo<string, InventoryCheckResult>) => void;
+  /** 最大エラー数（これを超えると停止） */
+  maxErrors?: number;
 }
 
 const DEFAULT_BATCH_CONFIG: BatchCheckConfig = {
   batchSize: 50,
   delayBetweenChecks: 3000, // 3秒
   maxConcurrent: 2,
+  maxErrors: 20,
 };
 
 /**
@@ -380,6 +390,7 @@ export async function checkSingleProductInventory(
 
 /**
  * バッチ在庫チェック - アクティブな商品全てをチェック
+ * Phase 46: 並列処理対応版
  */
 export async function runBatchInventoryCheck(
   config: Partial<BatchCheckConfig> = {}
@@ -389,6 +400,8 @@ export async function runBatchInventoryCheck(
   outOfStock: number;
   priceChanged: number;
   errors: number;
+  duration: number;
+  itemsPerMinute: number;
 }> {
   const finalConfig = { ...DEFAULT_BATCH_CONFIG, ...config };
   log.info({ type: 'batch_inventory_check_start', config: finalConfig });
@@ -409,40 +422,199 @@ export async function runBatchInventoryCheck(
     },
   });
 
-  const stats = {
-    total: products.length,
-    checked: 0,
-    outOfStock: 0,
-    priceChanged: 0,
-    errors: 0,
-  };
+  if (products.length === 0) {
+    log.info({ type: 'batch_inventory_check_no_products' });
+    return {
+      total: 0,
+      checked: 0,
+      outOfStock: 0,
+      priceChanged: 0,
+      errors: 0,
+      duration: 0,
+      itemsPerMinute: 0,
+    };
+  }
 
-  // バッチ処理
-  for (const product of products) {
-    try {
-      const result = await checkSingleProductInventory(product.id);
-      stats.checked++;
+  const productIds = products.map(p => p.id);
 
-      if (!result.isAvailable) {
-        stats.outOfStock++;
-      }
-      if (result.priceChanged) {
-        stats.priceChanged++;
-      }
-      if (result.error) {
-        stats.errors++;
-      }
+  // 並列バッチ処理を実行
+  const batchResult = await processBatch<string, InventoryCheckResult>(
+    productIds,
+    async (productId) => {
+      return checkSingleProductInventory(productId);
+    },
+    {
+      config: {
+        concurrency: finalConfig.maxConcurrent,
+        chunkSize: Math.min(finalConfig.batchSize, 20),
+        delayBetweenItems: finalConfig.delayBetweenChecks,
+        delayBetweenChunks: 5000,
+        continueOnError: true,
+        maxErrors: finalConfig.maxErrors || 20,
+        itemTimeout: 60000,
+        retryCount: 2,
+        retryDelay: 5000,
+        useExponentialBackoff: true,
+      },
+      onProgress: finalConfig.onProgress,
+      onItemStart: (productId, index) => {
+        log.debug({
+          type: 'inventory_check_item_start',
+          productId,
+          index,
+          total: productIds.length,
+        });
+      },
+      onItemComplete: (result) => {
+        if (result.success && result.result) {
+          log.debug({
+            type: 'inventory_check_item_complete',
+            productId: result.item,
+            isAvailable: result.result.isAvailable,
+            priceChanged: result.result.priceChanged,
+            duration: result.duration,
+          });
+        }
+      },
+      onError: (productId, error, index) => {
+        log.error({
+          type: 'inventory_check_item_error',
+          productId,
+          index,
+          error: error.message,
+        });
+      },
+      logger: (message, data) => {
+        log.debug({ type: message, ...data });
+      },
+    }
+  );
 
-      // レート制限: 次のチェックまで待機
-      await new Promise(resolve => setTimeout(resolve, finalConfig.delayBetweenChecks));
-    } catch (error: any) {
-      stats.errors++;
-      log.error({ type: 'batch_check_item_error', productId: product.id, error: error.message });
+  // 結果を集計
+  let outOfStock = 0;
+  let priceChanged = 0;
+
+  for (const result of batchResult.results) {
+    if (result.success && result.result) {
+      if (!result.result.isAvailable) {
+        outOfStock++;
+      }
+      if (result.result.priceChanged) {
+        priceChanged++;
+      }
     }
   }
 
-  log.info({ type: 'batch_inventory_check_complete', stats });
+  const stats = {
+    total: productIds.length,
+    checked: batchResult.stats.processed,
+    outOfStock,
+    priceChanged,
+    errors: batchResult.stats.failed,
+    duration: batchResult.stats.duration,
+    itemsPerMinute: batchResult.stats.itemsPerSecond * 60,
+  };
+
+  log.info({
+    type: 'batch_inventory_check_complete',
+    stats,
+    aborted: batchResult.aborted,
+  });
+
   return stats;
+}
+
+/**
+ * 並列在庫同期（Phase 46）
+ * マーケットプレイスの在庫を並列で同期
+ */
+export async function runParallelInventorySync(
+  marketplace: 'joom' | 'ebay',
+  options: {
+    maxListings?: number;
+    concurrency?: number;
+    onProgress?: (info: BatchProgressInfo<string, { success: boolean; error?: string }>) => void;
+  } = {}
+): Promise<{
+  total: number;
+  synced: number;
+  failed: number;
+  duration: number;
+}> {
+  const maxListings = options.maxListings || 100;
+  const concurrency = options.concurrency || 3;
+
+  log.info({
+    type: 'parallel_inventory_sync_start',
+    marketplace,
+    maxListings,
+    concurrency,
+  });
+
+  // アクティブなリスティングを取得
+  const listings = await prisma.listing.findMany({
+    where: {
+      marketplace: marketplace.toUpperCase() as any,
+      status: 'ACTIVE',
+      marketplaceListingId: { not: null },
+    },
+    take: maxListings,
+    select: { id: true },
+    orderBy: { updatedAt: 'asc' },
+  });
+
+  if (listings.length === 0) {
+    log.info({ type: 'parallel_inventory_sync_no_listings', marketplace });
+    return { total: 0, synced: 0, failed: 0, duration: 0 };
+  }
+
+  const listingIds = listings.map(l => l.id);
+
+  // 並列バッチ処理
+  const batchResult = await processBatch<string, { success: boolean; error?: string }>(
+    listingIds,
+    async (listingId) => {
+      try {
+        const result = await syncListingInventory(listingId, 1);
+        return { success: result.success, error: result.error };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    },
+    {
+      config: {
+        concurrency,
+        chunkSize: 20,
+        delayBetweenItems: 500,
+        delayBetweenChunks: 2000,
+        continueOnError: true,
+        maxErrors: 20,
+        itemTimeout: 30000,
+        retryCount: 1,
+        retryDelay: 2000,
+        useExponentialBackoff: true,
+      },
+      onProgress: options.onProgress,
+      logger: (message, data) => {
+        log.debug({ type: message, ...data });
+      },
+    }
+  );
+
+  const result = {
+    total: listingIds.length,
+    synced: batchResult.stats.succeeded,
+    failed: batchResult.stats.failed,
+    duration: batchResult.stats.duration,
+  };
+
+  log.info({
+    type: 'parallel_inventory_sync_complete',
+    ...result,
+    itemsPerMinute: (batchResult.stats.itemsPerSecond * 60).toFixed(2),
+  });
+
+  return result;
 }
 
 /**

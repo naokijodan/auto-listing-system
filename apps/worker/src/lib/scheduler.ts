@@ -1,7 +1,12 @@
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { logger } from '@rakuda/logger';
-import { QUEUE_NAMES } from '@rakuda/config';
+import {
+  QUEUE_NAMES,
+  processBatch,
+  processBatchGroups,
+  BatchProgressInfo,
+} from '@rakuda/config';
 import { prisma } from '@rakuda/database';
 
 const log = logger.child({ module: 'scheduler' });
@@ -72,6 +77,13 @@ export interface SchedulerConfig {
     cronExpression: string;
     maxListings: number;      // 最大同期件数
   };
+  // トークン自動更新（Phase 46）
+  tokenRefresh: {
+    enabled: boolean;
+    cronExpression: string;   // チェック間隔
+    refreshBeforeExpiry: number;  // 有効期限の何ミリ秒前に更新するか
+    warnBeforeExpiry: number;     // 有効期限の何ミリ秒前に警告するか
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -117,6 +129,12 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     enabled: true,
     cronExpression: '30 */6 * * *',   // 6時間ごとに在庫同期（毎時30分）
     maxListings: 100,                  // 最大100件
+  },
+  tokenRefresh: {
+    enabled: true,
+    cronExpression: '0 * * * *',       // 毎時0分にチェック
+    refreshBeforeExpiry: 3600000,      // 1時間前に更新
+    warnBeforeExpiry: 86400000,        // 24時間前に警告
   },
 };
 
@@ -527,6 +545,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     competitorMonitoring: { ...DEFAULT_CONFIG.competitorMonitoring, ...config.competitorMonitoring },
     orderSync: { ...DEFAULT_CONFIG.orderSync, ...config.orderSync },
     inventorySync: { ...DEFAULT_CONFIG.inventorySync, ...config.inventorySync },
+    tokenRefresh: { ...DEFAULT_CONFIG.tokenRefresh, ...config.tokenRefresh },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -540,6 +559,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleCompetitorMonitoring(finalConfig.competitorMonitoring);
   await scheduleOrderSync(finalConfig.orderSync);
   await scheduleInventorySync(finalConfig.inventorySync);
+  await scheduleTokenRefresh(finalConfig.tokenRefresh);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -829,6 +849,215 @@ async function scheduleInventorySync(config: SchedulerConfig['inventorySync']) {
 }
 
 /**
+ * トークン更新ジョブをスケジュール（Phase 46）
+ * OAuth トークンの有効期限を監視し、自動更新・警告通知を行う
+ */
+async function scheduleTokenRefresh(config: SchedulerConfig['tokenRefresh']) {
+  if (!config.enabled) {
+    log.info({ type: 'token_refresh_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await scrapeQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'token-refresh') {
+      await scrapeQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  await scrapeQueue.add(
+    'token-refresh',
+    {
+      refreshBeforeExpiry: config.refreshBeforeExpiry,
+      warnBeforeExpiry: config.warnBeforeExpiry,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'token-refresh-scheduled',
+    }
+  );
+
+  log.info({
+    type: 'token_refresh_scheduled',
+    cronExpression: config.cronExpression,
+    refreshBeforeExpiry: config.refreshBeforeExpiry,
+    warnBeforeExpiry: config.warnBeforeExpiry,
+  });
+}
+
+/**
+ * 手動でトークン更新をトリガー（Phase 46）
+ */
+export async function triggerTokenRefresh(marketplace?: 'joom' | 'ebay') {
+  const job = await scrapeQueue.add(
+    'token-refresh',
+    {
+      marketplace,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_token_refresh_triggered',
+    jobId: job.id,
+    marketplace: marketplace || 'all',
+  });
+
+  return job.id;
+}
+
+/**
+ * トークンの有効期限をチェック（Phase 46）
+ * ワーカーから呼び出される
+ */
+export async function checkTokenExpiry(options: {
+  refreshBeforeExpiry?: number;
+  warnBeforeExpiry?: number;
+  marketplace?: 'joom' | 'ebay';
+}): Promise<{
+  checked: number;
+  refreshed: number;
+  warnings: Array<{ marketplace: string; expiresAt: Date; message: string }>;
+  errors: Array<{ marketplace: string; error: string }>;
+}> {
+  const refreshThreshold = options.refreshBeforeExpiry || 3600000; // 1時間
+  const warnThreshold = options.warnBeforeExpiry || 86400000;      // 24時間
+  const now = new Date();
+
+  const result = {
+    checked: 0,
+    refreshed: 0,
+    warnings: [] as Array<{ marketplace: string; expiresAt: Date; message: string }>,
+    errors: [] as Array<{ marketplace: string; error: string }>,
+  };
+
+  // マーケットプレイス認証情報を取得
+  const whereClause = options.marketplace
+    ? { marketplace: options.marketplace.toUpperCase(), isActive: true }
+    : { isActive: true };
+
+  const credentials = await prisma.marketplaceCredential.findMany({
+    where: whereClause,
+  });
+
+  for (const cred of credentials) {
+    result.checked++;
+
+    // トークン有効期限がない場合はスキップ
+    if (!cred.tokenExpiresAt) {
+      continue;
+    }
+
+    const expiresAt = new Date(cred.tokenExpiresAt);
+    const timeUntilExpiry = expiresAt.getTime() - now.getTime();
+
+    // 既に期限切れ
+    if (timeUntilExpiry <= 0) {
+      result.warnings.push({
+        marketplace: cred.marketplace,
+        expiresAt,
+        message: `Token has already expired`,
+      });
+      continue;
+    }
+
+    // 更新が必要（期限まで refreshThreshold 以内）
+    if (timeUntilExpiry <= refreshThreshold) {
+      log.info({
+        type: 'token_refresh_needed',
+        marketplace: cred.marketplace,
+        expiresAt,
+        timeUntilExpiry,
+      });
+
+      if (cred.marketplace === 'EBAY') {
+        try {
+          // eBayはリフレッシュトークンで更新可能
+          const { ebayApi } = await import('./ebay-api');
+          // ensureAccessToken を呼ぶと自動的にリフレッシュされる
+          // 内部でrefreshAccessTokenが呼ばれる
+          await (ebayApi as any).ensureAccessToken();
+          result.refreshed++;
+          log.info({
+            type: 'token_refreshed',
+            marketplace: cred.marketplace,
+          });
+        } catch (error: any) {
+          result.errors.push({
+            marketplace: cred.marketplace,
+            error: error.message,
+          });
+          log.error({
+            type: 'token_refresh_failed',
+            marketplace: cred.marketplace,
+            error: error.message,
+          });
+        }
+      } else if (cred.marketplace === 'JOOM') {
+        // Joomは手動トークン取得が必要なので警告のみ
+        result.warnings.push({
+          marketplace: cred.marketplace,
+          expiresAt,
+          message: `Token will expire soon. Manual renewal required via Joom merchant portal.`,
+        });
+      }
+    }
+    // 警告が必要（期限まで warnThreshold 以内）
+    else if (timeUntilExpiry <= warnThreshold) {
+      const daysLeft = Math.floor(timeUntilExpiry / 86400000);
+      const hoursLeft = Math.floor((timeUntilExpiry % 86400000) / 3600000);
+
+      result.warnings.push({
+        marketplace: cred.marketplace,
+        expiresAt,
+        message: `Token will expire in ${daysLeft} days and ${hoursLeft} hours`,
+      });
+    }
+  }
+
+  // 警告がある場合は通知を送信
+  if (result.warnings.length > 0) {
+    try {
+      const { sendNotification } = await import('./notification-service');
+      const warningMessages = result.warnings
+        .map(w => `${w.marketplace}: ${w.message} (expires: ${w.expiresAt.toISOString()})`)
+        .join('\n');
+
+      await sendNotification({
+        eventType: 'SYSTEM_ALERT',
+        severity: 'WARNING',
+        title: 'OAuth Token Expiry Warning',
+        message: `The following tokens require attention:\n\n${warningMessages}`,
+        data: {
+          tokenCount: result.warnings.length,
+          marketplaces: result.warnings.map(w => w.marketplace).join(', '),
+        },
+      });
+    } catch (notifyError: any) {
+      log.warn({
+        type: 'token_expiry_notification_failed',
+        error: notifyError.message,
+      });
+    }
+  }
+
+  log.info({
+    type: 'token_expiry_check_completed',
+    ...result,
+  });
+
+  return result;
+}
+
+/**
  * 手動で在庫同期をトリガー（Phase 41-F）
  */
 export async function triggerInventorySync(options?: {
@@ -1043,4 +1272,338 @@ export async function updateLastRunAt(
       error,
     });
   }
+}
+
+// ========================================
+// Phase 46: 並列バッチ処理
+// ========================================
+
+/**
+ * 並列スケジュール実行結果
+ */
+export interface ParallelScheduleResult {
+  scheduleName: string;
+  success: boolean;
+  duration: number;
+  itemsProcessed: number;
+  errors: number;
+  error?: string;
+}
+
+/**
+ * 複数のスケジュールジョブを並列実行
+ *
+ * @param schedules 実行するスケジュール設定
+ * @param options オプション
+ * @returns 実行結果
+ *
+ * @example
+ * ```typescript
+ * const results = await runParallelSchedules([
+ *   { name: 'inventory-sync-joom', fn: () => triggerInventorySync({ marketplace: 'joom' }) },
+ *   { name: 'inventory-sync-ebay', fn: () => triggerInventorySync({ marketplace: 'ebay' }) },
+ *   { name: 'order-sync', fn: () => triggerOrderSync() },
+ * ], { concurrency: 2 });
+ * ```
+ */
+export async function runParallelSchedules(
+  schedules: Array<{
+    name: string;
+    fn: () => Promise<any>;
+    priority?: number;
+  }>,
+  options: {
+    concurrency?: number;
+    continueOnError?: boolean;
+    timeout?: number;
+    onProgress?: (info: BatchProgressInfo<string, any>) => void;
+  } = {}
+): Promise<ParallelScheduleResult[]> {
+  const concurrency = options.concurrency || 2;
+  const continueOnError = options.continueOnError ?? true;
+  const timeout = options.timeout || 300000; // 5分
+
+  log.info({
+    type: 'parallel_schedules_start',
+    scheduleCount: schedules.length,
+    concurrency,
+    schedules: schedules.map(s => s.name),
+  });
+
+  // 優先度でソート（高い順）
+  const sortedSchedules = [...schedules].sort(
+    (a, b) => (b.priority || 0) - (a.priority || 0)
+  );
+
+  const scheduleNames = sortedSchedules.map(s => s.name);
+
+  // 並列バッチ処理
+  const batchResult = await processBatch<string, { result: any; duration: number }>(
+    scheduleNames,
+    async (scheduleName, index) => {
+      const schedule = sortedSchedules[index];
+      const startTime = Date.now();
+
+      try {
+        const result = await Promise.race([
+          schedule.fn(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Schedule timeout after ${timeout}ms`)), timeout)
+          ),
+        ]);
+
+        return {
+          result,
+          duration: Date.now() - startTime,
+        };
+      } catch (error: any) {
+        throw error;
+      }
+    },
+    {
+      config: {
+        concurrency,
+        chunkSize: schedules.length,
+        delayBetweenItems: 100,
+        delayBetweenChunks: 0,
+        continueOnError,
+        maxErrors: schedules.length,
+        itemTimeout: timeout,
+        retryCount: 0,
+        retryDelay: 0,
+        useExponentialBackoff: false,
+      },
+      onProgress: options.onProgress,
+      onItemComplete: (result) => {
+        log.info({
+          type: 'schedule_completed',
+          name: result.item,
+          success: result.success,
+          duration: result.result?.duration || result.duration,
+        });
+      },
+      onError: (scheduleName, error) => {
+        log.error({
+          type: 'schedule_error',
+          name: scheduleName,
+          error: error.message,
+        });
+      },
+      logger: (message, data) => {
+        log.debug({ type: message, ...data });
+      },
+    }
+  );
+
+  // 結果を整形
+  const results: ParallelScheduleResult[] = batchResult.results.map(r => ({
+    scheduleName: r.item,
+    success: r.success,
+    duration: r.result?.duration || r.duration,
+    itemsProcessed: r.result?.result?.processed || r.result?.result?.count || 0,
+    errors: r.success ? 0 : 1,
+    error: r.error?.message,
+  }));
+
+  log.info({
+    type: 'parallel_schedules_complete',
+    totalDuration: batchResult.stats.duration,
+    succeeded: batchResult.stats.succeeded,
+    failed: batchResult.stats.failed,
+  });
+
+  return results;
+}
+
+/**
+ * マーケットプレイス別に並列でスケジュール実行
+ *
+ * @param syncType 同期タイプ
+ * @param options オプション
+ * @returns 実行結果
+ */
+export async function runParallelMarketplaceSync(
+  syncType: 'inventory' | 'order' | 'price',
+  options: {
+    marketplaces?: Array<'joom' | 'ebay'>;
+    concurrency?: number;
+    maxItems?: number;
+  } = {}
+): Promise<ParallelScheduleResult[]> {
+  const marketplaces = options.marketplaces || ['joom', 'ebay'];
+  const concurrency = options.concurrency || 2;
+  const maxItems = options.maxItems || 100;
+
+  log.info({
+    type: 'parallel_marketplace_sync_start',
+    syncType,
+    marketplaces,
+    concurrency,
+    maxItems,
+  });
+
+  const schedules = marketplaces.map(marketplace => ({
+    name: `${syncType}-sync-${marketplace}`,
+    fn: async () => {
+      switch (syncType) {
+        case 'inventory':
+          return triggerInventorySync({ marketplace, maxListings: maxItems });
+        case 'order':
+          return triggerOrderSync({ marketplace, maxOrders: maxItems });
+        case 'price':
+          return triggerPriceSync({ marketplace, maxListings: maxItems });
+        default:
+          throw new Error(`Unknown sync type: ${syncType}`);
+      }
+    },
+    priority: marketplace === 'joom' ? 2 : 1,
+  }));
+
+  return runParallelSchedules(schedules, { concurrency });
+}
+
+/**
+ * 全同期ジョブを並列実行（毎日のバッチ処理用）
+ *
+ * @param options オプション
+ * @returns 実行結果
+ */
+export async function runDailyParallelSync(options: {
+  marketplaces?: Array<'joom' | 'ebay'>;
+  inventoryConcurrency?: number;
+  orderConcurrency?: number;
+  priceConcurrency?: number;
+} = {}): Promise<{
+  inventory: ParallelScheduleResult[];
+  order: ParallelScheduleResult[];
+  price: ParallelScheduleResult[];
+  totalDuration: number;
+}> {
+  const startTime = Date.now();
+  const marketplaces = options.marketplaces || ['joom', 'ebay'];
+
+  log.info({
+    type: 'daily_parallel_sync_start',
+    marketplaces,
+  });
+
+  // 順次実行（在庫 -> 注文 -> 価格）
+  // ただし各同期タイプ内はマーケットプレイス並列
+
+  const inventoryResults = await runParallelMarketplaceSync('inventory', {
+    marketplaces,
+    concurrency: options.inventoryConcurrency || 2,
+  });
+
+  const orderResults = await runParallelMarketplaceSync('order', {
+    marketplaces,
+    concurrency: options.orderConcurrency || 2,
+  });
+
+  const priceResults = await runParallelMarketplaceSync('price', {
+    marketplaces,
+    concurrency: options.priceConcurrency || 2,
+  });
+
+  const totalDuration = Date.now() - startTime;
+
+  const result = {
+    inventory: inventoryResults,
+    order: orderResults,
+    price: priceResults,
+    totalDuration,
+  };
+
+  log.info({
+    type: 'daily_parallel_sync_complete',
+    totalDuration,
+    inventorySuccess: inventoryResults.filter(r => r.success).length,
+    orderSuccess: orderResults.filter(r => r.success).length,
+    priceSuccess: priceResults.filter(r => r.success).length,
+  });
+
+  return result;
+}
+
+/**
+ * 並列ジョブキュー投入
+ * 複数のジョブを並列でキューに追加
+ */
+export async function queueParallelJobs<T>(
+  queue: Queue,
+  jobs: Array<{
+    name: string;
+    data: T;
+    options?: { priority?: number; delay?: number };
+  }>,
+  options: {
+    concurrency?: number;
+  } = {}
+): Promise<{
+  queued: number;
+  failed: number;
+  jobIds: string[];
+}> {
+  const concurrency = options.concurrency || 5;
+
+  log.info({
+    type: 'queue_parallel_jobs_start',
+    queueName: queue.name,
+    jobCount: jobs.length,
+    concurrency,
+  });
+
+  const jobIds: string[] = [];
+  let failed = 0;
+
+  const batchResult = await processBatch(
+    jobs,
+    async (job) => {
+      const addedJob = await queue.add(job.name, job.data, {
+        priority: job.options?.priority,
+        delay: job.options?.delay,
+      });
+      return addedJob.id;
+    },
+    {
+      config: {
+        concurrency,
+        chunkSize: 50,
+        delayBetweenItems: 10,
+        delayBetweenChunks: 100,
+        continueOnError: true,
+        maxErrors: jobs.length,
+        itemTimeout: 10000,
+        retryCount: 2,
+        retryDelay: 500,
+        useExponentialBackoff: true,
+      },
+      onItemComplete: (result) => {
+        if (result.success && result.result) {
+          jobIds.push(result.result);
+        }
+      },
+      onError: (job, error) => {
+        failed++;
+        log.error({
+          type: 'queue_job_error',
+          jobName: job.name,
+          error: error.message,
+        });
+      },
+    }
+  );
+
+  log.info({
+    type: 'queue_parallel_jobs_complete',
+    queued: jobIds.length,
+    failed,
+    duration: batchResult.stats.duration,
+  });
+
+  return {
+    queued: jobIds.length,
+    failed,
+    jobIds,
+  };
 }
