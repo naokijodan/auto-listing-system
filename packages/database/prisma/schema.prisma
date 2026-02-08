@@ -1084,3 +1084,22 @@ model PriceChangeLog {
   @@index([source, createdAt])
   @@map("price_change_logs")
 }
+
+// ========================================
+// マーケットプレイス同期設定（Phase 44-B）
+// ========================================
+model MarketplaceSyncSetting {
+  id             String    @id @default(cuid())
+  marketplace    String    // 'JOOM' | 'EBAY'
+  syncType       String    // 'INVENTORY' | 'ORDER' | 'PRICE'
+  cronExpression String    // cron式
+  isEnabled      Boolean   @default(true)
+  lastRunAt      DateTime?
+  nextRunAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([marketplace, syncType])
+  @@index([isEnabled])
+  @@map("marketplace_sync_settings")
+}

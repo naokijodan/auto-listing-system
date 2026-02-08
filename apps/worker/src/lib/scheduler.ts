@@ -2,6 +2,7 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { logger } from '@rakuda/logger';
 import { QUEUE_NAMES } from '@rakuda/config';
+import { prisma } from '@rakuda/database';
 
 const log = logger.child({ module: 'scheduler' });
 
@@ -858,4 +859,188 @@ export async function triggerInventorySync(options?: {
   });
 
   return job.id;
+}
+
+// ========================================
+// DBから同期設定を読み込み
+// ========================================
+
+interface SyncSettingFromDB {
+  marketplace: string;
+  syncType: string;
+  cronExpression: string;
+  isEnabled: boolean;
+}
+
+/**
+ * DBから同期設定を読み込む
+ */
+export async function loadSyncSettingsFromDB(): Promise<SyncSettingFromDB[]> {
+  try {
+    const settings = await prisma.marketplaceSyncSetting.findMany({
+      where: { isEnabled: true },
+    });
+    return settings;
+  } catch (error) {
+    log.error({ type: 'load_sync_settings_error', error });
+    return [];
+  }
+}
+
+/**
+ * DB設定を使ってスケジューラーを初期化
+ * DBに設定がない場合はデフォルト設定を使用
+ */
+export async function initializeSchedulerFromDB() {
+  log.info({ type: 'scheduler_initializing_from_db' });
+
+  const dbSettings = await loadSyncSettingsFromDB();
+
+  // DB設定をSchedulerConfig形式に変換
+  const configOverrides: Partial<SchedulerConfig> = {};
+
+  for (const setting of dbSettings) {
+    const marketplace = setting.marketplace.toLowerCase();
+    const syncType = setting.syncType.toLowerCase();
+
+    // 注文同期設定
+    if (syncType === 'order') {
+      if (!configOverrides.orderSync) {
+        configOverrides.orderSync = { ...DEFAULT_CONFIG.orderSync };
+      }
+      configOverrides.orderSync.cronExpression = setting.cronExpression;
+      configOverrides.orderSync.enabled = setting.isEnabled;
+    }
+
+    // 在庫同期設定
+    if (syncType === 'inventory') {
+      if (!configOverrides.inventorySync) {
+        configOverrides.inventorySync = { ...DEFAULT_CONFIG.inventorySync };
+      }
+      configOverrides.inventorySync.cronExpression = setting.cronExpression;
+      configOverrides.inventorySync.enabled = setting.isEnabled;
+    }
+
+    // 価格同期設定
+    if (syncType === 'price') {
+      if (!configOverrides.priceSync) {
+        configOverrides.priceSync = { ...DEFAULT_CONFIG.priceSync };
+      }
+      configOverrides.priceSync.cronExpression = setting.cronExpression;
+      configOverrides.priceSync.enabled = setting.isEnabled;
+    }
+  }
+
+  log.info({
+    type: 'db_settings_loaded',
+    count: dbSettings.length,
+    settings: dbSettings.map((s) => ({
+      marketplace: s.marketplace,
+      syncType: s.syncType,
+      cronExpression: s.cronExpression,
+    })),
+  });
+
+  // 通常の初期化関数を呼び出し
+  await initializeScheduler(configOverrides);
+
+  log.info({ type: 'scheduler_initialized_from_db' });
+}
+
+/**
+ * デフォルトの同期設定をDBに挿入（シード用）
+ */
+export async function seedDefaultSyncSettings(): Promise<void> {
+  const defaultSettings = [
+    { marketplace: 'JOOM', syncType: 'INVENTORY', cronExpression: '0 */6 * * *' },
+    { marketplace: 'JOOM', syncType: 'ORDER', cronExpression: '0 */4 * * *' },
+    { marketplace: 'JOOM', syncType: 'PRICE', cronExpression: '0 */6 * * *' },
+    { marketplace: 'EBAY', syncType: 'INVENTORY', cronExpression: '0 */6 * * *' },
+    { marketplace: 'EBAY', syncType: 'ORDER', cronExpression: '0 */4 * * *' },
+    { marketplace: 'EBAY', syncType: 'PRICE', cronExpression: '0 */6 * * *' },
+  ];
+
+  for (const setting of defaultSettings) {
+    await prisma.marketplaceSyncSetting.upsert({
+      where: {
+        marketplace_syncType: {
+          marketplace: setting.marketplace,
+          syncType: setting.syncType,
+        },
+      },
+      update: {}, // 既存の場合は更新しない
+      create: {
+        marketplace: setting.marketplace,
+        syncType: setting.syncType,
+        cronExpression: setting.cronExpression,
+        isEnabled: true,
+      },
+    });
+  }
+
+  log.info({
+    type: 'default_sync_settings_seeded',
+    count: defaultSettings.length,
+  });
+}
+
+/**
+ * 次回実行日時を更新
+ */
+export async function updateNextRunAt(
+  marketplace: string,
+  syncType: string,
+  nextRunAt: Date
+): Promise<void> {
+  try {
+    await prisma.marketplaceSyncSetting.update({
+      where: {
+        marketplace_syncType: {
+          marketplace: marketplace.toUpperCase(),
+          syncType: syncType.toUpperCase(),
+        },
+      },
+      data: {
+        nextRunAt,
+        updatedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    log.error({
+      type: 'update_next_run_at_error',
+      marketplace,
+      syncType,
+      error,
+    });
+  }
+}
+
+/**
+ * 最終実行日時を更新
+ */
+export async function updateLastRunAt(
+  marketplace: string,
+  syncType: string
+): Promise<void> {
+  try {
+    await prisma.marketplaceSyncSetting.update({
+      where: {
+        marketplace_syncType: {
+          marketplace: marketplace.toUpperCase(),
+          syncType: syncType.toUpperCase(),
+        },
+      },
+      data: {
+        lastRunAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    log.error({
+      type: 'update_last_run_at_error',
+      marketplace,
+      syncType,
+      error,
+    });
+  }
 }
