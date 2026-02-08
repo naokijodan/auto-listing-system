@@ -14,6 +14,9 @@ import {
   Truck,
   Store,
   ClipboardCheck,
+  Shield,
+  FileText,
+  Gauge,
 } from 'lucide-react';
 
 const navigation = [
@@ -28,6 +31,12 @@ const navigation = [
   { name: 'レポート', href: '/reports', icon: BarChart3 },
   { name: '通知', href: '/notifications', icon: Bell },
   { name: '設定', href: '/settings', icon: Settings },
+];
+
+const adminNavigation = [
+  { name: 'パフォーマンス', href: '/admin/performance', icon: Gauge },
+  { name: 'システム監視', href: '/admin/monitoring', icon: Shield },
+  { name: 'ログビューア', href: '/admin/logs', icon: FileText },
 ];
 
 export function Sidebar() {
@@ -66,6 +75,33 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Admin Section */}
+        <div className="pt-4">
+          <p className="px-3 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+            管理者
+          </p>
+          <div className="mt-2 space-y-1">
+            {adminNavigation.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                      : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100'
+                  )}
+                >
+                  <item.icon className="h-5 w-5" />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </nav>
 
       {/* Footer */}

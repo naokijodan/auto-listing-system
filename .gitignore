@@ -22,9 +22,11 @@ out/
 .DS_Store
 
 # Logs
-logs/
+/logs/
 *.log
 npm-debug.log*
+# Exception: Allow source code logs directory
+!**/src/**/logs/
 
 # Testing
 coverage/
