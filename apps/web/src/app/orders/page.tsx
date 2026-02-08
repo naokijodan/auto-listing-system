@@ -24,6 +24,8 @@ import {
   ExternalLink,
   Copy,
   MapPin,
+  Store,
+  X,
 } from 'lucide-react';
 
 const statusLabels: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -157,6 +159,40 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* Marketplace Quick Filters */}
+      <div className="flex items-center gap-2">
+        <Store className="h-4 w-4 text-zinc-400" />
+        <span className="text-sm text-zinc-500">マーケット:</span>
+        <Button
+          variant={marketplaceFilter === 'JOOM' ? 'primary' : 'outline'}
+          size="sm"
+          onClick={() => setMarketplaceFilter(marketplaceFilter === 'JOOM' ? '' : 'JOOM')}
+          className={marketplaceFilter === 'JOOM' ? 'bg-amber-500 hover:bg-amber-600' : ''}
+        >
+          <Store className="h-4 w-4 mr-1" />
+          Joom
+        </Button>
+        <Button
+          variant={marketplaceFilter === 'EBAY' ? 'primary' : 'outline'}
+          size="sm"
+          onClick={() => setMarketplaceFilter(marketplaceFilter === 'EBAY' ? '' : 'EBAY')}
+          className={marketplaceFilter === 'EBAY' ? 'bg-blue-500 hover:bg-blue-600' : ''}
+        >
+          <Store className="h-4 w-4 mr-1" />
+          eBay
+        </Button>
+        {marketplaceFilter && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setMarketplaceFilter('')}
+          >
+            <X className="h-4 w-4 mr-1" />
+            クリア
+          </Button>
+        )}
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
@@ -179,16 +215,6 @@ export default function OrdersPage() {
           {Object.entries(statusLabels).map(([key, { label }]) => (
             <option key={key} value={key}>{label}</option>
           ))}
-        </select>
-
-        <select
-          value={marketplaceFilter}
-          onChange={(e) => setMarketplaceFilter(e.target.value)}
-          className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
-        >
-          <option value="">すべてのマーケット</option>
-          <option value="EBAY">eBay</option>
-          <option value="JOOM">Joom</option>
         </select>
       </div>
 
