@@ -50,6 +50,19 @@ export const mockPrisma = {
     create: vi.fn(),
     count: vi.fn(),
   },
+  order: {
+    findFirst: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  },
+  sale: {
+    create: vi.fn(),
+  },
+  priceChangeLog: {
+    create: vi.fn(),
+  },
+  $transaction: vi.fn((operations) => Promise.all(operations)),
 };
 
 // デフォルト値を設定するヘルパー
@@ -127,9 +140,41 @@ export function resetMocks() {
   });
 }
 
+// Prisma enums
+export const OrderStatus = {
+  PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
+  SHIPPED: 'SHIPPED',
+  DELIVERED: 'DELIVERED',
+  CANCELLED: 'CANCELLED',
+  REFUNDED: 'REFUNDED',
+};
+
+export const PaymentStatus = {
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  REFUNDED: 'REFUNDED',
+};
+
+export const FulfillmentStatus = {
+  UNFULFILLED: 'UNFULFILLED',
+  PARTIALLY_FULFILLED: 'PARTIALLY_FULFILLED',
+  FULFILLED: 'FULFILLED',
+};
+
+export const Marketplace = {
+  JOOM: 'JOOM',
+  EBAY: 'EBAY',
+};
+
 // Prisma モジュールをモック
 vi.mock('@rakuda/database', () => ({
   prisma: mockPrisma,
+  OrderStatus,
+  PaymentStatus,
+  FulfillmentStatus,
+  Marketplace,
 }));
 
 // Logger モジュールをモック（静かに）
