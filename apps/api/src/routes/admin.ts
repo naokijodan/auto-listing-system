@@ -823,4 +823,413 @@ router.get('/health', async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
+/**
+ * パフォーマンスメトリクスを取得
+ * GET /api/admin/performance
+ */
+router.get('/performance', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const now = Date.now();
+    const oneHourAgo = new Date(now - 60 * 60 * 1000);
+    const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
+
+    // ========================================
+    // 1. サーキットブレーカー状態
+    // ========================================
+    const circuitBreakerKeys = await redis.keys('rakuda:circuit:*');
+    const circuitBreakers: Array<{
+      name: string;
+      state: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
+      failureCount: number;
+      lastFailure?: string;
+      lastStateChange?: string;
+    }> = [];
+
+    for (const key of circuitBreakerKeys) {
+      const data = await redis.hgetall(key);
+      const name = key.replace('rakuda:circuit:', '');
+      circuitBreakers.push({
+        name,
+        state: (data.state as 'CLOSED' | 'OPEN' | 'HALF_OPEN') || 'CLOSED',
+        failureCount: parseInt(data.failureCount || '0', 10),
+        lastFailure: data.lastFailure,
+        lastStateChange: data.lastStateChange,
+      });
+    }
+
+    // デフォルトサーキットブレーカー名を追加（存在しない場合）
+    const defaultCircuitBreakers = ['joom-api', 'ebay-api', 'openai-api', 'translation'];
+    for (const name of defaultCircuitBreakers) {
+      if (!circuitBreakers.find(cb => cb.name === name)) {
+        circuitBreakers.push({
+          name,
+          state: 'CLOSED',
+          failureCount: 0,
+        });
+      }
+    }
+
+    // ========================================
+    // 2. ジョブ成功率
+    // ========================================
+    const [
+      jobsLastHour,
+      failedJobsLastHour,
+      jobsLastDay,
+      failedJobsLastDay,
+    ] = await Promise.all([
+      prisma.jobLog.count({
+        where: { createdAt: { gte: oneHourAgo } },
+      }),
+      prisma.jobLog.count({
+        where: { status: 'FAILED', createdAt: { gte: oneHourAgo } },
+      }),
+      prisma.jobLog.count({
+        where: { createdAt: { gte: oneDayAgo } },
+      }),
+      prisma.jobLog.count({
+        where: { status: 'FAILED', createdAt: { gte: oneDayAgo } },
+      }),
+    ]);
+
+    const successRateLastHour = jobsLastHour > 0
+      ? ((jobsLastHour - failedJobsLastHour) / jobsLastHour) * 100
+      : 100;
+    const successRateLastDay = jobsLastDay > 0
+      ? ((jobsLastDay - failedJobsLastDay) / jobsLastDay) * 100
+      : 100;
+
+    // ========================================
+    // 3. API応答時間（Redis からメトリクス取得）
+    // ========================================
+    const responseTimeKeys = await redis.keys('rakuda:api:response_time:*');
+    const responseTimes: number[] = [];
+
+    for (const key of responseTimeKeys) {
+      const times = await redis.lrange(key, 0, -1);
+      times.forEach(t => responseTimes.push(parseInt(t, 10)));
+    }
+
+    // 応答時間がない場合はJobLogのdurationから取得
+    if (responseTimes.length === 0) {
+      const recentJobs = await prisma.jobLog.findMany({
+        where: {
+          createdAt: { gte: oneHourAgo },
+          duration: { not: null },
+        },
+        select: { duration: true },
+        take: 1000,
+      });
+      recentJobs.forEach(job => {
+        if (job.duration) responseTimes.push(job.duration);
+      });
+    }
+
+    let avgResponseTime = 0;
+    let p95ResponseTime = 0;
+    let p99ResponseTime = 0;
+
+    if (responseTimes.length > 0) {
+      const sorted = [...responseTimes].sort((a, b) => a - b);
+      avgResponseTime = Math.round(sorted.reduce((a, b) => a + b, 0) / sorted.length);
+      p95ResponseTime = Math.round(sorted[Math.floor(sorted.length * 0.95)] || 0);
+      p99ResponseTime = Math.round(sorted[Math.floor(sorted.length * 0.99)] || 0);
+    }
+
+    // ========================================
+    // 4. エラー率トレンド（過去24時間を時間単位で）
+    // ========================================
+    const errorTrend: Array<{
+      hour: string;
+      totalJobs: number;
+      failedJobs: number;
+      errorRate: number;
+    }> = [];
+
+    for (let i = 23; i >= 0; i--) {
+      const hourStart = new Date(now - (i + 1) * 60 * 60 * 1000);
+      const hourEnd = new Date(now - i * 60 * 60 * 1000);
+
+      const [total, failed] = await Promise.all([
+        prisma.jobLog.count({
+          where: { createdAt: { gte: hourStart, lt: hourEnd } },
+        }),
+        prisma.jobLog.count({
+          where: { status: 'FAILED', createdAt: { gte: hourStart, lt: hourEnd } },
+        }),
+      ]);
+
+      errorTrend.push({
+        hour: hourStart.toISOString(),
+        totalJobs: total,
+        failedJobs: failed,
+        errorRate: total > 0 ? (failed / total) * 100 : 0,
+      });
+    }
+
+    // ========================================
+    // 5. Dead Letter Queue件数
+    // ========================================
+    const dlqQueue = new Queue(QUEUE_NAMES.DEAD_LETTER, { connection: redis });
+    const [dlqWaiting, dlqFailed] = await Promise.all([
+      dlqQueue.getWaitingCount(),
+      dlqQueue.getFailedCount(),
+    ]);
+    const dlqCount = dlqWaiting + dlqFailed;
+
+    // 最近のDLQジョブ詳細
+    const dlqJobs = await dlqQueue.getJobs(['waiting', 'failed'], 0, 10);
+    const dlqDetails = dlqJobs.map(job => ({
+      id: job.id,
+      name: job.name,
+      originalQueue: job.data?.originalQueue,
+      failedReason: job.data?.error || job.failedReason,
+      createdAt: job.timestamp ? new Date(job.timestamp).toISOString() : undefined,
+    }));
+
+    // ========================================
+    // 6. キュー別処理状況
+    // ========================================
+    const queueStats = await Promise.all(
+      Object.values(QUEUE_NAMES).map(async (queueName) => {
+        const queue = new Queue(queueName, { connection: redis });
+        const [waiting, active, completed, failed, delayed] = await Promise.all([
+          queue.getWaitingCount(),
+          queue.getActiveCount(),
+          queue.getCompletedCount(),
+          queue.getFailedCount(),
+          queue.getDelayedCount(),
+        ]);
+
+        const total = completed + failed;
+        const successRate = total > 0 ? ((completed) / total) * 100 : 100;
+
+        return {
+          name: queueName,
+          waiting,
+          active,
+          completed,
+          failed,
+          delayed,
+          successRate: Math.round(successRate * 10) / 10,
+        };
+      })
+    );
+
+    // ========================================
+    // 7. システムヘルスサマリー
+    // ========================================
+    const openCircuitBreakers = circuitBreakers.filter(cb => cb.state === 'OPEN').length;
+    const halfOpenCircuitBreakers = circuitBreakers.filter(cb => cb.state === 'HALF_OPEN').length;
+
+    let healthStatus: 'healthy' | 'degraded' | 'critical' = 'healthy';
+    const healthIssues: string[] = [];
+
+    if (openCircuitBreakers > 0) {
+      healthStatus = 'critical';
+      healthIssues.push(`${openCircuitBreakers}個のサーキットブレーカーがOPEN`);
+    }
+    if (halfOpenCircuitBreakers > 0 && healthStatus === 'healthy') {
+      healthStatus = 'degraded';
+      healthIssues.push(`${halfOpenCircuitBreakers}個のサーキットブレーカーがHALF_OPEN`);
+    }
+    if (successRateLastHour < 80) {
+      healthStatus = 'critical';
+      healthIssues.push(`直近1時間の成功率が${successRateLastHour.toFixed(1)}%`);
+    } else if (successRateLastHour < 95 && healthStatus === 'healthy') {
+      healthStatus = 'degraded';
+      healthIssues.push(`直近1時間の成功率が${successRateLastHour.toFixed(1)}%`);
+    }
+    if (dlqCount > 10) {
+      if (healthStatus === 'healthy') healthStatus = 'degraded';
+      healthIssues.push(`DLQに${dlqCount}件のジョブ`);
+    }
+    if (dlqCount > 50) {
+      healthStatus = 'critical';
+    }
+
+    res.json({
+      success: true,
+      data: {
+        timestamp: new Date().toISOString(),
+        health: {
+          status: healthStatus,
+          issues: healthIssues,
+        },
+        circuitBreakers,
+        jobSuccessRate: {
+          lastHour: {
+            total: jobsLastHour,
+            failed: failedJobsLastHour,
+            successRate: Math.round(successRateLastHour * 10) / 10,
+          },
+          lastDay: {
+            total: jobsLastDay,
+            failed: failedJobsLastDay,
+            successRate: Math.round(successRateLastDay * 10) / 10,
+          },
+        },
+        responseTime: {
+          sampleCount: responseTimes.length,
+          avg: avgResponseTime,
+          p95: p95ResponseTime,
+          p99: p99ResponseTime,
+        },
+        errorTrend,
+        deadLetterQueue: {
+          count: dlqCount,
+          waiting: dlqWaiting,
+          failed: dlqFailed,
+          recentJobs: dlqDetails,
+        },
+        queueStats,
+      },
+    });
+  } catch (error) {
+    log.error('Failed to get performance metrics', error);
+    next(error);
+  }
+});
+
+/**
+ * サーキットブレーカーをリセット
+ * POST /api/admin/performance/circuit-breaker/:name/reset
+ */
+router.post('/performance/circuit-breaker/:name/reset', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name } = req.params;
+    const key = `rakuda:circuit:${name}`;
+
+    await redis.hset(key, {
+      state: 'CLOSED',
+      failureCount: '0',
+      lastStateChange: new Date().toISOString(),
+    });
+
+    log.info({
+      type: 'circuit_breaker_manual_reset',
+      name,
+    });
+
+    res.json({
+      success: true,
+      message: `Circuit breaker "${name}" has been reset to CLOSED`,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Dead Letter Queueのジョブを再試行
+ * POST /api/admin/performance/dlq/retry
+ */
+router.post('/performance/dlq/retry', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { jobIds } = req.body;
+    const dlqQueue = new Queue(QUEUE_NAMES.DEAD_LETTER, { connection: redis });
+
+    if (!jobIds || !Array.isArray(jobIds)) {
+      // 全てのDLQジョブを再試行
+      const jobs = await dlqQueue.getJobs(['waiting', 'failed'], 0, 100);
+      let retriedCount = 0;
+
+      for (const job of jobs) {
+        if (job.data?.originalQueue) {
+          const originalQueue = new Queue(job.data.originalQueue, { connection: redis });
+          await originalQueue.add(job.name, job.data.payload || job.data, {
+            attempts: 3,
+          });
+          await job.remove();
+          retriedCount++;
+        }
+      }
+
+      log.info({
+        type: 'dlq_retry_all',
+        retriedCount,
+      });
+
+      res.json({
+        success: true,
+        data: { retriedCount },
+      });
+    } else {
+      // 特定のジョブのみ再試行
+      let retriedCount = 0;
+      for (const jobId of jobIds) {
+        const job = await dlqQueue.getJob(jobId);
+        if (job && job.data?.originalQueue) {
+          const originalQueue = new Queue(job.data.originalQueue, { connection: redis });
+          await originalQueue.add(job.name, job.data.payload || job.data, {
+            attempts: 3,
+          });
+          await job.remove();
+          retriedCount++;
+        }
+      }
+
+      log.info({
+        type: 'dlq_retry_specific',
+        jobIds,
+        retriedCount,
+      });
+
+      res.json({
+        success: true,
+        data: { retriedCount },
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Dead Letter Queueのジョブを削除
+ * DELETE /api/admin/performance/dlq
+ */
+router.delete('/performance/dlq', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { jobIds } = req.body;
+    const dlqQueue = new Queue(QUEUE_NAMES.DEAD_LETTER, { connection: redis });
+
+    if (!jobIds || !Array.isArray(jobIds)) {
+      // 全てのDLQジョブを削除
+      await dlqQueue.drain();
+      await dlqQueue.clean(0, 0, 'failed');
+
+      log.info({ type: 'dlq_clear_all' });
+
+      res.json({
+        success: true,
+        message: 'All DLQ jobs have been cleared',
+      });
+    } else {
+      // 特定のジョブのみ削除
+      let deletedCount = 0;
+      for (const jobId of jobIds) {
+        const job = await dlqQueue.getJob(jobId);
+        if (job) {
+          await job.remove();
+          deletedCount++;
+        }
+      }
+
+      log.info({
+        type: 'dlq_delete_specific',
+        jobIds,
+        deletedCount,
+      });
+
+      res.json({
+        success: true,
+        data: { deletedCount },
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
 export { router as adminRouter };
