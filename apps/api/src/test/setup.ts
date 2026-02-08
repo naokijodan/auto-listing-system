@@ -32,6 +32,10 @@ export const mockPrisma = {
   },
   jobLog: {
     findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
     count: vi.fn(),
   },
   notification: {
@@ -103,6 +107,36 @@ export const mockPrisma = {
     findFirst: vi.fn(),
     create: vi.fn(),
   },
+  priceChangeLog: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  priceSetting: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  shippingPolicy: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  $transaction: vi.fn().mockImplementation((operations: any[]) =>
+    Promise.all(operations.map((op: any) => op))
+  ),
 };
 
 // Prisma モジュールをモック
