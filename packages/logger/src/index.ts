@@ -110,3 +110,15 @@ export function createRequestLogger(requestId: string, path: string) {
 }
 
 export default logger;
+
+// Log Aggregator exports
+export {
+  LogAggregator,
+  getLogAggregator,
+  createPinoTransport,
+  type LogEntry,
+  type LogSearchOptions,
+  type LogSearchResult,
+  type LogStats,
+  type LogRotationConfig,
+} from './log-aggregator';

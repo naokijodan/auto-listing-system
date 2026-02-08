@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import IORedis from 'ioredis';
 import { Queue } from 'bullmq';
-import { logger } from '@rakuda/logger';
+import { logger, getLogAggregator } from '@rakuda/logger';
 import { QUEUE_NAMES } from '@rakuda/config';
 
 const router = Router();
@@ -330,6 +330,113 @@ router.get('/health', async (req, res, next) => {
         error: (error as Error).message,
       },
     });
+  }
+});
+
+/**
+ * ログ検索
+ */
+router.get('/logs', async (req, res, next) => {
+  try {
+    const {
+      startTime,
+      endTime,
+      level,
+      module,
+      type,
+      jobId,
+      queueName,
+      requestId,
+      search,
+      limit = 100,
+      offset = 0,
+    } = req.query;
+
+    const aggregator = getLogAggregator();
+    const result = await aggregator.search({
+      startTime: startTime ? new Date(startTime as string) : undefined,
+      endTime: endTime ? new Date(endTime as string) : undefined,
+      level: level as string | undefined,
+      module: module as string | undefined,
+      type: type as string | undefined,
+      jobId: jobId as string | undefined,
+      queueName: queueName as string | undefined,
+      requestId: requestId as string | undefined,
+      search: search as string | undefined,
+      limit: Math.min(1000, Number(limit)),
+      offset: Number(offset),
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    log.error('Failed to search logs', error);
+    next(error);
+  }
+});
+
+/**
+ * ログ統計を取得
+ */
+router.get('/logs/stats', async (req, res, next) => {
+  try {
+    const { hours = 24 } = req.query;
+
+    const aggregator = getLogAggregator();
+    const stats = await aggregator.getStats({
+      hours: Math.min(168, Math.max(1, Number(hours))),
+    });
+
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    log.error('Failed to get log stats', error);
+    next(error);
+  }
+});
+
+/**
+ * ログをエクスポート
+ */
+router.get('/logs/export', async (req, res, next) => {
+  try {
+    const {
+      startTime,
+      endTime,
+      level,
+      module,
+      type,
+      format = 'ndjson',
+    } = req.query;
+
+    const aggregator = getLogAggregator();
+    const data = await aggregator.export({
+      startTime: startTime ? new Date(startTime as string) : undefined,
+      endTime: endTime ? new Date(endTime as string) : undefined,
+      level: level as string | undefined,
+      module: module as string | undefined,
+      type: type as string | undefined,
+      format: format as 'json' | 'ndjson' | 'csv',
+    });
+
+    // Content-Type設定
+    const contentTypes: Record<string, string> = {
+      json: 'application/json',
+      ndjson: 'application/x-ndjson',
+      csv: 'text/csv',
+    };
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    res.setHeader('Content-Type', contentTypes[format as string] || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="rakuda-logs-${timestamp}.${format}"`);
+    res.send(data);
+  } catch (error) {
+    log.error('Failed to export logs', error);
+    next(error);
   }
 });
 
