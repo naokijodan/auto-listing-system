@@ -3,16 +3,26 @@ import { prisma, Marketplace } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { calculatePrice } from '../lib/price-calculator';
 import { JoomApiClient } from '../lib/joom-api';
+import { EbayApiClient } from '../lib/ebay-api';
 
 const log = logger.child({ processor: 'price-sync' });
 
-// Joom APIクライアントのシングルトン
+// APIクライアントのシングルトン
 let joomClient: JoomApiClient | null = null;
+let ebayClient: EbayApiClient | null = null;
+
 function getJoomClient(): JoomApiClient {
   if (!joomClient) {
     joomClient = new JoomApiClient();
   }
   return joomClient;
+}
+
+function getEbayClient(): EbayApiClient {
+  if (!ebayClient) {
+    ebayClient = new EbayApiClient();
+  }
+  return ebayClient;
 }
 
 export interface PriceSyncJobPayload {
@@ -168,10 +178,11 @@ export async function processPriceSyncJob(
           let marketplaceSyncSuccess = false;
           if (syncToMarketplace && listing.marketplaceListingId) {
             try {
+              const marketplaceData = listing.marketplaceData as { sku?: string; variantSku?: string; offerId?: string } | null;
+
               if (listing.marketplace === 'JOOM') {
                 const joom = getJoomClient();
                 // JoomのSKUはmarketplaceDataから取得するか、デフォルト形式を使用
-                const marketplaceData = listing.marketplaceData as { sku?: string; variantSku?: string } | null;
                 const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
                 const result = await joom.updatePrice(
                   listing.marketplaceListingId,
@@ -192,16 +203,44 @@ export async function processPriceSyncJob(
                   log.warn({
                     type: 'marketplace_price_sync_failed',
                     listingId: listing.id,
+                    marketplace: 'JOOM',
+                    error: result.error?.message,
+                  });
+                }
+              } else if (listing.marketplace === 'EBAY') {
+                const ebay = getEbayClient();
+                // eBayはofferIdを使って価格を更新
+                const offerId = marketplaceData?.offerId || listing.marketplaceListingId;
+                const result = await ebay.updatePrice(
+                  offerId,
+                  newPrice,
+                  listing.currency || 'USD'
+                );
+                if (result.success) {
+                  marketplaceSyncSuccess = true;
+                  marketplaceSynced++;
+                  log.info({
+                    type: 'marketplace_price_synced',
+                    listingId: listing.id,
+                    marketplace: 'EBAY',
+                    newPrice,
+                  });
+                } else {
+                  marketplaceFailed++;
+                  log.warn({
+                    type: 'marketplace_price_sync_failed',
+                    listingId: listing.id,
+                    marketplace: 'EBAY',
                     error: result.error?.message,
                   });
                 }
               }
-              // eBay対応は後日追加
             } catch (syncError: any) {
               marketplaceFailed++;
               log.error({
                 type: 'marketplace_sync_error',
                 listingId: listing.id,
+                marketplace: listing.marketplace,
                 error: syncError.message,
               });
             }
