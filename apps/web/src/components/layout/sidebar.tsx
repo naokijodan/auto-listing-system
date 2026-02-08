@@ -21,6 +21,7 @@ const navigation = [
   { name: '商品管理', href: '/products', icon: Package },
   { name: '商品レビュー', href: '/products/review', icon: ClipboardCheck },
   { name: 'Joom管理', href: '/joom', icon: Store },
+  { name: 'eBay管理', href: '/ebay', icon: Store },
   { name: '出品管理', href: '/listings', icon: ShoppingCart },
   { name: '注文管理', href: '/orders', icon: Truck },
   { name: 'ジョブ監視', href: '/jobs', icon: Activity },

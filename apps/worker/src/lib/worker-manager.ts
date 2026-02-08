@@ -15,6 +15,7 @@ import { processOrderSyncJob } from '../processors/order-sync';
 import { processPriceSyncJob } from '../processors/price-sync';
 import { processInventorySyncJob } from '../processors/inventory-sync';
 import { JoomApiClient } from './joom-api';
+import { EbayApiClient } from './ebay-api';
 import { alertManager } from './alert-manager';
 import { updateExchangeRate } from './exchange-rate';
 import { syncAllPrices } from './price-sync';
@@ -381,7 +382,44 @@ async function handleShipToMarketplace(job: any): Promise<any> {
       }
     }
 
-    // eBayは後日対応
+    if (marketplace === 'EBAY') {
+      const ebayClient = new EbayApiClient();
+
+      // eBay注文を取得してlineItemIdを確認
+      const orderResult = await ebayClient.getOrder(marketplaceOrderId);
+      if (!orderResult.success || !orderResult.data) {
+        throw new Error(orderResult.error?.message || 'Failed to get eBay order');
+      }
+
+      const lineItem = orderResult.data.lineItems?.[0];
+      if (!lineItem) {
+        throw new Error('No line items found in eBay order');
+      }
+
+      const result = await ebayClient.shipOrder(marketplaceOrderId, lineItem.lineItemId, {
+        trackingNumber,
+        shippingCarrier: trackingCarrier,
+      });
+
+      if (result.success) {
+        log.info({
+          type: 'ship_to_marketplace_success',
+          orderId,
+          marketplace: 'EBAY',
+        });
+
+        return {
+          success: true,
+          orderId,
+          marketplace,
+          synced: true,
+          timestamp: new Date().toISOString(),
+        };
+      } else {
+        throw new Error(result.error?.message || 'Failed to sync shipment to eBay');
+      }
+    }
+
     return {
       success: false,
       orderId,
@@ -393,6 +431,7 @@ async function handleShipToMarketplace(job: any): Promise<any> {
     log.error({
       type: 'ship_to_marketplace_error',
       orderId,
+      marketplace,
       error: error.message,
     });
     throw error;

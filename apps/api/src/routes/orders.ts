@@ -416,17 +416,17 @@ router.patch('/:id/shipping', async (req, res, next) => {
       },
     });
 
-    // マーケットプレイスへの出荷通知（Joomの場合）
+    // マーケットプレイスへの出荷通知（Joom/eBay）
     let marketplaceSynced = false;
     let marketplaceError: string | undefined;
 
-    if (syncToMarketplace && order.marketplace === 'JOOM' && order.marketplaceOrderId) {
+    if (syncToMarketplace && (order.marketplace === 'JOOM' || order.marketplace === 'EBAY') && order.marketplaceOrderId) {
       try {
-        // Joom APIに出荷通知をジョブとして追加
+        // マーケットプレイスAPIに出荷通知をジョブとして追加
         await inventoryQueue.add('ship-to-marketplace', {
           orderId: order.id,
           marketplaceOrderId: order.marketplaceOrderId,
-          marketplace: 'JOOM',
+          marketplace: order.marketplace,
           trackingNumber,
           trackingCarrier,
         }, {
@@ -436,12 +436,13 @@ router.patch('/:id/shipping', async (req, res, next) => {
         marketplaceSynced = true;
         log.info({
           orderId: order.id,
-          marketplace: 'JOOM',
+          marketplace: order.marketplace,
         }, 'Shipment sync queued');
       } catch (syncError: any) {
         marketplaceError = syncError.message;
         log.error({
           orderId: order.id,
+          marketplace: order.marketplace,
           error: syncError.message,
         }, 'Failed to queue shipment sync');
       }
