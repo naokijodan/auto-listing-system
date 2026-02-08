@@ -63,7 +63,107 @@ router.get('/', async (req, res, next) => {
 });
 
 /**
+ * カテゴリマッピングエクスポート
+ * Note: /:id より前に定義する必要あり
+ */
+router.get('/export/json', async (req, res, next) => {
+  try {
+    const categories = await prisma.ebayCategoryMapping.findMany({
+      where: { isActive: true },
+      orderBy: { sourceCategory: 'asc' },
+    });
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename=category_mappings.json');
+    res.json(categories);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Phase 45: カテゴリサジェスト
+ * Note: /:id より前に定義する必要あり
+ */
+router.get('/suggest', async (req, res, next) => {
+  try {
+    const { query, limit = 5 } = req.query;
+
+    if (!query) {
+      throw new AppError(400, 'query parameter is required', 'INVALID_REQUEST');
+    }
+
+    // 1. DBマッピングを検索
+    const dbMappings = await prisma.ebayCategoryMapping.findMany({
+      where: {
+        OR: [
+          { sourceCategory: { contains: query as string, mode: 'insensitive' } },
+          { ebayCategoryName: { contains: query as string, mode: 'insensitive' } },
+        ],
+        isActive: true,
+      },
+      take: Number(limit),
+    });
+
+    const dbResults = dbMappings.map(m => ({
+      category: m.sourceCategory,
+      categoryId: m.ebayCategoryId,
+      categoryName: m.ebayCategoryName,
+      similarity: 1.0,
+      source: 'database' as const,
+    }));
+
+    // 2. ビルトインカテゴリから検索
+    const builtInResults = suggestCategories(query as string, Number(limit));
+    const builtInFormatted = builtInResults.map(r => ({
+      category: r.category,
+      categoryId: r.categoryId,
+      categoryName: EBAY_CATEGORY_MAP[r.category]?.categoryName || r.category,
+      similarity: r.similarity,
+      source: 'builtin' as const,
+    }));
+
+    // 3. 結果をマージ（重複除去、スコア順）
+    const seenIds = new Set<string>();
+    const merged = [...dbResults, ...builtInFormatted]
+      .filter(r => {
+        if (seenIds.has(r.categoryId)) return false;
+        seenIds.add(r.categoryId);
+        return true;
+      })
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, Number(limit));
+
+    res.json({
+      success: true,
+      data: merged,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Phase 45: ビルトインカテゴリ一覧
+ * Note: /:id より前に定義する必要あり
+ */
+router.get('/builtin', async (_req, res, next) => {
+  try {
+    const categories = getBuiltInCategories();
+
+    res.json({
+      success: true,
+      data: categories,
+      count: categories.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * カテゴリマッピング取得（単一）
+ * Note: /export/json, /suggest, /builtin より後に定義
  */
 router.get('/:id', async (req, res, next) => {
   try {
@@ -224,24 +324,6 @@ router.post('/import', async (req, res, next) => {
 });
 
 /**
- * カテゴリマッピングエクスポート
- */
-router.get('/export/json', async (req, res, next) => {
-  try {
-    const categories = await prisma.ebayCategoryMapping.findMany({
-      where: { isActive: true },
-      orderBy: { sourceCategory: 'asc' },
-    });
-
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', 'attachment; filename=category_mappings.json');
-    res.json(categories);
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
  * eBayカテゴリ検索（DBマッピング + モックデータ）
  */
 router.get('/ebay/search', async (req, res, next) => {
@@ -369,86 +451,6 @@ router.post('/infer', async (req, res, next) => {
     res.json({
       success: true,
       data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * Phase 45: カテゴリサジェスト
- * クエリに基づいてカテゴリ候補を提案
- */
-router.get('/suggest', async (req, res, next) => {
-  try {
-    const { query, limit = 5 } = req.query;
-
-    if (!query) {
-      throw new AppError(400, 'query parameter is required', 'INVALID_REQUEST');
-    }
-
-    // 1. DBマッピングを検索
-    const dbMappings = await prisma.ebayCategoryMapping.findMany({
-      where: {
-        OR: [
-          { sourceCategory: { contains: query as string, mode: 'insensitive' } },
-          { ebayCategoryName: { contains: query as string, mode: 'insensitive' } },
-        ],
-        isActive: true,
-      },
-      take: Number(limit),
-    });
-
-    const dbResults = dbMappings.map(m => ({
-      category: m.sourceCategory,
-      categoryId: m.ebayCategoryId,
-      categoryName: m.ebayCategoryName,
-      similarity: 1.0,
-      source: 'database' as const,
-    }));
-
-    // 2. ビルトインカテゴリから検索
-    const builtInResults = suggestCategories(query as string, Number(limit));
-    const builtInFormatted = builtInResults.map(r => ({
-      category: r.category,
-      categoryId: r.categoryId,
-      categoryName: EBAY_CATEGORY_MAP[r.category]?.categoryName || r.category,
-      similarity: r.similarity,
-      source: 'builtin' as const,
-    }));
-
-    // 3. 結果をマージ（重複除去、スコア順）
-    const seenIds = new Set<string>();
-    const merged = [...dbResults, ...builtInFormatted]
-      .filter(r => {
-        if (seenIds.has(r.categoryId)) return false;
-        seenIds.add(r.categoryId);
-        return true;
-      })
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, Number(limit));
-
-    res.json({
-      success: true,
-      data: merged,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * Phase 45: ビルトインカテゴリ一覧
- * enrichmentエンジンに組み込まれたカテゴリを取得
- */
-router.get('/builtin', async (_req, res, next) => {
-  try {
-    const categories = getBuiltInCategories();
-
-    res.json({
-      success: true,
-      data: categories,
-      count: categories.length,
     });
   } catch (error) {
     next(error);
