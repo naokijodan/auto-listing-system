@@ -2,16 +2,26 @@ import { Job } from 'bullmq';
 import { prisma, Marketplace, OrderStatus, PaymentStatus, FulfillmentStatus } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { JoomApiClient } from '../lib/joom-api';
+import { EbayApiClient, EbayOrder } from '../lib/ebay-api';
 
 const log = logger.child({ processor: 'order-sync' });
 
-// Joom APIクライアントのシングルトン
+// APIクライアントのシングルトン
 let joomClient: JoomApiClient | null = null;
+let ebayClient: EbayApiClient | null = null;
+
 function getJoomClient(): JoomApiClient {
   if (!joomClient) {
     joomClient = new JoomApiClient();
   }
   return joomClient;
+}
+
+function getEbayClient(): EbayApiClient {
+  if (!ebayClient) {
+    ebayClient = new EbayApiClient();
+  }
+  return ebayClient;
 }
 
 export interface OrderSyncJobPayload {
@@ -115,6 +125,40 @@ function mapJoomPaymentStatus(joomStatus: string): PaymentStatus {
 }
 
 /**
+ * eBayの注文ステータスをシステムステータスにマッピング
+ */
+function mapEbayStatus(fulfillmentStatus: string, paymentStatus: string): OrderStatus {
+  // eBay Fulfillment Status: NOT_STARTED, IN_PROGRESS, FULFILLED
+  // eBay Payment Status: PENDING, PAID, FAILED
+  if (fulfillmentStatus === 'FULFILLED') {
+    return OrderStatus.DELIVERED;
+  }
+  if (fulfillmentStatus === 'IN_PROGRESS') {
+    return OrderStatus.SHIPPED;
+  }
+  if (paymentStatus === 'PAID') {
+    return OrderStatus.CONFIRMED;
+  }
+  if (paymentStatus === 'FAILED') {
+    return OrderStatus.CANCELLED;
+  }
+  return OrderStatus.PENDING;
+}
+
+/**
+ * eBayの支払いステータスをマッピング
+ */
+function mapEbayPaymentStatus(paymentStatus: string): PaymentStatus {
+  if (paymentStatus === 'PAID') {
+    return PaymentStatus.PAID;
+  }
+  if (paymentStatus === 'FAILED') {
+    return PaymentStatus.FAILED;
+  }
+  return PaymentStatus.PENDING;
+}
+
+/**
  * 注文同期プロセッサー
  */
 export async function processOrderSyncJob(
@@ -141,11 +185,10 @@ export async function processOrderSyncJob(
   let totalErrors = 0;
 
   try {
-    if (marketplace !== 'joom') {
-      // eBay対応は後日
+    if (marketplace !== 'joom' && marketplace !== 'ebay') {
       return {
         success: false,
-        message: 'Only Joom marketplace is currently supported',
+        message: 'Supported marketplaces: joom, ebay',
         summary: {
           totalFetched: 0,
           totalCreated: 0,
@@ -158,44 +201,67 @@ export async function processOrderSyncJob(
       };
     }
 
-    // Joomから注文を取得
-    const joom = getJoomClient();
     const sinceDate = new Date();
     sinceDate.setDate(sinceDate.getDate() - sinceDays);
+    const dbMarketplace = marketplace === 'joom' ? 'JOOM' : 'EBAY';
 
-    const response = await joom.getOrders({
-      since: sinceDate.toISOString(),
-      limit: maxOrders,
-    });
+    let fetchedOrders: Array<JoomOrder | EbayOrder> = [];
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error?.message || 'Failed to fetch orders from Joom');
+    if (marketplace === 'joom') {
+      // Joomから注文を取得
+      const joom = getJoomClient();
+      const response = await joom.getOrders({
+        since: sinceDate.toISOString(),
+        limit: maxOrders,
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to fetch orders from Joom');
+      }
+      fetchedOrders = response.data.orders || [];
+    } else {
+      // eBayから注文を取得
+      const ebay = getEbayClient();
+      const response = await ebay.getOrders({
+        creationDateFrom: sinceDate.toISOString(),
+        limit: maxOrders,
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to fetch orders from eBay');
+      }
+      fetchedOrders = response.data.orders || [];
     }
 
-    const joomOrders = response.data.orders || [];
     log.info({
       type: 'order_sync_fetched',
-      count: joomOrders.length,
+      marketplace,
+      count: fetchedOrders.length,
     });
 
-    for (const joomOrder of joomOrders) {
-      const marketplaceOrderId = joomOrder.orderId || joomOrder.order_id || joomOrder.id;
+    for (const fetchedOrder of fetchedOrders) {
+      let marketplaceOrderId: string;
+      let orderStatus: OrderStatus;
+      let paymentStatus: PaymentStatus;
+      let shippingAddress: Record<string, string>;
+      let total: number;
+      let shippingCost: number;
+      let subtotal: number;
+      let buyerUsername: string;
+      let buyerName: string;
+      let orderedAt: Date;
+      let currency: string;
+      let marketplaceFee: number;
+      let items: Array<{ sku: string; title: string; quantity: number; unitPrice: number }> = [];
 
-      try {
-        // 既存の注文を確認
-        const existingOrder = await prisma.order.findFirst({
-          where: {
-            marketplace: 'JOOM',
-            marketplaceOrderId,
-          },
-        });
+      if (marketplace === 'joom') {
+        const joomOrder = fetchedOrder as JoomOrder;
+        marketplaceOrderId = joomOrder.orderId || joomOrder.order_id || joomOrder.id;
+        orderStatus = mapJoomStatus(joomOrder.status);
+        paymentStatus = mapJoomPaymentStatus(joomOrder.status);
 
-        const orderStatus = mapJoomStatus(joomOrder.status);
-        const paymentStatus = mapJoomPaymentStatus(joomOrder.status);
-
-        // 配送先住所
         const shippingAddr = joomOrder.shippingAddress || joomOrder.shipping?.address || {};
-        const shippingAddress = {
+        shippingAddress = {
           street: shippingAddr.street || '',
           city: shippingAddr.city || '',
           state: shippingAddr.state || '',
@@ -203,14 +269,66 @@ export async function processOrderSyncJob(
           postalCode: shippingAddr.postalCode || shippingAddr.postal_code || '',
         };
 
-        // 金額計算
-        const total = joomOrder.total?.amount || joomOrder.totalAmount || 0;
-        const shippingCost = joomOrder.shipping?.cost || 0;
-        const subtotal = total - shippingCost;
+        total = joomOrder.total?.amount || joomOrder.totalAmount || 0;
+        shippingCost = joomOrder.shipping?.cost || 0;
+        subtotal = total - shippingCost;
+        buyerUsername = joomOrder.buyer?.username || joomOrder.buyerUsername || 'unknown';
+        buyerName = joomOrder.buyer?.name || '';
+        orderedAt = new Date(joomOrder.createdAt || joomOrder.created_at || Date.now());
+        currency = joomOrder.total?.currency || 'USD';
+        marketplaceFee = total * 0.15; // Joom手数料 15%推定
 
-        // 購入者情報
-        const buyerUsername = joomOrder.buyer?.username || joomOrder.buyerUsername || 'unknown';
-        const buyerName = joomOrder.buyer?.name || '';
+        if (joomOrder.items) {
+          items = joomOrder.items.map(item => ({
+            sku: item.sku || item.productId || item.product_id || 'unknown',
+            title: item.title || item.name || 'Unknown Item',
+            quantity: item.quantity || 1,
+            unitPrice: item.unitPrice || item.unit_price || item.price || 0,
+          }));
+        }
+      } else {
+        const ebayOrder = fetchedOrder as EbayOrder;
+        marketplaceOrderId = ebayOrder.orderId;
+        orderStatus = mapEbayStatus(ebayOrder.orderFulfillmentStatus, ebayOrder.orderPaymentStatus);
+        paymentStatus = mapEbayPaymentStatus(ebayOrder.orderPaymentStatus);
+
+        const shipTo = ebayOrder.fulfillmentStartInstructions?.[0]?.shippingStep?.shipTo;
+        const contactAddress = shipTo?.contactAddress || {};
+        shippingAddress = {
+          street: contactAddress.addressLine1 || '',
+          city: contactAddress.city || '',
+          state: contactAddress.stateOrProvince || '',
+          country: contactAddress.countryCode || '',
+          postalCode: contactAddress.postalCode || '',
+        };
+
+        total = parseFloat(ebayOrder.pricingSummary?.total?.value || '0');
+        shippingCost = parseFloat(ebayOrder.pricingSummary?.deliveryCost?.value || '0');
+        subtotal = parseFloat(ebayOrder.pricingSummary?.priceSubtotal?.value || '0');
+        buyerUsername = ebayOrder.buyer?.username || 'unknown';
+        buyerName = shipTo?.fullName || '';
+        orderedAt = new Date(ebayOrder.creationDate);
+        currency = ebayOrder.pricingSummary?.total?.currency || 'USD';
+        marketplaceFee = total * 0.13; // eBay手数料 13%推定
+
+        if (ebayOrder.lineItems) {
+          items = ebayOrder.lineItems.map(item => ({
+            sku: item.sku || item.legacyItemId || 'unknown',
+            title: item.title || 'Unknown Item',
+            quantity: item.quantity || 1,
+            unitPrice: parseFloat(item.lineItemCost?.value || '0'),
+          }));
+        }
+      }
+
+      try {
+        // 既存の注文を確認
+        const existingOrder = await prisma.order.findFirst({
+          where: {
+            marketplace: dbMarketplace as Marketplace,
+            marketplaceOrderId,
+          },
+        });
 
         if (existingOrder) {
           // ステータスが変わっていたら更新
@@ -239,11 +357,9 @@ export async function processOrderSyncJob(
           }
         } else {
           // 新規注文を作成
-          const orderedAt = new Date(joomOrder.createdAt || joomOrder.created_at || Date.now());
-
           const createdOrder = await prisma.order.create({
             data: {
-              marketplace: 'JOOM' as Marketplace,
+              marketplace: dbMarketplace as Marketplace,
               marketplaceOrderId,
               status: orderStatus,
               paymentStatus,
@@ -254,30 +370,25 @@ export async function processOrderSyncJob(
               subtotal,
               shippingCost,
               tax: 0,
-              marketplaceFee: total * 0.15, // Joom手数料 15%推定
+              marketplaceFee,
               total,
-              currency: joomOrder.total?.currency || 'USD',
+              currency,
               orderedAt,
             },
           });
 
           // 売上明細を作成
-          if (joomOrder.items && joomOrder.items.length > 0) {
-            for (const item of joomOrder.items) {
-              const unitPrice = item.unitPrice || item.unit_price || item.price || 0;
-              const quantity = item.quantity || 1;
-
-              await prisma.sale.create({
-                data: {
-                  orderId: createdOrder.id,
-                  sku: item.sku || item.productId || item.product_id || 'unknown',
-                  title: item.title || item.name || 'Unknown Item',
-                  quantity,
-                  unitPrice,
-                  totalPrice: unitPrice * quantity,
-                },
-              });
-            }
+          for (const item of items) {
+            await prisma.sale.create({
+              data: {
+                orderId: createdOrder.id,
+                sku: item.sku,
+                title: item.title,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                totalPrice: item.unitPrice * item.quantity,
+              },
+            });
           }
 
           orders.push({
@@ -288,6 +399,7 @@ export async function processOrderSyncJob(
 
           log.info({
             type: 'order_created',
+            marketplace,
             orderId: createdOrder.id,
             marketplaceOrderId,
             total,
@@ -303,6 +415,7 @@ export async function processOrderSyncJob(
 
         log.error({
           type: 'order_sync_error',
+          marketplace,
           marketplaceOrderId,
           error: error.message,
         });
@@ -310,15 +423,16 @@ export async function processOrderSyncJob(
     }
 
     // 通知作成
+    const marketplaceName = marketplace === 'joom' ? 'Joom' : 'eBay';
     if (totalCreated > 0) {
       await prisma.notification.create({
         data: {
           type: 'ORDER_RECEIVED',
           title: '新規注文を同期',
-          message: `Joomから${totalCreated}件の新規注文を同期しました`,
+          message: `${marketplaceName}から${totalCreated}件の新規注文を同期しました`,
           severity: 'INFO',
           metadata: {
-            marketplace: 'JOOM',
+            marketplace: dbMarketplace,
             totalCreated,
             totalUpdated,
           },
@@ -334,7 +448,8 @@ export async function processOrderSyncJob(
         jobType: 'ORDER_SYNC',
         status: 'COMPLETED',
         result: {
-          totalFetched: joomOrders.length,
+          marketplace,
+          totalFetched: fetchedOrders.length,
           totalCreated,
           totalUpdated,
           totalSkipped,
@@ -347,7 +462,8 @@ export async function processOrderSyncJob(
 
     log.info({
       type: 'order_sync_complete',
-      totalFetched: joomOrders.length,
+      marketplace,
+      totalFetched: fetchedOrders.length,
       totalCreated,
       totalUpdated,
       totalSkipped,
@@ -358,7 +474,7 @@ export async function processOrderSyncJob(
       success: true,
       message: `Order sync completed: ${totalCreated} created, ${totalUpdated} updated, ${totalSkipped} skipped, ${totalErrors} errors`,
       summary: {
-        totalFetched: joomOrders.length,
+        totalFetched: fetchedOrders.length,
         totalCreated,
         totalUpdated,
         totalSkipped,

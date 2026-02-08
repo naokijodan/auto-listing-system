@@ -446,7 +446,8 @@ async function scheduleCompetitorMonitoring(config: SchedulerConfig['competitorM
 }
 
 /**
- * 注文同期ジョブをスケジュール（Phase 41-E）
+ * 注文同期ジョブをスケジュール（Phase 41-E/41-I）
+ * Joom/eBay両対応
  */
 async function scheduleOrderSync(config: SchedulerConfig['orderSync']) {
   if (!config.enabled) {
@@ -457,12 +458,12 @@ async function scheduleOrderSync(config: SchedulerConfig['orderSync']) {
   // 既存のリピートジョブを削除
   const repeatableJobs = await inventoryQueue.getRepeatableJobs();
   for (const job of repeatableJobs) {
-    if (job.name === 'order-sync') {
+    if (job.name === 'order-sync' || job.name === 'order-sync-joom' || job.name === 'order-sync-ebay') {
       await inventoryQueue.removeRepeatableByKey(job.key);
     }
   }
 
-  // 注文同期ジョブを追加
+  // Joom注文同期ジョブを追加
   await inventoryQueue.add(
     'order-sync',
     {
@@ -475,13 +476,36 @@ async function scheduleOrderSync(config: SchedulerConfig['orderSync']) {
       repeat: {
         pattern: config.cronExpression,
       },
-      jobId: 'order-sync-scheduled',
+      jobId: 'order-sync-joom-scheduled',
+    }
+  );
+
+  // eBay注文同期ジョブを追加（30分後にずらして実行）
+  const ebayOffset = config.cronExpression.replace(/^(\d+)/, (match) => {
+    const minute = parseInt(match, 10);
+    return String((minute + 30) % 60);
+  });
+
+  await inventoryQueue.add(
+    'order-sync',
+    {
+      marketplace: 'ebay',
+      sinceDays: config.sinceDays,
+      maxOrders: config.maxOrders,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: ebayOffset,
+      },
+      jobId: 'order-sync-ebay-scheduled',
     }
   );
 
   log.info({
     type: 'order_sync_scheduled',
-    cronExpression: config.cronExpression,
+    joomCron: config.cronExpression,
+    ebayCron: ebayOffset,
     sinceDays: config.sinceDays,
   });
 }

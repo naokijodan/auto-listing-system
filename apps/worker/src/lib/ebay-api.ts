@@ -572,6 +572,235 @@ export class EbayApiClient {
 
     return mapping?.ebayCategoryId || null;
   }
+
+  /**
+   * Fulfillment API リクエスト（レート制限・リトライ付き）
+   */
+  private async fulfillmentApiRequest<T>(
+    method: string,
+    endpoint: string,
+    body?: any
+  ): Promise<EbayApiResponse<T>> {
+    const token = await this.ensureAccessToken();
+
+    const url = `${EBAY_API_BASE}/sell/fulfillment/v1${endpoint}`;
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
+    log.debug({
+      type: 'ebay_fulfillment_api_request',
+      method,
+      endpoint,
+    });
+
+    try {
+      return await withRetry(async () => {
+        await ebayRateLimiter.acquire();
+
+        const response = await safeFetch(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+          timeout: 30000,
+        });
+
+        if (response.status === 204) {
+          return { success: true } as EbayApiResponse<T>;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            const retryAfter = response.headers.get('Retry-After');
+            throw new RateLimitError(
+              data.errors?.[0]?.message || 'Rate limit exceeded',
+              retryAfter ? parseInt(retryAfter) : undefined
+            );
+          }
+
+          if (response.status >= 500) {
+            throw new ApiError(
+              data.errors?.[0]?.message || 'Server error',
+              response.status,
+              data.errors?.[0]?.errorId
+            );
+          }
+
+          log.error({
+            type: 'ebay_fulfillment_api_error',
+            status: response.status,
+            error: data,
+          });
+
+          return {
+            success: false,
+            error: {
+              code: data.errors?.[0]?.errorId || 'UNKNOWN',
+              message: data.errors?.[0]?.message || 'Unknown error',
+              details: data.errors,
+            },
+          } as EbayApiResponse<T>;
+        }
+
+        return {
+          success: true,
+          data,
+        } as EbayApiResponse<T>;
+      }, {
+        maxRetries: 3,
+        initialDelay: 1000,
+        retryableStatuses: [429, 500, 502, 503, 504],
+      });
+    } catch (error: any) {
+      log.error({
+        type: 'ebay_fulfillment_api_exception',
+        error: error.message,
+        code: error.code,
+      });
+
+      return {
+        success: false,
+        error: {
+          code: error.code || 'NETWORK_ERROR',
+          message: error.message,
+        },
+      };
+    }
+  }
+
+  /**
+   * 注文一覧を取得
+   */
+  async getOrders(options: {
+    creationDateFrom?: string;  // ISO形式
+    creationDateTo?: string;
+    limit?: number;
+    offset?: number;
+    orderStatus?: string[];     // 'Active', 'Cancelled', 'Completed', etc.
+  }): Promise<EbayApiResponse<{
+    orders: EbayOrder[];
+    total: number;
+    offset: number;
+    limit: number;
+  }>> {
+    log.info({
+      type: 'ebay_get_orders',
+      options,
+    });
+
+    const params = new URLSearchParams();
+    if (options.creationDateFrom) {
+      params.append('filter', `creationdate:[${options.creationDateFrom}..]`);
+    }
+    if (options.limit) {
+      params.append('limit', options.limit.toString());
+    }
+    if (options.offset) {
+      params.append('offset', options.offset.toString());
+    }
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.fulfillmentApiRequest<{
+      orders: EbayOrder[];
+      total: number;
+      offset: number;
+      limit: number;
+    }>('GET', `/order${query}`);
+  }
+
+  /**
+   * 単一注文を取得
+   */
+  async getOrder(orderId: string): Promise<EbayApiResponse<EbayOrder>> {
+    log.info({
+      type: 'ebay_get_order',
+      orderId,
+    });
+
+    return this.fulfillmentApiRequest<EbayOrder>('GET', `/order/${orderId}`);
+  }
+
+  /**
+   * 注文を発送完了としてマーク
+   */
+  async shipOrder(
+    orderId: string,
+    lineItemId: string,
+    trackingInfo: {
+      trackingNumber: string;
+      shippingCarrier: string;
+    }
+  ): Promise<EbayApiResponse<void>> {
+    log.info({
+      type: 'ebay_ship_order',
+      orderId,
+      lineItemId,
+      trackingNumber: trackingInfo.trackingNumber,
+    });
+
+    return this.fulfillmentApiRequest<void>(
+      'POST',
+      `/order/${orderId}/shipping_fulfillment`,
+      {
+        lineItems: [
+          {
+            lineItemId,
+            quantity: 1,
+          },
+        ],
+        shippedDate: new Date().toISOString(),
+        shippingCarrierCode: trackingInfo.shippingCarrier,
+        trackingNumber: trackingInfo.trackingNumber,
+      }
+    );
+  }
+}
+
+/**
+ * eBay注文の型定義
+ */
+export interface EbayOrder {
+  orderId: string;
+  legacyOrderId?: string;
+  creationDate: string;
+  lastModifiedDate?: string;
+  orderFulfillmentStatus: string;
+  orderPaymentStatus: string;
+  sellerId?: string;
+  buyer?: {
+    username: string;
+  };
+  pricingSummary?: {
+    priceSubtotal?: { value: string; currency: string };
+    deliveryCost?: { value: string; currency: string };
+    total?: { value: string; currency: string };
+  };
+  fulfillmentStartInstructions?: Array<{
+    shippingStep?: {
+      shipTo?: {
+        fullName?: string;
+        contactAddress?: {
+          addressLine1?: string;
+          addressLine2?: string;
+          city?: string;
+          stateOrProvince?: string;
+          postalCode?: string;
+          countryCode?: string;
+        };
+      };
+    };
+  }>;
+  lineItems?: Array<{
+    lineItemId: string;
+    legacyItemId?: string;
+    title?: string;
+    sku?: string;
+    quantity?: number;
+    lineItemCost?: { value: string; currency: string };
+  }>;
 }
 
 // シングルトンインスタンス
