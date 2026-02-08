@@ -7,7 +7,7 @@ import {
   processBatchGroups,
   BatchProgressInfo,
 } from '@rakuda/config';
-import { prisma } from '@rakuda/database';
+import { prisma, Marketplace } from '@rakuda/database';
 
 const log = logger.child({ module: 'scheduler' });
 
@@ -941,7 +941,7 @@ export async function checkTokenExpiry(options: {
 
   // マーケットプレイス認証情報を取得
   const whereClause = options.marketplace
-    ? { marketplace: options.marketplace.toUpperCase(), isActive: true }
+    ? { marketplace: options.marketplace.toUpperCase() as Marketplace, isActive: true }
     : { isActive: true };
 
   const credentials = await prisma.marketplaceCredential.findMany({

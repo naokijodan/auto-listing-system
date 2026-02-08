@@ -15,6 +15,7 @@ test.describe('Settings Page', () => {
     await expect(page.getByText('出品設定').first()).toBeVisible();
     await expect(page.getByText('通知設定').first()).toBeVisible();
     await expect(page.getByText('マーケットプレイス').first()).toBeVisible();
+    await expect(page.getByText('同期スケジュール').first()).toBeVisible();
     await expect(page.getByText('外観').first()).toBeVisible();
     await expect(page.getByText('システム').first()).toBeVisible();
   });
@@ -69,6 +70,20 @@ test.describe('Settings Page', () => {
     // システム設定カードが表示されることを確認
     await expect(page.getByRole('heading', { name: 'スケジューラー設定' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'データベース' })).toBeVisible();
+  });
+
+  test('should switch to sync schedule settings tab', async ({ page }) => {
+    await page.getByRole('button', { name: '同期スケジュール' }).click();
+
+    // Wait for content to load
+    await page.waitForTimeout(500);
+
+    // 同期スケジュール設定カードが表示されることを確認
+    await expect(page.getByRole('heading', { name: '同期スケジュール設定' })).toBeVisible();
+
+    // マーケットプレイス選択ボタンが表示されることを確認
+    await expect(page.locator('button').filter({ hasText: 'Joom' })).toBeVisible();
+    await expect(page.locator('button').filter({ hasText: 'eBay' })).toBeVisible();
   });
 
   test('should navigate to templates page from listing settings', async ({ page }) => {

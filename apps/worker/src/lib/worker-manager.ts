@@ -53,6 +53,10 @@ export async function startWorkers(connection: IORedis): Promise<void> {
       if (job.name === 'health-check') {
         return handleHealthCheck(job);
       }
+      // トークン更新ジョブ（Phase 46）
+      if (job.name === 'token-refresh') {
+        return handleTokenRefresh(job);
+      }
       // 通常のスクレイピング
       return processScrapeJob(job);
     },
@@ -337,6 +341,47 @@ async function handleHealthCheck(job: any): Promise<any> {
     };
   } catch (error: any) {
     log.error({ type: 'health_check_job_error', error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * トークン更新ジョブのハンドラー（Phase 46）
+ * OAuth トークンの有効期限を監視し、自動更新・警告通知を行う
+ */
+async function handleTokenRefresh(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'token-refresh' });
+  const { refreshBeforeExpiry, warnBeforeExpiry, marketplace, manual } = job.data;
+
+  log.info({
+    type: 'token_refresh_job_start',
+    marketplace: marketplace || 'all',
+    manual: !!manual,
+  });
+
+  try {
+    const { checkTokenExpiry } = await import('./scheduler');
+    const result = await checkTokenExpiry({
+      refreshBeforeExpiry,
+      warnBeforeExpiry,
+      marketplace,
+    });
+
+    log.info({
+      type: 'token_refresh_job_complete',
+      checked: result.checked,
+      refreshed: result.refreshed,
+      warnings: result.warnings.length,
+      errors: result.errors.length,
+    });
+
+    return {
+      success: true,
+      ...result,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'token_refresh_job_error', error: error.message });
     throw error;
   }
 }
