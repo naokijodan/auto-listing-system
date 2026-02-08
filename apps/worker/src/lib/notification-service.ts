@@ -16,6 +16,8 @@ export interface NotificationPayload {
   orderId?: string;
   productId?: string;
   listingId?: string;
+  // Phase 45: マーケットプレイスフィルター用
+  marketplace?: 'JOOM' | 'EBAY';
 }
 
 /**
@@ -294,13 +296,25 @@ export async function sendNotification(
 
     // 重要度フィルタリング
     const severityOrder = ['INFO', 'WARNING', 'ERROR', 'SUCCESS'];
-    const filteredChannels = channels.filter((ch) => {
+    let filteredChannels = channels.filter((ch) => {
       const channelSeverityIndex = severityOrder.indexOf(ch.minSeverity);
       const payloadSeverityIndex = severityOrder.indexOf(payload.severity);
       // ERRORは常に通知、それ以外は設定に従う
       if (payload.severity === 'ERROR') return true;
       return payloadSeverityIndex >= channelSeverityIndex;
     });
+
+    // Phase 45: マーケットプレイスフィルタリング
+    // 通知にマーケットプレイス情報がある場合、フィルター設定に基づいて絞り込み
+    if (payload.marketplace) {
+      filteredChannels = filteredChannels.filter((ch) => {
+        // marketplaceFilterが空の場合は全マーケットプレイスを許可
+        const filter = (ch as any).marketplaceFilter || [];
+        if (filter.length === 0) return true;
+        // フィルターにマーケットプレイスが含まれている場合のみ許可
+        return filter.includes(payload.marketplace);
+      });
+    }
 
     // 各チャンネルに送信
     for (const channel of filteredChannels) {
@@ -469,7 +483,7 @@ async function sendNotificationViaEnv(
  */
 export async function notifyOrderReceived(
   marketplaceOrderId: string,
-  marketplace: string,
+  marketplace: 'JOOM' | 'EBAY',
   total: number,
   itemCount: number
 ): Promise<void> {
@@ -478,6 +492,7 @@ export async function notifyOrderReceived(
     title: '🛒 新規注文受信',
     message: `${marketplace}で新しい注文を受け付けました。`,
     severity: 'SUCCESS',
+    marketplace,
     data: {
       注文ID: marketplaceOrderId,
       マーケット: marketplace,
@@ -492,7 +507,7 @@ export async function notifyOrderReceived(
  */
 export async function notifyOrderPaid(
   marketplaceOrderId: string,
-  marketplace: string,
+  marketplace: 'JOOM' | 'EBAY',
   total: number
 ): Promise<void> {
   await sendNotification({
@@ -500,6 +515,7 @@ export async function notifyOrderPaid(
     title: '💰 支払い完了',
     message: `${marketplace}注文の支払いが確認されました。`,
     severity: 'SUCCESS',
+    marketplace,
     data: {
       注文ID: marketplaceOrderId,
       マーケット: marketplace,
@@ -513,7 +529,7 @@ export async function notifyOrderPaid(
  */
 export async function notifyOrderShipped(
   marketplaceOrderId: string,
-  marketplace: string,
+  marketplace: 'JOOM' | 'EBAY',
   trackingNumber: string,
   carrier: string
 ): Promise<void> {
@@ -522,6 +538,7 @@ export async function notifyOrderShipped(
     title: '📦 出荷完了',
     message: `注文を出荷しました。`,
     severity: 'SUCCESS',
+    marketplace,
     data: {
       注文ID: marketplaceOrderId,
       マーケット: marketplace,
@@ -536,7 +553,7 @@ export async function notifyOrderShipped(
  */
 export async function notifyOrderCancelled(
   marketplaceOrderId: string,
-  marketplace: string,
+  marketplace: 'JOOM' | 'EBAY',
   reason?: string
 ): Promise<void> {
   await sendNotification({
@@ -544,6 +561,7 @@ export async function notifyOrderCancelled(
     title: '❌ 注文キャンセル',
     message: `${marketplace}の注文がキャンセルされました。`,
     severity: 'WARNING',
+    marketplace,
     data: {
       注文ID: marketplaceOrderId,
       マーケット: marketplace,
@@ -604,7 +622,7 @@ export async function notifyPriceChange(
  */
 export async function notifyListingPublished(
   productTitle: string,
-  marketplace: string,
+  marketplace: 'JOOM' | 'EBAY',
   listingId: string,
   price: number
 ): Promise<void> {
@@ -613,6 +631,7 @@ export async function notifyListingPublished(
     title: '✅ 出品完了',
     message: `「${productTitle}」を${marketplace}に出品しました。`,
     severity: 'SUCCESS',
+    marketplace,
     data: {
       商品名: productTitle.substring(0, 50),
       マーケット: marketplace,
@@ -627,7 +646,7 @@ export async function notifyListingPublished(
  */
 export async function notifyListingError(
   productTitle: string,
-  marketplace: string,
+  marketplace: 'JOOM' | 'EBAY',
   errorMessage: string
 ): Promise<void> {
   await sendNotification({
@@ -635,6 +654,7 @@ export async function notifyListingError(
     title: '❌ 出品エラー',
     message: `「${productTitle}」の${marketplace}への出品に失敗しました。`,
     severity: 'ERROR',
+    marketplace,
     data: {
       商品名: productTitle.substring(0, 50),
       マーケット: marketplace,

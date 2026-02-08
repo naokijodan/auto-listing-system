@@ -563,14 +563,118 @@ export class EbayApiClient {
   }
 
   /**
-   * カテゴリIDをマッピング
+   * カテゴリIDをマッピング（Phase 45: 拡張版）
+   * 1. DBの完全一致
+   * 2. enrichmentエンジンの曖昧マッチング
+   * 3. AI推定（オプション）
    */
-  async getCategoryId(sourceCategory: string): Promise<string | null> {
+  async getCategoryId(
+    sourceCategory: string,
+    title?: string,
+    description?: string,
+    useAI: boolean = false
+  ): Promise<string | null> {
+    // 1. DBの完全一致
     const mapping = await prisma.ebayCategoryMapping.findUnique({
       where: { sourceCategory },
     });
 
-    return mapping?.ebayCategoryId || null;
+    if (mapping) {
+      log.debug({
+        type: 'category_mapping_found',
+        sourceCategory,
+        ebayCategoryId: mapping.ebayCategoryId,
+        source: 'database',
+      });
+      return mapping.ebayCategoryId;
+    }
+
+    // 2. enrichmentエンジンで推定（タイトルがある場合）
+    if (title) {
+      try {
+        // 動的インポート（循環依存回避）
+        const { mapToEbayCategory } = await import('@rakuda/enrichment');
+        const result = await mapToEbayCategory(
+          sourceCategory,
+          title,
+          description || '',
+          useAI
+        );
+
+        if (result.confidence >= 0.5) {
+          log.info({
+            type: 'category_mapping_inferred',
+            sourceCategory,
+            ebayCategoryId: result.categoryId,
+            confidence: result.confidence,
+            source: result.source,
+          });
+          return result.categoryId;
+        }
+      } catch (error: any) {
+        log.warn({
+          type: 'category_mapping_inference_failed',
+          error: error.message,
+        });
+      }
+    }
+
+    log.warn({
+      type: 'category_mapping_not_found',
+      sourceCategory,
+    });
+    return null;
+  }
+
+  /**
+   * カテゴリIDを取得（ItemSpecifics付き）
+   */
+  async getCategoryWithSpecifics(
+    sourceCategory: string,
+    title?: string,
+    description?: string
+  ): Promise<{
+    categoryId: string | null;
+    itemSpecifics: Record<string, string[]>;
+  }> {
+    // 1. DBから取得
+    const mapping = await prisma.ebayCategoryMapping.findUnique({
+      where: { sourceCategory },
+    });
+
+    if (mapping) {
+      return {
+        categoryId: mapping.ebayCategoryId,
+        itemSpecifics: (mapping.itemSpecifics as Record<string, string[]>) || {},
+      };
+    }
+
+    // 2. enrichmentエンジンで推定
+    if (title) {
+      try {
+        const { mapToEbayCategory } = await import('@rakuda/enrichment');
+        const result = await mapToEbayCategory(
+          sourceCategory,
+          title,
+          description || '',
+          false // AI不使用（高速化）
+        );
+
+        if (result.confidence >= 0.5) {
+          return {
+            categoryId: result.categoryId,
+            itemSpecifics: result.itemSpecifics || {},
+          };
+        }
+      } catch {
+        // フォールバック
+      }
+    }
+
+    return {
+      categoryId: null,
+      itemSpecifics: {},
+    };
   }
 
   /**

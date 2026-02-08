@@ -9,6 +9,7 @@ import { inventoryRouter } from '../../routes/inventory';
 import { pricingRouter } from '../../routes/pricing';
 import { authRouter } from '../../routes/auth';
 import { marketplacesRouter } from '../../routes/marketplaces';
+import { settingsRouter } from '../../routes/settings';
 import { errorHandler } from '../../middleware/error-handler';
 
 /**
@@ -32,6 +33,7 @@ export function createTestApp() {
   app.use('/api/pricing', pricingRouter);
   app.use('/api/auth', authRouter);
   app.use('/api/marketplaces', marketplacesRouter);
+  app.use('/api/settings', settingsRouter);
 
   // エラーハンドラー
   app.use(errorHandler);

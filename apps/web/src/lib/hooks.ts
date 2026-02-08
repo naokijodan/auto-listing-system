@@ -263,6 +263,9 @@ export interface NotificationChannel {
   token?: string;
   enabledTypes: string[];
   minSeverity: string;
+  // Phase 45: マーケットプレイスフィルター
+  // 空配列 = 全マーケットプレイスの通知を受信
+  marketplaceFilter: ('JOOM' | 'EBAY')[];
   isActive: boolean;
   lastUsedAt?: string;
   lastError?: string;

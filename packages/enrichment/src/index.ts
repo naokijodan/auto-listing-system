@@ -1,10 +1,13 @@
 /**
  * Phase 40-A: Content Enrichment Engine
  * 翻訳・属性抽出・禁制品チェックの統合エンジン
+ *
+ * Phase 45: eBayカテゴリマッピング追加
  */
 export * from './translator';
 export * from './attribute-extractor';
 export * from './content-validator';
+export * from './ebay-category-mapper';
 
 import { enrichProduct, EnrichmentResult, isOpenAIConfigured } from './translator';
 import { extractAttributes, mergeAttributes, ExtractedAttributes } from './attribute-extractor';

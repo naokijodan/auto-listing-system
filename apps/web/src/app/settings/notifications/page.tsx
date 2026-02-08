@@ -21,6 +21,7 @@ import {
   Send,
   Mail,
   AlertCircle,
+  Store,
 } from 'lucide-react';
 
 const channelTypes = [
@@ -156,6 +157,11 @@ export default function NotificationChannelsPage() {
                           </div>
                           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                             {channelType?.label} • {channel.enabledTypes.length}種類の通知
+                            {channel.marketplaceFilter && channel.marketplaceFilter.length > 0 && (
+                              <span className="ml-2">
+                                • {channel.marketplaceFilter.join(', ')}のみ
+                              </span>
+                            )}
                           </p>
                           {channel.lastError && (
                             <div className="mt-2 flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
@@ -212,6 +218,27 @@ export default function NotificationChannelsPage() {
                         </Button>
                       </div>
                     </div>
+
+                    {/* Marketplace Filter */}
+                    {channel.marketplaceFilter && channel.marketplaceFilter.length > 0 && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <Store className="h-4 w-4 text-zinc-400" />
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">対象マーケット:</span>
+                        {channel.marketplaceFilter.map((mp) => (
+                          <span
+                            key={mp}
+                            className={cn(
+                              'rounded px-2 py-0.5 text-xs font-medium',
+                              mp === 'JOOM'
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            )}
+                          >
+                            {mp}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Enabled Events */}
                     <div className="mt-4 flex flex-wrap gap-1.5">
@@ -272,6 +299,7 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
     token: '',
     enabledTypes: channel?.enabledTypes || [],
     minSeverity: channel?.minSeverity || 'INFO',
+    marketplaceFilter: channel?.marketplaceFilter || [],
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -284,6 +312,7 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
         name: formData.name,
         enabledTypes: formData.enabledTypes,
         minSeverity: formData.minSeverity,
+        marketplaceFilter: formData.marketplaceFilter,
       };
 
       if (formData.channel === 'LINE') {
@@ -311,6 +340,15 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
       enabledTypes: prev.enabledTypes.includes(type)
         ? prev.enabledTypes.filter((t) => t !== type)
         : [...prev.enabledTypes, type],
+    }));
+  };
+
+  const toggleMarketplace = (mp: 'JOOM' | 'EBAY') => {
+    setFormData((prev) => ({
+      ...prev,
+      marketplaceFilter: prev.marketplaceFilter.includes(mp)
+        ? prev.marketplaceFilter.filter((m) => m !== mp)
+        : [...prev.marketplaceFilter, mp],
     }));
   };
 
@@ -432,6 +470,55 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
               <option value="WARNING">WARNING以上</option>
               <option value="ERROR">ERRORのみ</option>
             </select>
+          </div>
+
+          {/* Marketplace Filter */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              対象マーケットプレイス
+            </label>
+            <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
+              選択したマーケットプレイスの通知のみ受信します。未選択の場合は全てのマーケットプレイスから通知を受信します。
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => toggleMarketplace('JOOM')}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-colors',
+                  formData.marketplaceFilter.includes('JOOM')
+                    ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
+                    : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400'
+                )}
+              >
+                <Store className="h-4 w-4" />
+                Joom
+                {formData.marketplaceFilter.includes('JOOM') && (
+                  <Check className="h-4 w-4" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleMarketplace('EBAY')}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-colors',
+                  formData.marketplaceFilter.includes('EBAY')
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                    : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400'
+                )}
+              >
+                <Store className="h-4 w-4" />
+                eBay
+                {formData.marketplaceFilter.includes('EBAY') && (
+                  <Check className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            <p className="mt-1.5 text-xs text-zinc-500">
+              {formData.marketplaceFilter.length === 0
+                ? '全てのマーケットプレイスから通知を受信'
+                : `${formData.marketplaceFilter.join(', ')} からの通知のみ受信`}
+            </p>
           </div>
 
           {/* Event Types */}

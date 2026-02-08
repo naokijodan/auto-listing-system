@@ -403,9 +403,27 @@ async function publishToEbay(
   // SKU生成
   const sku = `ALS-${product.id.substring(0, 8)}`;
 
-  // カテゴリマッピング
-  const categoryId = await ebayApi.getCategoryId(product.category || '');
-  const finalCategoryId = categoryId || '175672'; // デフォルト: その他
+  // Phase 45: 改善されたカテゴリマッピング
+  // タイトル・説明文を使って高精度なカテゴリ推定
+  const categoryResult = await ebayApi.getCategoryWithSpecifics(
+    product.category || '',
+    product.titleEn || product.title,
+    product.descriptionEn || product.description
+  );
+  const finalCategoryId = categoryResult.categoryId || '99'; // デフォルト: Everything Else
+
+  // ItemSpecificsをマージ（商品属性 + カテゴリデフォルト）
+  const mergedAspects = {
+    ...categoryResult.itemSpecifics,
+    ...(product.attributes?.itemSpecifics || {}),
+  };
+
+  log.info({
+    type: 'ebay_category_mapped',
+    sourceCategory: product.category,
+    ebayCategoryId: finalCategoryId,
+    aspectsCount: Object.keys(mergedAspects).length,
+  });
 
   // 1. インベントリアイテム作成
   const inventoryResult = await ebayApi.createOrUpdateInventoryItem(sku, {
@@ -414,7 +432,7 @@ async function publishToEbay(
     imageUrls: product.processedImages || product.images,
     condition: mapConditionToEbay(product.condition),
     conditionDescription: product.condition,
-    aspects: product.attributes?.itemSpecifics || {},
+    aspects: mergedAspects,
   });
 
   if (!inventoryResult.success) {

@@ -513,6 +513,11 @@ model NotificationChannel {
   enabledTypes NotificationChannelEventType[] // 有効な通知タイプ
   minSeverity  NotificationSeverity @default(INFO) // 最低重要度
 
+  // マーケットプレイスフィルター（Phase 45）
+  // 空配列 = 全マーケットプレイスの通知を受信
+  // 特定のマーケットプレイスのみ = そのマーケットの通知のみ受信
+  marketplaceFilter Marketplace[] @default([])
+
   // 状態
   isActive     Boolean   @default(true)
   lastUsedAt   DateTime?

@@ -69,6 +69,7 @@ router.post('/', async (req, res, next) => {
       token,
       enabledTypes = [],
       minSeverity = 'INFO',
+      marketplaceFilter = [],
     } = req.body;
 
     if (!channel || !name) {
@@ -88,6 +89,12 @@ router.post('/', async (req, res, next) => {
       throw new AppError(400, 'token is required for LINE', 'INVALID_REQUEST');
     }
 
+    // マーケットプレイスフィルターの検証
+    const validMarketplaces = ['JOOM', 'EBAY'];
+    if (marketplaceFilter.length > 0 && !marketplaceFilter.every((m: string) => validMarketplaces.includes(m))) {
+      throw new AppError(400, 'Invalid marketplace in marketplaceFilter', 'INVALID_REQUEST');
+    }
+
     const newChannel = await prisma.notificationChannel.create({
       data: {
         channel,
@@ -96,6 +103,7 @@ router.post('/', async (req, res, next) => {
         token,
         enabledTypes,
         minSeverity,
+        marketplaceFilter,
       },
     });
 
@@ -138,6 +146,7 @@ router.patch('/:id', async (req, res, next) => {
       enabledTypes,
       minSeverity,
       isActive,
+      marketplaceFilter,
     } = req.body;
 
     const updateData: any = {};
@@ -147,6 +156,14 @@ router.patch('/:id', async (req, res, next) => {
     if (enabledTypes !== undefined) updateData.enabledTypes = enabledTypes;
     if (minSeverity !== undefined) updateData.minSeverity = minSeverity;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (marketplaceFilter !== undefined) {
+      // マーケットプレイスフィルターの検証
+      const validMarketplaces = ['JOOM', 'EBAY'];
+      if (marketplaceFilter.length > 0 && !marketplaceFilter.every((m: string) => validMarketplaces.includes(m))) {
+        throw new AppError(400, 'Invalid marketplace in marketplaceFilter', 'INVALID_REQUEST');
+      }
+      updateData.marketplaceFilter = marketplaceFilter;
+    }
 
     const updatedChannel = await prisma.notificationChannel.update({
       where: { id: req.params.id },

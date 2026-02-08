@@ -312,6 +312,74 @@ Description:
 
   console.log(`✅ Created ${translationPrompts.length} translation prompts`);
 
+  // マーケットプレイス同期設定（Phase 44-B）
+  const syncSettings = await Promise.all([
+    // Joom設定
+    prisma.marketplaceSyncSetting.upsert({
+      where: { marketplace_syncType: { marketplace: 'JOOM', syncType: 'INVENTORY' } },
+      update: {},
+      create: {
+        marketplace: 'JOOM',
+        syncType: 'INVENTORY',
+        cronExpression: '0 */6 * * *', // 6時間ごと
+        isEnabled: true,
+      },
+    }),
+    prisma.marketplaceSyncSetting.upsert({
+      where: { marketplace_syncType: { marketplace: 'JOOM', syncType: 'ORDER' } },
+      update: {},
+      create: {
+        marketplace: 'JOOM',
+        syncType: 'ORDER',
+        cronExpression: '0 */6 * * *', // 6時間ごと
+        isEnabled: true,
+      },
+    }),
+    prisma.marketplaceSyncSetting.upsert({
+      where: { marketplace_syncType: { marketplace: 'JOOM', syncType: 'PRICE' } },
+      update: {},
+      create: {
+        marketplace: 'JOOM',
+        syncType: 'PRICE',
+        cronExpression: '0 */12 * * *', // 12時間ごと
+        isEnabled: true,
+      },
+    }),
+    // eBay設定
+    prisma.marketplaceSyncSetting.upsert({
+      where: { marketplace_syncType: { marketplace: 'EBAY', syncType: 'INVENTORY' } },
+      update: {},
+      create: {
+        marketplace: 'EBAY',
+        syncType: 'INVENTORY',
+        cronExpression: '15 */6 * * *', // 6時間ごと（15分オフセット）
+        isEnabled: true,
+      },
+    }),
+    prisma.marketplaceSyncSetting.upsert({
+      where: { marketplace_syncType: { marketplace: 'EBAY', syncType: 'ORDER' } },
+      update: {},
+      create: {
+        marketplace: 'EBAY',
+        syncType: 'ORDER',
+        cronExpression: '15 */6 * * *', // 6時間ごと（15分オフセット）
+        isEnabled: true,
+      },
+    }),
+    prisma.marketplaceSyncSetting.upsert({
+      where: { marketplace_syncType: { marketplace: 'EBAY', syncType: 'PRICE' } },
+      update: {},
+      create: {
+        marketplace: 'EBAY',
+        syncType: 'PRICE',
+        cronExpression: '15 */12 * * *', // 12時間ごと（15分オフセット）
+        isEnabled: true,
+      },
+    }),
+  ]);
+
+  console.log(`✅ Created ${syncSettings.length} marketplace sync settings`);
+
   console.log('🎉 Seeding completed!');
 }
 

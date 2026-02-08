@@ -134,6 +134,15 @@ export const mockPrisma = {
     delete: vi.fn(),
     count: vi.fn(),
   },
+  marketplaceSyncSetting: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    upsert: vi.fn(),
+    delete: vi.fn(),
+  },
   $transaction: vi.fn().mockImplementation((operations: any[]) =>
     Promise.all(operations.map((op: any) => op))
   ),

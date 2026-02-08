@@ -2,8 +2,17 @@ import { Router } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { AppError } from '../middleware/error-handler';
+import {
+  mapToEbayCategory,
+  suggestCategories,
+  getAllCategories as getBuiltInCategories,
+  getItemSpecificsForCategory,
+  EBAY_CATEGORY_MAP,
+  inferCategoryFromText,
+} from '@rakuda/enrichment';
 
 const router = Router();
+const log = logger.child({ module: 'categories' });
 
 /**
  * カテゴリマッピング一覧取得
@@ -289,6 +298,299 @@ router.get('/ebay/search', async (req, res, next) => {
       success: true,
       data: [...dbCategories, ...additionalCategories].slice(0, 15),
       message: dbCategories.length > 0 ? 'Results from database mappings' : 'Results from common categories',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Phase 45: AIカテゴリ推定
+ * 商品タイトルと説明文からeBayカテゴリを推定
+ */
+router.post('/infer', async (req, res, next) => {
+  try {
+    const { title, description = '', sourceCategory, useAI = true } = req.body;
+
+    if (!title) {
+      throw new AppError(400, 'title is required', 'INVALID_REQUEST');
+    }
+
+    log.info({
+      type: 'category_infer_start',
+      titlePreview: title.substring(0, 50),
+      sourceCategory,
+      useAI,
+    });
+
+    // 1. まずDBのマッピングを確認
+    let dbMapping = null;
+    if (sourceCategory) {
+      dbMapping = await prisma.ebayCategoryMapping.findUnique({
+        where: { sourceCategory },
+      });
+    }
+
+    if (dbMapping) {
+      log.info({
+        type: 'category_infer_db_match',
+        sourceCategory,
+        ebayCategoryId: dbMapping.ebayCategoryId,
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          categoryId: dbMapping.ebayCategoryId,
+          categoryName: dbMapping.ebayCategoryName,
+          categoryPath: dbMapping.ebayCategoryName,
+          confidence: 1.0,
+          source: 'database',
+          itemSpecifics: dbMapping.itemSpecifics,
+        },
+      });
+    }
+
+    // 2. enrichmentエンジンでカテゴリ推定
+    const result = await mapToEbayCategory(
+      sourceCategory || null,
+      title,
+      description,
+      useAI
+    );
+
+    log.info({
+      type: 'category_infer_complete',
+      categoryId: result.categoryId,
+      confidence: result.confidence,
+      source: result.source,
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Phase 45: カテゴリサジェスト
+ * クエリに基づいてカテゴリ候補を提案
+ */
+router.get('/suggest', async (req, res, next) => {
+  try {
+    const { query, limit = 5 } = req.query;
+
+    if (!query) {
+      throw new AppError(400, 'query parameter is required', 'INVALID_REQUEST');
+    }
+
+    // 1. DBマッピングを検索
+    const dbMappings = await prisma.ebayCategoryMapping.findMany({
+      where: {
+        OR: [
+          { sourceCategory: { contains: query as string, mode: 'insensitive' } },
+          { ebayCategoryName: { contains: query as string, mode: 'insensitive' } },
+        ],
+        isActive: true,
+      },
+      take: Number(limit),
+    });
+
+    const dbResults = dbMappings.map(m => ({
+      category: m.sourceCategory,
+      categoryId: m.ebayCategoryId,
+      categoryName: m.ebayCategoryName,
+      similarity: 1.0,
+      source: 'database' as const,
+    }));
+
+    // 2. ビルトインカテゴリから検索
+    const builtInResults = suggestCategories(query as string, Number(limit));
+    const builtInFormatted = builtInResults.map(r => ({
+      category: r.category,
+      categoryId: r.categoryId,
+      categoryName: EBAY_CATEGORY_MAP[r.category]?.categoryName || r.category,
+      similarity: r.similarity,
+      source: 'builtin' as const,
+    }));
+
+    // 3. 結果をマージ（重複除去、スコア順）
+    const seenIds = new Set<string>();
+    const merged = [...dbResults, ...builtInFormatted]
+      .filter(r => {
+        if (seenIds.has(r.categoryId)) return false;
+        seenIds.add(r.categoryId);
+        return true;
+      })
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, Number(limit));
+
+    res.json({
+      success: true,
+      data: merged,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Phase 45: ビルトインカテゴリ一覧
+ * enrichmentエンジンに組み込まれたカテゴリを取得
+ */
+router.get('/builtin', async (_req, res, next) => {
+  try {
+    const categories = getBuiltInCategories();
+
+    res.json({
+      success: true,
+      data: categories,
+      count: categories.length,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Phase 45: カテゴリのItemSpecifics取得
+ */
+router.get('/item-specifics/:categoryId', async (req, res, next) => {
+  try {
+    const { categoryId } = req.params;
+
+    // 1. DBから取得を試行
+    const dbMapping = await prisma.ebayCategoryMapping.findFirst({
+      where: { ebayCategoryId: categoryId },
+    });
+
+    if (dbMapping && dbMapping.itemSpecifics) {
+      return res.json({
+        success: true,
+        data: {
+          categoryId,
+          itemSpecifics: dbMapping.itemSpecifics,
+          source: 'database',
+        },
+      });
+    }
+
+    // 2. ビルトインから取得
+    const builtInSpecifics = getItemSpecificsForCategory(categoryId);
+
+    res.json({
+      success: true,
+      data: {
+        categoryId,
+        itemSpecifics: builtInSpecifics || {},
+        source: builtInSpecifics ? 'builtin' : 'none',
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Phase 45: ビルトインカテゴリをDBに同期
+ * ビルトインのカテゴリマッピングをDBにインポート
+ */
+router.post('/sync-builtin', async (_req, res, next) => {
+  try {
+    const builtInCategories = getBuiltInCategories();
+    const results = {
+      created: 0,
+      updated: 0,
+      skipped: 0,
+    };
+
+    for (const cat of builtInCategories) {
+      try {
+        const existing = await prisma.ebayCategoryMapping.findUnique({
+          where: { sourceCategory: cat.category },
+        });
+
+        if (existing) {
+          // 既存のものは更新しない（ユーザーのカスタマイズを尊重）
+          results.skipped++;
+          continue;
+        }
+
+        // 新規作成
+        await prisma.ebayCategoryMapping.create({
+          data: {
+            sourceCategory: cat.category,
+            ebayCategoryId: cat.categoryId,
+            ebayCategoryName: cat.categoryName,
+            itemSpecifics: EBAY_CATEGORY_MAP[cat.category]?.itemSpecifics || {},
+            isActive: true,
+          },
+        });
+        results.created++;
+      } catch {
+        // 重複などのエラーはスキップ
+        results.skipped++;
+      }
+    }
+
+    log.info({
+      type: 'category_sync_builtin_complete',
+      ...results,
+    });
+
+    res.json({
+      success: true,
+      data: results,
+      message: `Synced ${results.created} categories, skipped ${results.skipped}`,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * Phase 45: テキストからカテゴリ推定（ルールベース高速版）
+ * AIを使用せず、キーワードマッチングのみで推定
+ */
+router.post('/infer-fast', async (req, res, next) => {
+  try {
+    const { title, description = '' } = req.body;
+
+    if (!title) {
+      throw new AppError(400, 'title is required', 'INVALID_REQUEST');
+    }
+
+    const result = inferCategoryFromText(title, description);
+
+    if (result.category && EBAY_CATEGORY_MAP[result.category]) {
+      const categoryInfo = EBAY_CATEGORY_MAP[result.category];
+      return res.json({
+        success: true,
+        data: {
+          category: result.category,
+          categoryId: categoryInfo.categoryId,
+          categoryName: categoryInfo.categoryName,
+          categoryPath: categoryInfo.categoryPath,
+          confidence: result.confidence,
+          hints: result.hints,
+          itemSpecifics: categoryInfo.itemSpecifics,
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        category: null,
+        categoryId: null,
+        categoryName: null,
+        confidence: 0,
+        hints: result.hints,
+        message: 'No category match found',
+      },
     });
   } catch (error) {
     next(error);
