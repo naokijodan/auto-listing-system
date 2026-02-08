@@ -585,6 +585,148 @@ router.get('/ebay/inventory/stats', async (req: Request, res: Response, next: Ne
 });
 
 // ========================================
+// Joom 接続テスト
+// ========================================
+
+/**
+ * Joom接続テスト
+ * GET /api/marketplaces/joom/test-connection
+ */
+router.get('/joom/test-connection', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // 1. 認証情報が設定されているか確認
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: {
+        marketplace: 'JOOM',
+        isActive: true,
+      },
+    });
+
+    if (!credential) {
+      res.json({
+        success: false,
+        status: 'not_configured',
+        message: 'Joom認証情報が設定されていません',
+      });
+      return;
+    }
+
+    const creds = credential.credentials as {
+      accessToken?: string;
+      refreshToken?: string;
+      clientId?: string;
+      clientSecret?: string;
+    };
+
+    // 2. トークンがあるか確認
+    if (!creds.accessToken) {
+      res.json({
+        success: false,
+        status: 'no_tokens',
+        message: 'アクセストークンが設定されていません',
+      });
+      return;
+    }
+
+    // 3. トークンの有効期限確認
+    const tokenExpired = credential.tokenExpiresAt
+      ? credential.tokenExpiresAt < new Date()
+      : false;
+
+    if (tokenExpired) {
+      res.json({
+        success: false,
+        status: 'token_expired',
+        message: 'アクセストークンの有効期限が切れています',
+        tokenExpired: true,
+        tokenExpiresAt: credential.tokenExpiresAt,
+      });
+      return;
+    }
+
+    // 4. Joom APIでテスト（自分のストア情報を取得）
+    const testUrl = 'https://api-merchant.joom.com/api/v3/store';
+    const testResponse = await fetch(testUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${creds.accessToken}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (testResponse.ok) {
+      const storeData = await testResponse.json() as { data?: { id?: string; name?: string } };
+
+      log.info({
+        type: 'joom_connection_test_success',
+      });
+
+      res.json({
+        success: true,
+        status: 'connected',
+        message: 'Joom APIに正常に接続できました',
+        tokenExpired: false,
+        tokenExpiresAt: credential.tokenExpiresAt,
+        store: storeData.data ? {
+          id: storeData.data.id,
+          name: storeData.data.name,
+        } : null,
+        credential: {
+          id: credential.id,
+          createdAt: credential.createdAt,
+          tokenExpiresAt: credential.tokenExpiresAt,
+        },
+      });
+    } else {
+      const errorData = await testResponse.json().catch(() => ({})) as { message?: string; code?: string };
+
+      if (testResponse.status === 401 || testResponse.status === 403) {
+        log.warn({
+          type: 'joom_connection_test_auth_failed',
+          status: testResponse.status,
+          error: errorData,
+        });
+
+        res.json({
+          success: false,
+          status: 'auth_failed',
+          message: 'トークンが無効または期限切れです',
+          httpStatus: testResponse.status,
+          error: errorData.message,
+          tokenExpired: true,
+        });
+      } else {
+        log.error({
+          type: 'joom_connection_test_api_error',
+          status: testResponse.status,
+          error: errorData,
+        });
+
+        res.json({
+          success: false,
+          status: 'api_error',
+          message: 'Joom APIエラー',
+          httpStatus: testResponse.status,
+          error: errorData.message || 'Unknown error',
+        });
+      }
+    }
+  } catch (error: any) {
+    log.error({
+      type: 'joom_connection_test_exception',
+      error: error.message,
+    });
+
+    res.json({
+      success: false,
+      status: 'network_error',
+      message: 'ネットワークエラー',
+      error: error.message,
+    });
+  }
+});
+
+// ========================================
 // Joom 出品管理API
 // ========================================
 

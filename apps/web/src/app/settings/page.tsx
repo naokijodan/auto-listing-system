@@ -343,7 +343,9 @@ function MarketplaceSettings() {
     fetcher
   );
   const [testingEbay, setTestingEbay] = useState(false);
+  const [testingJoom, setTestingJoom] = useState(false);
   const [ebayTestResult, setEbayTestResult] = useState<ConnectionTestResult | null>(null);
+  const [joomTestResult, setJoomTestResult] = useState<ConnectionTestResult | null>(null);
 
   const overview = overviewResponse?.data;
 
@@ -362,6 +364,24 @@ function MarketplaceSettings() {
       addToast({ type: 'error', message: '接続テストに失敗しました' });
     } finally {
       setTestingEbay(false);
+    }
+  };
+
+  const handleTestJoomConnection = async () => {
+    setTestingJoom(true);
+    setJoomTestResult(null);
+    try {
+      const result = await fetcher<ConnectionTestResult>('/api/marketplaces/joom/test-connection');
+      setJoomTestResult(result);
+      if (result.success) {
+        addToast({ type: 'success', message: 'Joom接続テスト成功' });
+      } else {
+        addToast({ type: 'error', message: result.message });
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: '接続テストに失敗しました' });
+    } finally {
+      setTestingJoom(false);
     }
   };
 
@@ -521,6 +541,47 @@ function MarketplaceSettings() {
                     {overview.joom.listings.SOLD || 0}件
                   </p>
                 </div>
+              </div>
+
+              {/* Test Result */}
+              {joomTestResult && (
+                <div className={cn(
+                  'rounded-lg p-3',
+                  joomTestResult.success
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                    : 'bg-red-50 dark:bg-red-900/20'
+                )}>
+                  <div className="flex items-center gap-2">
+                    {joomTestResult.success ? (
+                      <CheckCircle className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-600" />
+                    )}
+                    <span className={cn(
+                      'text-sm font-medium',
+                      joomTestResult.success ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'
+                    )}>
+                      {joomTestResult.message}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTestJoomConnection}
+                  disabled={testingJoom}
+                >
+                  {testingJoom ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                  接続テスト
+                </Button>
               </div>
 
               {/* Sync Schedule */}
