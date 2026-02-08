@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { addToast } from '@/components/ui/toast';
 import {
   DollarSign,
   Bell,
@@ -17,8 +19,16 @@ import {
   FolderTree,
   Sparkles,
   ChevronRight,
+  Store,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Clock,
+  Loader2,
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { fetcher, postApi } from '@/lib/api';
 
 const tabs = [
   { id: 'price', label: '価格設定', icon: DollarSign },
@@ -306,69 +316,274 @@ function NotificationSettings() {
   );
 }
 
+interface MarketplaceOverview {
+  ebay: {
+    connected: boolean;
+    tokenExpired: boolean | null;
+    environment: string;
+    listings: Record<string, number>;
+  };
+  joom: {
+    connected: boolean;
+    listings: Record<string, number>;
+  };
+}
+
+interface ConnectionTestResult {
+  success: boolean;
+  status: string;
+  message: string;
+  environment?: string;
+  tokenExpired?: boolean;
+}
+
 function MarketplaceSettings() {
+  const { data: overviewResponse, isLoading, mutate } = useSWR<{ success: boolean; data: MarketplaceOverview }>(
+    '/api/marketplaces/overview',
+    fetcher
+  );
+  const [testingEbay, setTestingEbay] = useState(false);
+  const [ebayTestResult, setEbayTestResult] = useState<ConnectionTestResult | null>(null);
+
+  const overview = overviewResponse?.data;
+
+  const handleTestEbayConnection = async () => {
+    setTestingEbay(true);
+    setEbayTestResult(null);
+    try {
+      const result = await fetcher<ConnectionTestResult>('/api/marketplaces/ebay/test-connection');
+      setEbayTestResult(result);
+      if (result.success) {
+        addToast({ type: 'success', message: 'eBay接続テスト成功' });
+      } else {
+        addToast({ type: 'error', message: result.message });
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: '接続テストに失敗しました' });
+    } finally {
+      setTestingEbay(false);
+    }
+  };
+
+  const getConnectionStatus = (connected: boolean, tokenExpired: boolean | null) => {
+    if (!connected) {
+      return { color: 'text-zinc-500', bg: 'bg-zinc-400', label: '未接続', icon: XCircle };
+    }
+    if (tokenExpired) {
+      return { color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500', label: 'トークン期限切れ', icon: AlertTriangle };
+    }
+    return { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500', label: '接続済み', icon: CheckCircle };
+  };
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>eBay API 設定</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Client ID
-            </label>
-            <input
-              type="text"
-              placeholder="Enter eBay Client ID"
-              className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Client Secret
-            </label>
-            <input
-              type="password"
-              placeholder="Enter eBay Client Secret"
-              className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span className="text-sm text-emerald-600 dark:text-emerald-400">接続済み</span>
-          </div>
-        </CardContent>
-      </Card>
+      {isLoading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+        </div>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Joom API 設定</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              API Key
-            </label>
-            <input
-              type="password"
-              placeholder="Enter Joom API Key"
-              className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-amber-500" />
-            <span className="text-sm text-amber-600 dark:text-amber-400">未設定</span>
-          </div>
-        </CardContent>
-      </Card>
+      {overview && (
+        <>
+          {/* eBay Card */}
+          <Card className="border-2 border-blue-200 dark:border-blue-800">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Store className="h-5 w-5 text-blue-600" />
+                  eBay
+                </CardTitle>
+                {(() => {
+                  const status = getConnectionStatus(overview.ebay.connected, overview.ebay.tokenExpired);
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className={cn('h-2 w-2 rounded-full', status.bg)} />
+                      <span className={cn('text-sm', status.color)}>{status.label}</span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Connection Info */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+                  <p className="text-xs text-blue-600 dark:text-blue-400">環境</p>
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                    {overview.ebay.environment === 'production' ? '本番' : 'サンドボックス'}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-blue-50 p-3 dark:bg-blue-900/20">
+                  <p className="text-xs text-blue-600 dark:text-blue-400">アクティブ出品</p>
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                    {overview.ebay.listings.ACTIVE || 0}件
+                  </p>
+                </div>
+              </div>
 
-      <div className="flex justify-end">
-        <Button>
-          <Save className="h-4 w-4" />
-          保存
-        </Button>
-      </div>
+              {/* Test Result */}
+              {ebayTestResult && (
+                <div className={cn(
+                  'rounded-lg p-3',
+                  ebayTestResult.success
+                    ? 'bg-emerald-50 dark:bg-emerald-900/20'
+                    : 'bg-red-50 dark:bg-red-900/20'
+                )}>
+                  <div className="flex items-center gap-2">
+                    {ebayTestResult.success ? (
+                      <CheckCircle className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-600" />
+                    )}
+                    <span className={cn(
+                      'text-sm font-medium',
+                      ebayTestResult.success ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'
+                    )}>
+                      {ebayTestResult.message}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTestEbayConnection}
+                  disabled={testingEbay}
+                >
+                  {testingEbay ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                  接続テスト
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => mutate()}>
+                  <RefreshCw className="h-4 w-4" />
+                  更新
+                </Button>
+              </div>
+
+              {/* Sync Schedule */}
+              <div className="border-t pt-4 dark:border-zinc-700">
+                <h4 className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">同期スケジュール</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-600 dark:text-zinc-400">在庫同期</span>
+                    <span className="text-zinc-900 dark:text-white">6時間ごと (毎時45分)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-600 dark:text-zinc-400">注文同期</span>
+                    <span className="text-zinc-900 dark:text-white">6時間ごと (毎時45分)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-600 dark:text-zinc-400">価格同期</span>
+                    <span className="text-zinc-900 dark:text-white">6時間ごと</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Joom Card */}
+          <Card className="border-2 border-amber-200 dark:border-amber-800">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Store className="h-5 w-5 text-amber-600" />
+                  Joom
+                </CardTitle>
+                {(() => {
+                  const status = getConnectionStatus(overview.joom.connected, null);
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className={cn('h-2 w-2 rounded-full', status.bg)} />
+                      <span className={cn('text-sm', status.color)}>{status.label}</span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Connection Info */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
+                  <p className="text-xs text-amber-600 dark:text-amber-400">アクティブ出品</p>
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    {overview.joom.listings.ACTIVE || 0}件
+                  </p>
+                </div>
+                <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-900/20">
+                  <p className="text-xs text-amber-600 dark:text-amber-400">販売済</p>
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    {overview.joom.listings.SOLD || 0}件
+                  </p>
+                </div>
+              </div>
+
+              {/* Sync Schedule */}
+              <div className="border-t pt-4 dark:border-zinc-700">
+                <h4 className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">同期スケジュール</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-600 dark:text-zinc-400">在庫同期</span>
+                    <span className="text-zinc-900 dark:text-white">6時間ごと (毎時30分)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-600 dark:text-zinc-400">注文同期</span>
+                    <span className="text-zinc-900 dark:text-white">6時間ごと (毎時30分)</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-zinc-600 dark:text-zinc-400">価格同期</span>
+                    <span className="text-zinc-900 dark:text-white">6時間ごと</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Links */}
+          <Card>
+            <CardHeader>
+              <CardTitle>クイックリンク</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Link
+                href="/joom"
+                className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              >
+                <div className="flex items-center gap-3">
+                  <Store className="h-5 w-5 text-amber-600" />
+                  <span className="font-medium">Joom管理</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-zinc-400" />
+              </Link>
+              <Link
+                href="/ebay"
+                className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              >
+                <div className="flex items-center gap-3">
+                  <Store className="h-5 w-5 text-blue-600" />
+                  <span className="font-medium">eBay管理</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-zinc-400" />
+              </Link>
+              <Link
+                href="/settings/categories"
+                className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              >
+                <div className="flex items-center gap-3">
+                  <FolderTree className="h-5 w-5 text-purple-600" />
+                  <span className="font-medium">カテゴリマッピング</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-zinc-400" />
+              </Link>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
