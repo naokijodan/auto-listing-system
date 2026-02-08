@@ -18,8 +18,9 @@ import {
   Heart,
   BarChart3,
   Truck,
+  Store,
 } from 'lucide-react';
-import { useDashboardStats, useJobLogs, useExchangeRate, useOrderStats } from '@/lib/hooks';
+import { useDashboardStats, useJobLogs, useExchangeRate, useOrderStats, useMarketplaceStats } from '@/lib/hooks';
 import { fetcher } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -76,6 +77,10 @@ export default function Dashboard() {
 
   // Fetch order stats
   const { data: orderStatsData } = useOrderStats();
+
+  // Fetch marketplace stats (Phase 42)
+  const { data: marketplaceStatsData } = useMarketplaceStats();
+  const mpStats = marketplaceStatsData?.data;
 
   // Transform job logs to activity format
   const activities = useMemo(() => {
@@ -283,6 +288,79 @@ export default function Dashboard() {
             </div>
           </div>
         </Link>
+      )}
+
+      {/* Marketplace Stats (Phase 42) */}
+      {mpStats && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Joom Card */}
+          <Link
+            href="/joom"
+            className="block rounded-xl border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                <Store className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Joom</h3>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  最終同期: {mpStats.joom.lastSync
+                    ? new Date(mpStats.joom.lastSync).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '--'}
+                </p>
+              </div>
+              <div className="flex gap-4 text-center">
+                <div>
+                  <p className="text-xl font-bold text-amber-600 dark:text-amber-400">
+                    {mpStats.joom.activeListings}
+                  </p>
+                  <p className="text-xs text-zinc-500">出品中</p>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                    ${mpStats.joom.revenueThisMonth.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-zinc-500">今月売上</p>
+                </div>
+              </div>
+            </div>
+          </Link>
+
+          {/* eBay Card */}
+          <Link
+            href="/ebay"
+            className="block rounded-xl border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                <Store className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">eBay</h3>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  最終同期: {mpStats.ebay.lastSync
+                    ? new Date(mpStats.ebay.lastSync).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '--'}
+                </p>
+              </div>
+              <div className="flex gap-4 text-center">
+                <div>
+                  <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                    {mpStats.ebay.activeListings}
+                  </p>
+                  <p className="text-xs text-zinc-500">出品中</p>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                    ${mpStats.ebay.revenueThisMonth.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-zinc-500">今月売上</p>
+                </div>
+              </div>
+            </div>
+          </Link>
+        </div>
       )}
 
       {/* Charts and Activity */}

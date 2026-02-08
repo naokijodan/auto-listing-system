@@ -238,6 +238,9 @@ export const api = {
     return `/api/orders?${query.toString()}`;
   },
   getOrderStats: () => `/api/orders/stats/summary`,
+
+  // Marketplace Stats (Phase 42)
+  getMarketplaceStats: () => `/api/analytics/marketplace-stats`,
 };
 
 // POST/PUT/DELETE helpers

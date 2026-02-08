@@ -345,3 +345,30 @@ export function useOrder(id: string | null) {
     fetcher
   );
 }
+
+// Marketplace Stats (Phase 42)
+export interface MarketplaceStats {
+  joom: {
+    totalListings: number;
+    activeListings: number;
+    ordersThisMonth: number;
+    revenueThisMonth: number;
+    lastSync: string | null;
+    lastSyncType: string | null;
+  };
+  ebay: {
+    totalListings: number;
+    activeListings: number;
+    ordersThisMonth: number;
+    revenueThisMonth: number;
+    lastSync: string | null;
+    lastSyncType: string | null;
+  };
+  calculatedAt: string;
+}
+
+export function useMarketplaceStats() {
+  return useSWR<ApiResponse<MarketplaceStats>>(api.getMarketplaceStats(), fetcher, {
+    refreshInterval: 60000, // 1分ごと
+  });
+}

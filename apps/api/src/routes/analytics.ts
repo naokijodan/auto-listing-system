@@ -1332,4 +1332,90 @@ router.get('/financial/export-pdf', async (req, res, next) => {
   }
 });
 
+/**
+ * マーケットプレイス別統計（Phase 42）
+ */
+router.get('/marketplace-stats', async (req, res, next) => {
+  try {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - 7);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // マーケットプレイス別の出品統計
+    const [
+      joomListings,
+      ebayListings,
+      joomActiveListings,
+      ebayActiveListings,
+      joomOrders,
+      ebayOrders,
+      joomRevenue,
+      ebayRevenue,
+    ] = await Promise.all([
+      prisma.listing.count({ where: { marketplace: 'JOOM' } }),
+      prisma.listing.count({ where: { marketplace: 'EBAY' } }),
+      prisma.listing.count({ where: { marketplace: 'JOOM', status: 'ACTIVE' } }),
+      prisma.listing.count({ where: { marketplace: 'EBAY', status: 'ACTIVE' } }),
+      prisma.order.count({ where: { marketplace: 'JOOM', orderedAt: { gte: monthStart } } }),
+      prisma.order.count({ where: { marketplace: 'EBAY', orderedAt: { gte: monthStart } } }),
+      prisma.order.aggregate({
+        where: { marketplace: 'JOOM', orderedAt: { gte: monthStart }, paymentStatus: 'PAID' },
+        _sum: { subtotal: true },
+      }),
+      prisma.order.aggregate({
+        where: { marketplace: 'EBAY', orderedAt: { gte: monthStart }, paymentStatus: 'PAID' },
+        _sum: { subtotal: true },
+      }),
+    ]);
+
+    // 同期ステータス（最新のジョブログから取得）
+    const [joomLastSync, ebayLastSync] = await Promise.all([
+      prisma.jobLog.findFirst({
+        where: {
+          queueName: { in: ['joom', 'pricing', 'inventory'] },
+          status: 'COMPLETED',
+        },
+        orderBy: { completedAt: 'desc' },
+        select: { completedAt: true, jobType: true },
+      }),
+      prisma.jobLog.findFirst({
+        where: {
+          queueName: { in: ['ebay', 'pricing', 'inventory'] },
+          status: 'COMPLETED',
+          result: { path: ['marketplace'], equals: 'EBAY' },
+        },
+        orderBy: { completedAt: 'desc' },
+        select: { completedAt: true, jobType: true },
+      }),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        joom: {
+          totalListings: joomListings,
+          activeListings: joomActiveListings,
+          ordersThisMonth: joomOrders,
+          revenueThisMonth: Math.round((joomRevenue._sum.subtotal || 0) * 100) / 100,
+          lastSync: joomLastSync?.completedAt?.toISOString() || null,
+          lastSyncType: joomLastSync?.jobType || null,
+        },
+        ebay: {
+          totalListings: ebayListings,
+          activeListings: ebayActiveListings,
+          ordersThisMonth: ebayOrders,
+          revenueThisMonth: Math.round((ebayRevenue._sum.subtotal || 0) * 100) / 100,
+          lastSync: ebayLastSync?.completedAt?.toISOString() || null,
+          lastSyncType: ebayLastSync?.jobType || null,
+        },
+        calculatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export { router as analyticsRouter };
