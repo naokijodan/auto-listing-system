@@ -1002,12 +1002,37 @@ export async function checkTokenExpiry(options: {
           });
         }
       } else if (cred.marketplace === 'JOOM') {
-        // Joomは手動トークン取得が必要なので警告のみ
-        result.warnings.push({
-          marketplace: cred.marketplace,
-          expiresAt,
-          message: `Token will expire soon. Manual renewal required via Joom merchant portal.`,
-        });
+        try {
+          // Phase 48: Joomもリフレッシュトークンで自動更新
+          const { refreshJoomToken } = await import('./joom-api');
+          const refreshResult = await refreshJoomToken();
+
+          if (refreshResult.success) {
+            result.refreshed++;
+            log.info({
+              type: 'token_refreshed',
+              marketplace: cred.marketplace,
+              expiresAt: refreshResult.expiresAt,
+            });
+          } else {
+            // リフレッシュ失敗時は警告として記録
+            result.warnings.push({
+              marketplace: cred.marketplace,
+              expiresAt,
+              message: refreshResult.error || 'Token refresh failed. Re-authorization may be required.',
+            });
+          }
+        } catch (error: any) {
+          result.errors.push({
+            marketplace: cred.marketplace,
+            error: error.message,
+          });
+          log.error({
+            type: 'token_refresh_failed',
+            marketplace: cred.marketplace,
+            error: error.message,
+          });
+        }
       }
     }
     // 警告が必要（期限まで warnThreshold 以内）

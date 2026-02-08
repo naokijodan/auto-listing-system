@@ -552,6 +552,131 @@ export class JoomApiClient {
 // シングルトンインスタンス
 export const joomApi = new JoomApiClient();
 
+// Joom OAuth トークンエンドポイント
+const JOOM_TOKEN_URL = 'https://api-merchant.joom.com/api/v2/oauth/access_token';
+
+/**
+ * Phase 48: Joom リフレッシュトークンでアクセストークンを更新
+ */
+export async function refreshJoomToken(): Promise<{
+  success: boolean;
+  expiresAt?: Date;
+  error?: string;
+}> {
+  const credential = await prisma.marketplaceCredential.findFirst({
+    where: {
+      marketplace: 'JOOM',
+      isActive: true,
+    },
+  });
+
+  if (!credential) {
+    return {
+      success: false,
+      error: 'Joom credentials not configured',
+    };
+  }
+
+  const creds = credential.credentials as {
+    clientId?: string;
+    clientSecret?: string;
+    accessToken?: string;
+    refreshToken?: string;
+  };
+
+  if (!creds.refreshToken) {
+    return {
+      success: false,
+      error: 'Joom refresh token not available. Re-authorization required.',
+    };
+  }
+
+  if (!creds.clientId || !creds.clientSecret) {
+    return {
+      success: false,
+      error: 'Joom OAuth configuration incomplete (missing clientId or clientSecret)',
+    };
+  }
+
+  try {
+    const response = await fetch(JOOM_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: creds.clientId,
+        client_secret: creds.clientSecret,
+        grant_type: 'refresh_token',
+        refresh_token: creds.refreshToken,
+      }),
+    });
+
+    const data = await response.json() as {
+      data?: {
+        access_token?: string;
+        refresh_token?: string;
+        expires_in?: number;
+      };
+      code?: number;
+      message?: string;
+    };
+
+    if (!response.ok || !data.data?.access_token) {
+      log.error({
+        type: 'joom_token_refresh_failed',
+        status: response.status,
+        error: data.message || 'Unknown error',
+      });
+
+      return {
+        success: false,
+        error: data.message || `Token refresh failed with status ${response.status}`,
+      };
+    }
+
+    // 新しいトークンを保存
+    const expiresIn = data.data.expires_in || 3600; // デフォルト1時間
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+
+    await prisma.marketplaceCredential.update({
+      where: { id: credential.id },
+      data: {
+        credentials: {
+          ...creds,
+          accessToken: data.data.access_token,
+          refreshToken: data.data.refresh_token || creds.refreshToken,
+        },
+        tokenExpiresAt: expiresAt,
+      },
+    });
+
+    log.info({
+      type: 'joom_token_refreshed',
+      expiresAt,
+    });
+
+    // シングルトンインスタンスのキャッシュもクリア
+    (joomApi as any).accessToken = data.data.access_token;
+    (joomApi as any).tokenExpiresAt = expiresAt;
+
+    return {
+      success: true,
+      expiresAt,
+    };
+  } catch (error: any) {
+    log.error({
+      type: 'joom_token_refresh_exception',
+      error: error.message,
+    });
+
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
 /**
  * Joom APIが設定されているか確認
  */
