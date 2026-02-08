@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import { fetcher, api, ApiResponse, Product, Listing, JobLog, QueueStats } from './api';
+import { fetcher, api, ApiResponse, Product, Listing, JobLog, QueueStats, SyncSchedule } from './api';
 
 // Products
 export function useProducts(params?: {
@@ -342,6 +342,20 @@ export function useOrders(params?: {
 export function useOrder(id: string | null) {
   return useSWR<ApiResponse<Order>>(
     id ? `/api/orders/${id}` : null,
+    fetcher
+  );
+}
+
+// Sync Schedules (Phase 44-C)
+export function useSyncSchedules() {
+  return useSWR<ApiResponse<SyncSchedule[]>>(api.getSyncSchedules(), fetcher, {
+    refreshInterval: 60000, // 1分ごと
+  });
+}
+
+export function useSyncSchedule(marketplace: string | null) {
+  return useSWR<ApiResponse<SyncSchedule>>(
+    marketplace ? api.getSyncSchedule(marketplace) : null,
     fetcher
   );
 }

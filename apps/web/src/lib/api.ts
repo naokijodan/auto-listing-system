@@ -241,6 +241,10 @@ export const api = {
 
   // Marketplace Stats (Phase 42)
   getMarketplaceStats: () => `/api/analytics/marketplace-stats`,
+
+  // Sync Schedules (Phase 44-C)
+  getSyncSchedules: () => `/api/sync-schedules`,
+  getSyncSchedule: (marketplace: string) => `/api/sync-schedules/${marketplace}`,
 };
 
 // POST/PUT/DELETE helpers
@@ -402,6 +406,43 @@ export const productApi = {
     return patchApi<{ success: boolean; data: { updatedCount: number } }>(
       '/api/products/bulk',
       { ids, updates: { status: 'REJECTED' } }
+    );
+  },
+};
+
+// Sync Schedule Types
+export interface SyncScheduleConfig {
+  interval: number; // hours
+  enabled: boolean;
+  lastRun?: string;
+  nextRun?: string;
+}
+
+export interface SyncSchedule {
+  marketplace: 'JOOM' | 'EBAY';
+  inventory: SyncScheduleConfig;
+  orders: SyncScheduleConfig;
+  prices: SyncScheduleConfig;
+  updatedAt: string;
+}
+
+// Sync Schedule API
+export const syncScheduleApi = {
+  getAll: async (): Promise<ApiResponse<SyncSchedule[]>> => {
+    return fetcher<ApiResponse<SyncSchedule[]>>(api.getSyncSchedules());
+  },
+
+  get: async (marketplace: string): Promise<ApiResponse<SyncSchedule>> => {
+    return fetcher<ApiResponse<SyncSchedule>>(api.getSyncSchedule(marketplace));
+  },
+
+  update: async (
+    marketplace: string,
+    data: Partial<Omit<SyncSchedule, 'marketplace' | 'updatedAt'>>
+  ): Promise<ApiResponse<SyncSchedule>> => {
+    return patchApi<ApiResponse<SyncSchedule>>(
+      `/api/sync-schedules/${marketplace}`,
+      data
     );
   },
 };

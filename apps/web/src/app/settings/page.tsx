@@ -26,15 +26,19 @@ import {
   Clock,
   Loader2,
   Zap,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { fetcher, postApi } from '@/lib/api';
+import { fetcher, postApi, syncScheduleApi, SyncSchedule, SyncScheduleConfig } from '@/lib/api';
+import { Switch } from '@/components/ui/switch';
+import { Select } from '@/components/ui/select';
 
 const tabs = [
   { id: 'price', label: '価格設定', icon: DollarSign },
   { id: 'listing', label: '出品設定', icon: Layers },
   { id: 'notifications', label: '通知設定', icon: Bell },
   { id: 'marketplace', label: 'マーケットプレイス', icon: Globe },
+  { id: 'sync', label: '同期スケジュール', icon: Calendar },
   { id: 'appearance', label: '外観', icon: Palette },
   { id: 'system', label: 'システム', icon: Database },
 ];
@@ -80,6 +84,7 @@ export default function SettingsPage() {
           {activeTab === 'listing' && <ListingSettings />}
           {activeTab === 'notifications' && <NotificationSettings />}
           {activeTab === 'marketplace' && <MarketplaceSettings />}
+          {activeTab === 'sync' && <SyncScheduleSettings />}
           {activeTab === 'appearance' && <AppearanceSettings />}
           {activeTab === 'system' && <SystemSettings />}
         </div>
@@ -644,6 +649,290 @@ function MarketplaceSettings() {
             </CardContent>
           </Card>
         </>
+      )}
+    </div>
+  );
+}
+
+// Sync interval options
+const intervalOptions = [
+  { value: '1', label: '1時間' },
+  { value: '3', label: '3時間' },
+  { value: '6', label: '6時間' },
+  { value: '12', label: '12時間' },
+  { value: '24', label: '24時間' },
+];
+
+function SyncScheduleSettings() {
+  const [selectedMarketplace, setSelectedMarketplace] = useState<'JOOM' | 'EBAY'>('JOOM');
+  const [schedules, setSchedules] = useState<Record<string, SyncSchedule>>({});
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Load schedules
+  useEffect(() => {
+    const loadSchedules = async () => {
+      try {
+        // Try to fetch from API, fallback to defaults if not available
+        const response = await fetch('/api/sync-schedules');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            const scheduleMap: Record<string, SyncSchedule> = {};
+            data.data.forEach((s: SyncSchedule) => {
+              scheduleMap[s.marketplace] = s;
+            });
+            setSchedules(scheduleMap);
+          }
+        } else {
+          // Use default values if API not available
+          setSchedules({
+            JOOM: {
+              marketplace: 'JOOM',
+              inventory: { interval: 6, enabled: true },
+              orders: { interval: 6, enabled: true },
+              prices: { interval: 6, enabled: true },
+              updatedAt: new Date().toISOString(),
+            },
+            EBAY: {
+              marketplace: 'EBAY',
+              inventory: { interval: 6, enabled: true },
+              orders: { interval: 6, enabled: true },
+              prices: { interval: 6, enabled: true },
+              updatedAt: new Date().toISOString(),
+            },
+          });
+        }
+      } catch {
+        // Use default values on error
+        setSchedules({
+          JOOM: {
+            marketplace: 'JOOM',
+            inventory: { interval: 6, enabled: true },
+            orders: { interval: 6, enabled: true },
+            prices: { interval: 6, enabled: true },
+            updatedAt: new Date().toISOString(),
+          },
+          EBAY: {
+            marketplace: 'EBAY',
+            inventory: { interval: 6, enabled: true },
+            orders: { interval: 6, enabled: true },
+            prices: { interval: 6, enabled: true },
+            updatedAt: new Date().toISOString(),
+          },
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadSchedules();
+  }, []);
+
+  const currentSchedule = schedules[selectedMarketplace];
+
+  const updateScheduleField = (
+    syncType: 'inventory' | 'orders' | 'prices',
+    field: 'interval' | 'enabled',
+    value: number | boolean
+  ) => {
+    setSchedules((prev) => ({
+      ...prev,
+      [selectedMarketplace]: {
+        ...prev[selectedMarketplace],
+        [syncType]: {
+          ...prev[selectedMarketplace]?.[syncType],
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const schedule = schedules[selectedMarketplace];
+      await syncScheduleApi.update(selectedMarketplace, {
+        inventory: schedule.inventory,
+        orders: schedule.orders,
+        prices: schedule.prices,
+      });
+      addToast({ type: 'success', message: '同期スケジュールを保存しました' });
+    } catch {
+      addToast({ type: 'error', message: '保存に失敗しました（APIが未実装の可能性があります）' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Marketplace Selector */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            同期スケジュール設定
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-6">
+            <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              マーケットプレイス
+            </label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedMarketplace('JOOM')}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
+                  selectedMarketplace === 'JOOM'
+                    ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
+                    : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                )}
+              >
+                <Store className="h-4 w-4" />
+                Joom
+              </button>
+              <button
+                onClick={() => setSelectedMarketplace('EBAY')}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
+                  selectedMarketplace === 'EBAY'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                    : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                )}
+              >
+                <Store className="h-4 w-4" />
+                eBay
+              </button>
+            </div>
+          </div>
+
+          {currentSchedule && (
+            <div className="space-y-6">
+              {/* Inventory Sync */}
+              <SyncTypeConfig
+                label="在庫同期"
+                description="商品の在庫数を同期します"
+                config={currentSchedule.inventory}
+                onIntervalChange={(v) => updateScheduleField('inventory', 'interval', v)}
+                onEnabledChange={(v) => updateScheduleField('inventory', 'enabled', v)}
+                color={selectedMarketplace === 'JOOM' ? 'amber' : 'blue'}
+              />
+
+              {/* Orders Sync */}
+              <SyncTypeConfig
+                label="注文同期"
+                description="新規注文を取得・同期します"
+                config={currentSchedule.orders}
+                onIntervalChange={(v) => updateScheduleField('orders', 'interval', v)}
+                onEnabledChange={(v) => updateScheduleField('orders', 'enabled', v)}
+                color={selectedMarketplace === 'JOOM' ? 'amber' : 'blue'}
+              />
+
+              {/* Prices Sync */}
+              <SyncTypeConfig
+                label="価格同期"
+                description="商品価格を同期・更新します"
+                config={currentSchedule.prices}
+                onIntervalChange={(v) => updateScheduleField('prices', 'interval', v)}
+                onEnabledChange={(v) => updateScheduleField('prices', 'enabled', v)}
+                color={selectedMarketplace === 'JOOM' ? 'amber' : 'blue'}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          保存
+        </Button>
+      </div>
+
+      {/* Info Card */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="rounded-lg bg-amber-50 p-4 dark:bg-amber-900/20">
+            <h4 className="mb-2 font-medium text-amber-800 dark:text-amber-300">
+              同期スケジュールについて
+            </h4>
+            <ul className="space-y-1 text-sm text-amber-700 dark:text-amber-400">
+              <li>- 在庫同期: マーケットプレイスの在庫数を仕入れ元と同期</li>
+              <li>- 注文同期: 新規注文の取得と処理状況の更新</li>
+              <li>- 価格同期: 為替レートや仕入れ価格に基づく価格更新</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface SyncTypeConfigProps {
+  label: string;
+  description: string;
+  config: SyncScheduleConfig;
+  onIntervalChange: (value: number) => void;
+  onEnabledChange: (value: boolean) => void;
+  color: 'amber' | 'blue';
+}
+
+function SyncTypeConfig({
+  label,
+  description,
+  config,
+  onIntervalChange,
+  onEnabledChange,
+  color,
+}: SyncTypeConfigProps) {
+  const bgColor = color === 'amber' ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-blue-50 dark:bg-blue-900/20';
+  const textColor = color === 'amber' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400';
+
+  return (
+    <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <div className={cn('rounded-lg p-2', bgColor)}>
+              <Clock className={cn('h-4 w-4', textColor)} />
+            </div>
+            <div>
+              <h4 className="font-medium text-zinc-900 dark:text-white">{label}</h4>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">{description}</p>
+            </div>
+          </div>
+        </div>
+        <Switch
+          checked={config.enabled}
+          onCheckedChange={onEnabledChange}
+        />
+      </div>
+
+      {config.enabled && (
+        <div className="mt-4 flex items-center gap-4 pl-12">
+          <label className="text-sm text-zinc-600 dark:text-zinc-400">実行間隔:</label>
+          <Select
+            value={config.interval.toString()}
+            onChange={(e) => onIntervalChange(Number(e.target.value))}
+            options={intervalOptions}
+            className="w-32"
+          />
+          {config.lastRun && (
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+              前回: {new Date(config.lastRun).toLocaleString('ja-JP')}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
