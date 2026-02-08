@@ -111,14 +111,5 @@ export function createRequestLogger(requestId: string, path: string) {
 
 export default logger;
 
-// Log Aggregator exports
-export {
-  LogAggregator,
-  getLogAggregator,
-  createPinoTransport,
-  type LogEntry,
-  type LogSearchOptions,
-  type LogSearchResult,
-  type LogStats,
-  type LogRotationConfig,
-} from './log-aggregator';
+// Note: Log Aggregator is exported from '@rakuda/logger/aggregator' to avoid
+// circular dependency issues in test environments.

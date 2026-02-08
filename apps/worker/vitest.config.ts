@@ -14,6 +14,9 @@ export default defineConfig({
       exclude: ['src/test/**', '**/*.d.ts'],
     },
     testTimeout: 30000,
+    deps: {
+      inline: [/@rakuda\/.*/],
+    },
   },
   resolve: {
     alias: {

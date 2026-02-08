@@ -16,6 +16,7 @@ vi.mock('../../lib/ebay-api', () => ({
   mapConditionToEbay: vi.fn().mockReturnValue('NEW'),
   ebayApi: {
     getCategoryId: vi.fn(),
+    getCategoryWithSpecifics: vi.fn(),
     createOrUpdateInventoryItem: vi.fn(),
     createOffer: vi.fn(),
     publishOffer: vi.fn(),
@@ -106,6 +107,11 @@ describe('Publish Processor', () => {
     beforeEach(() => {
       mockIsEbayConfigured.mockResolvedValue(true);
       mockEbayApi.getCategoryId.mockResolvedValue('123456');
+      mockEbayApi.getCategoryWithSpecifics.mockResolvedValue({
+        categoryId: '123456',
+        categoryName: 'Electronics',
+        specifics: [],
+      });
       mockEbayApi.createOrUpdateInventoryItem.mockResolvedValue({
         success: true,
         data: { sku: 'ALS-product-' },
