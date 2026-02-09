@@ -111,5 +111,15 @@ export function createRequestLogger(requestId: string, path: string) {
 
 export default logger;
 
-// Note: Log Aggregator is exported from '@rakuda/logger/aggregator' to avoid
-// circular dependency issues in test environments.
+// Log Aggregator export
+export { getLogAggregator, LogAggregator } from './log-aggregator';
+
+// Sentry integration exports
+export {
+  initSentry,
+  captureException,
+  captureMessage,
+  captureJobFailure,
+  flushSentry,
+  isSentryInitialized,
+} from './sentry';

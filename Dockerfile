@@ -48,6 +48,10 @@ COPY --from=builder /app/turbo.json ./
 # Prismaクライアントをコピー
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
+# Entrypointスクリプトをコピー
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # 所有者を変更
 RUN chown -R rakuda:nodejs /app
 
@@ -55,12 +59,14 @@ USER rakuda
 
 ENV NODE_ENV=production
 ENV API_PORT=3000
+ENV RUN_MIGRATIONS=true
 
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
+ENTRYPOINT ["docker-entrypoint.sh", "api"]
 CMD ["node", "apps/api/dist/index.js"]
 
 # -----------------------------------------------------------------------------
@@ -98,6 +104,10 @@ COPY --from=builder /app/turbo.json ./
 # Prismaクライアントをコピー
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
+# Entrypointスクリプトをコピー
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # 所有者を変更
 RUN chown -R rakuda:nodejs /app
 
@@ -105,4 +115,5 @@ USER rakuda
 
 ENV NODE_ENV=production
 
+ENTRYPOINT ["docker-entrypoint.sh", "worker"]
 CMD ["node", "apps/worker/dist/index.js"]

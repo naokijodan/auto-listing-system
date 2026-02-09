@@ -6,7 +6,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./log-aggregator": "./src/log-aggregator.ts"
+    "./log-aggregator": "./src/log-aggregator.ts",
+    "./sentry": "./src/sentry.ts"
   },
   "scripts": {
     "build": "tsc",
@@ -14,6 +15,7 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@sentry/node": "^8.45.0",
     "pino": "^8.17.0",
     "pino-pretty": "^10.3.0"
   },

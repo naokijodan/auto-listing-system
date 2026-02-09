@@ -1,6 +1,6 @@
 import { Worker, Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { logger } from '@rakuda/logger';
+import { logger, captureJobFailure, initSentry, flushSentry } from '@rakuda/logger';
 import { QUEUE_NAMES, QUEUE_CONFIG } from '@rakuda/config';
 
 import { processScrapeJob } from '../processors/scrape';
@@ -30,6 +30,12 @@ let deadLetterQueue: Queue | null = null;
  * 全ワーカーを起動
  */
 export async function startWorkers(connection: IORedis): Promise<void> {
+  // Sentry初期化（DSNが設定されている場合のみ有効化）
+  initSentry({
+    environment: process.env.NODE_ENV,
+    release: process.env.APP_VERSION || '1.0.0',
+  });
+
   // Dead Letter Queue
   deadLetterQueue = new Queue(QUEUE_NAMES.DEAD_LETTER, { connection });
 
@@ -598,11 +604,23 @@ async function moveToDeadLetter(job: any, error: Error): Promise<void> {
       attemptsMade: job.attemptsMade,
     });
 
+    // Sentryに通知（リトライ上限超過 = 本当の失敗）
+    const eventId = captureJobFailure(
+      job.id || 'unknown',
+      job.name || 'unknown',
+      job.queueName || 'unknown',
+      error,
+      job.attemptsMade || 1,
+      job.opts?.attempts || 3,
+      job.data
+    );
+
     logger.warn({
       type: 'moved_to_dlq',
       originalQueue: job.queueName,
       jobId: job.id,
       jobName: job.name,
+      sentryEventId: eventId,
     });
   } catch (err) {
     logger.error('Failed to move job to DLQ', err);
@@ -625,6 +643,9 @@ export async function stopWorkers(): Promise<void> {
   if (deadLetterQueue) {
     await deadLetterQueue.close();
   }
+
+  // Sentryの未送信イベントをフラッシュ
+  await flushSentry();
 
   workers.length = 0;
   logger.info('All workers stopped');

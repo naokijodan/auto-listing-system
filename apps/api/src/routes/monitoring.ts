@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import IORedis from 'ioredis';
 import { Queue } from 'bullmq';
-import { logger } from '@rakuda/logger';
-import { getLogAggregator } from '@rakuda/logger/log-aggregator';
+import { logger, getLogAggregator } from '@rakuda/logger';
 import { QUEUE_NAMES } from '@rakuda/config';
 
 const router = Router();

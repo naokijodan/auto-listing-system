@@ -28,6 +28,8 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_BUCKET: ${S3_BUCKET}
       S3_REGION: ${S3_REGION}
+      SENTRY_DSN: ${SENTRY_DSN}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
     ports:
       - "3000:3000"
     depends_on:
@@ -76,6 +78,8 @@ services:
       PROXY_PORT: ${PROXY_PORT}
       PROXY_USER: ${PROXY_USER}
       PROXY_PASS: ${PROXY_PASS}
+      SENTRY_DSN: ${SENTRY_DSN}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
     depends_on:
       postgres:
         condition: service_healthy

@@ -355,7 +355,7 @@ export async function getPresignedUrl(
       Key: key,
     });
 
-    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+    const presignedUrl = await getSignedUrl(getS3Client(), command, { expiresIn });
 
     log.debug({
       type: 'presigned_url_generated',
