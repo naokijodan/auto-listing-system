@@ -1232,4 +1232,295 @@ router.delete('/performance/dlq', async (req: Request, res: Response, next: Next
   }
 });
 
+// ============================================================================
+// Phase 43: Canary Release API
+// ============================================================================
+
+/**
+ * カナリアリリースステータスを取得
+ * GET /api/admin/canary/status
+ */
+router.get('/canary/status', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // カナリーリリースの出品を取得
+    const canaryListings = await prisma.listing.findMany({
+      where: {
+        marketplace: 'JOOM',
+        marketplaceData: {
+          path: ['canaryRelease'],
+          equals: true,
+        },
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            title: true,
+            titleEn: true,
+            price: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // ステータス別集計
+    const statusCounts: Record<string, number> = {};
+    const phaseCounts: Record<number, number> = {};
+    let totalRevenue = 0;
+
+    for (const listing of canaryListings) {
+      const status = listing.status || 'UNKNOWN';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+
+      const marketplaceData = listing.marketplaceData as any;
+      const phase = marketplaceData?.canaryPhase || 1;
+      phaseCounts[phase] = (phaseCounts[phase] || 0) + 1;
+
+      if (listing.status === 'SOLD') {
+        totalRevenue += listing.listingPrice || 0;
+      }
+    }
+
+    // 成功率計算
+    const totalListings = canaryListings.length;
+    const activeListings = (statusCounts['ACTIVE'] || 0) + (statusCounts['SOLD'] || 0);
+    const errorListings = statusCounts['ERROR'] || 0;
+    const successRate = totalListings > 0
+      ? ((totalListings - errorListings) / totalListings) * 100
+      : 100;
+
+    // 推奨アクション
+    const recommendations: string[] = [];
+    if (errorListings > 0) {
+      recommendations.push('エラーのある出品を確認してください');
+    }
+    if (successRate >= 95 && totalListings < 25) {
+      const currentMaxPhase = Math.max(...Object.keys(phaseCounts).map(Number), 1);
+      if (currentMaxPhase < 5) {
+        recommendations.push(`Phase ${currentMaxPhase + 1}への移行を検討してください`);
+      }
+    }
+    if (totalListings === 0) {
+      recommendations.push('カナリアリリースを開始してください: npx tsx scripts/canary-release.ts --phase=1');
+    }
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalListings,
+          activeListings,
+          errorListings,
+          successRate: Math.round(successRate * 10) / 10,
+          totalRevenue,
+        },
+        statusBreakdown: statusCounts,
+        phaseBreakdown: phaseCounts,
+        recommendations,
+        recentListings: canaryListings.slice(0, 10).map((l) => ({
+          id: l.id,
+          productId: l.productId,
+          title: l.product?.titleEn || l.product?.title,
+          status: l.status,
+          price: l.listingPrice,
+          phase: (l.marketplaceData as any)?.canaryPhase,
+          createdAt: l.createdAt,
+        })),
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    log.error('Failed to get canary status', error);
+    next(error);
+  }
+});
+
+/**
+ * カナリアリリースを実行
+ * POST /api/admin/canary/release
+ */
+router.post('/canary/release', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { phase = 1 } = req.body;
+
+    // フェーズ上限
+    const phaseLimits: Record<number, number> = {
+      1: 3,
+      2: 10,
+      3: 25,
+      4: 50,
+      5: 100,
+    };
+
+    const limit = phaseLimits[phase as number] || 3;
+
+    // 既存のカナリー出品数を確認
+    const existingCanary = await prisma.listing.count({
+      where: {
+        marketplace: 'JOOM',
+        marketplaceData: {
+          path: ['canaryRelease'],
+          equals: true,
+        },
+      },
+    });
+
+    const remainingSlots = Math.max(0, limit - existingCanary);
+
+    if (remainingSlots === 0) {
+      res.json({
+        success: false,
+        message: `Phase ${phase} limit (${limit}) already reached. Current: ${existingCanary}`,
+        data: {
+          phase,
+          limit,
+          existingCanary,
+          remainingSlots: 0,
+        },
+      });
+      return;
+    }
+
+    // 出品可能な商品をキューに追加
+    const publishQueue = new Queue(QUEUE_NAMES.PUBLISH, { connection: redis });
+
+    const products = await prisma.product.findMany({
+      where: {
+        status: { in: ['APPROVED', 'READY_TO_REVIEW'] },
+        titleEn: { not: null },
+        listings: {
+          none: { marketplace: 'JOOM' },
+        },
+      },
+      take: remainingSlots,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let queued = 0;
+    for (const product of products) {
+      const images = (product.processedImages as string[]) || (product.images as string[]) || [];
+      if (!product.titleEn || images.length === 0) continue;
+
+      const listing = await prisma.listing.create({
+        data: {
+          productId: product.id,
+          marketplace: 'JOOM',
+          status: 'PENDING_PUBLISH',
+          listingPrice: 0,
+          shippingCost: 0,
+          currency: 'USD',
+          marketplaceData: {
+            canaryRelease: true,
+            canaryPhase: phase,
+            createdAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      await publishQueue.add(
+        'publish',
+        {
+          productId: product.id,
+          listingId: listing.id,
+          marketplace: 'joom',
+          listingData: {},
+          isDryRun: false,
+          canaryRelease: true,
+          canaryPhase: phase,
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+        }
+      );
+
+      queued++;
+    }
+
+    log.info({
+      type: 'canary_release_triggered',
+      phase,
+      queued,
+      existingCanary,
+    });
+
+    res.json({
+      success: true,
+      message: `Canary release Phase ${phase}: ${queued} products queued`,
+      data: {
+        phase,
+        queued,
+        totalCanaryListings: existingCanary + queued,
+        limit,
+      },
+    });
+  } catch (error) {
+    log.error('Failed to trigger canary release', error);
+    next(error);
+  }
+});
+
+/**
+ * カナリアリリースをロールバック
+ * POST /api/admin/canary/rollback
+ */
+router.post('/canary/rollback', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { phase } = req.body;
+
+    const where: any = {
+      marketplace: 'JOOM',
+      marketplaceData: {
+        path: ['canaryRelease'],
+        equals: true,
+      },
+      status: {
+        in: ['ACTIVE', 'PENDING_PUBLISH', 'PUBLISHING'],
+      },
+    };
+
+    // 特定フェーズのみロールバック
+    if (phase) {
+      where.marketplaceData = {
+        path: ['canaryPhase'],
+        equals: phase,
+      };
+    }
+
+    const listings = await prisma.listing.findMany({ where });
+
+    let rolledBack = 0;
+    for (const listing of listings) {
+      await prisma.listing.update({
+        where: { id: listing.id },
+        data: {
+          status: 'PAUSED',
+          marketplaceData: {
+            ...(listing.marketplaceData as object),
+            rolledBackAt: new Date().toISOString(),
+            rollbackReason: 'Manual rollback via API',
+          },
+        },
+      });
+      rolledBack++;
+    }
+
+    log.info({
+      type: 'canary_rollback',
+      phase: phase || 'all',
+      rolledBack,
+    });
+
+    res.json({
+      success: true,
+      message: `Rolled back ${rolledBack} canary listings`,
+      data: { rolledBack, phase: phase || 'all' },
+    });
+  } catch (error) {
+    log.error('Failed to rollback canary release', error);
+    next(error);
+  }
+});
+
 export { router as adminRouter };
