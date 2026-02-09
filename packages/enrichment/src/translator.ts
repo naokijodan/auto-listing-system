@@ -7,15 +7,25 @@ import { logger } from '@rakuda/logger';
 
 const log = logger.child({ module: 'enrichment/translator' });
 
-// OpenAIクライアント
+// OpenAIクライアント（遅延初期化）
 let openai: OpenAI | null = null;
-if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
+let openaiInitialized = false;
+
+function getOpenAIClient(): OpenAI | null {
+  if (!openaiInitialized) {
+    openaiInitialized = true;
+    if (process.env.OPENAI_API_KEY) {
+      openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+    }
+  }
+  return openai;
 }
 
-const MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
+function getModel(): string {
+  return process.env.OPENAI_MODEL || 'gpt-4o';
+}
 
 /**
  * 翻訳結果
@@ -124,7 +134,8 @@ export async function enrichProduct(
   category?: string
 ): Promise<EnrichmentResult> {
   // OpenAI APIキーが設定されていない場合はフォールバック
-  if (!openai) {
+  const client = getOpenAIClient();
+  if (!client) {
     log.warn({ type: 'openai_not_configured' });
     return createFallbackResult(title, description);
   }
@@ -139,11 +150,11 @@ export async function enrichProduct(
       type: 'enrichment_start',
       titleLength: title.length,
       descriptionLength: description.length,
-      model: MODEL,
+      model: getModel(),
     });
 
-    const response = await openai.chat.completions.create({
-      model: MODEL,
+    const response = await client.chat.completions.create({
+      model: getModel(),
       messages: [
         { role: 'system', content: ENRICHMENT_SYSTEM_PROMPT },
         { role: 'user', content: userPrompt },
@@ -226,8 +237,13 @@ ${description}
 Return JSON: {"title": "...", "description": "..."}`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: MODEL,
+    const client = getOpenAIClient();
+    if (!client) {
+      throw new Error('OpenAI not configured');
+    }
+
+    const response = await client.chat.completions.create({
+      model: getModel(),
       messages: [
         { role: 'system', content: 'You are an expert e-commerce product translator.' },
         { role: 'user', content: prompt },
