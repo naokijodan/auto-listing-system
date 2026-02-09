@@ -346,6 +346,11 @@ export const handlers = [
       total: orders.length,
     });
   }),
+
+  // Phase 41-E: Cancel order
+  http.post(`${JOOM_API}/orders/:orderId/cancel`, () => {
+    return HttpResponse.json({});
+  }),
 ];
 
 // エラーハンドラー（テスト用）

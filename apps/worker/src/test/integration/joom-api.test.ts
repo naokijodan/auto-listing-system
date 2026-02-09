@@ -226,6 +226,14 @@ describe('Joom API', () => {
       });
     });
 
+    describe('cancelOrder', () => {
+      it('should cancel order successfully', async () => {
+        const result = await client.cancelOrder('order-123', 'Out of stock');
+
+        expect(result.success).toBe(true);
+      });
+    });
+
     describe('dryRunCreateProduct', () => {
       it('should return validation result for valid product', async () => {
         const result = await client.dryRunCreateProduct({
@@ -278,6 +286,51 @@ describe('Joom API', () => {
         expect(['low', 'medium']).toContain(result.estimatedVisibility);
         expect(result.validation.passed).toBe(false); // Should have warnings
         expect(result.validation.warnings.length).toBeGreaterThan(0);
+      });
+
+      it('should return warning for price too low', async () => {
+        const result = await client.dryRunCreateProduct({
+          name: 'Test Product for Low Price',
+          description: 'This is a test product description that is long enough to pass validation',
+          mainImage: 'https://example.com/image.jpg',
+          extraImages: ['https://example.com/img2.jpg', 'https://example.com/img3.jpg'],
+          price: 0.50, // Below $1 minimum
+          currency: 'USD',
+          quantity: 1,
+          sku: 'LOW-PRICE-001',
+        });
+
+        expect(result.validation.warnings.some(w => w.includes('Price is too low'))).toBe(true);
+      });
+
+      it('should return warning for price too high', async () => {
+        const result = await client.dryRunCreateProduct({
+          name: 'Test Product for High Price',
+          description: 'This is a test product description that is long enough to pass validation',
+          mainImage: 'https://example.com/image.jpg',
+          extraImages: ['https://example.com/img2.jpg', 'https://example.com/img3.jpg'],
+          price: 1500, // Above $1000
+          currency: 'USD',
+          quantity: 1,
+          sku: 'HIGH-PRICE-001',
+        });
+
+        expect(result.validation.warnings.some(w => w.includes('High-priced'))).toBe(true);
+      });
+
+      it('should return warning for title too long', async () => {
+        const result = await client.dryRunCreateProduct({
+          name: 'A'.repeat(250), // Exceeds 200 characters
+          description: 'This is a test product description that is long enough to pass validation',
+          mainImage: 'https://example.com/image.jpg',
+          extraImages: ['https://example.com/img2.jpg', 'https://example.com/img3.jpg'],
+          price: 50,
+          currency: 'USD',
+          quantity: 1,
+          sku: 'LONG-TITLE-001',
+        });
+
+        expect(result.validation.warnings.some(w => w.includes('too long'))).toBe(true);
       });
     });
   });

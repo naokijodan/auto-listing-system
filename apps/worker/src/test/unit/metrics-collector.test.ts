@@ -32,7 +32,12 @@ vi.mock('@rakuda/logger', () => ({
   },
 }));
 
-import { MetricsCollector, DEFAULT_ALERT_RULES } from '../../lib/metrics-collector';
+import {
+  MetricsCollector,
+  DEFAULT_ALERT_RULES,
+  createMetricsCollector,
+  getMetricsCollector,
+} from '../../lib/metrics-collector';
 
 describe('MetricsCollector', () => {
   let collector: MetricsCollector;
@@ -306,6 +311,38 @@ describe('MetricsCollector', () => {
       const rule = DEFAULT_ALERT_RULES.find((r) => r.id === 'consecutive_errors');
       expect(rule).toBeDefined();
       expect(rule?.threshold).toBe(5);
+    });
+  });
+
+  describe('singleton functions', () => {
+    beforeEach(() => {
+      vi.resetModules();
+    });
+
+    it('should create and return singleton instance', async () => {
+      const { createMetricsCollector, getMetricsCollector } = await import('../../lib/metrics-collector');
+
+      const instance1 = createMetricsCollector(mockRedis as any);
+      const instance2 = createMetricsCollector(mockRedis as any);
+
+      expect(instance1).toBe(instance2);
+    });
+
+    it('should return null before instance is created', async () => {
+      const { getMetricsCollector } = await import('../../lib/metrics-collector');
+
+      const instance = getMetricsCollector();
+
+      expect(instance).toBeNull();
+    });
+
+    it('should return instance after creation', async () => {
+      const { createMetricsCollector, getMetricsCollector } = await import('../../lib/metrics-collector');
+
+      createMetricsCollector(mockRedis as any);
+      const instance = getMetricsCollector();
+
+      expect(instance).not.toBeNull();
     });
   });
 });

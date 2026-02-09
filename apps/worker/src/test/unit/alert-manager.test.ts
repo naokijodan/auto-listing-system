@@ -351,6 +351,68 @@ describe('Alert Manager', () => {
         })
       );
     });
+
+    it('should generate deep link with productId', async () => {
+      mockAlertRuleFindMany.mockResolvedValueOnce([
+        {
+          id: 'rule-product',
+          name: 'Product Rule',
+          eventType: 'INVENTORY_OUT_OF_STOCK',
+          conditions: [],
+          severity: 'HIGH',
+          channels: ['WEB_PUSH'],
+          cooldownMinutes: 0,
+          batchWindowMinutes: 0,
+          isActive: true,
+        },
+      ]);
+
+      await alertManager.processEvent({
+        type: 'INVENTORY_OUT_OF_STOCK',
+        data: { title: 'Test Product' },
+        productId: 'product-123',
+      });
+
+      expect(mockAlertLogCreate).toHaveBeenCalled();
+      expect(mockQueueAdd).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          deepLink: expect.stringContaining('/products/product-123'),
+        }),
+        expect.anything()
+      );
+    });
+
+    it('should generate deep link with listingId', async () => {
+      mockAlertRuleFindMany.mockResolvedValueOnce([
+        {
+          id: 'rule-listing',
+          name: 'Listing Rule',
+          eventType: 'LISTING_FAILED',
+          conditions: [],
+          severity: 'HIGH',
+          channels: ['EMAIL'],
+          cooldownMinutes: 0,
+          batchWindowMinutes: 0,
+          isActive: true,
+        },
+      ]);
+
+      await alertManager.processEvent({
+        type: 'LISTING_FAILED',
+        data: { title: 'Test Listing', error: 'API Error' },
+        listingId: 'listing-456',
+      });
+
+      expect(mockAlertLogCreate).toHaveBeenCalled();
+      expect(mockQueueAdd).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          deepLink: expect.stringContaining('/listings/listing-456'),
+        }),
+        expect.anything()
+      );
+    });
   });
 
   describe('processBatch', () => {

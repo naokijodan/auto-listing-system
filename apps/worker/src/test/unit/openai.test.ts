@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Hoist mock functions
-const { mockCreate, mockFindFirst } = vi.hoisted(() => ({
+const { mockCreate, mockFindFirst, mockFindMany } = vi.hoisted(() => ({
   mockCreate: vi.fn(),
   mockFindFirst: vi.fn(),
+  mockFindMany: vi.fn(),
 }));
 
 vi.mock('openai', () => ({
@@ -20,6 +21,7 @@ vi.mock('@rakuda/database', () => ({
   prisma: {
     translationPrompt: {
       findFirst: mockFindFirst,
+      findMany: mockFindMany,
     },
   },
 }));
@@ -238,6 +240,64 @@ describe('OpenAI Integration', () => {
       const { isOpenAIConfigured } = await import('../../lib/openai');
 
       expect(isOpenAIConfigured()).toBe(false);
+    });
+  });
+
+  describe('getAvailablePrompts', () => {
+    it('should return active prompts sorted by priority', async () => {
+      const mockPrompts = [
+        { id: '1', name: 'Prompt A', priority: 10, isActive: true },
+        { id: '2', name: 'Prompt B', priority: 5, isActive: true },
+      ];
+      mockFindMany.mockResolvedValueOnce(mockPrompts);
+
+      const { getAvailablePrompts } = await import('../../lib/openai');
+
+      const result = await getAvailablePrompts();
+
+      expect(result).toEqual(mockPrompts);
+      expect(mockFindMany).toHaveBeenCalledWith({
+        where: { isActive: true },
+        orderBy: [{ priority: 'desc' }, { name: 'asc' }],
+      });
+    });
+  });
+
+  describe('translateProduct with seoKeywords', () => {
+    it('should translate product with SEO keywords option', async () => {
+      process.env.OPENAI_API_KEY = 'test-api-key';
+
+      // Mock custom prompt with SEO keywords handling
+      mockFindFirst.mockResolvedValueOnce({
+        systemPrompt: 'You are an SEO translator.',
+        userPrompt: 'Translate: {{title}} - {{description}}',
+        seoKeywords: ['vintage', 'watch'],
+        extractAttributes: ['brand'],
+      });
+
+      mockCreate.mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                titleEn: 'SEO Optimized Product',
+                descriptionEn: 'SEO description with keywords',
+              }),
+            },
+          },
+        ],
+        usage: { total_tokens: 120 },
+      });
+
+      const { translateProduct } = await import('../../lib/openai');
+
+      const result = await translateProduct('ヴィンテージ時計', '古い時計の説明', {
+        category: 'vintage_watches',
+        seoKeywords: ['vintage', 'watch', 'antique'],
+      });
+
+      expect(result.titleEn).toBe('SEO Optimized Product');
+      expect(result.descriptionEn).toBe('SEO description with keywords');
     });
   });
 

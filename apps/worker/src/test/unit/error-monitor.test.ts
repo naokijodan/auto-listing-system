@@ -274,6 +274,32 @@ describe('Error Monitor', () => {
       expect(result.healthy).toBe(false);
       expect(result.checks.find(c => c.name === '為替レート')?.status).toBe('error');
     });
+
+    it('should detect dead letter queue warning (1-10 jobs)', async () => {
+      mockJobLogFindMany.mockResolvedValue([]);
+      mockProductCount.mockResolvedValue(0);
+      mockJobLogCount.mockResolvedValue(5); // 1-10 DLQ jobs = warning
+      mockExchangeRateFindFirst.mockResolvedValue({
+        fetchedAt: new Date(),
+      });
+
+      const result = await checkSystemHealth();
+
+      expect(result.checks.find(c => c.name === 'Dead Letter Queue')?.status).toBe('warning');
+    });
+
+    it('should detect exchange rate warning (24-48 hours old)', async () => {
+      mockJobLogFindMany.mockResolvedValue([]);
+      mockProductCount.mockResolvedValue(0);
+      mockJobLogCount.mockResolvedValue(0);
+      mockExchangeRateFindFirst.mockResolvedValue({
+        fetchedAt: new Date(Date.now() - 30 * 60 * 60 * 1000), // 30 hours ago
+      });
+
+      const result = await checkSystemHealth();
+
+      expect(result.checks.find(c => c.name === '為替レート')?.status).toBe('warning');
+    });
   });
 
   describe('notifyHealthIssues', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RateLimiter, DEFAULT_RATE_LIMITS, RateLimitConfig } from '../../lib/rate-limiter';
+import { RateLimiter, DEFAULT_RATE_LIMITS, RateLimitConfig, createRateLimiter, getRateLimiter } from '../../lib/rate-limiter';
 
 // Redis モック
 const createRedisMock = () => {
@@ -257,6 +257,40 @@ describe('RateLimiter', () => {
 
       expect(statuses.length).toBeGreaterThanOrEqual(5);
       expect(statuses.some((s) => s.domain === 'mercari.com')).toBe(true);
+    });
+  });
+
+  describe('singleton functions', () => {
+    beforeEach(() => {
+      vi.resetModules();
+    });
+
+    it('should create and return singleton instance', async () => {
+      const { createRateLimiter, getRateLimiter } = await import('../../lib/rate-limiter');
+      const newMock = createRedisMock();
+
+      const instance1 = createRateLimiter(newMock as any);
+      const instance2 = createRateLimiter(newMock as any);
+
+      expect(instance1).toBe(instance2);
+    });
+
+    it('should return null before instance is created', async () => {
+      const { getRateLimiter } = await import('../../lib/rate-limiter');
+
+      const instance = getRateLimiter();
+
+      expect(instance).toBeNull();
+    });
+
+    it('should return instance after creation', async () => {
+      const { createRateLimiter, getRateLimiter } = await import('../../lib/rate-limiter');
+      const newMock = createRedisMock();
+
+      createRateLimiter(newMock as any);
+      const instance = getRateLimiter();
+
+      expect(instance).not.toBeNull();
     });
   });
 });

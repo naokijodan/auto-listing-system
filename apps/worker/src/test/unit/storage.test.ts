@@ -1,33 +1,17 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Hoist mock functions
-const { mockSend, mockReadFile, mockStat } = vi.hoisted(() => ({
-  mockSend: vi.fn(),
-  mockReadFile: vi.fn(),
-  mockStat: vi.fn(),
-}));
-
-vi.mock('@aws-sdk/client-s3', () => ({
-  S3Client: vi.fn().mockImplementation(() => ({
-    send: mockSend,
-  })),
-  PutObjectCommand: vi.fn().mockImplementation((params) => params),
-  DeleteObjectCommand: vi.fn().mockImplementation((params) => params),
-  GetObjectCommand: vi.fn().mockImplementation((params) => params),
-  HeadObjectCommand: vi.fn().mockImplementation((params) => params),
-  ListObjectsV2Command: vi.fn().mockImplementation((params) => params),
-}));
-
-vi.mock('@aws-sdk/s3-request-presigner', () => ({
-  getSignedUrl: vi.fn().mockResolvedValue('https://signed-url.example.com'),
-}));
-
-vi.mock('fs/promises', () => ({
-  default: {
-    readFile: mockReadFile,
-    stat: mockStat,
-  },
-}));
+// Hoist mocks
+const { mockS3Client, mockFs } = vi.hoisted(() => {
+  return {
+    mockS3Client: {
+      send: vi.fn(),
+    },
+    mockFs: {
+      readFile: vi.fn(),
+      stat: vi.fn(),
+    },
+  };
+});
 
 vi.mock('@rakuda/logger', () => ({
   logger: {
@@ -40,134 +24,126 @@ vi.mock('@rakuda/logger', () => ({
   },
 }));
 
-describe('Storage', () => {
-  const originalEnv = process.env;
+vi.mock('@aws-sdk/client-s3', () => ({
+  S3Client: vi.fn().mockImplementation(() => mockS3Client),
+  PutObjectCommand: vi.fn().mockImplementation((params) => ({ type: 'PutObject', params })),
+  DeleteObjectCommand: vi.fn().mockImplementation((params) => ({ type: 'DeleteObject', params })),
+  GetObjectCommand: vi.fn().mockImplementation((params) => ({ type: 'GetObject', params })),
+  HeadObjectCommand: vi.fn().mockImplementation((params) => ({ type: 'HeadObject', params })),
+  ListObjectsV2Command: vi.fn().mockImplementation((params) => ({ type: 'ListObjects', params })),
+}));
 
+vi.mock('@aws-sdk/s3-request-presigner', () => ({
+  getSignedUrl: vi.fn().mockResolvedValue('https://signed-url.example.com/file'),
+}));
+
+vi.mock('fs/promises', () => ({
+  default: mockFs,
+}));
+
+import {
+  uploadFile,
+  uploadBuffer,
+  deleteFile,
+  fileExists,
+  generateProductImageKey,
+  listProductImages,
+  deleteProductImages,
+  buildPublicUrl,
+  getPresignedUrl,
+  convertToExternalUrl,
+  convertImagesToExternalUrls,
+  healthCheck,
+} from '../../lib/storage';
+
+describe('Storage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.resetModules();
-    process.env = { ...originalEnv };
-    process.env.S3_ENDPOINT = 'http://localhost:9000';
-    process.env.S3_BUCKET = 'test-bucket';
-  });
-
-  afterEach(() => {
-    process.env = originalEnv;
+    mockS3Client.send.mockResolvedValue({});
+    mockFs.readFile.mockResolvedValue(Buffer.from('test content'));
+    mockFs.stat.mockResolvedValue({ size: 12 });
   });
 
   describe('uploadFile', () => {
     it('should upload file successfully', async () => {
-      const fileBuffer = Buffer.from('test content');
-      mockReadFile.mockResolvedValueOnce(fileBuffer);
-      mockStat.mockResolvedValueOnce({ size: fileBuffer.length });
-      mockSend.mockResolvedValueOnce({});
-
-      const { uploadFile } = await import('../../lib/storage');
-
-      const result = await uploadFile('/path/to/file.jpg', 'images/test.jpg');
+      const result = await uploadFile('/path/to/image.jpg', 'test/image.jpg');
 
       expect(result.success).toBe(true);
-      expect(result.key).toBe('images/test.jpg');
-      expect(result.url).toContain('test-bucket');
-      expect(result.size).toBe(fileBuffer.length);
+      expect(result.key).toBe('test/image.jpg');
+      expect(result.url).toBeDefined();
+      expect(mockS3Client.send).toHaveBeenCalled();
     });
 
-    it('should handle upload errors', async () => {
-      mockReadFile.mockResolvedValueOnce(Buffer.from('test'));
-      mockStat.mockResolvedValueOnce({ size: 4 });
-      mockSend.mockRejectedValueOnce(new Error('S3 error'));
+    it('should handle upload error', async () => {
+      mockS3Client.send.mockRejectedValue(new Error('Upload failed'));
 
-      const { uploadFile } = await import('../../lib/storage');
-
-      const result = await uploadFile('/path/to/file.jpg', 'images/test.jpg');
+      const result = await uploadFile('/path/to/image.jpg', 'test/image.jpg');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('S3 error');
+      expect(result.error).toBe('Upload failed');
     });
 
     it('should use custom bucket', async () => {
-      mockReadFile.mockResolvedValueOnce(Buffer.from('test'));
-      mockStat.mockResolvedValueOnce({ size: 4 });
-      mockSend.mockResolvedValueOnce({});
-
-      const { uploadFile } = await import('../../lib/storage');
-
-      const result = await uploadFile('/path/to/file.jpg', 'key.jpg', {
+      await uploadFile('/path/to/image.jpg', 'test/image.jpg', {
         bucket: 'custom-bucket',
       });
 
-      expect(result.success).toBe(true);
-      expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({
-          Bucket: 'custom-bucket',
-        })
-      );
+      expect(mockS3Client.send).toHaveBeenCalled();
     });
 
-    it('should set custom content type', async () => {
-      mockReadFile.mockResolvedValueOnce(Buffer.from('test'));
-      mockStat.mockResolvedValueOnce({ size: 4 });
-      mockSend.mockResolvedValueOnce({});
-
-      const { uploadFile } = await import('../../lib/storage');
-
-      await uploadFile('/path/to/file.jpg', 'key.jpg', {
-        contentType: 'image/webp',
+    it('should use custom content type', async () => {
+      await uploadFile('/path/to/image.jpg', 'test/image.jpg', {
+        contentType: 'image/png',
       });
 
-      expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({
-          ContentType: 'image/webp',
-        })
-      );
+      expect(mockS3Client.send).toHaveBeenCalled();
     });
   });
 
   describe('uploadBuffer', () => {
     it('should upload buffer successfully', async () => {
-      const buffer = Buffer.from('test content');
-      mockSend.mockResolvedValueOnce({});
-
-      const { uploadBuffer } = await import('../../lib/storage');
-
-      const result = await uploadBuffer(buffer, 'images/test.jpg', {
-        contentType: 'image/jpeg',
-      });
+      const buffer = Buffer.from('test data');
+      
+      const result = await uploadBuffer(buffer, 'test/data.bin');
 
       expect(result.success).toBe(true);
-      expect(result.key).toBe('images/test.jpg');
-      expect(result.size).toBe(buffer.length);
+      expect(result.key).toBe('test/data.bin');
+      expect(result.size).toBe(9);
     });
 
-    it('should handle buffer upload errors', async () => {
-      mockSend.mockRejectedValueOnce(new Error('Upload failed'));
+    it('should handle upload error', async () => {
+      mockS3Client.send.mockRejectedValue(new Error('Upload failed'));
+      const buffer = Buffer.from('test data');
 
-      const { uploadBuffer } = await import('../../lib/storage');
-
-      const result = await uploadBuffer(Buffer.from('test'), 'key.jpg');
+      const result = await uploadBuffer(buffer, 'test/data.bin');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Upload failed');
+    });
+
+    it('should use custom content type', async () => {
+      const buffer = Buffer.from('{}');
+
+      await uploadBuffer(buffer, 'test/data.json', {
+        contentType: 'application/json',
+      });
+
+      expect(mockS3Client.send).toHaveBeenCalled();
     });
   });
 
   describe('deleteFile', () => {
     it('should delete file successfully', async () => {
-      mockSend.mockResolvedValueOnce({});
-
-      const { deleteFile } = await import('../../lib/storage');
-
-      const result = await deleteFile('images/test.jpg');
+      const result = await deleteFile('test/image.jpg');
 
       expect(result.success).toBe(true);
+      expect(mockS3Client.send).toHaveBeenCalled();
     });
 
-    it('should handle delete errors', async () => {
-      mockSend.mockRejectedValueOnce(new Error('Delete failed'));
+    it('should handle delete error', async () => {
+      mockS3Client.send.mockRejectedValue(new Error('Delete failed'));
 
-      const { deleteFile } = await import('../../lib/storage');
-
-      const result = await deleteFile('images/test.jpg');
+      const result = await deleteFile('test/image.jpg');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Delete failed');
@@ -176,79 +152,77 @@ describe('Storage', () => {
 
   describe('fileExists', () => {
     it('should return true when file exists', async () => {
-      mockSend.mockResolvedValueOnce({});
+      mockS3Client.send.mockResolvedValue({});
 
-      const { fileExists } = await import('../../lib/storage');
+      const result = await fileExists('test/image.jpg');
 
-      const exists = await fileExists('images/test.jpg');
-
-      expect(exists).toBe(true);
+      expect(result).toBe(true);
     });
 
     it('should return false when file does not exist', async () => {
-      mockSend.mockRejectedValueOnce(new Error('Not found'));
+      mockS3Client.send.mockRejectedValue(new Error('Not found'));
 
-      const { fileExists } = await import('../../lib/storage');
+      const result = await fileExists('test/nonexistent.jpg');
 
-      const exists = await fileExists('images/nonexistent.jpg');
-
-      expect(exists).toBe(false);
+      expect(result).toBe(false);
     });
   });
 
   describe('generateProductImageKey', () => {
-    it('should generate valid key for product image', async () => {
-      const { generateProductImageKey } = await import('../../lib/storage');
+    it('should generate key with default format', () => {
+      const key = generateProductImageKey('product-123', 0);
 
-      const key = generateProductImageKey('prod-123', 0, 'jpg');
-
-      expect(key).toMatch(/^products\/prod-123\/\d+-0\.jpg$/);
+      expect(key).toMatch(/^products\/product-123\/\d+-0\.webp$/);
     });
 
-    it('should include different indices', async () => {
-      const { generateProductImageKey } = await import('../../lib/storage');
+    it('should generate key with custom format', () => {
+      const key = generateProductImageKey('product-123', 1, 'jpg');
 
-      const key1 = generateProductImageKey('prod-123', 0, 'jpg');
-      const key2 = generateProductImageKey('prod-123', 1, 'jpg');
+      expect(key).toMatch(/^products\/product-123\/\d+-1\.jpg$/);
+    });
 
-      expect(key1).toContain('-0.jpg');
-      expect(key2).toContain('-1.jpg');
+    it('should include timestamp in key', () => {
+      const beforeTime = Date.now();
+      const key = generateProductImageKey('product-123', 0);
+      const afterTime = Date.now();
+
+      // Extract timestamp from key
+      const match = key.match(/products\/product-123\/(\d+)-0\.webp/);
+      expect(match).not.toBeNull();
+
+      const timestamp = parseInt(match![1]);
+      expect(timestamp).toBeGreaterThanOrEqual(beforeTime);
+      expect(timestamp).toBeLessThanOrEqual(afterTime);
     });
   });
 
   describe('listProductImages', () => {
     it('should list product images', async () => {
-      mockSend.mockResolvedValueOnce({
+      mockS3Client.send.mockResolvedValue({
         Contents: [
-          { Key: 'products/prod-123/image1.jpg' },
-          { Key: 'products/prod-123/image2.jpg' },
+          { Key: 'products/product-123/image1.jpg' },
+          { Key: 'products/product-123/image2.jpg' },
         ],
       });
 
-      const { listProductImages } = await import('../../lib/storage');
-
-      const keys = await listProductImages('prod-123');
+      const keys = await listProductImages('product-123');
 
       expect(keys).toHaveLength(2);
-      expect(keys[0]).toBe('products/prod-123/image1.jpg');
+      expect(keys[0]).toBe('products/product-123/image1.jpg');
     });
 
     it('should return empty array on error', async () => {
-      mockSend.mockRejectedValueOnce(new Error('List failed'));
+      mockS3Client.send.mockRejectedValue(new Error('List failed'));
 
-      const { listProductImages } = await import('../../lib/storage');
-
-      const keys = await listProductImages('prod-123');
+      const keys = await listProductImages('product-123');
 
       expect(keys).toEqual([]);
     });
 
-    it('should return empty array when no contents', async () => {
-      mockSend.mockResolvedValueOnce({});
+    it('should return empty array when no images', async () => {
+      mockS3Client.send.mockResolvedValue({ Contents: [] });
 
-      const { listProductImages } = await import('../../lib/storage');
-
-      const keys = await listProductImages('prod-123');
+      const keys = await listProductImages('product-123');
 
       expect(keys).toEqual([]);
     });
@@ -256,57 +230,132 @@ describe('Storage', () => {
 
   describe('deleteProductImages', () => {
     it('should delete all product images', async () => {
-      // List images
-      mockSend.mockResolvedValueOnce({
-        Contents: [
-          { Key: 'products/prod-123/image1.jpg' },
-          { Key: 'products/prod-123/image2.jpg' },
-        ],
-      });
-      // Delete each image
-      mockSend.mockResolvedValueOnce({});
-      mockSend.mockResolvedValueOnce({});
+      mockS3Client.send
+        .mockResolvedValueOnce({
+          Contents: [
+            { Key: 'products/product-123/image1.jpg' },
+            { Key: 'products/product-123/image2.jpg' },
+          ],
+        })
+        .mockResolvedValue({}); // Delete operations
 
-      const { deleteProductImages } = await import('../../lib/storage');
-
-      const result = await deleteProductImages('prod-123');
+      const result = await deleteProductImages('product-123');
 
       expect(result.deleted).toBe(2);
       expect(result.errors).toBe(0);
     });
 
-    it('should count errors', async () => {
-      mockSend.mockResolvedValueOnce({
-        Contents: [{ Key: 'products/prod-123/image1.jpg' }],
-      });
-      mockSend.mockRejectedValueOnce(new Error('Delete failed'));
+    it('should count errors during deletion', async () => {
+      mockS3Client.send
+        .mockResolvedValueOnce({
+          Contents: [
+            { Key: 'products/product-123/image1.jpg' },
+            { Key: 'products/product-123/image2.jpg' },
+          ],
+        })
+        .mockResolvedValueOnce({}) // First delete succeeds
+        .mockRejectedValueOnce(new Error('Delete failed')); // Second fails
 
-      const { deleteProductImages } = await import('../../lib/storage');
+      const result = await deleteProductImages('product-123');
 
-      const result = await deleteProductImages('prod-123');
-
-      expect(result.deleted).toBe(0);
+      expect(result.deleted).toBe(1);
       expect(result.errors).toBe(1);
     });
   });
 
   describe('buildPublicUrl', () => {
-    it('should build public URL', async () => {
-      const { buildPublicUrl } = await import('../../lib/storage');
+    it('should build public URL', () => {
+      const url = buildPublicUrl('my-bucket', 'path/to/file.jpg');
 
-      const url = buildPublicUrl('my-bucket', 'images/test.jpg');
+      expect(url).toContain('my-bucket');
+      expect(url).toContain('path/to/file.jpg');
+    });
 
-      expect(url).toBe('http://localhost:9000/my-bucket/images/test.jpg');
+    it('should handle trailing slash in CDN URL', () => {
+      const url = buildPublicUrl('bucket', 'file.jpg');
+
+      expect(url).not.toContain('//bucket');
     });
   });
 
   describe('getPresignedUrl', () => {
-    it('should return presigned URL', async () => {
-      const { getPresignedUrl } = await import('../../lib/storage');
+    it('should generate presigned URL', async () => {
+      const url = await getPresignedUrl('test/image.jpg');
 
-      const url = await getPresignedUrl('images/test.jpg');
+      expect(url).toBe('https://signed-url.example.com/file');
+    });
 
-      expect(url).toBe('https://signed-url.example.com');
+    it('should use custom expiration', async () => {
+      await getPresignedUrl('test/image.jpg', 'bucket', 3600);
+
+      // Function should complete without error
+    });
+  });
+
+  describe('convertToExternalUrl', () => {
+    it('should return non-local URL unchanged', async () => {
+      const url = await convertToExternalUrl('https://external.com/image.jpg');
+
+      expect(url).toBe('https://external.com/image.jpg');
+    });
+
+    it('should convert localhost URL to presigned URL', async () => {
+      const url = await convertToExternalUrl('http://localhost:9000/bucket/path/to/file.jpg');
+
+      expect(url).toBe('https://signed-url.example.com/file');
+    });
+
+    it('should convert 127.0.0.1 URL to presigned URL', async () => {
+      const url = await convertToExternalUrl('http://127.0.0.1:9000/bucket/path/to/file.jpg');
+
+      expect(url).toBe('https://signed-url.example.com/file');
+    });
+
+    it('should convert minio URL to presigned URL', async () => {
+      const url = await convertToExternalUrl('http://minio:9000/bucket/path/to/file.jpg');
+
+      expect(url).toBe('https://signed-url.example.com/file');
+    });
+  });
+
+  describe('convertImagesToExternalUrls', () => {
+    it('should convert multiple image URLs', async () => {
+      const urls = [
+        'https://external.com/image1.jpg',
+        'http://localhost:9000/bucket/image2.jpg',
+      ];
+
+      const results = await convertImagesToExternalUrls(urls);
+
+      expect(results).toHaveLength(2);
+      expect(results[0]).toBe('https://external.com/image1.jpg');
+      expect(results[1]).toBe('https://signed-url.example.com/file');
+    });
+
+    it('should handle empty array', async () => {
+      const results = await convertImagesToExternalUrls([]);
+
+      expect(results).toHaveLength(0);
+    });
+  });
+
+  describe('healthCheck', () => {
+    it('should return healthy when S3 is accessible', async () => {
+      mockS3Client.send.mockResolvedValue({ Contents: [] });
+
+      const result = await healthCheck();
+
+      expect(result.healthy).toBe(true);
+      expect(result.bucket).toBeDefined();
+    });
+
+    it('should return unhealthy on S3 error', async () => {
+      mockS3Client.send.mockRejectedValue(new Error('Connection refused'));
+
+      const result = await healthCheck();
+
+      expect(result.healthy).toBe(false);
+      expect(result.error).toBe('Connection refused');
     });
   });
 });

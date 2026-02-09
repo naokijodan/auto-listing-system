@@ -133,5 +133,27 @@ describe('Graceful Shutdown', () => {
 
       vi.useRealTimers();
     });
+
+    it('should ignore duplicate shutdown signals', async () => {
+      vi.useFakeTimers();
+      const { setupGracefulShutdown } = await import('../../lib/graceful-shutdown');
+      const handler = vi.fn().mockResolvedValue(undefined);
+
+      setupGracefulShutdown(handler);
+
+      const sigtermHandler = registeredHandlers.get('SIGTERM');
+      const sigintHandler = registeredHandlers.get('SIGINT');
+
+      // Trigger first shutdown
+      await sigtermHandler?.();
+
+      // Try to trigger second shutdown
+      await sigintHandler?.();
+
+      // Handler should only be called once
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      vi.useRealTimers();
+    });
   });
 });

@@ -8,6 +8,7 @@ import {
   createApiError,
   safeFetch,
   apiRequest,
+  apiRequestWithCircuitBreaker,
   DEFAULT_RETRY_CONFIG,
   CircuitBreaker,
   CircuitBreakerError,
@@ -501,6 +502,154 @@ describe('api-utils', () => {
       const error = new CircuitBreakerError('Circuit is open');
       expect(error.name).toBe('CircuitBreakerError');
       expect(error.message).toBe('Circuit is open');
+    });
+  });
+
+  describe('apiRequest', () => {
+    it('should make API request and return JSON', async () => {
+      vi.useRealTimers();
+
+      const mockData = { id: 1, name: 'test' };
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => mockData,
+      });
+
+      const result = await apiRequest<typeof mockData>('https://api.example.com/test');
+
+      expect(result).toEqual(mockData);
+    });
+
+    it('should return undefined for 204 response', async () => {
+      vi.useRealTimers();
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 204,
+      });
+
+      const result = await apiRequest('https://api.example.com/test');
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should throw error on non-ok response', async () => {
+      vi.useRealTimers();
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        headers: { get: () => null },
+        json: async () => ({ message: 'Bad request' }),
+        text: async () => 'Bad request',
+      });
+
+      await expect(
+        apiRequest('https://api.example.com/test', {}, undefined, { maxRetries: 0 })
+      ).rejects.toThrow();
+    });
+
+    it('should use rate limiter when provided', async () => {
+      vi.useRealTimers();
+
+      const limiter = new RateLimiter(10, 1000);
+      const acquireSpy = vi.spyOn(limiter, 'acquire');
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: 'test' }),
+      });
+
+      await apiRequest('https://api.example.com/test', {}, limiter);
+
+      expect(acquireSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('apiRequestWithCircuitBreaker', () => {
+    it('should make API request with circuit breaker', async () => {
+      vi.useRealTimers();
+
+      const mockData = { id: 1, name: 'test' };
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => mockData,
+      });
+
+      const result = await apiRequestWithCircuitBreaker<typeof mockData>(
+        'https://api.example.com/test',
+        {},
+        'test-api-cb'
+      );
+
+      expect(result).toEqual(mockData);
+    });
+
+    it('should return undefined for 204 response', async () => {
+      vi.useRealTimers();
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 204,
+      });
+
+      const result = await apiRequestWithCircuitBreaker(
+        'https://api.example.com/test',
+        {},
+        'test-api-cb-204'
+      );
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should use rate limiter when provided', async () => {
+      vi.useRealTimers();
+
+      const limiter = new RateLimiter(10, 1000);
+      const acquireSpy = vi.spyOn(limiter, 'acquire');
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: 'test' }),
+      });
+
+      await apiRequestWithCircuitBreaker(
+        'https://api.example.com/test',
+        {},
+        'test-api-cb-limiter',
+        limiter
+      );
+
+      expect(acquireSpy).toHaveBeenCalled();
+    });
+
+    it('should throw on non-ok response', async () => {
+      vi.useRealTimers();
+
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Server Error',
+        headers: { get: () => null },
+        json: async () => ({ message: 'Server error' }),
+        text: async () => 'Server error',
+      });
+
+      await expect(
+        apiRequestWithCircuitBreaker(
+          'https://api.example.com/test',
+          {},
+          'test-api-cb-error',
+          undefined,
+          { maxRetries: 0 },
+          { failureThreshold: 5 }
+        )
+      ).rejects.toThrow();
     });
   });
 });

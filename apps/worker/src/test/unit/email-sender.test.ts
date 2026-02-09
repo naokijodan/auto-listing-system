@@ -269,7 +269,7 @@ describe('Email Sender', () => {
 
       const result = await sendTemplatedEmail('INVENTORY_OUT_OF_STOCK_BATCH', {
         count: 5,
-        items: [{ title: 'Product 1' }, { title: 'Product 2' }],
+        alerts: [{ title: 'Product 1', timestamp: '2024-01-01' }, { title: 'Product 2', timestamp: '2024-01-02' }],
       });
 
       expect(result.success).toBe(true);
