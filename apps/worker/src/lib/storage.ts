@@ -18,20 +18,32 @@ import { logger } from '@rakuda/logger';
 const log = logger.child({ module: 'storage' });
 
 /**
- * S3/MinIOクライアント
+ * S3/MinIOクライアント（遅延初期化）
  */
-const s3Client = new S3Client({
-  endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
-  region: process.env.S3_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
-    secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
-  },
-  forcePathStyle: true, // MinIO互換性のため
-});
+let s3Client: S3Client | null = null;
 
-const DEFAULT_BUCKET = process.env.S3_BUCKET || 'rakuda-images';
-const CDN_URL = process.env.CDN_URL || process.env.S3_ENDPOINT || 'http://localhost:9000';
+function getS3Client(): S3Client {
+  if (!s3Client) {
+    s3Client = new S3Client({
+      endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
+      region: process.env.S3_REGION || 'us-east-1',
+      credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
+        secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
+      },
+      forcePathStyle: true, // MinIO互換性のため
+    });
+  }
+  return s3Client;
+}
+
+function getDefaultBucket(): string {
+  return process.env.S3_BUCKET || 'rakuda-images';
+}
+
+function getCdnUrl(): string {
+  return process.env.CDN_URL || process.env.S3_ENDPOINT || 'http://localhost:9000';
+}
 
 /**
  * アップロードオプション
@@ -62,7 +74,7 @@ export async function uploadFile(
   key: string,
   options: UploadOptions = {}
 ): Promise<UploadResult> {
-  const bucket = options.bucket || DEFAULT_BUCKET;
+  const bucket = options.bucket || getDefaultBucket();
 
   try {
     // ファイル読み込み
@@ -81,7 +93,7 @@ export async function uploadFile(
     });
 
     // アップロード実行
-    await s3Client.send(
+    await getS3Client().send(
       new PutObjectCommand({
         Bucket: bucket,
         Key: key,
@@ -131,7 +143,7 @@ export async function uploadBuffer(
   key: string,
   options: UploadOptions = {}
 ): Promise<UploadResult> {
-  const bucket = options.bucket || DEFAULT_BUCKET;
+  const bucket = options.bucket || getDefaultBucket();
 
   try {
     const contentType = options.contentType || 'application/octet-stream';
@@ -144,7 +156,7 @@ export async function uploadBuffer(
       contentType,
     });
 
-    await s3Client.send(
+    await getS3Client().send(
       new PutObjectCommand({
         Bucket: bucket,
         Key: key,
@@ -191,10 +203,10 @@ export async function uploadBuffer(
  */
 export async function deleteFile(
   key: string,
-  bucket: string = DEFAULT_BUCKET
+  bucket: string = getDefaultBucket()
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await s3Client.send(
+    await getS3Client().send(
       new DeleteObjectCommand({
         Bucket: bucket,
         Key: key,
@@ -228,10 +240,10 @@ export async function deleteFile(
  */
 export async function fileExists(
   key: string,
-  bucket: string = DEFAULT_BUCKET
+  bucket: string = getDefaultBucket()
 ): Promise<boolean> {
   try {
-    await s3Client.send(
+    await getS3Client().send(
       new HeadObjectCommand({
         Bucket: bucket,
         Key: key,
@@ -260,10 +272,10 @@ export function generateProductImageKey(
  */
 export async function listProductImages(
   productId: string,
-  bucket: string = DEFAULT_BUCKET
+  bucket: string = getDefaultBucket()
 ): Promise<string[]> {
   try {
-    const response = await s3Client.send(
+    const response = await getS3Client().send(
       new ListObjectsV2Command({
         Bucket: bucket,
         Prefix: `products/${productId}/`,
@@ -294,7 +306,7 @@ export async function listProductImages(
  */
 export async function deleteProductImages(
   productId: string,
-  bucket: string = DEFAULT_BUCKET
+  bucket: string = getDefaultBucket()
 ): Promise<{ deleted: number; errors: number }> {
   const keys = await listProductImages(productId, bucket);
   let deleted = 0;
@@ -324,7 +336,7 @@ export async function deleteProductImages(
  */
 export function buildPublicUrl(bucket: string, key: string): string {
   // CDN URLが設定されている場合はそれを使用
-  const baseUrl = CDN_URL.replace(/\/$/, '');
+  const baseUrl = getCdnUrl().replace(/\/$/, '');
   return `${baseUrl}/${bucket}/${key}`;
 }
 
@@ -334,7 +346,7 @@ export function buildPublicUrl(bucket: string, key: string): string {
  */
 export async function getPresignedUrl(
   key: string,
-  bucket: string = DEFAULT_BUCKET,
+  bucket: string = getDefaultBucket(),
   expiresIn: number = 7 * 24 * 60 * 60 // デフォルト: 7日間
 ): Promise<string> {
   try {
@@ -398,8 +410,8 @@ export async function convertToExternalUrl(
     const bucket = pathParts[0];
     const key = pathParts.slice(1).join('/');
 
-    // CDN_URLがlocalhostでない場合はそちらを使用
-    const cdnUrl = CDN_URL.replace(/\/$/, '');
+    // getCdnUrl()がlocalhostでない場合はそちらを使用
+    const cdnUrl = getCdnUrl().replace(/\/$/, '');
     const isExternalCdn = !cdnUrl.includes('localhost') &&
                           !cdnUrl.includes('127.0.0.1') &&
                           !cdnUrl.includes('minio:');
@@ -463,11 +475,11 @@ export async function healthCheck(): Promise<{
   error?: string;
 }> {
   const endpoint = process.env.S3_ENDPOINT || 'http://localhost:9000';
-  const bucket = DEFAULT_BUCKET;
+  const bucket = getDefaultBucket();
 
   try {
     // バケットの存在確認（HeadBucketは権限が必要な場合があるため、ListObjectsを使用）
-    await s3Client.send(
+    await getS3Client().send(
       new ListObjectsV2Command({
         Bucket: bucket,
         MaxKeys: 1,
