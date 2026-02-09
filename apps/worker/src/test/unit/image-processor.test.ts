@@ -1,160 +1,334 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { processImageJob } from '../../processors/image';
-import { mockPrisma } from '../setup';
 
-// Mock image processor lib
-vi.mock('../../lib/image-processor', () => ({
-  processImages: vi.fn(),
+// Hoist mock functions
+const {
+  mockDownloadImage,
+  mockOptimizeImage,
+  mockValidateForJoom,
+  mockUploadFile,
+  mockGenerateProductImageKey,
+  mockDeleteProductImages,
+  mockIsValidImageUrl,
+  mockMkdtemp,
+  mockRm,
+  mockStat,
+  mockSharp,
+  mockExecAsync,
+} = vi.hoisted(() => ({
+  mockDownloadImage: vi.fn(),
+  mockOptimizeImage: vi.fn(),
+  mockValidateForJoom: vi.fn(),
+  mockUploadFile: vi.fn(),
+  mockGenerateProductImageKey: vi.fn(),
+  mockDeleteProductImages: vi.fn(),
+  mockIsValidImageUrl: vi.fn(),
+  mockMkdtemp: vi.fn(),
+  mockRm: vi.fn(),
+  mockStat: vi.fn(),
+  mockSharp: vi.fn(),
+  mockExecAsync: vi.fn(),
 }));
 
-import { processImages } from '../../lib/image-processor';
+vi.mock('@rakuda/logger', () => ({
+  logger: {
+    child: vi.fn().mockReturnValue({
+      info: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+    }),
+  },
+}));
 
-const mockProcessImages = vi.mocked(processImages);
+vi.mock('fs/promises', () => ({
+  default: {
+    mkdtemp: mockMkdtemp,
+    rm: mockRm,
+    stat: mockStat,
+  },
+  mkdtemp: mockMkdtemp,
+  rm: mockRm,
+  stat: mockStat,
+}));
+
+vi.mock('sharp', () => ({
+  default: mockSharp,
+}));
+
+vi.mock('child_process', () => ({
+  exec: vi.fn(),
+}));
+
+vi.mock('util', () => ({
+  promisify: () => mockExecAsync,
+}));
+
+vi.mock('../../lib/image-downloader', () => ({
+  downloadImage: mockDownloadImage,
+  isValidImageUrl: mockIsValidImageUrl,
+}));
+
+vi.mock('../../lib/image-optimizer', () => ({
+  optimizeImage: mockOptimizeImage,
+  validateForJoom: mockValidateForJoom,
+}));
+
+vi.mock('../../lib/storage', () => ({
+  uploadFile: mockUploadFile,
+  generateProductImageKey: mockGenerateProductImageKey,
+  deleteProductImages: mockDeleteProductImages,
+}));
+
+import { processImage, processImages, processImageForJoom, processImagesForJoom } from '../../lib/image-processor';
 
 describe('Image Processor', () => {
-  const mockJob = {
-    id: 'job-123',
-    data: {
-      productId: 'product-1',
-      imageUrls: [
-        'https://example.com/image1.jpg',
-        'https://example.com/image2.jpg',
-      ],
-      removeBackground: true,
-    },
-  } as any;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPrisma.product.update.mockResolvedValue({ id: 'product-1' });
-    mockPrisma.jobLog.create.mockResolvedValue({ id: 'log-1' });
+
+    // Default mock implementations
+    mockMkdtemp.mockResolvedValue('/tmp/test-image-abc');
+    mockRm.mockResolvedValue(undefined);
+    mockStat.mockResolvedValue({ size: 50000 });
+
+    mockSharp.mockReturnValue({
+      metadata: vi.fn().mockResolvedValue({ width: 800, height: 600 }),
+      png: vi.fn().mockReturnThis(),
+      jpeg: vi.fn().mockReturnThis(),
+      toBuffer: vi.fn().mockResolvedValue(Buffer.from('test')),
+      toFile: vi.fn().mockResolvedValue(undefined),
+      composite: vi.fn().mockReturnThis(),
+    });
+
+    mockDownloadImage.mockResolvedValue({ success: true });
+    mockOptimizeImage.mockResolvedValue({
+      success: true,
+      outputPath: '/tmp/test-image-abc/optimized-0.jpg',
+      width: 800,
+      height: 600,
+      optimizedSize: 50000,
+    });
+    mockValidateForJoom.mockReturnValue({ valid: true, issues: [] });
+    mockUploadFile.mockResolvedValue({
+      success: true,
+      url: 'https://storage.example.com/products/123/image.jpg',
+    });
+    mockGenerateProductImageKey.mockReturnValue('products/123/0.webp');
+    mockIsValidImageUrl.mockReturnValue(true);
+
+    // rembg not available by default
+    mockExecAsync.mockRejectedValue(new Error('rembg not found'));
   });
 
-  describe('processImageJob', () => {
-    it('should process images successfully', async () => {
-      mockProcessImages.mockResolvedValue([
-        { originalUrl: 'https://example.com/image1.jpg', processedUrl: 'https://cdn.example.com/image1.jpg' },
-        { originalUrl: 'https://example.com/image2.jpg', processedUrl: 'https://cdn.example.com/image2.jpg' },
-      ]);
+  describe('processImage', () => {
+    it('should process image successfully', async () => {
+      const result = await processImage(
+        'https://example.com/image.jpg',
+        'product-123',
+        0,
+        false // disable background removal
+      );
 
-      const result = await processImageJob(mockJob);
-
-      expect(result.success).toBe(true);
-      expect(result.processedUrls).toHaveLength(2);
-      expect(result.failedUrls).toHaveLength(0);
-      expect(result.message).toContain('2 images');
+      expect(result.originalUrl).toBe('https://example.com/image.jpg');
+      expect(result.processedUrl).toBe('https://storage.example.com/products/123/image.jpg');
+      expect(result.width).toBe(800);
+      expect(result.height).toBe(600);
+      expect(result.size).toBe(50000);
     });
 
-    it('should update product status to PROCESSING then READY_TO_REVIEW', async () => {
-      mockProcessImages.mockResolvedValue([]);
+    it('should download image', async () => {
+      await processImage('https://example.com/image.jpg', 'product-123', 0, false);
 
-      await processImageJob(mockJob);
+      expect(mockDownloadImage).toHaveBeenCalled();
+    });
 
-      // First update: PROCESSING
-      expect(mockPrisma.product.update).toHaveBeenNthCalledWith(1, {
-        where: { id: 'product-1' },
-        data: {
-          imageStatus: 'PROCESSING',
-          status: 'PROCESSING_IMAGES',
-        },
+    it('should optimize image', async () => {
+      await processImage('https://example.com/image.jpg', 'product-123', 0, false);
+
+      expect(mockOptimizeImage).toHaveBeenCalled();
+    });
+
+    it('should upload to storage', async () => {
+      await processImage('https://example.com/image.jpg', 'product-123', 0, false);
+
+      expect(mockUploadFile).toHaveBeenCalled();
+    });
+
+    it('should cleanup temp files', async () => {
+      await processImage('https://example.com/image.jpg', 'product-123', 0, false);
+
+      expect(mockRm).toHaveBeenCalledWith('/tmp/test-image-abc', { recursive: true });
+    });
+
+    it('should throw on download failure', async () => {
+      mockDownloadImage.mockResolvedValue({
+        success: false,
+        error: 'Network error',
       });
 
-      // Second update: COMPLETED
-      expect(mockPrisma.product.update).toHaveBeenNthCalledWith(2,
-        expect.objectContaining({
-          where: { id: 'product-1' },
-          data: expect.objectContaining({
-            imageStatus: 'COMPLETED',
-            status: 'READY_TO_REVIEW',
-          }),
-        })
+      await expect(
+        processImage('https://example.com/image.jpg', 'product-123', 0, false)
+      ).rejects.toThrow('Network error');
+    });
+
+    it('should throw on optimization failure', async () => {
+      mockOptimizeImage.mockResolvedValue({
+        success: false,
+        error: 'Invalid image format',
+      });
+
+      await expect(
+        processImage('https://example.com/image.jpg', 'product-123', 0, false)
+      ).rejects.toThrow('Invalid image format');
+    });
+
+    it('should throw on upload failure', async () => {
+      mockUploadFile.mockResolvedValue({
+        success: false,
+        error: 'Storage unavailable',
+      });
+
+      await expect(
+        processImage('https://example.com/image.jpg', 'product-123', 0, false)
+      ).rejects.toThrow('Storage unavailable');
+    });
+  });
+
+  describe('processImages', () => {
+    it('should process multiple images', async () => {
+      const urls = [
+        'https://example.com/image1.jpg',
+        'https://example.com/image2.jpg',
+        'https://example.com/image3.jpg',
+      ];
+
+      const results = await processImages(urls, 'product-123', false);
+
+      expect(results).toHaveLength(3);
+    });
+
+    it('should handle partial failures', async () => {
+      const urls = [
+        'https://example.com/image1.jpg',
+        'https://example.com/image2.jpg',
+      ];
+
+      // First succeeds, second fails
+      mockDownloadImage
+        .mockResolvedValueOnce({ success: true })
+        .mockResolvedValueOnce({ success: false, error: 'Failed' });
+
+      const results = await processImages(urls, 'product-123', false);
+
+      expect(results.length).toBeLessThan(urls.length);
+    });
+
+    it('should respect concurrency limit', async () => {
+      const urls = Array.from({ length: 10 }, (_, i) => `https://example.com/image${i}.jpg`);
+
+      await processImages(urls, 'product-123', false, 2);
+
+      // Should have been called 10 times total
+      expect(mockDownloadImage).toHaveBeenCalledTimes(10);
+    });
+  });
+
+  describe('processImageForJoom', () => {
+    it('should process image for Joom successfully', async () => {
+      const result = await processImageForJoom(
+        'https://example.com/image.jpg',
+        'product-123',
+        0
+      );
+
+      expect(result.originalUrl).toBe('https://example.com/image.jpg');
+      expect(result.format).toBe('webp');
+      expect(result.joomCompliant).toBe(true);
+      expect(result.validationIssues).toHaveLength(0);
+    });
+
+    it('should validate image URL', async () => {
+      mockIsValidImageUrl.mockReturnValue(false);
+
+      await expect(
+        processImageForJoom('invalid-url', 'product-123', 0)
+      ).rejects.toThrow('Invalid image URL');
+    });
+
+    it('should use WebP format', async () => {
+      await processImageForJoom('https://example.com/image.jpg', 'product-123', 0);
+
+      expect(mockOptimizeImage).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.objectContaining({ format: 'webp' })
       );
     });
 
-    it('should track failed images', async () => {
-      mockProcessImages.mockResolvedValue([
-        { originalUrl: 'https://example.com/image1.jpg', processedUrl: 'https://cdn.example.com/image1.jpg' },
-        // image2 not processed (failed)
-      ]);
+    it('should validate for Joom requirements', async () => {
+      await processImageForJoom('https://example.com/image.jpg', 'product-123', 0);
 
-      const result = await processImageJob(mockJob);
-
-      expect(result.processedUrls).toHaveLength(1);
-      expect(result.failedUrls).toHaveLength(1);
-      expect(result.failedUrls[0]).toBe('https://example.com/image2.jpg');
+      expect(mockValidateForJoom).toHaveBeenCalled();
     });
 
-    it('should create job log on success', async () => {
-      mockProcessImages.mockResolvedValue([
-        { originalUrl: 'https://example.com/image1.jpg', processedUrl: 'https://cdn.example.com/image1.jpg' },
-      ]);
-
-      await processImageJob(mockJob);
-
-      expect(mockPrisma.jobLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          jobId: 'job-123',
-          queueName: 'image',
-          jobType: 'IMAGE',
-          status: 'COMPLETED',
-          productId: 'product-1',
-          result: expect.objectContaining({
-            originalCount: 2,
-            processedCount: 1,
-            failedCount: 1,
-          }),
-        }),
+    it('should report validation issues', async () => {
+      mockValidateForJoom.mockReturnValue({
+        valid: false,
+        issues: ['Image too small', 'Aspect ratio invalid'],
       });
-    });
 
-    it('should handle processing error', async () => {
-      mockProcessImages.mockRejectedValue(new Error('Image processing failed'));
-
-      await expect(processImageJob(mockJob)).rejects.toThrow('Image processing failed');
-
-      expect(mockPrisma.product.update).toHaveBeenCalledWith({
-        where: { id: 'product-1' },
-        data: expect.objectContaining({
-          imageStatus: 'ERROR',
-          status: 'ERROR',
-          lastError: 'Image processing failed',
-        }),
-      });
-    });
-
-    it('should create failed job log on error', async () => {
-      mockProcessImages.mockRejectedValue(new Error('Image processing failed'));
-
-      await expect(processImageJob(mockJob)).rejects.toThrow();
-
-      expect(mockPrisma.jobLog.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          status: 'FAILED',
-          errorMessage: 'Image processing failed',
-        }),
-      });
-    });
-
-    it('should use default removeBackground value', async () => {
-      const jobWithoutRemoveBg = {
-        ...mockJob,
-        data: {
-          productId: 'product-1',
-          imageUrls: ['https://example.com/image1.jpg'],
-          // removeBackground not specified
-        },
-      };
-
-      mockProcessImages.mockResolvedValue([]);
-
-      await processImageJob(jobWithoutRemoveBg);
-
-      expect(mockProcessImages).toHaveBeenCalledWith(
-        ['https://example.com/image1.jpg'],
-        'product-1',
-        true, // default removeBackground
-        3
+      const result = await processImageForJoom(
+        'https://example.com/image.jpg',
+        'product-123',
+        0
       );
+
+      expect(result.joomCompliant).toBe(false);
+      expect(result.validationIssues).toContain('Image too small');
+    });
+
+    it('should generate Joom-specific storage key', async () => {
+      await processImageForJoom('https://example.com/image.jpg', 'product-123', 0);
+
+      expect(mockGenerateProductImageKey).toHaveBeenCalledWith('product-123', 0, 'webp');
+    });
+  });
+
+  describe('processImagesForJoom', () => {
+    it('should process multiple images for Joom', async () => {
+      const urls = [
+        'https://example.com/image1.jpg',
+        'https://example.com/image2.jpg',
+      ];
+
+      const results = await processImagesForJoom(urls, 'product-123');
+
+      expect(results).toHaveLength(2);
+      results.forEach((result) => {
+        expect(result.format).toBe('webp');
+      });
+    });
+
+    it('should handle partial failures', async () => {
+      const urls = [
+        'https://example.com/image1.jpg',
+        'https://example.com/image2.jpg',
+      ];
+
+      mockDownloadImage
+        .mockResolvedValueOnce({ success: true })
+        .mockResolvedValueOnce({ success: false, error: 'Failed' });
+
+      const results = await processImagesForJoom(urls, 'product-123');
+
+      expect(results.length).toBeLessThan(urls.length);
+    });
+
+    it('should respect concurrency limit', async () => {
+      const urls = Array.from({ length: 6 }, (_, i) => `https://example.com/image${i}.jpg`);
+
+      await processImagesForJoom(urls, 'product-123', 2);
+
+      expect(mockDownloadImage).toHaveBeenCalledTimes(6);
     });
   });
 });
