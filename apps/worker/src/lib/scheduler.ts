@@ -143,6 +143,17 @@ export interface SchedulerConfig {
     cronExpression: string;   // 処理間隔（デフォルト: 1分ごと）
     batchSize: number;        // 1回の実行で処理する最大数
   };
+  // 在庫アラート・自動再開処理（Phase 17）
+  inventoryAlertProcessing: {
+    enabled: boolean;
+    cronExpression: string;   // 処理間隔（デフォルト: 10分ごと）
+  };
+  // 売上サマリー計算（Phase 18）
+  salesSummaryCalculation: {
+    enabled: boolean;
+    dailyCron: string;        // 日次サマリー計算（デフォルト: 毎日1時）
+    weeklyCron: string;       // 週次サマリー計算（デフォルト: 毎週月曜2時）
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -242,6 +253,15 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     enabled: true,
     cronExpression: '* * * * *',       // 毎分Webhookイベント処理
     batchSize: 20,                      // 1回の実行で最大20件処理
+  },
+  inventoryAlertProcessing: {
+    enabled: true,
+    cronExpression: '*/10 * * * *',    // 10分ごとに在庫アラート・自動再開処理
+  },
+  salesSummaryCalculation: {
+    enabled: true,
+    dailyCron: '0 1 * * *',            // 毎日1時に日次サマリー計算
+    weeklyCron: '0 2 * * 1',           // 毎週月曜2時に週次サマリー計算
   },
 };
 
@@ -770,6 +790,8 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     priceAdjustment: { ...DEFAULT_CONFIG.priceAdjustment, ...config.priceAdjustment },
     messageSending: { ...DEFAULT_CONFIG.messageSending, ...config.messageSending },
     webhookProcessing: { ...DEFAULT_CONFIG.webhookProcessing, ...config.webhookProcessing },
+    inventoryAlertProcessing: { ...DEFAULT_CONFIG.inventoryAlertProcessing, ...config.inventoryAlertProcessing },
+    salesSummaryCalculation: { ...DEFAULT_CONFIG.salesSummaryCalculation, ...config.salesSummaryCalculation },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -792,6 +814,8 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await schedulePriceAdjustment(finalConfig.priceAdjustment);
   await scheduleMessageSending(finalConfig.messageSending);
   await scheduleWebhookProcessing(finalConfig.webhookProcessing);
+  await scheduleInventoryAlertProcessing(finalConfig.inventoryAlertProcessing);
+  await scheduleSalesSummaryCalculation(finalConfig.salesSummaryCalculation);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -2683,6 +2707,118 @@ async function scheduleWebhookProcessing(config: SchedulerConfig['webhookProcess
   });
 }
 
+// ========================================
+// Phase 17: 在庫アラート・自動再開処理
+// ========================================
+
+/**
+ * 在庫アラート・自動再開処理ジョブをスケジュール（Phase 17）
+ * - 在庫切れで一時停止したリスティングの自動再開
+ * - resumeAt時刻を過ぎたリスティングの再アクティベーション
+ */
+async function scheduleInventoryAlertProcessing(config: SchedulerConfig['inventoryAlertProcessing']) {
+  if (!config.enabled) {
+    log.info({ type: 'inventory_alert_processing_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await inventoryQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'inventory-alert-processing') {
+      await inventoryQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // 在庫アラート処理ジョブを追加（10分ごと）
+  await inventoryQueue.add(
+    'inventory-alert-processing',
+    {
+      type: 'inventory-alert-processing',
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'inventory-alert-processing-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({
+    type: 'inventory_alert_processing_scheduled',
+    cronExpression: config.cronExpression,
+  });
+}
+
+// ========================================
+// Phase 18: 売上サマリー計算
+// ========================================
+
+/**
+ * 売上サマリー計算ジョブをスケジュール（Phase 18）
+ * - 日次サマリー: 毎日1時に前日分を計算
+ * - 週次サマリー: 毎週月曜2時に前週分を計算
+ */
+async function scheduleSalesSummaryCalculation(config: SchedulerConfig['salesSummaryCalculation']) {
+  if (!config.enabled) {
+    log.info({ type: 'sales_summary_calculation_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await scrapeQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'sales-summary-daily' || job.name === 'sales-summary-weekly') {
+      await scrapeQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // 日次サマリー計算ジョブ（毎日1時）
+  await scrapeQueue.add(
+    'sales-summary-daily',
+    {
+      type: 'sales-summary-calculation',
+      periodType: 'DAILY',
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.dailyCron,
+      },
+      jobId: 'sales-summary-daily-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  // 週次サマリー計算ジョブ（毎週月曜2時）
+  await scrapeQueue.add(
+    'sales-summary-weekly',
+    {
+      type: 'sales-summary-calculation',
+      periodType: 'WEEKLY',
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.weeklyCron,
+      },
+      jobId: 'sales-summary-weekly-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({
+    type: 'sales_summary_calculation_scheduled',
+    dailyCron: config.dailyCron,
+    weeklyCron: config.weeklyCron,
+  });
+}
+
 /**
  * 手動でメッセージ送信をトリガー（Phase 16）
  */
@@ -2730,6 +2866,61 @@ export async function triggerWebhookProcessing(batchSize?: number): Promise<stri
     type: 'manual_webhook_processing_triggered',
     jobId: job.id,
     batchSize,
+  });
+
+  return job.id || '';
+}
+
+/**
+ * 手動で在庫アラート処理をトリガー（Phase 17）
+ */
+export async function triggerInventoryAlertProcessing(): Promise<string> {
+  const job = await inventoryQueue.add(
+    'inventory-alert-processing',
+    {
+      type: 'inventory-alert-processing',
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_inventory_alert_processing_triggered',
+    jobId: job.id,
+  });
+
+  return job.id || '';
+}
+
+/**
+ * 手動で売上サマリー計算をトリガー（Phase 18）
+ */
+export async function triggerSalesSummaryCalculation(
+  periodType: 'DAILY' | 'WEEKLY' | 'MONTHLY' = 'DAILY',
+  marketplace?: 'JOOM' | 'EBAY'
+): Promise<string> {
+  const job = await scrapeQueue.add(
+    `sales-summary-${periodType.toLowerCase()}`,
+    {
+      type: 'sales-summary-calculation',
+      periodType,
+      marketplace,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_sales_summary_calculation_triggered',
+    jobId: job.id,
+    periodType,
+    marketplace,
   });
 
   return job.id || '';

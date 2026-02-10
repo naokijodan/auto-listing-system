@@ -144,15 +144,25 @@ model Listing {
   status       ListingStatus @default(DRAFT)
   errorMessage String?       @db.Text
 
+  // 在庫自動化制御（Phase 17）
+  autoStatusEnabled Boolean   @default(true)  // 自動停止/再開の有効化
+  pausedByInventory Boolean   @default(false) // 在庫切れによる自動停止中
+  resumeAt          DateTime?                 // 遅延再開予定日時
+
   // タイムスタンプ
   listedAt  DateTime?
   soldAt    DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
+  // リレーション
+  inventoryAlerts InventoryAlert[]
+  sales           Sale[]
+
   @@unique([productId, marketplace])
   @@index([marketplace, status])
   @@index([marketplaceListingId])
+  @@index([pausedByInventory, resumeAt])
   @@map("listings")
 }
 
@@ -655,6 +665,7 @@ model Sale {
   order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   listingId String?
+  listing   Listing? @relation(fields: [listingId], references: [id])
   productId String?
 
   // 商品情報
@@ -1328,4 +1339,126 @@ enum MessageStatus {
   SENT
   FAILED
   FATAL  // リトライ上限到達または回復不能エラー
+}
+
+// ========================================
+// 在庫アラート（Phase 17）
+// ========================================
+model InventoryAlert {
+  id          String   @id @default(cuid())
+
+  // 関連
+  productId   String?
+  listingId   String?
+  listing     Listing? @relation(fields: [listingId], references: [id])
+
+  // イベント情報
+  alertType   InventoryAlertType
+  severity    AlertSeverity      @default(MEDIUM)
+
+  // 在庫状態（変動前後）
+  previousStock     Int?
+  currentStock      Int?
+  previousAvailable Boolean?
+  currentAvailable  Boolean?
+
+  // 判定理由
+  reason            String   @db.Text // 例: "在庫数が0になったため自動停止"
+  thresholdUsed     Int?              // 判定に使用した閾値
+
+  // アクション
+  actionTaken       InventoryAlertAction?
+  actionDetails     Json?             // 詳細情報（遅延時間等）
+
+  // 通知
+  notificationSent  Boolean  @default(false)
+  notificationId    String?  // 送信した通知のID
+
+  // 抑制情報
+  suppressed        Boolean  @default(false) // スパム抑制でスキップ
+  suppressReason    String?
+
+  createdAt         DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([listingId, createdAt])
+  @@index([alertType, createdAt])
+  @@index([actionTaken, createdAt])
+  @@map("inventory_alerts")
+}
+
+enum InventoryAlertType {
+  STOCK_OUT           // 在庫切れ
+  STOCK_LOW           // 在庫僅少
+  STOCK_RECOVERED     // 在庫復活
+  LISTING_PAUSED      // リスティング停止
+  LISTING_RESUMED     // リスティング再開
+  PRICE_CHANGED       // 価格変動
+  AVAILABILITY_CHANGED // 販売状態変更
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum InventoryAlertAction {
+  PAUSE_LISTING       // リスティング停止
+  RESUME_LISTING      // リスティング再開
+  SCHEDULE_RESUME     // 遅延再開スケジュール
+  NOTIFY_ONLY         // 通知のみ
+  NONE                // アクションなし
+}
+
+// ========================================
+// 売上サマリー（Phase 18）
+// ========================================
+model SalesSummary {
+  id            String   @id @default(cuid())
+
+  // 集計期間
+  periodType    SalesPeriodType  // DAILY, WEEKLY, MONTHLY
+  periodStart   DateTime
+  periodEnd     DateTime
+
+  // フィルター条件
+  marketplace   Marketplace?     // null = 全マーケットプレイス
+  category      String?          // null = 全カテゴリ
+
+  // 売上サマリー
+  orderCount    Int      @default(0)
+  itemCount     Int      @default(0)  // 販売数量
+  grossRevenue  Float    @default(0)  // 売上総額（USD）
+  shippingTotal Float    @default(0)  // 送料総額
+  feeTotal      Float    @default(0)  // 手数料総額
+  netRevenue    Float    @default(0)  // 純売上
+
+  // 利益サマリー（原価データがある場合）
+  costTotal     Float?           // 仕入総額（円）
+  profitTotal   Float?           // 利益総額（円）
+  profitRate    Float?           // 利益率（%）
+
+  // ベストセラー（JSON）
+  topProducts   Json     @default("[]") // [{productId, title, quantity, revenue}]
+  topCategories Json     @default("[]") // [{category, quantity, revenue}]
+
+  // メタデータ
+  calculatedAt  DateTime @default(now())
+  isComplete    Boolean  @default(false) // 集計完了フラグ
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([periodType, periodStart, marketplace, category])
+  @@index([periodType, periodStart])
+  @@index([marketplace, periodStart])
+  @@map("sales_summaries")
+}
+
+enum SalesPeriodType {
+  DAILY
+  WEEKLY
+  MONTHLY
 }
