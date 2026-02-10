@@ -61,6 +61,8 @@ import { rolesRouter } from './routes/roles';
 import { webhookEndpointsRouter } from './routes/webhook-endpoints';
 import { backupsRouter } from './routes/backups';
 import { dashboardsRouter } from './routes/dashboards';
+import { notificationDispatchesRouter } from './routes/notification-dispatches';
+import { reportsRouter } from './routes/reports';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -171,6 +173,8 @@ app.use('/api/roles', rolesRouter);
 app.use('/api/webhook-endpoints', webhookEndpointsRouter);
 app.use('/api/backups', backupsRouter);
 app.use('/api/dashboards', dashboardsRouter);
+app.use('/api/notification-dispatches', notificationDispatchesRouter);
+app.use('/api/reports', reportsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

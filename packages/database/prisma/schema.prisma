@@ -2632,3 +2632,308 @@ enum KpiType {
   REPEAT_CUSTOMERS
   CUSTOMER_SATISFACTION
 }
+
+// ========================================
+// Phase 27: 通知チャンネル拡張
+// ========================================
+
+model NotificationDispatch {
+  id            String   @id @default(cuid())
+
+  // 通知チャンネル
+  channelId     String
+  channelType   NotificationChannelType
+
+  // 通知内容
+  eventType     String           // 通知イベント種別
+  title         String
+  message       String   @db.Text
+  severity      NotificationSeverity @default(INFO)
+
+  // ペイロード
+  payload       Json     @default("{}")
+  formattedPayload Json?          // チャンネル別フォーマット済み
+
+  // 送信状態
+  status        NotificationDispatchStatus @default(PENDING)
+  attemptCount  Int      @default(0)
+  maxAttempts   Int      @default(3)
+  nextRetryAt   DateTime?
+
+  // レスポンス
+  providerResponse Json?
+  providerMessageId String?
+
+  // エラー情報
+  errorCode     String?
+  errorMessage  String?  @db.Text
+
+  // タイムスタンプ
+  scheduledAt   DateTime?        // 予約送信
+  sentAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([channelId, status])
+  @@index([status, nextRetryAt])
+  @@index([eventType, createdAt])
+  @@map("notification_dispatches")
+}
+
+model NotificationTemplate {
+  id            String   @id @default(cuid())
+
+  // テンプレート情報
+  name          String   @unique
+  description   String?
+  eventType     String           // トリガーイベント
+
+  // チャンネル別テンプレート
+  slackTemplate   Json?          // Slack Block Kit形式
+  discordTemplate Json?          // Discord Embed形式
+  lineTemplate    Json?          // LINE Flex Message形式
+  emailTemplate   Json?          // HTML/テキスト
+
+  // プレースホルダー
+  placeholders  String[]         // 使用可能な変数
+
+  // 設定
+  isActive      Boolean  @default(true)
+  isSystem      Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([eventType])
+  @@map("notification_templates")
+}
+
+model NotificationPreference {
+  id            String   @id @default(cuid())
+
+  // ユーザー/グループ
+  userId        String?
+  groupId       String?
+
+  // 通知設定
+  eventType     String
+  channels      String[]         // 有効なチャンネルID
+  isEnabled     Boolean  @default(true)
+
+  // 頻度設定
+  frequency     NotificationFrequency @default(IMMEDIATE)
+  digestHour    Int?             // ダイジェスト送信時刻（0-23）
+  quietHoursStart Int?           // 通知停止開始時刻
+  quietHoursEnd   Int?           // 通知停止終了時刻
+
+  // フィルター
+  minSeverity   NotificationSeverity @default(INFO)
+  filters       Json     @default("{}")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, eventType])
+  @@index([userId])
+  @@index([eventType])
+  @@map("notification_preferences")
+}
+
+enum NotificationDispatchStatus {
+  PENDING
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum NotificationFrequency {
+  IMMEDIATE     // 即時
+  HOURLY        // 1時間ごとのダイジェスト
+  DAILY         // 日次ダイジェスト
+  WEEKLY        // 週次ダイジェスト
+}
+
+// ========================================
+// Phase 28: レポート機能の強化
+// ========================================
+
+model Report {
+  id            String   @id @default(cuid())
+
+  // レポート情報
+  name          String
+  description   String?
+  reportType    ReportType
+
+  // テンプレート
+  templateId    String?
+  template      ReportTemplate? @relation(fields: [templateId], references: [id])
+
+  // パラメータ
+  parameters    Json     @default("{}")  // {startDate, endDate, filters, etc.}
+  timeRange     String?          // last_7d, last_30d, custom
+
+  // 出力設定
+  format        ReportFormat @default(PDF)
+  orientation   String   @default("portrait")  // portrait, landscape
+  paperSize     String   @default("A4")
+
+  // ファイル情報
+  fileName      String?
+  filePath      String?
+  fileSize      Int?
+  mimeType      String?
+
+  // ステータス
+  status        ReportStatus @default(PENDING)
+  progress      Int      @default(0)
+  errorMessage  String?  @db.Text
+
+  // 実行情報
+  generatedBy   String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  // 有効期限
+  expiresAt     DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([reportType, status])
+  @@index([generatedBy, createdAt])
+  @@map("reports")
+}
+
+model ReportTemplate {
+  id            String   @id @default(cuid())
+
+  // テンプレート情報
+  name          String   @unique
+  description   String?
+  reportType    ReportType
+
+  // レイアウト設定
+  layout        Json     @default("{}")  // ページレイアウト
+  sections      Json     @default("[]")  // セクション定義
+  header        Json?            // ヘッダー設定
+  footer        Json?            // フッター設定
+
+  // スタイル
+  theme         String   @default("default")
+  customStyles  Json     @default("{}")
+  logoUrl       String?
+
+  // データソース
+  dataSources   Json     @default("[]")  // クエリ定義
+  charts        Json     @default("[]")  // グラフ設定
+
+  // 設定
+  isActive      Boolean  @default(true)
+  isSystem      Boolean  @default(false)
+
+  // リレーション
+  reports       Report[]
+  schedules     ReportScheduleConfig[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([reportType])
+  @@map("report_templates")
+}
+
+model ReportScheduleConfig {
+  id            String   @id @default(cuid())
+
+  // スケジュール情報
+  name          String
+  description   String?
+  cronExpression String
+  timezone      String   @default("Asia/Tokyo")
+
+  // テンプレート
+  templateId    String
+  template      ReportTemplate @relation(fields: [templateId], references: [id])
+
+  // パラメータ
+  parameters    Json     @default("{}")
+  format        ReportFormat @default(PDF)
+
+  // 配信設定
+  recipients    String[]         // メールアドレス
+  channels      String[]         // 通知チャンネルID
+  uploadToStorage Boolean @default(true)
+
+  // ステータス
+  isActive      Boolean  @default(true)
+  lastRunAt     DateTime?
+  lastRunStatus String?
+  nextRunAt     DateTime?
+
+  // 保持設定
+  retentionDays Int      @default(30)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive, nextRunAt])
+  @@map("report_schedule_configs")
+}
+
+model ReportExecution {
+  id            String   @id @default(cuid())
+
+  // スケジュール参照
+  scheduleId    String?
+  reportId      String?
+
+  // 実行情報
+  status        ReportStatus @default(PENDING)
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  duration      Int?             // ミリ秒
+
+  // 結果
+  filePath      String?
+  fileSize      Int?
+  recipientCount Int?
+  deliveryStatus Json     @default("[]")  // 配信結果
+
+  // エラー
+  errorMessage  String?  @db.Text
+
+  @@index([scheduleId, startedAt])
+  @@index([status])
+  @@map("report_executions")
+}
+
+enum ReportType {
+  SALES_SUMMARY       // 売上サマリー
+  ORDER_DETAIL        // 注文詳細
+  INVENTORY_STATUS    // 在庫状況
+  PRODUCT_PERFORMANCE // 商品パフォーマンス
+  PROFIT_ANALYSIS     // 利益分析
+  CUSTOMER_ANALYSIS   // 顧客分析
+  MARKETPLACE_COMPARISON // マーケットプレイス比較
+  AUDIT_REPORT        // 監査レポート
+  CUSTOM              // カスタム
+}
+
+enum ReportFormat {
+  PDF
+  EXCEL
+  CSV
+  HTML
+}
+
+enum ReportStatus {
+  PENDING
+  GENERATING
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
