@@ -69,6 +69,8 @@ import { cacheRouter } from './routes/cache';
 import { metricsRouter } from './routes/metrics';
 import { securityRouter } from './routes/security';
 import { integrationsRouter } from './routes/integrations';
+import enrichmentRouter from './routes/enrichment';
+import joomRouter from './routes/joom';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -187,6 +189,8 @@ app.use('/api/cache', cacheRouter);
 app.use('/api/metrics', metricsRouter);
 app.use('/api/security', securityRouter);
 app.use('/api/integrations', integrationsRouter);
+app.use('/api/enrichment', enrichmentRouter);
+app.use('/api/joom', joomRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
