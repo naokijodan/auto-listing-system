@@ -28,6 +28,8 @@ RAKUDAは日本のECサイト（ヤフオク、メルカリ、Amazon JP）から
 | **Phase 8** | **レポート生成** | ✅ **完了** |
 | **Phase 9** | **eBay OAuth認証** | ✅ **完了** |
 | **Phase 10** | **注文自動化** | ✅ **完了** |
+| **Phase 11** | **一括操作API** | ✅ **完了** |
+| **Phase 12** | **返金自動化** | ✅ **完了** |
 
 ### カナリアリリース状況
 
@@ -156,6 +158,9 @@ JOOM_PRICE_LIMIT_JPY = 900000   // Joom出品上限
 | `apps/worker/src/lib/ebay-api.ts` | eBay API クライアント |
 | `apps/api/src/routes/ebay-auth.ts` | **eBay OAuth認証（Phase 9）** |
 | `apps/worker/src/lib/order-automation.ts` | **注文自動化（Phase 10）** |
+| `apps/api/src/routes/bulk-operations.ts` | **一括操作API（Phase 11）** |
+| `apps/api/src/routes/refunds.ts` | **返金自動化API（Phase 12）** |
+| `apps/worker/src/lib/refund-automation.ts` | **返金自動化ロジック（Phase 12）** |
 | `packages/database/prisma/schema.prisma` | DBスキーマ |
 | `scripts/canary-release.ts` | カナリアリリース（カテゴリ拡張済み） |
 
@@ -204,10 +209,10 @@ npm run docker:prod:up         # Docker本番起動
 ## Git履歴（直近）
 
 ```
+588bcdf feat: Phase 11-12 一括操作API・返金自動化
 bd6247e feat: Phase 9-10 eBay認証・注文自動化
 11cc5d9 docs: 引き継ぎ書更新（Phase 7-8完了）
 a7c1660 feat: Phase 7-8 自動価格調整・レポート生成
-898176e feat: Phase 5-6 ダッシュボード・在庫同期強化
 ```
 
 ---
