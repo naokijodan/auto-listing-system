@@ -1035,4 +1035,218 @@ function formatReportAsCsv(report: any): string {
   return lines.join('\n');
 }
 
+// ========================================
+// 出品統計 (stats)
+// ========================================
+
+/**
+ * @swagger
+ * /api/dashboard/stats:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: 出品統計
+ *     description: 出品のステータス別カウントとマーケットプレイス別集計
+ */
+router.get('/stats', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const [active, paused, pending, total] = await Promise.all([
+      prisma.listing.count({ where: { status: 'ACTIVE' } }),
+      prisma.listing.count({ where: { status: 'PAUSED' } }),
+      prisma.listing.count({ where: { status: 'PENDING_PUBLISH' } }),
+      prisma.listing.count(),
+    ]);
+
+    const byMarketplace = await prisma.listing.groupBy({
+      by: ['marketplace'],
+      _count: true,
+      where: { status: 'ACTIVE' },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        listings: { active, paused, pending, total },
+        byMarketplace: byMarketplace.map(m => ({
+          marketplace: m.marketplace,
+          count: m._count,
+        })),
+      },
+    });
+  } catch (error) {
+    log.error('Failed to fetch stats', { error });
+    next(error);
+  }
+});
+
+// ========================================
+// 利益サマリー (profit)
+// ========================================
+
+/**
+ * @swagger
+ * /api/dashboard/profit:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: 利益サマリー
+ *     description: ShadowLogから利益計算結果を集計
+ */
+router.get('/profit', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // ShadowLogから利益計算結果を集計
+    const profitLogs = await prisma.shadowLog.findMany({
+      where: {
+        service: 'profit-guard',
+        operation: 'check_profit',
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    let totalProfitJpy = 0;
+    let dangerousCount = 0;
+    let safeCount = 0;
+
+    for (const log of profitLogs) {
+      const output = log.output as any;
+      if (output?.profitJpy) {
+        totalProfitJpy += output.profitJpy;
+      }
+      if (output?.isDangerous) {
+        dangerousCount++;
+      } else {
+        safeCount++;
+      }
+    }
+
+    // ProfitThreshold設定
+    const thresholds = await prisma.profitThreshold.findMany({
+      where: { isActive: true },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        totalProfitJpy,
+        averageProfitJpy: profitLogs.length > 0 ? totalProfitJpy / profitLogs.length : 0,
+        safeCount,
+        dangerousCount,
+        thresholds,
+      },
+    });
+  } catch (error) {
+    log.error('Failed to fetch profit data', { error });
+    next(error);
+  }
+});
+
+// ========================================
+// アラート一覧 (alerts)
+// ========================================
+
+/**
+ * @swagger
+ * /api/dashboard/alerts:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: アラート一覧
+ *     description: 在庫切れ、失敗通知、エラー出品の一覧
+ */
+router.get('/alerts', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // 在庫切れ検知
+    const stockOutAlerts = await prisma.inventoryLog.findMany({
+      where: { isAvailable: false },
+      orderBy: { checkedAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        productId: true,
+        checkedAt: true,
+        sourceUrl: true,
+      },
+    });
+
+    // 失敗した通知
+    const failedNotifications = await prisma.notificationEvent.findMany({
+      where: { status: 'FAILED' },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    // エラー状態のリスティング
+    const errorListings = await prisma.listing.findMany({
+      where: { status: 'ERROR' },
+      orderBy: { updatedAt: 'desc' },
+      take: 20,
+      include: {
+        product: { select: { title: true, titleEn: true } },
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        stockOutAlerts,
+        failedNotifications,
+        errorListings: errorListings.map(l => ({
+          id: l.id,
+          title: l.product?.titleEn || l.product?.title,
+          error: l.errorMessage,
+          updatedAt: l.updatedAt,
+        })),
+      },
+    });
+  } catch (error) {
+    log.error('Failed to fetch alerts', { error });
+    next(error);
+  }
+});
+
+// ========================================
+// 最近の注文 (recent-orders)
+// ========================================
+
+/**
+ * @swagger
+ * /api/dashboard/recent-orders:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: 最近の注文
+ *     description: 直近20件の注文を取得
+ */
+router.get('/recent-orders', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orders = await prisma.order.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      include: {
+        sales: true,
+      },
+    });
+
+    res.json({
+      success: true,
+      data: {
+        orders: orders.map(o => ({
+          id: o.id,
+          marketplace: o.marketplace,
+          status: o.status,
+          totalAmount: o.total,
+          currency: o.currency,
+          buyerName: o.buyerName,
+          createdAt: o.createdAt,
+          items: o.sales.map(s => ({
+            title: s.title,
+            price: s.unitPrice,
+            quantity: s.quantity,
+          })),
+        })),
+      },
+    });
+  } catch (error) {
+    log.error('Failed to fetch orders', { error });
+    next(error);
+  }
+});
+
 export { router as dashboardAnalyticsRouter };
