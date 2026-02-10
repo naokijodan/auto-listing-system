@@ -33,7 +33,12 @@
     "canary:phase1": "npx tsx scripts/canary-release.ts --phase=1",
     "canary:phase2": "npx tsx scripts/canary-release.ts --phase=2",
     "canary:phase3": "npx tsx scripts/canary-release.ts --phase=3",
-    "canary:rollback": "npx tsx scripts/canary-release.ts --rollback"
+    "canary:phase4": "npx tsx scripts/canary-release.ts --phase=4",
+    "canary:rollback": "npx tsx scripts/canary-release.ts --rollback",
+    "seed:high-value": "npx tsx scripts/add-high-value-products.ts",
+    "seed:high-value:dry": "npx tsx scripts/add-high-value-products.ts --dry-run",
+    "cleanup:high-value-errors": "npx tsx scripts/cleanup-high-value-errors.ts",
+    "cleanup:high-value-errors:dry": "npx tsx scripts/cleanup-high-value-errors.ts --dry-run"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.1",
