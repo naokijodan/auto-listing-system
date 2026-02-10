@@ -100,6 +100,11 @@ export interface SchedulerConfig {
     batchSize: number;        // 1回の実行でチェックする最大数
     delayBetweenChecks: number; // チェック間の待機時間（ミリ秒）
   };
+  // PAUSED商品再評価（Phase 4拡張ルール対応）
+  pausedReEvaluation: {
+    enabled: boolean;
+    cronExpression: string;   // 日次実行（デフォルト: 毎日3時）
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -163,6 +168,10 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     cronExpression: '0 * * * *',       // 毎時0分にActive商品チェック
     batchSize: 50,                     // 1回の実行で最大50件チェック
     delayBetweenChecks: 3000,          // チェック間3秒待機
+  },
+  pausedReEvaluation: {
+    enabled: true,
+    cronExpression: '0 3 * * *',       // 毎日3時にPAUSED商品を再評価
   },
 };
 
@@ -576,6 +585,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     tokenRefresh: { ...DEFAULT_CONFIG.tokenRefresh, ...config.tokenRefresh },
     autoPublish: { ...DEFAULT_CONFIG.autoPublish, ...config.autoPublish },
     activeInventoryMonitor: { ...DEFAULT_CONFIG.activeInventoryMonitor, ...config.activeInventoryMonitor },
+    pausedReEvaluation: { ...DEFAULT_CONFIG.pausedReEvaluation, ...config.pausedReEvaluation },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -592,6 +602,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleTokenRefresh(finalConfig.tokenRefresh);
   await scheduleAutoPublish(finalConfig.autoPublish);
   await scheduleActiveInventoryMonitor(finalConfig.activeInventoryMonitor);
+  await schedulePausedReEvaluation(finalConfig.pausedReEvaluation);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -2019,6 +2030,209 @@ export async function triggerActiveInventoryCheck(options?: {
     type: 'manual_active_inventory_check_triggered',
     jobId: job.id,
     options,
+  });
+
+  return job.id || '';
+}
+
+// ========================================
+// Phase 4拡張: PAUSED商品の再評価
+// ========================================
+
+/**
+ * ブランドホワイトリスト
+ * これらのブランドは除外キーワードを無視
+ */
+const BRAND_WHITELIST = [
+  'g-shock', 'gshock', 'casio',
+  'sony', 'nikon', 'canon',
+  'nintendo', 'switch',
+  'bose', 'jbl',
+];
+
+/**
+ * 除外キーワード（危険な商品を除外）
+ */
+const EXCLUDED_KEYWORDS = [
+  // リチウムバッテリー単体は除外
+  'リチウムイオン電池', 'lithium ion battery', 'li-ion battery',
+  'バッテリーパック', 'battery pack',
+  // 武器・危険物
+  'ナイフ', 'knife', '刃物', 'blade',
+  '武器', 'weapon', '銃', 'gun',
+  '火薬', '爆発', 'explosive',
+  // 規制品
+  '医薬品', 'medicine', '薬',
+  '化粧品', 'cosmetic',
+  '食品', 'food',
+  '液体', 'liquid',
+  // 偽物
+  '偽', 'fake', 'レプリカ', 'replica',
+];
+
+/**
+ * Joom出品価格上限（円）
+ */
+const JOOM_PRICE_LIMIT_JPY = 900000;
+
+/**
+ * 商品の安全性を評価（canary-release.tsのロジックを共通化）
+ */
+function evaluateProductSafety(product: {
+  title?: string | null;
+  titleEn?: string | null;
+  brand?: string | null;
+}): boolean {
+  const title = (product.titleEn || product.title || '').toLowerCase();
+  const brand = (product.brand || '').toLowerCase();
+
+  // ブランドホワイトリストチェック
+  const isWhitelisted = BRAND_WHITELIST.some(b =>
+    title.includes(b) || brand.includes(b)
+  );
+
+  // 除外キーワードチェック（ホワイトリスト商品は免除）
+  if (!isWhitelisted) {
+    for (const keyword of EXCLUDED_KEYWORDS) {
+      if (title.includes(keyword.toLowerCase())) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * PAUSED商品の再評価
+ * Phase 4で拡張されたルールに基づき、再出品可能な商品を検出
+ */
+export async function runPausedReEvaluation(): Promise<{
+  total: number;
+  reactivated: number;
+  stillPaused: number;
+}> {
+  const revalLog = logger.child({ module: 'paused-reevaluation' });
+
+  revalLog.info({ type: 'reevaluation_start' });
+
+  // PAUSEDリスティングを取得
+  const pausedListings = await prisma.listing.findMany({
+    where: {
+      status: 'PAUSED',
+      marketplace: 'JOOM',
+    },
+    include: {
+      product: true,
+    },
+  });
+
+  const stats = {
+    total: pausedListings.length,
+    reactivated: 0,
+    stillPaused: 0,
+  };
+
+  for (const listing of pausedListings) {
+    const product = listing.product;
+
+    // 価格チェック（¥900,000以下のみ）
+    if (product.price > JOOM_PRICE_LIMIT_JPY) {
+      stats.stillPaused++;
+      continue;
+    }
+
+    // 新しいカテゴリルールで再評価
+    const isSafe = evaluateProductSafety(product);
+
+    if (isSafe) {
+      // リスティングをACTIVEに戻す
+      await prisma.listing.update({
+        where: { id: listing.id },
+        data: {
+          status: 'ACTIVE',
+          marketplaceData: {
+            ...(listing.marketplaceData as object || {}),
+            reactivatedAt: new Date().toISOString(),
+            reactivatedBy: 'paused-reevaluation-job',
+          },
+        },
+      });
+
+      stats.reactivated++;
+      revalLog.info({
+        type: 'listing_reactivated',
+        listingId: listing.id,
+        productTitle: product.titleEn || product.title,
+      });
+    } else {
+      stats.stillPaused++;
+    }
+  }
+
+  revalLog.info({ type: 'reevaluation_complete', stats });
+  return stats;
+}
+
+/**
+ * PAUSED商品再評価ジョブをスケジュール
+ */
+async function schedulePausedReEvaluation(config: SchedulerConfig['pausedReEvaluation']) {
+  if (!config.enabled) {
+    log.info({ type: 'paused_reevaluation_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await inventoryQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'paused-reevaluation') {
+      await inventoryQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // PAUSED再評価ジョブを追加
+  await inventoryQueue.add(
+    'paused-reevaluation',
+    {
+      type: 'paused-reevaluation',
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'paused-reevaluation-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({
+    type: 'paused_reevaluation_scheduled',
+    cronExpression: config.cronExpression,
+  });
+}
+
+/**
+ * 手動でPAUSED商品再評価をトリガー
+ */
+export async function triggerPausedReEvaluation(): Promise<string> {
+  const job = await inventoryQueue.add(
+    'paused-reevaluation',
+    {
+      type: 'paused-reevaluation',
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_paused_reevaluation_triggered',
+    jobId: job.id,
   });
 
   return job.id || '';

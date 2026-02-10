@@ -35,64 +35,52 @@ import { QUEUE_NAMES } from '@rakuda/config';
  * 安全なカテゴリ（禁制品リスクが低い）
  */
 const SAFE_CATEGORIES = [
-  'ウォッチ',
-  'watch',
-  'アクセサリー',
-  'accessory',
-  'jewelry',
-  'ジュエリー',
-  'バッグ',
-  'bag',
-  'ファッション',
-  'fashion',
-  'インテリア',
-  'interior',
-  'ホビー',
-  'hobby',
-  'コレクション',
-  'collectible',
-  '文房具',
-  'stationery',
+  // 既存
+  'ウォッチ', 'watch',
+  'アクセサリー', 'accessory',
+  'jewelry', 'ジュエリー',
+  'バッグ', 'bag',
+  'ファッション', 'fashion',
+  'インテリア', 'interior',
+  'ホビー', 'hobby',
+  'コレクション', 'collectible',
+  '文房具', 'stationery',
+  // 新規追加（Phase 4）
+  'カメラ', 'camera', 'photography',
+  'オーディオ', 'audio', 'headphone', 'ヘッドホン',
+  'ゲーム', 'gaming', 'nintendo', 'playstation', 'switch',
+  'electronics', '電子機器',
 ];
 
 /**
- * 除外キーワード（危険な商品を除外）
+ * ブランドホワイトリスト（除外キーワードを無視）
+ */
+const BRAND_WHITELIST = [
+  'g-shock', 'gshock', 'casio',
+  'sony', 'nikon', 'canon',
+  'nintendo', 'switch',
+  'bose', 'jbl',
+];
+
+/**
+ * 除外キーワード（危険な商品を除外）- battery関連を緩和
  */
 const EXCLUDED_KEYWORDS = [
-  'バッテリー',
-  'battery',
-  '電池',
-  'リチウム',
-  'lithium',
-  'ナイフ',
-  'knife',
-  '刃物',
-  'blade',
-  '武器',
-  'weapon',
-  '銃',
-  'gun',
-  '火薬',
-  '爆発',
-  'explosive',
-  '医薬品',
-  'medicine',
-  '薬',
-  'drug',
-  '化粧品',
-  'cosmetic',
-  '食品',
-  'food',
-  '液体',
-  'liquid',
-  'アルコール',
-  'alcohol',
-  '偽',
-  'fake',
-  'レプリカ',
-  'replica',
-  'コピー',
-  'copy',
+  // リチウムバッテリー単体は除外
+  'リチウムイオン電池', 'lithium ion battery', 'li-ion battery',
+  'バッテリーパック', 'battery pack',
+  // 武器・危険物
+  'ナイフ', 'knife', '刃物', 'blade',
+  '武器', 'weapon', '銃', 'gun',
+  '火薬', '爆発', 'explosive',
+  // 規制品
+  '医薬品', 'medicine', '薬', 'drug',
+  '化粧品', 'cosmetic',
+  '食品', 'food',
+  '液体', 'liquid',
+  'アルコール', 'alcohol',
+  // 偽物
+  '偽', 'fake', 'レプリカ', 'replica', 'コピー', 'copy',
 ];
 
 /**
@@ -244,6 +232,15 @@ function logError(message: string) {
 }
 
 /**
+ * ブランドホワイトリストに含まれるかチェック
+ */
+function isWhitelistedBrand(searchText: string): boolean {
+  return BRAND_WHITELIST.some((brand) =>
+    searchText.includes(brand.toLowerCase())
+  );
+}
+
+/**
  * 商品が安全かどうかを判定
  */
 function evaluateSafety(product: {
@@ -266,10 +263,15 @@ function evaluateSafety(product: {
     .join(' ')
     .toLowerCase();
 
-  // 除外キーワードチェック
-  for (const keyword of EXCLUDED_KEYWORDS) {
-    if (searchText.includes(keyword.toLowerCase())) {
-      return { isSafe: false, reason: `Excluded keyword: ${keyword}` };
+  // ブランドホワイトリストに含まれる場合は除外キーワードチェックをスキップ
+  const isWhitelisted = isWhitelistedBrand(searchText);
+
+  // 除外キーワードチェック（ホワイトリストブランドはスキップ）
+  if (!isWhitelisted) {
+    for (const keyword of EXCLUDED_KEYWORDS) {
+      if (searchText.includes(keyword.toLowerCase())) {
+        return { isSafe: false, reason: `Excluded keyword: ${keyword}` };
+      }
     }
   }
 
@@ -282,7 +284,10 @@ function evaluateSafety(product: {
     return { isSafe: false, reason: 'Not in safe category' };
   }
 
-  return { isSafe: true, reason: 'Passed all safety checks' };
+  const reason = isWhitelisted
+    ? 'Passed all safety checks (whitelisted brand)'
+    : 'Passed all safety checks';
+  return { isSafe: true, reason };
 }
 
 // ============================================================================

@@ -1191,3 +1191,28 @@ model ProfitThreshold {
   @@unique([marketplace, category])
   @@map("profit_thresholds")
 }
+
+// ========================================
+// 通知イベント（Phase 45+）
+// ========================================
+model NotificationEvent {
+  id          String   @id @default(cuid())
+  type        String   // ORDER_RECEIVED, PROFIT_ALERT, STOCK_OUT, etc.
+  channel     String   // SLACK, DISCORD, WEBHOOK
+  status      String   @default("PENDING") // PENDING, SENT, FAILED, ACTION_TAKEN
+  payload     Json     // 通知内容
+  referenceId String?  // 注文ID、商品IDなど
+  referenceType String? // ORDER, PRODUCT, LISTING
+  actionTaken String?  // 実行されたアクション
+  actionBy    String?  // アクション実行者
+  sentAt      DateTime?
+  error       String?
+  retryCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type, status])
+  @@index([referenceId, referenceType])
+  @@index([createdAt])
+  @@map("notification_events")
+}

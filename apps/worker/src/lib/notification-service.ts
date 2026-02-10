@@ -925,3 +925,653 @@ export async function notifyScheduledReport(
     },
   });
 }
+
+// ========================================
+// Webhook通知（DB記録 + リトライ付き）
+// Phase 45+: NotificationEvent記録機能
+// ========================================
+
+/**
+ * 通知タイプ定義
+ */
+export type WebhookNotificationType =
+  | 'ORDER_RECEIVED'
+  | 'PROFIT_ALERT'
+  | 'STOCK_OUT'
+  | 'PRICE_CHANGED'
+  | 'SYSTEM_ERROR';
+
+/**
+ * 通知チャンネル定義
+ */
+export type WebhookNotificationChannel = 'SLACK' | 'DISCORD' | 'WEBHOOK';
+
+/**
+ * Webhook通知ペイロード
+ */
+export interface WebhookNotificationPayload {
+  title: string;
+  message: string;
+  fields?: Array<{ name: string; value: string; inline?: boolean }>;
+  color?: string; // hex color
+  actionUrl?: string;
+  actionLabel?: string;
+}
+
+/**
+ * リトライ設定
+ */
+interface RetryConfig {
+  maxRetries: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  baseDelayMs: 1000,
+  maxDelayMs: 10000,
+};
+
+/**
+ * 指数バックオフでスリープ
+ */
+async function sleepWithBackoff(attempt: number, config: RetryConfig): Promise<void> {
+  const delay = Math.min(
+    config.baseDelayMs * Math.pow(2, attempt),
+    config.maxDelayMs
+  );
+  // ジッター追加（0.5〜1.5倍）
+  const jitteredDelay = delay * (0.5 + Math.random());
+  await new Promise((resolve) => setTimeout(resolve, jitteredDelay));
+}
+
+/**
+ * Webhook URL取得
+ */
+function getWebhookUrlForChannel(channel: WebhookNotificationChannel): string | null {
+  switch (channel) {
+    case 'SLACK':
+      return process.env.SLACK_WEBHOOK_URL || null;
+    case 'DISCORD':
+      return process.env.DISCORD_WEBHOOK_URL || null;
+    case 'WEBHOOK':
+      return process.env.ORDER_NOTIFICATION_WEBHOOK_URL || null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Slack形式に変換（Block Kit）
+ */
+function formatPayloadForSlack(payload: WebhookNotificationPayload): object {
+  const blocks: any[] = [
+    {
+      type: 'header',
+      text: { type: 'plain_text', text: payload.title, emoji: true },
+    },
+    {
+      type: 'section',
+      text: { type: 'mrkdwn', text: payload.message },
+    },
+  ];
+
+  if (payload.fields && payload.fields.length > 0) {
+    // 2列ずつグループ化
+    for (let i = 0; i < payload.fields.length; i += 2) {
+      const fieldGroup = payload.fields.slice(i, i + 2);
+      blocks.push({
+        type: 'section',
+        fields: fieldGroup.map((f) => ({
+          type: 'mrkdwn',
+          text: `*${f.name}*\n${f.value}`,
+        })),
+      });
+    }
+  }
+
+  if (payload.actionUrl) {
+    blocks.push({
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: { type: 'plain_text', text: payload.actionLabel || 'View Details', emoji: true },
+          url: payload.actionUrl,
+        },
+      ],
+    });
+  }
+
+  blocks.push({
+    type: 'context',
+    elements: [
+      {
+        type: 'mrkdwn',
+        text: `RAKUDA | ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}`,
+      },
+    ],
+  });
+
+  return { blocks };
+}
+
+/**
+ * Discord形式に変換（Embed）
+ */
+function formatPayloadForDiscord(payload: WebhookNotificationPayload): object {
+  const embed: any = {
+    title: payload.title,
+    description: payload.message,
+    color: payload.color ? parseInt(payload.color.replace('#', ''), 16) : 0x5865f2,
+    timestamp: new Date().toISOString(),
+    footer: {
+      text: 'RAKUDA 越境EC自動出品システム',
+    },
+  };
+
+  if (payload.fields && payload.fields.length > 0) {
+    embed.fields = payload.fields.map((f) => ({
+      name: f.name,
+      value: f.value,
+      inline: f.inline ?? true,
+    }));
+  }
+
+  return { embeds: [embed] };
+}
+
+/**
+ * 汎用Webhook形式に変換
+ */
+function formatPayloadForGenericWebhook(
+  type: WebhookNotificationType,
+  payload: WebhookNotificationPayload,
+  referenceId?: string,
+  referenceType?: string
+): object {
+  return {
+    type,
+    title: payload.title,
+    message: payload.message,
+    fields: payload.fields || [],
+    color: payload.color,
+    referenceId,
+    referenceType,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * Webhook通知送信（DB記録 + リトライ付き）
+ */
+export async function sendWebhookNotification(options: {
+  type: WebhookNotificationType;
+  channel: WebhookNotificationChannel;
+  payload: WebhookNotificationPayload;
+  referenceId?: string;
+  referenceType?: string;
+  retryConfig?: Partial<RetryConfig>;
+}): Promise<{ success: boolean; eventId: string }> {
+  const { type, channel, payload, referenceId, referenceType } = options;
+  const config = { ...DEFAULT_RETRY_CONFIG, ...options.retryConfig };
+
+  // NotificationEventを作成
+  const event = await prisma.notificationEvent.create({
+    data: {
+      type,
+      channel,
+      status: 'PENDING',
+      payload: payload as any,
+      referenceId,
+      referenceType,
+      retryCount: 0,
+    },
+  });
+
+  const webhookUrl = getWebhookUrlForChannel(channel);
+
+  if (!webhookUrl) {
+    await prisma.notificationEvent.update({
+      where: { id: event.id },
+      data: {
+        status: 'FAILED',
+        error: `No webhook URL configured for ${channel}`,
+      },
+    });
+    log.warn({ type: 'webhook_notification_no_url', channel, eventId: event.id });
+    return { success: false, eventId: event.id };
+  }
+
+  let lastError: Error | null = null;
+
+  // リトライループ
+  for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+    try {
+      // ペイロードをチャンネルに合わせて変換
+      let body: object;
+      switch (channel) {
+        case 'SLACK':
+          body = formatPayloadForSlack(payload);
+          break;
+        case 'DISCORD':
+          body = formatPayloadForDiscord(payload);
+          break;
+        case 'WEBHOOK':
+        default:
+          body = formatPayloadForGenericWebhook(type, payload, referenceId, referenceType);
+          break;
+      }
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${responseText}`);
+      }
+
+      // 成功
+      await prisma.notificationEvent.update({
+        where: { id: event.id },
+        data: {
+          status: 'SENT',
+          sentAt: new Date(),
+          retryCount: attempt,
+        },
+      });
+
+      log.info({
+        type: 'webhook_notification_sent',
+        channel,
+        notificationType: type,
+        eventId: event.id,
+        attempts: attempt + 1,
+      });
+
+      return { success: true, eventId: event.id };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+
+      log.warn({
+        type: 'webhook_notification_retry',
+        channel,
+        notificationType: type,
+        eventId: event.id,
+        attempt: attempt + 1,
+        maxRetries: config.maxRetries,
+        error: lastError.message,
+      });
+
+      // 最後の試行でなければリトライ待機
+      if (attempt < config.maxRetries) {
+        await sleepWithBackoff(attempt, config);
+      }
+    }
+  }
+
+  // 全リトライ失敗
+  const errorMessage = lastError?.message || 'Unknown error';
+  await prisma.notificationEvent.update({
+    where: { id: event.id },
+    data: {
+      status: 'FAILED',
+      error: errorMessage,
+      retryCount: config.maxRetries,
+    },
+  });
+
+  log.error({
+    type: 'webhook_notification_failed',
+    channel,
+    notificationType: type,
+    eventId: event.id,
+    error: errorMessage,
+  });
+
+  return { success: false, eventId: event.id };
+}
+
+/**
+ * 失敗した通知をリトライ（バッチ処理用）
+ */
+export async function retryFailedNotifications(
+  limit: number = 10
+): Promise<{ processed: number; succeeded: number; failed: number }> {
+  const failedEvents = await prisma.notificationEvent.findMany({
+    where: {
+      status: 'FAILED',
+      retryCount: { lt: DEFAULT_RETRY_CONFIG.maxRetries },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: limit,
+  });
+
+  let succeeded = 0;
+  let failed = 0;
+
+  for (const event of failedEvents) {
+    const payload = event.payload as unknown as WebhookNotificationPayload;
+    const result = await sendWebhookNotification({
+      type: event.type as WebhookNotificationType,
+      channel: event.channel as WebhookNotificationChannel,
+      payload,
+      referenceId: event.referenceId || undefined,
+      referenceType: event.referenceType || undefined,
+    });
+
+    if (result.success) {
+      succeeded++;
+      // 古いイベントを更新
+      await prisma.notificationEvent.update({
+        where: { id: event.id },
+        data: { status: 'SENT', sentAt: new Date() },
+      });
+    } else {
+      failed++;
+    }
+  }
+
+  log.info({
+    type: 'retry_failed_notifications_complete',
+    processed: failedEvents.length,
+    succeeded,
+    failed,
+  });
+
+  return { processed: failedEvents.length, succeeded, failed };
+}
+
+// ========================================
+// 拡張注文通知テンプレート（利益情報付き）
+// ========================================
+
+/**
+ * 注文アイテム情報
+ */
+export interface OrderItemDetail {
+  title: string;
+  price: number;
+  costPrice: number;
+  profitJpy: number;
+  profitRate: number;
+  purchaseUrl?: string;
+}
+
+/**
+ * 利益サマリー
+ */
+export interface ProfitSummary {
+  totalProfitJpy: number;
+  isDangerous: boolean;
+}
+
+/**
+ * 詳細注文通知（利益情報付き）
+ */
+export async function notifyOrderReceivedWithProfit(order: {
+  orderId: string;
+  buyerName: string;
+  totalAmount: number;
+  currency: string;
+  items: OrderItemDetail[];
+  profitSummary: ProfitSummary;
+}): Promise<{ success: boolean; eventId: string }> {
+  // チャンネル優先順位: Slack > Discord > 汎用Webhook
+  const channel: WebhookNotificationChannel = process.env.SLACK_WEBHOOK_URL
+    ? 'SLACK'
+    : process.env.DISCORD_WEBHOOK_URL
+      ? 'DISCORD'
+      : 'WEBHOOK';
+
+  // 商品情報テキスト作成
+  const itemsText = order.items
+    .map(
+      (item, i) =>
+        `${i + 1}. ${item.title.substring(0, 30)}${item.title.length > 30 ? '...' : ''}\n` +
+        `   売価: ${order.currency}${item.price.toLocaleString()} | 仕入: ¥${item.costPrice.toLocaleString()}\n` +
+        `   利益: ¥${item.profitJpy.toLocaleString()} (${item.profitRate.toFixed(1)}%)`
+    )
+    .join('\n\n');
+
+  const payload: WebhookNotificationPayload = {
+    title: order.profitSummary.isDangerous ? '⚠️ 注文受信（赤字リスク）' : '📦 注文受信',
+    message:
+      `注文ID: ${order.orderId}\n` +
+      `購入者: ${order.buyerName}\n` +
+      `合計: ${order.currency}${order.totalAmount.toLocaleString()}`,
+    fields: [
+      { name: '商品', value: itemsText, inline: false },
+      { name: '利益合計', value: `¥${order.profitSummary.totalProfitJpy.toLocaleString()}`, inline: true },
+      {
+        name: 'ステータス',
+        value: order.profitSummary.isDangerous ? '❌ 要確認' : '✅ 健全',
+        inline: true,
+      },
+    ],
+    color: order.profitSummary.isDangerous ? '#FF0000' : '#00FF00',
+  };
+
+  return sendWebhookNotification({
+    type: 'ORDER_RECEIVED',
+    channel,
+    payload,
+    referenceId: order.orderId,
+    referenceType: 'ORDER',
+  });
+}
+
+/**
+ * 利益アラート通知
+ */
+export async function notifyProfitAlert(options: {
+  orderId: string;
+  productTitle: string;
+  sellingPrice: number;
+  costPrice: number;
+  profitJpy: number;
+  profitRate: number;
+  currency: string;
+  reason: string;
+}): Promise<{ success: boolean; eventId: string }> {
+  const channel: WebhookNotificationChannel = process.env.SLACK_WEBHOOK_URL
+    ? 'SLACK'
+    : process.env.DISCORD_WEBHOOK_URL
+      ? 'DISCORD'
+      : 'WEBHOOK';
+
+  const payload: WebhookNotificationPayload = {
+    title: '⚠️ 利益アラート',
+    message: `注文の利益率が閾値を下回っています。確認が必要です。`,
+    fields: [
+      { name: '注文ID', value: options.orderId, inline: true },
+      { name: '商品', value: options.productTitle.substring(0, 50), inline: false },
+      { name: '売価', value: `${options.currency}${options.sellingPrice.toLocaleString()}`, inline: true },
+      { name: '仕入価格', value: `¥${options.costPrice.toLocaleString()}`, inline: true },
+      { name: '利益', value: `¥${options.profitJpy.toLocaleString()} (${options.profitRate.toFixed(1)}%)`, inline: true },
+      { name: '理由', value: options.reason, inline: false },
+    ],
+    color: '#FFA500',
+  };
+
+  return sendWebhookNotification({
+    type: 'PROFIT_ALERT',
+    channel,
+    payload,
+    referenceId: options.orderId,
+    referenceType: 'ORDER',
+  });
+}
+
+/**
+ * 在庫切れ通知（Webhook版）
+ */
+export async function notifyStockOutWebhook(product: {
+  productId: string;
+  title: string;
+  listingId?: string;
+  marketplace: string;
+  sourceUrl?: string;
+}): Promise<{ success: boolean; eventId: string }> {
+  const channel: WebhookNotificationChannel = process.env.SLACK_WEBHOOK_URL
+    ? 'SLACK'
+    : process.env.DISCORD_WEBHOOK_URL
+      ? 'DISCORD'
+      : 'WEBHOOK';
+
+  const payload: WebhookNotificationPayload = {
+    title: '🚨 在庫切れ検知',
+    message: '商品が在庫切れになりました。出品を一時停止しました。',
+    fields: [
+      { name: '商品', value: product.title.substring(0, 50), inline: false },
+      { name: 'マーケット', value: product.marketplace, inline: true },
+      { name: 'ステータス', value: 'PAUSED', inline: true },
+      ...(product.sourceUrl
+        ? [{ name: '仕入元URL', value: product.sourceUrl, inline: false }]
+        : []),
+    ],
+    color: '#FFA500',
+    actionUrl: product.sourceUrl,
+    actionLabel: '仕入元を確認',
+  };
+
+  return sendWebhookNotification({
+    type: 'STOCK_OUT',
+    channel,
+    payload,
+    referenceId: product.productId,
+    referenceType: 'PRODUCT',
+  });
+}
+
+/**
+ * 仕入価格変動通知（Webhook版）
+ */
+export async function notifyPriceChangedWebhook(product: {
+  productId: string;
+  title: string;
+  oldPrice: number;
+  newPrice: number;
+  changePercent: number;
+  marketplace?: string;
+}): Promise<{ success: boolean; eventId: string }> {
+  const channel: WebhookNotificationChannel = process.env.SLACK_WEBHOOK_URL
+    ? 'SLACK'
+    : process.env.DISCORD_WEBHOOK_URL
+      ? 'DISCORD'
+      : 'WEBHOOK';
+
+  const direction = product.newPrice > product.oldPrice ? '上昇' : '下落';
+  const isSignificant = Math.abs(product.changePercent) >= 10;
+
+  const payload: WebhookNotificationPayload = {
+    title: `💹 仕入価格${direction}${isSignificant ? '（大幅変動）' : ''}`,
+    message: `「${product.title.substring(0, 40)}」の仕入価格が変動しました。`,
+    fields: [
+      { name: '商品', value: product.title.substring(0, 50), inline: false },
+      { name: '旧価格', value: `¥${product.oldPrice.toLocaleString()}`, inline: true },
+      { name: '新価格', value: `¥${product.newPrice.toLocaleString()}`, inline: true },
+      {
+        name: '変動率',
+        value: `${product.changePercent > 0 ? '+' : ''}${product.changePercent.toFixed(1)}%`,
+        inline: true,
+      },
+      ...(product.marketplace
+        ? [{ name: 'マーケット', value: product.marketplace, inline: true }]
+        : []),
+    ],
+    color: isSignificant ? '#FF0000' : '#FFA500',
+  };
+
+  return sendWebhookNotification({
+    type: 'PRICE_CHANGED',
+    channel,
+    payload,
+    referenceId: product.productId,
+    referenceType: 'PRODUCT',
+  });
+}
+
+/**
+ * システムエラー通知（Webhook版）
+ */
+export async function notifySystemErrorWebhook(options: {
+  component: string;
+  errorMessage: string;
+  stack?: string;
+  metadata?: Record<string, any>;
+}): Promise<{ success: boolean; eventId: string }> {
+  const channel: WebhookNotificationChannel = process.env.SLACK_WEBHOOK_URL
+    ? 'SLACK'
+    : process.env.DISCORD_WEBHOOK_URL
+      ? 'DISCORD'
+      : 'WEBHOOK';
+
+  const fields: Array<{ name: string; value: string; inline?: boolean }> = [
+    { name: 'コンポーネント', value: options.component, inline: true },
+    { name: 'エラー', value: options.errorMessage.substring(0, 200), inline: false },
+  ];
+
+  if (options.stack) {
+    fields.push({
+      name: 'スタックトレース',
+      value: '```\n' + options.stack.substring(0, 300) + '\n```',
+      inline: false,
+    });
+  }
+
+  if (options.metadata) {
+    for (const [key, value] of Object.entries(options.metadata)) {
+      fields.push({
+        name: key,
+        value: String(value).substring(0, 100),
+        inline: true,
+      });
+    }
+  }
+
+  const payload: WebhookNotificationPayload = {
+    title: '🚨 システムエラー',
+    message: `${options.component}でエラーが発生しました。`,
+    fields,
+    color: '#FF0000',
+  };
+
+  return sendWebhookNotification({
+    type: 'SYSTEM_ERROR',
+    channel,
+    payload,
+    referenceId: options.component,
+    referenceType: 'SYSTEM',
+  });
+}
+
+/**
+ * NotificationEventのステータス更新（アクション記録用）
+ */
+export async function recordNotificationAction(
+  eventId: string,
+  action: string,
+  actionBy?: string
+): Promise<void> {
+  await prisma.notificationEvent.update({
+    where: { id: eventId },
+    data: {
+      status: 'ACTION_TAKEN',
+      actionTaken: action,
+      actionBy,
+      updatedAt: new Date(),
+    },
+  });
+
+  log.info({
+    type: 'notification_action_recorded',
+    eventId,
+    action,
+    actionBy,
+  });
+}
