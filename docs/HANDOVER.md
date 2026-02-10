@@ -16,53 +16,60 @@
 | 27-28 | 通知チャンネル拡張・レポート機能強化 | 2026-02-11 |
 | 29-30 | バッチ処理最適化・多言語対応 | 2026-02-11 |
 | 31-32 | パフォーマンス最適化・監視アラート | 2026-02-11 |
+| 33-34 | セキュリティ強化・外部連携 | 2026-02-11 |
 
 ### 最新コミット
-- ハッシュ: `161567c`
-- メッセージ: `feat: Phase 31-32 パフォーマンス最適化と監視・アラート機能を実装`
+- ハッシュ: `cccee1c`
+- メッセージ: `feat: Phase 33-34 セキュリティ強化と外部連携機能を実装`
 
 ---
 
-## Phase 31-32 実装内容
+## Phase 33-34 実装内容
 
-### Phase 31: パフォーマンス最適化
+### Phase 33: セキュリティ強化
 **新規モデル:**
-- CacheConfig, CacheEntry, QueryPerformance
+- SecurityEvent, LoginAttempt, DeviceSession
+- TwoFactorAuth, TwoFactorChallenge
+- ApiKeyPolicy, PasswordPolicy, PasswordHistory
 
 **新規ファイル:**
-- `apps/worker/src/lib/cache-service.ts` - キャッシュサービス
-- `apps/api/src/routes/cache.ts` - キャッシュAPI
+- `apps/worker/src/lib/security-service.ts` - セキュリティサービス
+- `apps/api/src/routes/security.ts` - セキュリティAPI
 
 **機能:**
-- Redisを活用した高速キャッシュ
-- キャッシュ統計（ヒット率・ミス率・退避数）
-- タグベースのキャッシュ無効化
-- Read-throughキャッシュパターン（getOrFetch）
-- 期限切れキャッシュの自動クリーンアップ
-- クエリパフォーマンス分析（スロークエリ・N+1検出）
-- キャッシュタイプ: QUERY, DATA, PAGE, FRAGMENT, SESSION, API
+- セキュリティイベントログ（24種類のイベントタイプ）
+- ブルートフォース保護（IPブロック、試行回数制限）
+- デバイスセッション管理（信頼済みデバイス、同時ログイン制限）
+- TOTP 2FA（speakeasy + QRcode + バックアップコード）
+- APIキーポリシー（IP制限、スコープ、有効期限、使用回数制限）
+- パスワードポリシー（強度要件、履歴チェック、有効期限）
+- AES-256-GCM暗号化
 
-### Phase 32: 監視・アラート
+### Phase 34: 外部連携強化
 **新規モデル:**
-- MetricDefinition, MetricSnapshot, MetricAlertRule, MetricAlert, MetricAlertHistory, SystemHealth
+- ExternalIntegration, IntegrationCredential, IntegrationSyncLog
+- AnalyticsEvent, AccountingExport, AccountingMapping
 
 **新規ファイル:**
-- `apps/worker/src/lib/monitoring-service.ts` - 監視サービス
-- `apps/api/src/routes/metrics.ts` - メトリクスAPI
+- `apps/worker/src/lib/integration-service.ts` - 外部連携サービス
+- `apps/api/src/routes/integrations.ts` - 外部連携API
 
 **機能:**
-- メトリクス定義・収集（SYSTEM, BUSINESS, PERFORMANCE, SECURITY, CUSTOM）
-- アラートルール設定（しきい値・比較・継続時間）
-- アラートライフサイクル（FIRING→ACKNOWLEDGED→RESOLVED）
-- アラート重要度（CRITICAL, WARNING, INFO）
-- 通知チャンネル連携
-- アラート履歴追跡
-- システムヘルス監視
-- 監視統計ダッシュボード
+- 外部連携の一元管理
+- OAuth 2.0/APIキー認証の統一
+- 認証情報の暗号化保存
+- 同期ログ・リトライ機能
+- Google Analytics 4連携基盤
+- 会計ソフト連携基盤（freee/弥生/マネーフォワード対応）
+- BaseIntegrationService抽象クラス（SDK）
 
 ---
 
 ## 累積実装内容
+
+### Phase 31-32
+- **パフォーマンス最適化**: CacheConfig, CacheEntry, QueryPerformance
+- **監視・アラート**: MetricDefinition, MetricSnapshot, MetricAlertRule, MetricAlert, SystemHealth
 
 ### Phase 29-30
 - **バッチ処理最適化**: BatchJob, BatchExecution, BatchStep, BatchEvent
@@ -96,11 +103,11 @@
 
 ## 次のPhase候補
 
-### Phase 33-34 候補
-1. **セキュリティ強化** - 2FA・セッション管理・監査強化
-2. **外部連携強化** - Google Analytics連携・会計ソフト連携
-3. **データ可視化** - グラフ・チャート・ダッシュボード強化
-4. **検索機能強化** - Elasticsearch連携・全文検索
+### Phase 35-36 候補
+1. **データ可視化** - グラフ・チャート・ダッシュボード強化
+2. **検索機能強化** - Elasticsearch連携・全文検索
+3. **ワークフロー自動化** - 承認フロー・自動化ルール
+4. **AI機能強化** - 商品推薦・価格最適化・需要予測
 
 ---
 
@@ -120,6 +127,8 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 ### 追加パッケージ
 - bcrypt: パスワードハッシュ用（Phase 23）
 - ioredis: Redis接続（Phase 31）
+- speakeasy: TOTP 2FA用（Phase 33）
+- qrcode: QRコード生成用（Phase 33）
 
 ### 注意事項
 - Prisma JSON型には `as any` キャストが必要な場合あり
@@ -129,6 +138,7 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 - BullMQ JobsOptionsにtimeoutオプションは存在しない（データに含めてワーカーで処理）
 - i18nフォールバックチェーン: zh-TW→zh→en, ko→en, ja→en 等
 - 既存のAlertモデルと競合するため、メトリクス関連はMetricAlertRule等のプレフィックスを使用
+- 認証情報の暗号化には環境変数 `ENCRYPTION_KEY` を使用（AES-256-GCM）
 
 ---
 
