@@ -1,4 +1,4 @@
-# RAKUDA 引き継ぎ書 - 2026年2月10日（更新）
+# RAKUDA 引き継ぎ書 - 2026年2月10日（最終更新）
 
 ## プロジェクト概要
 
@@ -18,133 +18,68 @@ RAKUDAは日本のECサイト（ヤフオク、メルカリ、Amazon JP）から
 | 43 | カナリアリリース | ✅ Phase 5完了 |
 | 44 | 価格制限対応 | ✅ 完了 |
 | 45A-B | eBay出品ロジック | ✅ 実装完了（認証未設定） |
-| **Joom運用 Phase 1** | **防御基盤** | ✅ **完了** |
-| **Joom運用 Phase 2** | **注文処理半自動化** | ✅ **完了** |
-| **Phase 3** | **通知基盤** | ✅ **完了** |
-| **Phase 4** | **商品パイプライン拡張** | ✅ **完了** |
-| **Phase 5** | **ダッシュボード強化** | ✅ **完了** |
-| **Phase 6** | **在庫同期強化** | ✅ **完了** |
-| **Phase 7** | **自動価格調整** | ✅ **完了** |
-| **Phase 8** | **レポート生成** | ✅ **完了** |
-| **Phase 9** | **eBay OAuth認証** | ✅ **完了** |
-| **Phase 10** | **注文自動化** | ✅ **完了** |
-| **Phase 11** | **一括操作API** | ✅ **完了** |
-| **Phase 12** | **返金自動化** | ✅ **完了** |
-| **Phase 13** | **配送ラベル生成** | ✅ **完了** |
-| **Phase 14** | **パフォーマンス分析** | ✅ **完了** |
-
-### カナリアリリース状況
-
-| ステータス | 件数 | 説明 |
-|-----------|------|------|
-| ACTIVE | 28件 | Joom出品成功 |
-| PENDING_PUBLISH | 5件 | 新規出品キュー（Phase 4で追加） |
-| PAUSED | 14件 | 高価格帯（eBay用に保持） |
-
-### 重要な発見
-
-**Joom価格上限: ¥900,000（≒$6,000）**
-- ¥900,000以下: 100%成功
-- ¥900,000超: 100%失敗（eBay専用に振り分け）
+| Joom運用 Phase 1 | 防御基盤 | ✅ 完了 |
+| Joom運用 Phase 2 | 注文処理半自動化 | ✅ 完了 |
+| Phase 3 | 通知基盤 | ✅ 完了 |
+| Phase 4 | 商品パイプライン拡張 | ✅ 完了 |
+| Phase 5 | ダッシュボード強化 | ✅ 完了 |
+| Phase 6 | 在庫同期強化 | ✅ 完了 |
+| Phase 7 | 自動価格調整 | ✅ 完了 |
+| Phase 8 | レポート生成 | ✅ 完了 |
+| Phase 9 | eBay OAuth認証 | ✅ 完了 |
+| Phase 10 | 注文自動化 | ✅ 完了 |
+| Phase 11 | 一括操作API | ✅ 完了 |
+| Phase 12 | 返金自動化 | ✅ 完了 |
+| Phase 13 | 配送ラベル生成 | ✅ 完了 |
+| Phase 14 | パフォーマンス分析 | ✅ 完了 |
+| **Phase 15** | **Webhook受信処理拡張** | ✅ **完了** |
+| **Phase 16** | **カスタマーコミュニケーション** | ✅ **完了** |
 
 ---
 
 ## 本日の実装
 
-### Phase 3: 通知基盤
+### Phase 15: Webhook受信処理の拡張
 
-#### NotificationEventモデル
+#### 新規対応イベント
+- **eBay**: SHIPMENT_TRACKING_CREATED/UPDATED, MARKETPLACE_REFUND_INITIATED/COMPLETED
+- **Joom**: order.shipped, order.tracking_updated, order.refund_initiated, order.refunded
+
+#### WebhookEventモデル拡張
 ```prisma
-model NotificationEvent {
-  id          String   @id @default(cuid())
-  type        String   // ORDER_RECEIVED, PROFIT_ALERT, STOCK_OUT
-  channel     String   // SLACK, DISCORD, WEBHOOK
-  status      String   // PENDING, SENT, FAILED, ACTION_TAKEN
-  payload     Json
-  referenceId String?
-  ...
+model WebhookEvent {
+  // 既存フィールド...
+  maxRetries       Int      @default(5)
+  lastAttemptedAt  DateTime?
+  nextRetryAt      DateTime?
+  status           WebhookEventStatus // FATAL追加
 }
 ```
 
-#### 通知サービス
-- ファイル: `apps/worker/src/lib/notification-service.ts`
-- Slack/Discord Webhook送信
+#### 状態遷移
+- PENDING → PROCESSING → COMPLETED
+- FAILED → FATAL（リトライ上限5回）
+
+### Phase 16: カスタマーコミュニケーション
+
+#### MessageTemplateモデル
+- トリガーイベント: ORDER_CONFIRMED, SHIPPED, DELIVERED, REFUNDED等
+- 多言語対応（language: en, ja）
+- プレースホルダー: {{buyer_name}}, {{order_id}}, {{tracking_number}}等
+
+#### CustomerMessageモデル
+- 送信状態管理: PENDING → SENDING → SENT/FAILED/FATAL
 - リトライロジック（最大3回、指数バックオフ）
-- 通知テンプレート（注文、在庫切れ、利益アラート）
 
-```bash
-# 環境変数
-SLACK_WEBHOOK_URL=https://hooks.slack.com/...
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
-```
-
-### Phase 4: 商品パイプライン拡張
-
-#### 安全カテゴリ拡張
-- カメラ、オーディオ、ゲーム追加
-- BRAND_WHITELIST: G-SHOCK、Sony、Nikon、Canon、Nintendo等
-
-#### PAUSED再評価ジョブ
-- 毎日3時に自動実行
-- 新ルールで安全と判定 → ACTIVEに復帰
-
-#### 結果
-- 5件新規出品: Nikon D850、Sony WH-1000XM5、Nintendo Switch、G-SHOCK x2
-
----
-
-## 実装済み機能
-
-### 1. Circuit Breaker
-```typescript
-MAX_CONSECUTIVE_ERRORS = 3      // 連続エラー3件で停止
-ERROR_RATE_THRESHOLD = 0.05     // エラー率5%で停止
-```
-
-### 2. 価格ベースルーティング
-```typescript
-JOOM_PRICE_LIMIT_JPY = 900000   // Joom出品上限
-// ¥900,000超 → eBay専用
-// ¥900,000以下 → Joom（+ eBay並行可）
-```
-
-### 3. eBay出品ロジック
-- `publishToEbay()` 完全実装
-- Inventory + Offer API 2段階プロセス
-- Item Specifics構造化（Brand, Material, Country）
-- リトライロジック（指数バックオフ）
-
-### 4. 本番運用設定
-- 自動出品スケジューラー（1時間ごと）
-- 出品統計・監視機能
-- production用スクリプト
-
-### 5. eBay OAuth認証（Phase 9）
-- OAuth2フロー完全実装（auth, callback, refresh, status）
-- sandbox/production環境切り替え
-- MarketplaceCredentialへのトークン自動保存
-- ファイル: `apps/api/src/routes/ebay-auth.ts`
-
-### 6. 注文自動化（Phase 10）
-- リスクレベル判定（LOW/MEDIUM/HIGH）
-- 自動化レベル（MANUAL/SEMI_AUTO/FULL_AUTO）
-- 自動承認閾値:
-  - maxAmountUsd: $100
-  - minProfitRate: 15%
-  - maxItemCount: 3
-- ShadowLogへの決定記録
-- ファイル: `apps/worker/src/lib/order-automation.ts`
-
----
-
-## 環境情報
-
-| 項目 | 値 |
-|------|-----|
-| Node.js | v22.18.0 |
-| Docker | PostgreSQL, Redis, MinIO稼働中 |
-| Joom OAuth | 有効（期限: 2026-03-08） |
-| eBay OAuth | **未設定（後回し）** |
+#### API エンドポイント
+| エンドポイント | 説明 |
+|--------------|-----|
+| /api/message-templates | テンプレートCRUD |
+| /api/message-templates/:id/preview | プレビュー |
+| /api/message-templates/seed-defaults | デフォルトテンプレート作成 |
+| /api/customer-messages | メッセージ管理 |
+| /api/customer-messages/:id/retry | 再送信 |
+| /api/customer-messages/stats/summary | 統計 |
 
 ---
 
@@ -155,19 +90,42 @@ JOOM_PRICE_LIMIT_JPY = 900000   // Joom出品上限
 | `apps/worker/src/processors/publish.ts` | Joom/eBay出品ロジック |
 | `apps/worker/src/processors/order-processor.ts` | 注文処理（半自動化） |
 | `apps/worker/src/lib/profit-guard.ts` | 赤字ストッパー |
-| `apps/worker/src/lib/scheduler.ts` | 在庫監視・再評価スケジューラ |
-| `apps/worker/src/lib/notification-service.ts` | **通知サービス** |
-| `apps/worker/src/lib/ebay-api.ts` | eBay API クライアント |
-| `apps/api/src/routes/ebay-auth.ts` | **eBay OAuth認証（Phase 9）** |
-| `apps/worker/src/lib/order-automation.ts` | **注文自動化（Phase 10）** |
-| `apps/api/src/routes/bulk-operations.ts` | **一括操作API（Phase 11）** |
-| `apps/api/src/routes/refunds.ts` | **返金自動化API（Phase 12）** |
-| `apps/worker/src/lib/refund-automation.ts` | **返金自動化ロジック（Phase 12）** |
-| `apps/api/src/routes/shipping.ts` | **配送ラベルAPI（Phase 13）** |
-| `apps/worker/src/lib/shipping-label.ts` | **配送ラベルロジック（Phase 13）** |
-| `apps/api/src/routes/performance.ts` | **パフォーマンス分析API（Phase 14）** |
-| `packages/database/prisma/schema.prisma` | DBスキーマ |
-| `scripts/canary-release.ts` | カナリアリリース（カテゴリ拡張済み） |
+| `apps/worker/src/lib/scheduler.ts` | スケジューラー |
+| `apps/worker/src/lib/notification-service.ts` | 通知サービス |
+| `apps/api/src/routes/webhooks.ts` | **Webhook受信処理（Phase 15）** |
+| `apps/api/src/routes/message-templates.ts` | **テンプレートAPI（Phase 16）** |
+| `apps/api/src/routes/customer-messages.ts` | **メッセージAPI（Phase 16）** |
+| `apps/worker/src/lib/webhook-processor.ts` | **Webhookイベント処理（Phase 15）** |
+| `apps/worker/src/lib/message-sender.ts` | **メッセージ送信（Phase 16）** |
+
+---
+
+## 環境情報
+
+| 項目 | 値 |
+|------|-----|
+| Node.js | v22.18.0 |
+| Docker | PostgreSQL, Redis, MinIO稼働中 |
+| Joom OAuth | 有効（期限: 2026-03-08） |
+| eBay OAuth | 未設定（後回し） |
+
+---
+
+## スケジューラー設定
+
+```typescript
+// Phase 15-16 追加
+messageSending: {
+  enabled: true,
+  cronExpression: '*/5 * * * *',  // 5分ごとにメッセージ送信
+  batchSize: 10,
+}
+webhookProcessing: {
+  enabled: true,
+  cronExpression: '* * * * *',    // 毎分Webhookイベント処理
+  batchSize: 20,
+}
+```
 
 ---
 
@@ -178,57 +136,50 @@ JOOM_PRICE_LIMIT_JPY = 900000   // Joom出品上限
 npm run dev                    # 開発サーバー起動
 npm run test:unit              # 単体テスト
 
-# カナリアリリース
-npx tsx scripts/canary-release.ts --status    # ステータス確認
-npx tsx scripts/canary-release.ts --phase=5   # 出品実行
-npx tsx scripts/canary-release.ts --rollback  # ロールバック
+# デフォルトテンプレート作成
+curl -X POST http://localhost:3000/api/message-templates/seed-defaults
 
-# PAUSED再評価
-npx tsx scripts/run-paused-reevaluation.ts
+# カナリアリリース
+npx tsx scripts/canary-release.ts --status
+npx tsx scripts/canary-release.ts --phase=5
 
 # 本番運用
-npm run start:prod             # APIサーバー起動
-npm run worker:prod            # ワーカー起動
-npm run docker:prod:up         # Docker本番起動
+npm run start:prod
+npm run worker:prod
 ```
 
 ---
 
 ## 次のタスク
 
-### 優先度1: 通知設定
+### 優先度1: デフォルトテンプレート作成
+1. `POST /api/message-templates/seed-defaults` を実行
+2. 日本語テンプレートも追加（必要に応じて）
+
+### 優先度2: Webhook設定
+1. eBay/Joom管理画面でWebhook URLを登録
+2. 署名検証用のシークレットを環境変数に設定
+
+### 優先度3: 通知チャンネル設定
 1. Slack/Discord Webhook URL設定
 2. テスト通知送信確認
-
-### 優先度2: 出品完了確認
-1. 5件の出品ジョブ完了を監視
-2. Joom Merchant Portalで確認
-
-### 優先度3: eBay連携（後回し）
-1. eBay Sandboxアカウント作成
-2. OAuth認証設定
-3. 高価格帯商品（14件）のテスト出品
 
 ---
 
 ## Git履歴（直近）
 
 ```
+35bbd4f feat: Phase 15-16 Webhook受信処理・カスタマーコミュニケーション
+5cf768e docs: 引き継ぎ書更新（Phase 13-14完了）
 70c3e3b feat: Phase 13-14 配送ラベル・パフォーマンス分析
 588bcdf feat: Phase 11-12 一括操作API・返金自動化
-bd6247e feat: Phase 9-10 eBay認証・注文自動化
-a7c1660 feat: Phase 7-8 自動価格調整・レポート生成
 ```
 
 ---
 
 ## 開発ログ（Obsidian）
 
-- `開発ログ/rakuda_session_summary_20260210.md`
+- `開発ログ/rakuda_phase15-16_webhook_comm_20260210.md` ← **NEW**
 - `開発ログ/rakuda_phase5_price_limit_20260210.md`
 - `開発ログ/rakuda_phase45_ebay_design_20260210.md`
 - `開発ログ/rakuda_profit-guard_20260210.md`
-- `開発ログ/rakuda_joom_operation_phase1-2_20260210.md`
-- `開発ログ/rakuda_phase3-4_notification_category_20260210.md`
-- `開発ログ/rakuda_phase5-6_dashboard_inventory_20260210.md`
-- `開発ログ/rakuda_phase7-8_price_report_20260210.md`
