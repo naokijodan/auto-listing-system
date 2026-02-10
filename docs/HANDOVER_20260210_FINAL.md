@@ -30,6 +30,8 @@ RAKUDAは日本のECサイト（ヤフオク、メルカリ、Amazon JP）から
 | **Phase 10** | **注文自動化** | ✅ **完了** |
 | **Phase 11** | **一括操作API** | ✅ **完了** |
 | **Phase 12** | **返金自動化** | ✅ **完了** |
+| **Phase 13** | **配送ラベル生成** | ✅ **完了** |
+| **Phase 14** | **パフォーマンス分析** | ✅ **完了** |
 
 ### カナリアリリース状況
 
@@ -161,6 +163,9 @@ JOOM_PRICE_LIMIT_JPY = 900000   // Joom出品上限
 | `apps/api/src/routes/bulk-operations.ts` | **一括操作API（Phase 11）** |
 | `apps/api/src/routes/refunds.ts` | **返金自動化API（Phase 12）** |
 | `apps/worker/src/lib/refund-automation.ts` | **返金自動化ロジック（Phase 12）** |
+| `apps/api/src/routes/shipping.ts` | **配送ラベルAPI（Phase 13）** |
+| `apps/worker/src/lib/shipping-label.ts` | **配送ラベルロジック（Phase 13）** |
+| `apps/api/src/routes/performance.ts` | **パフォーマンス分析API（Phase 14）** |
 | `packages/database/prisma/schema.prisma` | DBスキーマ |
 | `scripts/canary-release.ts` | カナリアリリース（カテゴリ拡張済み） |
 
@@ -209,9 +214,9 @@ npm run docker:prod:up         # Docker本番起動
 ## Git履歴（直近）
 
 ```
+70c3e3b feat: Phase 13-14 配送ラベル・パフォーマンス分析
 588bcdf feat: Phase 11-12 一括操作API・返金自動化
 bd6247e feat: Phase 9-10 eBay認証・注文自動化
-11cc5d9 docs: 引き継ぎ書更新（Phase 7-8完了）
 a7c1660 feat: Phase 7-8 自動価格調整・レポート生成
 ```
 
