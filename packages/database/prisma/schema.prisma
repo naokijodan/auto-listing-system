@@ -1462,3 +1462,163 @@ enum SalesPeriodType {
   WEEKLY
   MONTHLY
 }
+
+// ========================================
+// Phase 19: データエクスポート
+// ========================================
+
+model ExportJob {
+  id            String   @id @default(cuid())
+
+  // エクスポート種別
+  exportType    ExportType
+  format        ExportFormat   @default(CSV)
+
+  // フィルター条件
+  filters       Json     @default("{}")  // {startDate, endDate, marketplace, status, etc.}
+
+  // 実行状態
+  status        ExportJobStatus @default(PENDING)
+  progress      Int      @default(0)     // 0-100
+  totalRows     Int?
+  processedRows Int      @default(0)
+
+  // ファイル情報
+  fileName      String?
+  filePath      String?              // S3/ローカルパス
+  fileSize      Int?                 // bytes
+  downloadUrl   String?              // 署名付きURL
+  expiresAt     DateTime?            // ダウンロード期限
+
+  // エラー情報
+  errorMessage  String?  @db.Text
+
+  // スケジュール設定（定期エクスポート用）
+  isScheduled   Boolean  @default(false)
+  cronExpression String?
+  nextRunAt     DateTime?
+
+  // メタデータ
+  requestedBy   String?              // ユーザーID/APIキー
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([exportType, status])
+  @@index([status, createdAt])
+  @@index([isScheduled, nextRunAt])
+  @@map("export_jobs")
+}
+
+enum ExportType {
+  ORDERS           // 注文データ
+  PRODUCTS         // 商品データ
+  LISTINGS         // 出品データ
+  SALES_SUMMARY    // 売上サマリー
+  INVENTORY        // 在庫データ
+  AUDIT_LOG        // 監査ログ
+  CUSTOMER_MESSAGES // 顧客メッセージ
+}
+
+enum ExportFormat {
+  CSV
+  EXCEL
+  JSON
+}
+
+enum ExportJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ========================================
+// Phase 20: 監査ログ
+// ========================================
+
+model AuditLog {
+  id            String   @id @default(cuid())
+
+  // 操作者情報
+  actorType     ActorType        // USER, SYSTEM, API, WEBHOOK
+  actorId       String?          // ユーザーID or APIキーID
+  actorName     String?          // 表示名
+  ipAddress     String?
+
+  // 操作対象
+  entityType    AuditEntityType  // PRODUCT, LISTING, ORDER, etc.
+  entityId      String?          // 対象のID
+  entityName    String?          // 対象の名前（検索用）
+
+  // 操作内容
+  action        AuditAction      // CREATE, UPDATE, DELETE, etc.
+  description   String   @db.Text // 操作の説明
+
+  // 変更内容
+  previousValue Json?            // 変更前の値
+  newValue      Json?            // 変更後の値
+  changedFields String[]         // 変更されたフィールド名
+
+  // メタデータ
+  metadata      Json     @default("{}")  // 追加情報（リクエストID、ユーザーエージェント等）
+  severity      AuditSeverity @default(INFO)
+
+  createdAt     DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorType, actorId])
+  @@index([action, createdAt])
+  @@index([severity, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum ActorType {
+  USER
+  SYSTEM
+  API
+  WEBHOOK
+  SCHEDULER
+}
+
+enum AuditEntityType {
+  PRODUCT
+  LISTING
+  ORDER
+  SALE
+  INVENTORY_ALERT
+  WEBHOOK_EVENT
+  CUSTOMER_MESSAGE
+  PRICE_RECOMMENDATION
+  EXPORT_JOB
+  SETTINGS
+  MARKETPLACE_CREDENTIAL
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  PUBLISH
+  UNPUBLISH
+  PAUSE
+  RESUME
+  APPROVE
+  REJECT
+  EXPORT
+  IMPORT
+  SYNC
+  SEND
+  LOGIN
+  LOGOUT
+}
+
+enum AuditSeverity {
+  DEBUG
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}

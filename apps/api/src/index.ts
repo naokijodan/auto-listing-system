@@ -52,6 +52,8 @@ import { messageTemplatesRouter } from './routes/message-templates';
 import { customerMessagesRouter } from './routes/customer-messages';
 import { inventoryAlertsRouter } from './routes/inventory-alerts';
 import { salesAnalyticsRouter } from './routes/sales-analytics';
+import { exportsRouter } from './routes/exports';
+import { auditLogsRouter } from './routes/audit-logs';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -153,6 +155,8 @@ app.use('/api/message-templates', messageTemplatesRouter);
 app.use('/api/customer-messages', customerMessagesRouter);
 app.use('/api/inventory-alerts', inventoryAlertsRouter);
 app.use('/api/sales-analytics', salesAnalyticsRouter);
+app.use('/api/exports', exportsRouter);
+app.use('/api/audit-logs', auditLogsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
