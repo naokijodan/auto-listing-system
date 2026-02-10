@@ -26,6 +26,8 @@ RAKUDAは日本のECサイト（ヤフオク、メルカリ、Amazon JP）から
 | **Phase 6** | **在庫同期強化** | ✅ **完了** |
 | **Phase 7** | **自動価格調整** | ✅ **完了** |
 | **Phase 8** | **レポート生成** | ✅ **完了** |
+| **Phase 9** | **eBay OAuth認証** | ✅ **完了** |
+| **Phase 10** | **注文自動化** | ✅ **完了** |
 
 ### カナリアリリース状況
 
@@ -113,6 +115,22 @@ JOOM_PRICE_LIMIT_JPY = 900000   // Joom出品上限
 - 出品統計・監視機能
 - production用スクリプト
 
+### 5. eBay OAuth認証（Phase 9）
+- OAuth2フロー完全実装（auth, callback, refresh, status）
+- sandbox/production環境切り替え
+- MarketplaceCredentialへのトークン自動保存
+- ファイル: `apps/api/src/routes/ebay-auth.ts`
+
+### 6. 注文自動化（Phase 10）
+- リスクレベル判定（LOW/MEDIUM/HIGH）
+- 自動化レベル（MANUAL/SEMI_AUTO/FULL_AUTO）
+- 自動承認閾値:
+  - maxAmountUsd: $100
+  - minProfitRate: 15%
+  - maxItemCount: 3
+- ShadowLogへの決定記録
+- ファイル: `apps/worker/src/lib/order-automation.ts`
+
 ---
 
 ## 環境情報
@@ -136,6 +154,8 @@ JOOM_PRICE_LIMIT_JPY = 900000   // Joom出品上限
 | `apps/worker/src/lib/scheduler.ts` | 在庫監視・再評価スケジューラ |
 | `apps/worker/src/lib/notification-service.ts` | **通知サービス** |
 | `apps/worker/src/lib/ebay-api.ts` | eBay API クライアント |
+| `apps/api/src/routes/ebay-auth.ts` | **eBay OAuth認証（Phase 9）** |
+| `apps/worker/src/lib/order-automation.ts` | **注文自動化（Phase 10）** |
 | `packages/database/prisma/schema.prisma` | DBスキーマ |
 | `scripts/canary-release.ts` | カナリアリリース（カテゴリ拡張済み） |
 
@@ -184,10 +204,10 @@ npm run docker:prod:up         # Docker本番起動
 ## Git履歴（直近）
 
 ```
+bd6247e feat: Phase 9-10 eBay認証・注文自動化
+11cc5d9 docs: 引き継ぎ書更新（Phase 7-8完了）
 a7c1660 feat: Phase 7-8 自動価格調整・レポート生成
 898176e feat: Phase 5-6 ダッシュボード・在庫同期強化
-e05c1d1 feat: Phase 3-4 通知基盤・カテゴリ拡張
-c91e941 feat: Phase 1-2 Joom運用基盤
 ```
 
 ---
