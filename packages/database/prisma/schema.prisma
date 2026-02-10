@@ -1891,6 +1891,11 @@ model User {
   createdAutomationRules AutomationRule[]
   approvalActions  ApprovalAction[]
 
+  // Phase 37: データ可視化
+  createdCharts    ChartConfig[]
+  userFeedbacks    UserFeedback[]
+  predictionFeedbacks PredictionFeedback[]
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -2503,6 +2508,7 @@ model Dashboard {
 
   // リレーション
   items         DashboardItem[]
+  chartItems    DashboardChartItem[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -5350,4 +5356,560 @@ enum PriceOptimizationMetric {
   REVENUE     // 売上
   MARGIN      // マージン
   VOLUME      // 販売数
+}
+
+// ========================================
+// Phase 37: データ可視化
+// ========================================
+
+// グラフ設定
+model ChartConfig {
+  id          String   @id @default(cuid())
+
+  // 基本情報
+  name        String
+  description String?
+  chartType   ChartType
+
+  // データソース
+  dataSource  ChartDataSource
+  query       Json     // データ取得クエリ設定
+
+  // 表示設定
+  options     Json     @default("{}") // Chart.js/Rechartsオプション
+  colors      String[] // カラーパレット
+  showLegend  Boolean  @default(true)
+  showTooltip Boolean  @default(true)
+  animated    Boolean  @default(true)
+
+  // 更新設定
+  refreshInterval Int? // 自動更新間隔（秒）
+  cacheTimeout Int?    // キャッシュ有効期間（秒）
+
+  // フィルター
+  defaultFilters Json  @default("{}") // デフォルトフィルター
+
+  // オーナー
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  // ステータス
+  isPublic    Boolean  @default(false)
+  isActive    Boolean  @default(true)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  dataPoints  ChartData[]
+  dashboardItems DashboardChartItem[]
+
+  @@index([chartType, isActive])
+  @@index([createdById])
+  @@map("chart_configs")
+}
+
+// グラフデータ（キャッシュ）
+model ChartData {
+  id          String   @id @default(cuid())
+
+  // グラフ設定
+  chartId     String
+  chart       ChartConfig @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  // データ期間
+  periodStart DateTime
+  periodEnd   DateTime
+  granularity DataGranularity
+
+  // データ
+  labels      String[] // X軸ラベル
+  datasets    Json     // データセット配列
+
+  // メタデータ
+  totalRecords Int     @default(0)
+  aggregationType AggregationType?
+
+  // キャッシュ情報
+  cachedAt    DateTime @default(now())
+  expiresAt   DateTime
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([chartId, periodStart, periodEnd])
+  @@index([expiresAt])
+  @@map("chart_data")
+}
+
+// ダッシュボードグラフ配置
+model DashboardChartItem {
+  id          String   @id @default(cuid())
+
+  // ダッシュボード
+  dashboardId String
+  dashboard   Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+
+  // グラフ
+  chartId     String
+  chart       ChartConfig @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  // 配置
+  position    Int      // 表示順序
+  width       Int      @default(6) // グリッド幅（1-12）
+  height      Int      @default(4) // グリッド高さ
+
+  // カスタマイズ
+  title       String?  // カスタムタイトル
+  overrides   Json     @default("{}") // 設定オーバーライド
+
+  // ステータス
+  isVisible   Boolean  @default(true)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([dashboardId, chartId])
+  @@index([dashboardId, position])
+  @@map("dashboard_chart_items")
+}
+
+// ウィジェットプリセット
+model WidgetPreset {
+  id          String   @id @default(cuid())
+
+  // 基本情報
+  name        String
+  description String?
+  category    WidgetCategory
+
+  // 設定
+  widgetType  String   // kpi, chart, table, etc.
+  config      Json     // ウィジェット設定
+
+  // サムネイル
+  thumbnail   String?  // プレビュー画像URL
+
+  // ステータス
+  isSystem    Boolean  @default(false) // システムプリセット
+  isPublic    Boolean  @default(true)
+
+  // 使用統計
+  usageCount  Int      @default(0)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category, isPublic])
+  @@map("widget_presets")
+}
+
+// ユーザーフィードバック
+model UserFeedback {
+  id          String   @id @default(cuid())
+
+  // ユーザー
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessionId   String?  // 匿名ユーザー用
+
+  // 対象
+  targetType  FeedbackTargetType
+  targetId    String
+
+  // フィードバック
+  feedbackType FeedbackType
+  rating      Int?     // 1-5スケール
+  comment     String?  @db.Text
+
+  // メタデータ
+  context     Json     @default("{}") // ページURL、アクション等
+  userAgent   String?
+  ipAddress   String?
+
+  // ステータス
+  status      FeedbackStatus @default(NEW)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([targetType, targetId])
+  @@index([userId])
+  @@index([feedbackType, status])
+  @@map("user_feedbacks")
+}
+
+// AI予測フィードバック
+model PredictionFeedback {
+  id          String   @id @default(cuid())
+
+  // ユーザー
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 予測対象
+  predictionType PredictionFeedbackType
+  predictionId String
+
+  // フィードバック
+  isHelpful   Boolean  // 役立ったか
+  actualOutcome String? // 実際の結果
+  comment     String?  @db.Text
+
+  // 予測との比較
+  predictedValue Float?
+  actualValue Float?
+  accuracy    Float?   // 予測精度
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([predictionType, predictionId])
+  @@index([userId])
+  @@index([isHelpful])
+  @@map("prediction_feedbacks")
+}
+
+// ========================================
+// Phase 38: 検索機能強化
+// ========================================
+
+// 検索インデックス設定
+model SearchIndex {
+  id          String   @id @default(cuid())
+
+  // 基本情報
+  name        String   @unique
+  description String?
+  entityType  String   // products, orders, listings等
+
+  // インデックス設定
+  fields      Json     // インデックス対象フィールド
+  weights     Json     @default("{}") // フィールド重み
+  analyzer    SearchAnalyzer @default(JAPANESE)
+
+  // 更新設定
+  syncMode    SearchSyncMode @default(REALTIME)
+  lastSyncAt  DateTime?
+  syncStatus  SearchSyncStatus @default(IDLE)
+
+  // 統計
+  documentCount Int    @default(0)
+  indexSize   Int      @default(0) // バイト
+
+  // ステータス
+  isActive    Boolean  @default(true)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([entityType, isActive])
+  @@map("search_indexes")
+}
+
+// 検索ログ
+model SearchLog {
+  id          String   @id @default(cuid())
+
+  // ユーザー
+  userId      String?
+  sessionId   String?
+
+  // 検索クエリ
+  query       String
+  queryType   SearchQueryType @default(KEYWORD)
+  filters     Json     @default("{}") // 適用されたフィルター
+
+  // 検索対象
+  entityType  String   // products, orders等
+  indexName   String?
+
+  // 結果
+  resultCount Int      @default(0)
+  topResults  String[] // 上位結果のID
+  executionTime Int?   // ミリ秒
+
+  // ユーザー行動
+  clickedResults String[] // クリックした結果のID
+  selectedResult String?  // 最終選択したID
+  hasConversion Boolean @default(false) // コンバージョンしたか
+
+  // メタデータ
+  source      String?  // 検索ソース（header, page, api等）
+  userAgent   String?
+  ipAddress   String?
+
+  // タイムスタンプ
+  searchedAt  DateTime @default(now())
+
+  @@index([query])
+  @@index([entityType, searchedAt])
+  @@index([userId, searchedAt])
+  @@map("search_logs")
+}
+
+// 検索シノニム（同義語）
+model SearchSynonym {
+  id          String   @id @default(cuid())
+
+  // 対象
+  entityType  String?  // null = 全エンティティ
+
+  // シノニム設定
+  term        String   // 元の単語
+  synonyms    String[] // 同義語リスト
+  synonymType SynonymType @default(EQUIVALENT)
+
+  // 優先度
+  priority    Int      @default(0)
+
+  // ステータス
+  isActive    Boolean  @default(true)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([entityType, term])
+  @@index([term])
+  @@map("search_synonyms")
+}
+
+// 検索フィルター定義
+model SearchFilter {
+  id          String   @id @default(cuid())
+
+  // 基本情報
+  name        String
+  displayName String
+  description String?
+
+  // 対象
+  entityType  String
+
+  // フィルター設定
+  field       String   // フィルター対象フィールド
+  filterType  SearchFilterType
+  options     Json     @default("[]") // 選択肢（SELECTタイプ用）
+
+  // 表示設定
+  position    Int      @default(0)
+  isCollapsed Boolean  @default(false)
+  showCount   Boolean  @default(true) // 件数表示
+
+  // ステータス
+  isActive    Boolean  @default(true)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([entityType, isActive])
+  @@map("search_filters")
+}
+
+// 人気検索ワード
+model PopularSearch {
+  id          String   @id @default(cuid())
+
+  // 検索ワード
+  query       String
+  entityType  String
+
+  // 統計
+  searchCount Int      @default(1)
+  clickCount  Int      @default(0)
+  conversionCount Int  @default(0)
+
+  // トレンド
+  trendScore  Float    @default(0) // トレンドスコア
+  lastSearchedAt DateTime @default(now())
+
+  // 期間
+  periodStart DateTime
+  periodEnd   DateTime
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([query, entityType, periodStart])
+  @@index([entityType, trendScore])
+  @@index([searchCount])
+  @@map("popular_searches")
+}
+
+// 検索サジェスト
+model SearchSuggestion {
+  id          String   @id @default(cuid())
+
+  // サジェスト
+  prefix      String   // 入力プレフィックス
+  suggestion  String   // サジェスト文字列
+  entityType  String
+
+  // 重み
+  weight      Float    @default(1.0)
+  source      SuggestionSource @default(QUERY)
+
+  // 統計
+  selectCount Int      @default(0)
+
+  // ステータス
+  isActive    Boolean  @default(true)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([prefix, entityType])
+  @@index([weight])
+  @@map("search_suggestions")
+}
+
+// ========================================
+// Phase 37-38 Enums
+// ========================================
+
+enum ChartType {
+  LINE        // 折れ線グラフ
+  BAR         // 棒グラフ
+  PIE         // 円グラフ
+  DOUGHNUT    // ドーナツグラフ
+  AREA        // エリアグラフ
+  SCATTER     // 散布図
+  RADAR       // レーダーチャート
+  TREEMAP     // ツリーマップ
+  HEATMAP     // ヒートマップ
+  FUNNEL      // ファネルチャート
+  GAUGE       // ゲージ
+  COMBO       // 複合グラフ
+}
+
+enum ChartDataSource {
+  SALES       // 売上データ
+  ORDERS      // 注文データ
+  PRODUCTS    // 商品データ
+  INVENTORY   // 在庫データ
+  PREDICTIONS // AI予測データ
+  ANALYTICS   // 分析データ
+  CUSTOM      // カスタムクエリ
+}
+
+enum DataGranularity {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum AggregationType {
+  SUM
+  AVG
+  COUNT
+  MIN
+  MAX
+  MEDIAN
+}
+
+enum WidgetCategory {
+  SALES       // 売上
+  INVENTORY   // 在庫
+  ORDERS      // 注文
+  ANALYTICS   // 分析
+  AI          // AI/予測
+  SYSTEM      // システム
+}
+
+enum FeedbackTargetType {
+  FEATURE     // 機能
+  PAGE        // ページ
+  PREDICTION  // 予測
+  REPORT      // レポート
+  DASHBOARD   // ダッシュボード
+  GENERAL     // 一般
+}
+
+enum FeedbackType {
+  BUG         // バグ報告
+  FEATURE_REQUEST // 機能要望
+  IMPROVEMENT // 改善提案
+  PRAISE      // 称賛
+  QUESTION    // 質問
+  OTHER       // その他
+}
+
+enum FeedbackStatus {
+  NEW
+  REVIEWED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  WONT_FIX
+}
+
+enum PredictionFeedbackType {
+  PRICE       // 価格予測
+  DEMAND      // 需要予測
+  RECOMMENDATION // 商品推薦
+}
+
+enum SearchAnalyzer {
+  STANDARD    // 標準
+  JAPANESE    // 日本語
+  ENGLISH     // 英語
+  MULTILINGUAL // 多言語
+}
+
+enum SearchSyncMode {
+  REALTIME    // リアルタイム同期
+  BATCH       // バッチ同期
+  MANUAL      // 手動同期
+}
+
+enum SearchSyncStatus {
+  IDLE
+  SYNCING
+  COMPLETED
+  FAILED
+}
+
+enum SearchQueryType {
+  KEYWORD     // キーワード検索
+  PHRASE      // フレーズ検索
+  FUZZY       // あいまい検索
+  PREFIX      // 前方一致
+  WILDCARD    // ワイルドカード
+  SEMANTIC    // 意味検索
+}
+
+enum SynonymType {
+  EQUIVALENT  // 同等（双方向）
+  EXPANSION   // 拡張（一方向）
+}
+
+enum SearchFilterType {
+  SELECT      // 選択式
+  MULTI_SELECT // 複数選択
+  RANGE       // 範囲
+  DATE_RANGE  // 日付範囲
+  BOOLEAN     // ブール
+  TEXT        // テキスト
+}
+
+enum SuggestionSource {
+  QUERY       // 検索クエリから
+  PRODUCT     // 商品名から
+  CATEGORY    // カテゴリから
+  BRAND       // ブランドから
+  MANUAL      // 手動登録
 }
