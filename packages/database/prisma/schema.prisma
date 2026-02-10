@@ -2937,3 +2937,358 @@ enum ReportStatus {
   CANCELLED
   EXPIRED
 }
+
+// ========================================
+// Phase 29: バッチ処理の最適化
+// ========================================
+
+model BatchJob {
+  id          String   @id @default(cuid())
+
+  // ジョブ定義
+  name        String           // ジョブ名
+  description String?
+  jobType     BatchJobType     // ジョブタイプ
+
+  // 設定
+  config      Json     @default("{}") // ジョブ固有設定
+  concurrency Int      @default(1)    // 並列数
+  stepSize    Int      @default(100)  // ステップあたりの処理件数
+  timeout     Int      @default(3600) // タイムアウト（秒）
+  retryPolicy Json     @default("{}") // リトライポリシー
+
+  // スケジュール
+  isScheduled  Boolean  @default(false)
+  cronExpression String?
+  nextRunAt    DateTime?
+
+  // メタデータ
+  isActive    Boolean  @default(true)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 関連
+  executions  BatchExecution[]
+
+  @@index([jobType])
+  @@index([isScheduled, nextRunAt])
+  @@map("batch_jobs")
+}
+
+model BatchExecution {
+  id          String   @id @default(cuid())
+
+  // ジョブ参照
+  jobId       String
+  job         BatchJob @relation(fields: [jobId], references: [id])
+
+  // 実行状態
+  status      BatchExecutionStatus @default(PENDING)
+
+  // 進捗追跡
+  totalItems        Int?     // 確定総件数（null=推定中）
+  estimatedItems    Int?     // 推定総件数
+  processedItems    Int      @default(0)
+  successItems      Int      @default(0)
+  errorItems        Int      @default(0)
+  skippedItems      Int      @default(0)
+
+  // 進捗率
+  progressPercent   Float    @default(0)
+  progressType      BatchProgressType @default(ESTIMATED) // 推定/確定
+
+  // 実行情報
+  workerId    String?          // 実行ワーカーID
+  queueJobId  String?          // BullMQ ジョブID
+  parameters  Json     @default("{}") // 実行パラメータ
+  result      Json?            // 実行結果
+
+  // キャンセル
+  cancelRequested Boolean @default(false)
+  cancelReason    String?
+  cancelledBy     String?
+  cancelledAt     DateTime?
+
+  // タイムスタンプ
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // エラー
+  errorMessage String?  @db.Text
+  errorDetails Json?
+
+  // 関連
+  steps       BatchStep[]
+
+  @@index([jobId, createdAt])
+  @@index([status])
+  @@index([workerId])
+  @@map("batch_executions")
+}
+
+model BatchStep {
+  id          String   @id @default(cuid())
+
+  // 実行参照
+  executionId String
+  execution   BatchExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  // ステップ情報
+  stepNumber  Int              // ステップ番号（0始まり）
+  stepKey     String?          // 冪等性キー（再実行時の識別用）
+  status      BatchStepStatus  @default(PENDING)
+
+  // 処理範囲
+  startOffset Int              // 開始オフセット
+  endOffset   Int              // 終了オフセット
+  itemCount   Int      @default(0) // このステップの件数
+
+  // 処理結果
+  processedCount Int   @default(0)
+  successCount   Int   @default(0)
+  errorCount     Int   @default(0)
+  skippedCount   Int   @default(0)
+
+  // 詳細
+  output      Json?            // ステップ出力
+  errors      Json     @default("[]") // エラー詳細
+
+  // タイムスタンプ
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([executionId, stepNumber])
+  @@unique([executionId, stepKey])
+  @@index([status])
+  @@map("batch_steps")
+}
+
+model BatchEvent {
+  id          String   @id @default(cuid())
+
+  // イベント情報
+  executionId String
+  stepId      String?
+  eventType   BatchEventType
+
+  // データ
+  data        Json     @default("{}")
+
+  // タイムスタンプ
+  timestamp   DateTime @default(now())
+
+  @@index([executionId, timestamp])
+  @@index([eventType])
+  @@map("batch_events")
+}
+
+enum BatchJobType {
+  PRODUCT_SYNC        // 商品同期
+  PRICE_UPDATE        // 価格更新
+  INVENTORY_CHECK     // 在庫チェック
+  ORDER_SYNC          // 注文同期
+  IMAGE_PROCESSING    // 画像処理
+  LISTING_PUBLISH     // 出品公開
+  DATA_EXPORT         // データエクスポート
+  DATA_IMPORT         // データインポート
+  CLEANUP             // クリーンアップ
+  NOTIFICATION_SEND   // 通知送信
+  REPORT_GENERATE     // レポート生成
+  CUSTOM              // カスタム
+}
+
+enum BatchExecutionStatus {
+  PENDING     // 待機中
+  QUEUED      // キュー投入済み
+  RUNNING     // 実行中
+  PAUSED      // 一時停止
+  COMPLETED   // 完了
+  FAILED      // 失敗
+  CANCELLED   // キャンセル
+  TIMEOUT     // タイムアウト
+}
+
+enum BatchStepStatus {
+  PENDING     // 待機中
+  RUNNING     // 実行中
+  COMPLETED   // 完了
+  FAILED      // 失敗
+  SKIPPED     // スキップ
+}
+
+enum BatchProgressType {
+  ESTIMATED   // 推定
+  KNOWN       // 確定
+}
+
+enum BatchEventType {
+  EXECUTION_STARTED
+  EXECUTION_COMPLETED
+  EXECUTION_FAILED
+  EXECUTION_CANCELLED
+  STEP_STARTED
+  STEP_COMPLETED
+  STEP_FAILED
+  PROGRESS_UPDATED
+  CANCEL_REQUESTED
+}
+
+// ========================================
+// Phase 30: 多言語対応（i18n）
+// ========================================
+
+model TranslationNamespace {
+  id          String   @id @default(cuid())
+
+  // 名前空間
+  name        String   @unique   // 例: common, checkout, product, error
+  description String?
+
+  // メタデータ
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 関連
+  keys        TranslationKey[]
+
+  @@map("translation_namespaces")
+}
+
+model TranslationKey {
+  id          String   @id @default(cuid())
+
+  // キー情報
+  namespaceId String
+  namespace   TranslationNamespace @relation(fields: [namespaceId], references: [id])
+
+  key         String           // 例: title, description, button.submit
+  description String?          // キーの説明（翻訳者向けコンテキスト）
+  context     String?          // 使用コンテキスト（画面名など）
+  screenshot  String?          // スクリーンショットURL
+
+  // プレースホルダー
+  placeholders Json   @default("[]") // 例: ["name", "count"]
+
+  // メタデータ
+  isActive    Boolean  @default(true)
+  maxLength   Int?             // 最大文字数制限
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 関連
+  translations Translation[]
+
+  @@unique([namespaceId, key])
+  @@index([key])
+  @@map("translation_keys")
+}
+
+model Translation {
+  id          String   @id @default(cuid())
+
+  // キー参照
+  keyId       String
+  translationKey TranslationKey @relation(fields: [keyId], references: [id], onDelete: Cascade)
+
+  // 言語
+  locale      String           // 例: ja, en, zh, zh-TW, ko, es, de, fr
+
+  // 翻訳
+  value       String   @db.Text
+
+  // 品質管理
+  status      TranslationStatus @default(UNTRANSLATED)
+  source      TranslationSource @default(MANUAL)
+  reviewedBy  String?
+  reviewedAt  DateTime?
+
+  // バージョン管理
+  version     Int      @default(1)
+
+  // メタデータ
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([keyId, locale])
+  @@index([locale])
+  @@index([status])
+  @@map("translations")
+}
+
+model SupportedLocale {
+  id          String   @id @default(cuid())
+
+  // 言語情報
+  code        String   @unique   // 例: ja, en, zh-TW
+  name        String             // 例: 日本語, English
+  nativeName  String             // 例: 日本語, English
+
+  // 方向
+  direction   TextDirection @default(LTR)
+
+  // フォールバック
+  fallbackLocale String?         // フォールバック先言語コード
+
+  // 設定
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  // メタデータ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("supported_locales")
+}
+
+model TranslationHistory {
+  id          String   @id @default(cuid())
+
+  // 翻訳参照
+  translationId String
+
+  // 変更内容
+  oldValue    String?  @db.Text
+  newValue    String   @db.Text
+  oldStatus   TranslationStatus?
+  newStatus   TranslationStatus
+
+  // 変更者
+  changedBy   String?
+  changeReason String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([translationId, createdAt])
+  @@map("translation_histories")
+}
+
+enum TranslationStatus {
+  UNTRANSLATED    // 未翻訳
+  MACHINE         // 機械翻訳
+  DRAFT           // 下書き
+  PENDING_REVIEW  // レビュー待ち
+  APPROVED        // 承認済み
+  PUBLISHED       // 公開済み
+}
+
+enum TranslationSource {
+  MANUAL          // 手動入力
+  MACHINE_GOOGLE  // Google翻訳
+  MACHINE_DEEPL   // DeepL
+  MACHINE_GPT     // GPT
+  IMPORTED        // インポート
+}
+
+enum TextDirection {
+  LTR             // 左から右
+  RTL             // 右から左
+}
