@@ -2227,3 +2227,408 @@ enum WebhookDeliveryStatus {
   RETRYING
   EXHAUSTED    // リトライ上限到達
 }
+
+// ========================================
+// Phase 25: バックアップ/リストア
+// ========================================
+
+model Backup {
+  id            String   @id @default(cuid())
+
+  // バックアップ情報
+  name          String
+  description   String?
+  backupType    BackupType       @default(FULL)
+
+  // 含まれるデータ
+  includeProducts   Boolean @default(true)
+  includeListings   Boolean @default(true)
+  includeOrders     Boolean @default(true)
+  includeSettings   Boolean @default(true)
+  includeTemplates  Boolean @default(true)
+  includeCredentials Boolean @default(false)  // 認証情報は暗号化
+
+  // ファイル情報
+  fileName      String?
+  filePath      String?          // S3/ローカルパス
+  fileSize      BigInt?
+  checksum      String?          // SHA256
+
+  // 暗号化
+  isEncrypted   Boolean  @default(true)
+  encryptionKey String?          // 暗号化キーのヒント（実キーは別管理）
+
+  // 統計
+  productCount  Int?
+  listingCount  Int?
+  orderCount    Int?
+  settingCount  Int?
+
+  // ステータス
+  status        BackupStatus @default(PENDING)
+  progress      Int          @default(0)
+  errorMessage  String?      @db.Text
+
+  // 実行情報
+  createdBy     String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  // スケジュール
+  isScheduled   Boolean  @default(false)
+  scheduleId    String?
+
+  // 保持期間
+  expiresAt     DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([backupType, status])
+  @@index([createdAt])
+  @@index([isScheduled])
+  @@map("backups")
+}
+
+model BackupSchedule {
+  id            String   @id @default(cuid())
+
+  // スケジュール情報
+  name          String
+  description   String?
+  cronExpression String         // cron式
+  timezone      String   @default("Asia/Tokyo")
+
+  // バックアップ設定
+  backupType    BackupType @default(INCREMENTAL)
+  includeProducts   Boolean @default(true)
+  includeListings   Boolean @default(true)
+  includeOrders     Boolean @default(true)
+  includeSettings   Boolean @default(true)
+  includeTemplates  Boolean @default(true)
+  includeCredentials Boolean @default(false)
+
+  // 暗号化設定
+  isEncrypted   Boolean  @default(true)
+
+  // 保持設定
+  retentionDays Int      @default(30)
+  maxBackups    Int      @default(10)
+
+  // ステータス
+  isActive      Boolean  @default(true)
+  lastRunAt     DateTime?
+  lastRunStatus String?
+  nextRunAt     DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive, nextRunAt])
+  @@map("backup_schedules")
+}
+
+model RestoreJob {
+  id            String   @id @default(cuid())
+
+  // リストア元
+  backupId      String?          // 既存バックアップから
+  uploadedFile  String?          // アップロードファイルから
+
+  // リストア設定
+  restoreType   RestoreType @default(FULL)
+  restoreProducts   Boolean @default(true)
+  restoreListings   Boolean @default(true)
+  restoreOrders     Boolean @default(false)  // 注文は慎重に
+  restoreSettings   Boolean @default(true)
+  restoreTemplates  Boolean @default(true)
+
+  // 競合解決
+  conflictStrategy ConflictStrategy @default(SKIP)
+
+  // ステータス
+  status        RestoreStatus @default(PENDING)
+  progress      Int           @default(0)
+
+  // 統計
+  totalItems    Int?
+  processedItems Int          @default(0)
+  skippedItems  Int           @default(0)
+  failedItems   Int           @default(0)
+
+  // エラー情報
+  errorMessage  String?       @db.Text
+  errorDetails  Json          @default("[]")
+
+  // 実行情報
+  createdBy     String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("restore_jobs")
+}
+
+enum BackupType {
+  FULL          // 完全バックアップ
+  INCREMENTAL   // 増分バックアップ
+  DIFFERENTIAL  // 差分バックアップ
+  SETTINGS_ONLY // 設定のみ
+}
+
+enum BackupStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum RestoreType {
+  FULL          // 完全リストア
+  SELECTIVE     // 選択的リストア
+  SETTINGS_ONLY // 設定のみ
+}
+
+enum RestoreStatus {
+  PENDING
+  VALIDATING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  ROLLED_BACK
+}
+
+enum ConflictStrategy {
+  SKIP          // 既存をスキップ
+  OVERWRITE     // 上書き
+  MERGE         // マージ（可能な場合）
+  RENAME        // リネームして両方保持
+}
+
+// ========================================
+// Phase 26: ダッシュボードウィジェット
+// ========================================
+
+model DashboardWidget {
+  id            String   @id @default(cuid())
+
+  // ウィジェット情報
+  name          String
+  description   String?
+  widgetType    WidgetType
+
+  // 表示設定
+  title         String
+  subtitle      String?
+  icon          String?          // アイコン名
+  color         String?          // テーマカラー
+
+  // データ設定
+  dataSource    String           // データソース識別子
+  query         Json             @default("{}")  // クエリ条件
+  aggregation   String?          // 集計方法
+  timeRange     String?          // 時間範囲（last_24h, last_7d, etc.）
+
+  // 表示オプション
+  displayOptions Json            @default("{}")  // グラフオプション等
+  refreshInterval Int            @default(300)   // 更新間隔（秒）
+
+  // 閾値設定（アラート用）
+  thresholds    Json             @default("[]")  // [{value, color, label}]
+
+  // 権限
+  requiredPermission String?     // 必要な権限
+
+  // システムウィジェット
+  isSystem      Boolean  @default(false)
+  isActive      Boolean  @default(true)
+
+  // リレーション
+  dashboardItems DashboardItem[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([widgetType])
+  @@index([isActive])
+  @@map("dashboard_widgets")
+}
+
+model Dashboard {
+  id            String   @id @default(cuid())
+
+  // ダッシュボード情報
+  name          String
+  description   String?
+  slug          String   @unique  // URLスラッグ
+
+  // 所有者
+  userId        String?          // null = システムダッシュボード
+  isDefault     Boolean  @default(false)
+  isPublic      Boolean  @default(false)
+
+  // レイアウト設定
+  layout        Json             @default("[]")  // グリッドレイアウト
+  columns       Int      @default(12)
+
+  // テーマ
+  theme         String   @default("light")
+
+  // リレーション
+  items         DashboardItem[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([slug])
+  @@index([isDefault])
+  @@map("dashboards")
+}
+
+model DashboardItem {
+  id            String   @id @default(cuid())
+
+  dashboardId   String
+  dashboard     Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+
+  widgetId      String
+  widget        DashboardWidget @relation(fields: [widgetId], references: [id], onDelete: Cascade)
+
+  // グリッド位置
+  x             Int      @default(0)
+  y             Int      @default(0)
+  width         Int      @default(4)
+  height        Int      @default(3)
+
+  // カスタム設定（ウィジェットデフォルトのオーバーライド）
+  customTitle   String?
+  customOptions Json     @default("{}")
+
+  // 表示順
+  order         Int      @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([dashboardId, widgetId])
+  @@index([dashboardId])
+  @@map("dashboard_items")
+}
+
+model WidgetData {
+  id            String   @id @default(cuid())
+
+  // データ識別
+  widgetType    WidgetType
+  dataKey       String           // キャッシュキー
+
+  // データ
+  value         Json
+  metadata      Json     @default("{}")
+
+  // キャッシュ情報
+  calculatedAt  DateTime @default(now())
+  expiresAt     DateTime
+
+  @@unique([widgetType, dataKey])
+  @@index([expiresAt])
+  @@map("widget_data")
+}
+
+model KpiSnapshot {
+  id            String   @id @default(cuid())
+
+  // スナップショット期間
+  periodType    KpiPeriodType
+  periodStart   DateTime
+  periodEnd     DateTime
+
+  // KPI値
+  kpiType       KpiType
+  value         Float
+  previousValue Float?           // 前期比較用
+  changePercent Float?
+
+  // メタデータ
+  breakdown     Json     @default("{}")  // 内訳データ
+  metadata      Json     @default("{}")
+
+  calculatedAt  DateTime @default(now())
+
+  @@unique([periodType, periodStart, kpiType])
+  @@index([kpiType, periodStart])
+  @@map("kpi_snapshots")
+}
+
+enum WidgetType {
+  // 数値系
+  METRIC        // 単一指標
+  COUNTER       // カウンター
+  GAUGE         // ゲージ
+  PROGRESS      // 進捗バー
+
+  // グラフ系
+  LINE_CHART    // 折れ線グラフ
+  BAR_CHART     // 棒グラフ
+  PIE_CHART     // 円グラフ
+  AREA_CHART    // エリアチャート
+
+  // リスト系
+  TABLE         // テーブル
+  LIST          // リスト
+  LEADERBOARD   // ランキング
+
+  // その他
+  MAP           // 地図
+  HEATMAP       // ヒートマップ
+  TIMELINE      // タイムライン
+  STATUS        // ステータス表示
+  ALERT         // アラートリスト
+}
+
+enum KpiPeriodType {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum KpiType {
+  // 売上系
+  TOTAL_REVENUE
+  GROSS_PROFIT
+  NET_PROFIT
+  PROFIT_MARGIN
+  AVERAGE_ORDER_VALUE
+
+  // 注文系
+  ORDER_COUNT
+  ITEM_COUNT
+  CONVERSION_RATE
+  RETURN_RATE
+
+  // 在庫系
+  ACTIVE_LISTINGS
+  OUT_OF_STOCK_COUNT
+  INVENTORY_VALUE
+
+  // パフォーマンス系
+  API_REQUESTS
+  ERROR_RATE
+  RESPONSE_TIME
+
+  // 顧客系
+  NEW_CUSTOMERS
+  REPEAT_CUSTOMERS
+  CUSTOMER_SATISFACTION
+}
