@@ -15,48 +15,58 @@
 | 25-26 | バックアップ/リストア・ダッシュボードウィジェット | 2025-02-10 |
 | 27-28 | 通知チャンネル拡張・レポート機能強化 | 2026-02-11 |
 | 29-30 | バッチ処理最適化・多言語対応 | 2026-02-11 |
+| 31-32 | パフォーマンス最適化・監視アラート | 2026-02-11 |
 
 ### 最新コミット
-- ハッシュ: `98e1ceb`
-- メッセージ: `feat: Phase 29-30 バッチ処理最適化と多言語対応を実装`
+- ハッシュ: `161567c`
+- メッセージ: `feat: Phase 31-32 パフォーマンス最適化と監視・アラート機能を実装`
 
 ---
 
-## Phase 29-30 実装内容
+## Phase 31-32 実装内容
 
-### Phase 29: バッチ処理の最適化
+### Phase 31: パフォーマンス最適化
 **新規モデル:**
-- BatchJob, BatchExecution, BatchStep, BatchEvent
+- CacheConfig, CacheEntry, QueryPerformance
 
 **新規ファイル:**
-- `apps/worker/src/lib/batch-service.ts` - バッチ処理サービス
-- `apps/api/src/routes/batch-jobs.ts` - バッチジョブAPI
+- `apps/worker/src/lib/cache-service.ts` - キャッシュサービス
+- `apps/api/src/routes/cache.ts` - キャッシュAPI
 
 **機能:**
-- BullMQを活用した並列実行
-- 進捗追跡（推定/確定の区別）
-- キャンセルフラグによるグレースフル停止
-- イベント駆動による進捗記録
-- 12種類のジョブタイプ（PRODUCT_SYNC, PRICE_UPDATE, ORDER_SYNC等）
+- Redisを活用した高速キャッシュ
+- キャッシュ統計（ヒット率・ミス率・退避数）
+- タグベースのキャッシュ無効化
+- Read-throughキャッシュパターン（getOrFetch）
+- 期限切れキャッシュの自動クリーンアップ
+- クエリパフォーマンス分析（スロークエリ・N+1検出）
+- キャッシュタイプ: QUERY, DATA, PAGE, FRAGMENT, SESSION, API
 
-### Phase 30: 多言語対応（i18n）
+### Phase 32: 監視・アラート
 **新規モデル:**
-- TranslationNamespace, TranslationKey, Translation, SupportedLocale, TranslationHistory
+- MetricDefinition, MetricSnapshot, MetricAlertRule, MetricAlert, MetricAlertHistory, SystemHealth
 
 **新規ファイル:**
-- `apps/worker/src/lib/i18n-service.ts` - i18nサービス
-- `apps/api/src/routes/i18n.ts` - i18n API
+- `apps/worker/src/lib/monitoring-service.ts` - 監視サービス
+- `apps/api/src/routes/metrics.ts` - メトリクスAPI
 
 **機能:**
-- フォールバックチェーン対応（zh-TW→zh→en等）
-- ETag/Last-Modified対応のバンドルAPI
-- 翻訳ステータス管理（未翻訳/機械翻訳/承認済み/公開済み）
-- インポート/エクスポート機能
-- 対応言語: en, ja, zh, zh-TW, ko, es, de, fr
+- メトリクス定義・収集（SYSTEM, BUSINESS, PERFORMANCE, SECURITY, CUSTOM）
+- アラートルール設定（しきい値・比較・継続時間）
+- アラートライフサイクル（FIRING→ACKNOWLEDGED→RESOLVED）
+- アラート重要度（CRITICAL, WARNING, INFO）
+- 通知チャンネル連携
+- アラート履歴追跡
+- システムヘルス監視
+- 監視統計ダッシュボード
 
 ---
 
 ## 累積実装内容
+
+### Phase 29-30
+- **バッチ処理最適化**: BatchJob, BatchExecution, BatchStep, BatchEvent
+- **多言語対応**: TranslationNamespace, TranslationKey, Translation, SupportedLocale, TranslationHistory
 
 ### Phase 27-28
 - **通知チャンネル拡張**: NotificationDispatch, NotificationTemplate, NotificationPreference
@@ -86,11 +96,11 @@
 
 ## 次のPhase候補
 
-### Phase 31-32 候補
-1. **パフォーマンス最適化** - クエリ最適化・キャッシュ強化
-2. **監視・アラート** - メトリクス収集・しきい値アラート
-3. **セキュリティ強化** - 2FA・セッション管理・監査強化
-4. **外部連携強化** - Google Analytics連携・会計ソフト連携
+### Phase 33-34 候補
+1. **セキュリティ強化** - 2FA・セッション管理・監査強化
+2. **外部連携強化** - Google Analytics連携・会計ソフト連携
+3. **データ可視化** - グラフ・チャート・ダッシュボード強化
+4. **検索機能強化** - Elasticsearch連携・全文検索
 
 ---
 
@@ -109,6 +119,7 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 
 ### 追加パッケージ
 - bcrypt: パスワードハッシュ用（Phase 23）
+- ioredis: Redis接続（Phase 31）
 
 ### 注意事項
 - Prisma JSON型には `as any` キャストが必要な場合あり
@@ -117,6 +128,7 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 - Orderモデルは `total` (not `totalAmount`)、`marketplaceOrderId` (not `orderNumber`)、`fulfillmentStatus` (not `shippingStatus`) を使用
 - BullMQ JobsOptionsにtimeoutオプションは存在しない（データに含めてワーカーで処理）
 - i18nフォールバックチェーン: zh-TW→zh→en, ko→en, ja→en 等
+- 既存のAlertモデルと競合するため、メトリクス関連はMetricAlertRule等のプレフィックスを使用
 
 ---
 
