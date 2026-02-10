@@ -48,6 +48,8 @@ import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
 import { performanceRouter } from './routes/performance';
+import { messageTemplatesRouter } from './routes/message-templates';
+import { customerMessagesRouter } from './routes/customer-messages';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -145,6 +147,8 @@ app.use('/api/bulk', bulkOperationsRouter);
 app.use('/api/refunds', refundsRouter);
 app.use('/api/shipping', shippingRouter);
 app.use('/api/performance', performanceRouter);
+app.use('/api/message-templates', messageTemplatesRouter);
+app.use('/api/customer-messages', customerMessagesRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

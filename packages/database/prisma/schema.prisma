@@ -697,20 +697,27 @@ model WebhookEvent {
   headers       Json @default("{}")
   signature     String?
 
-  // 処理状態
-  status        WebhookEventStatus @default(PENDING)
-  processedAt   DateTime?
-  errorMessage  String?            @db.Text
-  retryCount    Int                @default(0)
+  // 処理状態（Phase 15強化）
+  status           WebhookEventStatus @default(PENDING)
+  processedAt      DateTime?
+  errorMessage     String?            @db.Text
+  retryCount       Int                @default(0)
+  maxRetries       Int                @default(5)
+  lastAttemptedAt  DateTime?
+  nextRetryAt      DateTime?
 
   // 関連
   orderId   String?
   listingId String?
 
+  // 生成されたメッセージ
+  customerMessages CustomerMessage[]
+
   createdAt DateTime @default(now())
 
   @@index([provider, eventType])
   @@index([status])
+  @@index([status, nextRetryAt])
   @@index([createdAt])
   @@map("webhook_events")
 }
@@ -720,6 +727,7 @@ enum WebhookEventStatus {
   PROCESSING
   COMPLETED
   FAILED
+  FATAL      // リトライ上限到達または回復不能エラー
   IGNORED
 }
 
@@ -1215,4 +1223,109 @@ model NotificationEvent {
   @@index([referenceId, referenceType])
   @@index([createdAt])
   @@map("notification_events")
+}
+
+// ========================================
+// メッセージテンプレート（Phase 16）
+// ========================================
+model MessageTemplate {
+  id          String   @id @default(cuid())
+
+  // テンプレート識別
+  name        String   @unique // テンプレート名（例: order_confirmation_en）
+  description String?  // 説明
+
+  // イベントトリガー
+  triggerEvent MessageTriggerEvent // ORDER_CONFIRMED, SHIPPED, DELIVERED, etc.
+  marketplace  Marketplace?        // null = 全マーケットプレイス
+
+  // テンプレート内容
+  language    String   @default("en") // en, ja, etc.
+  subject     String   // 件名テンプレート
+  body        String   @db.Text // 本文テンプレート（プレースホルダー対応）
+  bodyHtml    String?  @db.Text // HTML版本文（オプション）
+
+  // プレースホルダー定義
+  // {{buyer_name}}, {{order_id}}, {{tracking_number}}, etc.
+  placeholders String[] // 使用可能なプレースホルダー一覧
+
+  // 設定
+  isActive    Boolean  @default(true)
+  priority    Int      @default(0) // 同一イベントで複数テンプレートがある場合の優先度
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  customerMessages CustomerMessage[]
+
+  @@unique([triggerEvent, marketplace, language])
+  @@index([triggerEvent, isActive])
+  @@map("message_templates")
+}
+
+enum MessageTriggerEvent {
+  ORDER_CONFIRMED
+  ORDER_PAID
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  TRACKING_UPDATED
+  CUSTOM
+}
+
+// ========================================
+// 顧客メッセージ（Phase 16）
+// ========================================
+model CustomerMessage {
+  id            String   @id @default(cuid())
+
+  // 関連情報
+  orderId       String?
+  listingId     String?
+  webhookEventId String?
+  webhookEvent  WebhookEvent? @relation(fields: [webhookEventId], references: [id])
+
+  templateId    String?
+  template      MessageTemplate? @relation(fields: [templateId], references: [id])
+
+  // 宛先情報
+  marketplace   Marketplace
+  buyerUsername String
+  buyerEmail    String?
+
+  // メッセージ内容（レンダリング済み）
+  subject       String
+  body          String   @db.Text
+  bodyHtml      String?  @db.Text
+
+  // 送信状態
+  status        MessageStatus @default(PENDING)
+  sendingAttempts Int         @default(0)
+  maxAttempts   Int           @default(3)
+  lastAttemptedAt DateTime?
+  sentAt        DateTime?
+  errorMessage  String?       @db.Text
+
+  // マーケットプレイス応答
+  marketplaceMessageId String? // 送信後のメッセージID
+  marketplaceResponse Json?    // APIレスポンス
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+  @@index([status, lastAttemptedAt])
+  @@index([marketplace, buyerUsername])
+  @@map("customer_messages")
+}
+
+enum MessageStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  FATAL  // リトライ上限到達または回復不能エラー
 }

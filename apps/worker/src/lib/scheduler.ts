@@ -131,6 +131,18 @@ export interface SchedulerConfig {
     minProfitRate: number;    // 最低利益率（%）
     maxPriceChangePercent: number; // 最大価格変更率（%）
   };
+  // 顧客メッセージ送信（Phase 16）
+  messageSending: {
+    enabled: boolean;
+    cronExpression: string;   // メッセージ送信間隔（デフォルト: 5分ごと）
+    batchSize: number;        // 1回の実行で送信する最大数
+  };
+  // Webhookイベント処理（Phase 15）
+  webhookProcessing: {
+    enabled: boolean;
+    cronExpression: string;   // 処理間隔（デフォルト: 1分ごと）
+    batchSize: number;        // 1回の実行で処理する最大数
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -220,6 +232,16 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     targetProfitRate: 15,               // 目標利益率15%
     minProfitRate: 10,                  // 最低利益率10%
     maxPriceChangePercent: 20,          // 最大価格変更率20%
+  },
+  messageSending: {
+    enabled: true,
+    cronExpression: '*/5 * * * *',     // 5分ごとにメッセージ送信
+    batchSize: 10,                      // 1回の実行で最大10件送信
+  },
+  webhookProcessing: {
+    enabled: true,
+    cronExpression: '* * * * *',       // 毎分Webhookイベント処理
+    batchSize: 20,                      // 1回の実行で最大20件処理
   },
 };
 
@@ -746,6 +768,8 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     pausedReEvaluation: { ...DEFAULT_CONFIG.pausedReEvaluation, ...config.pausedReEvaluation },
     batchInventorySync: { ...DEFAULT_CONFIG.batchInventorySync, ...config.batchInventorySync },
     priceAdjustment: { ...DEFAULT_CONFIG.priceAdjustment, ...config.priceAdjustment },
+    messageSending: { ...DEFAULT_CONFIG.messageSending, ...config.messageSending },
+    webhookProcessing: { ...DEFAULT_CONFIG.webhookProcessing, ...config.webhookProcessing },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -766,6 +790,8 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await schedulePausedReEvaluation(finalConfig.pausedReEvaluation);
   await scheduleBatchInventorySync(finalConfig.batchInventorySync);
   await schedulePriceAdjustment(finalConfig.priceAdjustment);
+  await scheduleMessageSending(finalConfig.messageSending);
+  await scheduleWebhookProcessing(finalConfig.webhookProcessing);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -2560,6 +2586,150 @@ export async function triggerScheduledPriceAdjustment(options?: {
     type: 'manual_price_adjustment_triggered',
     jobId: job.id,
     options,
+  });
+
+  return job.id || '';
+}
+
+// ========================================
+// Phase 16: 顧客メッセージ送信
+// ========================================
+
+/**
+ * メッセージ送信ジョブをスケジュール（Phase 16）
+ */
+async function scheduleMessageSending(config: SchedulerConfig['messageSending']) {
+  if (!config.enabled) {
+    log.info({ type: 'message_sending_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await scrapeQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'message-sending') {
+      await scrapeQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // メッセージ送信ジョブを追加（5分ごと）
+  await scrapeQueue.add(
+    'message-sending',
+    {
+      type: 'message-sending',
+      batchSize: config.batchSize,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'message-sending-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({
+    type: 'message_sending_scheduled',
+    cronExpression: config.cronExpression,
+    batchSize: config.batchSize,
+  });
+}
+
+// ========================================
+// Phase 15: Webhookイベント処理
+// ========================================
+
+/**
+ * Webhookイベント処理ジョブをスケジュール（Phase 15）
+ */
+async function scheduleWebhookProcessing(config: SchedulerConfig['webhookProcessing']) {
+  if (!config.enabled) {
+    log.info({ type: 'webhook_processing_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await scrapeQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'webhook-processing') {
+      await scrapeQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // Webhookイベント処理ジョブを追加（毎分）
+  await scrapeQueue.add(
+    'webhook-processing',
+    {
+      type: 'webhook-processing',
+      batchSize: config.batchSize,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'webhook-processing-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({
+    type: 'webhook_processing_scheduled',
+    cronExpression: config.cronExpression,
+    batchSize: config.batchSize,
+  });
+}
+
+/**
+ * 手動でメッセージ送信をトリガー（Phase 16）
+ */
+export async function triggerMessageSending(batchSize?: number): Promise<string> {
+  const job = await scrapeQueue.add(
+    'message-sending',
+    {
+      type: 'message-sending',
+      batchSize: batchSize || 10,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_message_sending_triggered',
+    jobId: job.id,
+    batchSize,
+  });
+
+  return job.id || '';
+}
+
+/**
+ * 手動でWebhook処理をトリガー（Phase 15）
+ */
+export async function triggerWebhookProcessing(batchSize?: number): Promise<string> {
+  const job = await scrapeQueue.add(
+    'webhook-processing',
+    {
+      type: 'webhook-processing',
+      batchSize: batchSize || 20,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_webhook_processing_triggered',
+    jobId: job.id,
+    batchSize,
   });
 
   return job.id || '';

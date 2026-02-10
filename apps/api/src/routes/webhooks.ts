@@ -267,6 +267,18 @@ async function processEbayEvent(
       await processEbayOutOfStock(webhookEventId, notification);
       break;
 
+    // Phase 15: 配送状況更新
+    case 'SHIPMENT_TRACKING_CREATED':
+    case 'SHIPMENT_TRACKING_UPDATED':
+      await processEbayShipmentTracking(webhookEventId, notification);
+      break;
+
+    // Phase 15: 返金通知
+    case 'MARKETPLACE_REFUND_INITIATED':
+    case 'MARKETPLACE_REFUND_COMPLETED':
+      await processEbayRefund(webhookEventId, notification);
+      break;
+
     default:
       log.info({ eventType }, 'Unhandled eBay event type');
       await prisma.webhookEvent.update({
@@ -548,6 +560,217 @@ async function processEbayOutOfStock(
 }
 
 /**
+ * eBay配送状況更新処理（Phase 15）
+ */
+async function processEbayShipmentTracking(
+  webhookEventId: string,
+  notification: any
+): Promise<void> {
+  const trackingData = notification?.data;
+  if (!trackingData?.orderId) {
+    throw new Error('Missing tracking data');
+  }
+
+  const order = await prisma.order.findUnique({
+    where: {
+      marketplace_marketplaceOrderId: {
+        marketplace: 'EBAY',
+        marketplaceOrderId: trackingData.orderId,
+      },
+    },
+  });
+
+  if (!order) {
+    log.warn({ marketplaceOrderId: trackingData.orderId }, 'Order not found for tracking update');
+    return;
+  }
+
+  // 追跡情報を更新
+  await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      trackingNumber: trackingData.trackingNumber || order.trackingNumber,
+      trackingCarrier: trackingData.carrier || order.trackingCarrier,
+      status: 'SHIPPED',
+      fulfillmentStatus: 'FULFILLED',
+      shippedAt: trackingData.shipDate ? new Date(trackingData.shipDate) : new Date(),
+    },
+  });
+
+  // 通知を作成
+  await prisma.notification.create({
+    data: {
+      type: 'ORDER_SHIPPED',
+      title: '配送情報更新',
+      message: `eBay注文の配送情報が更新されました（追跡番号: ${trackingData.trackingNumber}）`,
+      severity: 'INFO',
+      metadata: {
+        orderId: order.id,
+        trackingNumber: trackingData.trackingNumber,
+        carrier: trackingData.carrier,
+      },
+    },
+  });
+
+  // 自動メッセージ生成トリガー（Phase 16）
+  await createCustomerMessageFromEvent(webhookEventId, order.id, 'TRACKING_UPDATED', 'EBAY');
+
+  await prisma.webhookEvent.update({
+    where: { id: webhookEventId },
+    data: { orderId: order.id },
+  });
+
+  log.info({ orderId: order.id, trackingNumber: trackingData.trackingNumber }, 'eBay shipment tracking updated');
+}
+
+/**
+ * eBay返金処理（Phase 15）
+ */
+async function processEbayRefund(
+  webhookEventId: string,
+  notification: any
+): Promise<void> {
+  const refundData = notification?.data;
+  if (!refundData?.orderId) {
+    throw new Error('Missing refund data');
+  }
+
+  const order = await prisma.order.findUnique({
+    where: {
+      marketplace_marketplaceOrderId: {
+        marketplace: 'EBAY',
+        marketplaceOrderId: refundData.orderId,
+      },
+    },
+  });
+
+  if (!order) {
+    log.warn({ marketplaceOrderId: refundData.orderId }, 'Order not found for refund');
+    return;
+  }
+
+  const refundStatus = refundData.refundStatus || 'INITIATED';
+  const isCompleted = refundStatus === 'COMPLETED' || refundStatus === 'SUCCESS';
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      status: isCompleted ? 'REFUNDED' : order.status,
+      paymentStatus: isCompleted ? 'REFUNDED' : order.paymentStatus,
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      type: 'ORDER_REFUNDED',
+      title: isCompleted ? '返金完了' : '返金処理中',
+      message: `eBay注文の返金が${isCompleted ? '完了' : '開始'}されました（注文ID: ${refundData.orderId}）`,
+      severity: isCompleted ? 'SUCCESS' : 'WARNING',
+      metadata: {
+        orderId: order.id,
+        refundAmount: refundData.refundAmount?.value,
+        refundCurrency: refundData.refundAmount?.currency,
+        refundStatus,
+      },
+    },
+  });
+
+  // 自動メッセージ生成トリガー（Phase 16）
+  await createCustomerMessageFromEvent(webhookEventId, order.id, 'ORDER_REFUNDED', 'EBAY');
+
+  await prisma.webhookEvent.update({
+    where: { id: webhookEventId },
+    data: { orderId: order.id },
+  });
+
+  log.info({ orderId: order.id, refundStatus }, 'eBay refund processed');
+}
+
+/**
+ * 顧客メッセージ生成（Phase 16）
+ */
+async function createCustomerMessageFromEvent(
+  webhookEventId: string,
+  orderId: string,
+  triggerEvent: string,
+  marketplace: 'EBAY' | 'JOOM'
+): Promise<void> {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      log.warn({ orderId }, 'Order not found for message creation');
+      return;
+    }
+
+    // 対応するテンプレートを取得
+    const template = await prisma.messageTemplate.findFirst({
+      where: {
+        triggerEvent: triggerEvent as any,
+        OR: [
+          { marketplace: marketplace },
+          { marketplace: null },
+        ],
+        isActive: true,
+      },
+      orderBy: [
+        { marketplace: 'desc' }, // マーケットプレイス固有テンプレートを優先
+        { priority: 'desc' },
+      ],
+    });
+
+    if (!template) {
+      log.info({ triggerEvent, marketplace }, 'No message template found for event');
+      return;
+    }
+
+    // プレースホルダーを置換
+    const placeholderValues: Record<string, string> = {
+      buyer_name: order.buyerName || order.buyerUsername,
+      order_id: order.marketplaceOrderId,
+      tracking_number: order.trackingNumber || '',
+      tracking_carrier: order.trackingCarrier || '',
+      total: `${order.total} ${order.currency}`,
+    };
+
+    let subject = template.subject;
+    let body = template.body;
+    let bodyHtml = template.bodyHtml || null;
+
+    for (const [key, value] of Object.entries(placeholderValues)) {
+      const placeholder = `{{${key}}}`;
+      subject = subject.replace(new RegExp(placeholder, 'g'), value);
+      body = body.replace(new RegExp(placeholder, 'g'), value);
+      if (bodyHtml) {
+        bodyHtml = bodyHtml.replace(new RegExp(placeholder, 'g'), value);
+      }
+    }
+
+    // CustomerMessageを作成（PENDING状態で非同期送信）
+    await prisma.customerMessage.create({
+      data: {
+        orderId,
+        webhookEventId,
+        templateId: template.id,
+        marketplace,
+        buyerUsername: order.buyerUsername,
+        buyerEmail: order.buyerEmail,
+        subject,
+        body,
+        bodyHtml,
+        status: 'PENDING',
+      },
+    });
+
+    log.info({ orderId, triggerEvent, templateId: template.id }, 'Customer message created');
+  } catch (error) {
+    log.error({ orderId, triggerEvent, error }, 'Failed to create customer message');
+  }
+}
+
+/**
  * Joomイベント処理
  */
 async function processJoomEvent(
@@ -567,6 +790,18 @@ async function processJoomEvent(
 
     case 'order.cancelled':
       await processJoomCancellation(webhookEventId, data);
+      break;
+
+    // Phase 15: 配送状況更新
+    case 'order.shipped':
+    case 'order.tracking_updated':
+      await processJoomShipmentTracking(webhookEventId, data);
+      break;
+
+    // Phase 15: 返金通知
+    case 'order.refund_initiated':
+    case 'order.refunded':
+      await processJoomRefund(webhookEventId, data);
       break;
 
     default:
@@ -788,6 +1023,130 @@ async function processJoomCancellation(
   });
 
   log.info({ orderId: order.id }, 'Joom order cancelled');
+}
+
+/**
+ * Joom配送状況更新処理（Phase 15）
+ */
+async function processJoomShipmentTracking(
+  webhookEventId: string,
+  data: any
+): Promise<void> {
+  const trackingData = data.order || data;
+  if (!trackingData.id) {
+    throw new Error('Missing tracking data');
+  }
+
+  const order = await prisma.order.findUnique({
+    where: {
+      marketplace_marketplaceOrderId: {
+        marketplace: 'JOOM',
+        marketplaceOrderId: trackingData.id,
+      },
+    },
+  });
+
+  if (!order) {
+    log.warn({ marketplaceOrderId: trackingData.id }, 'Order not found for tracking update');
+    return;
+  }
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      trackingNumber: trackingData.tracking_number || order.trackingNumber,
+      trackingCarrier: trackingData.carrier || order.trackingCarrier,
+      status: 'SHIPPED',
+      fulfillmentStatus: 'FULFILLED',
+      shippedAt: trackingData.shipped_at ? new Date(trackingData.shipped_at) : new Date(),
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      type: 'ORDER_SHIPPED',
+      title: '配送情報更新',
+      message: `Joom注文の配送情報が更新されました（追跡番号: ${trackingData.tracking_number}）`,
+      severity: 'INFO',
+      metadata: {
+        orderId: order.id,
+        trackingNumber: trackingData.tracking_number,
+        carrier: trackingData.carrier,
+      },
+    },
+  });
+
+  // 自動メッセージ生成トリガー（Phase 16）
+  await createCustomerMessageFromEvent(webhookEventId, order.id, 'TRACKING_UPDATED', 'JOOM');
+
+  await prisma.webhookEvent.update({
+    where: { id: webhookEventId },
+    data: { orderId: order.id },
+  });
+
+  log.info({ orderId: order.id, trackingNumber: trackingData.tracking_number }, 'Joom shipment tracking updated');
+}
+
+/**
+ * Joom返金処理（Phase 15）
+ */
+async function processJoomRefund(
+  webhookEventId: string,
+  data: any
+): Promise<void> {
+  const refundData = data.order || data;
+  if (!refundData.id) {
+    throw new Error('Missing refund data');
+  }
+
+  const order = await prisma.order.findUnique({
+    where: {
+      marketplace_marketplaceOrderId: {
+        marketplace: 'JOOM',
+        marketplaceOrderId: refundData.id,
+      },
+    },
+  });
+
+  if (!order) {
+    log.warn({ marketplaceOrderId: refundData.id }, 'Order not found for refund');
+    return;
+  }
+
+  const refundStatus = refundData.refund_status || data.event;
+  const isCompleted = refundStatus === 'order.refunded' || refundStatus === 'completed';
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      status: isCompleted ? 'REFUNDED' : order.status,
+      paymentStatus: isCompleted ? 'REFUNDED' : order.paymentStatus,
+    },
+  });
+
+  await prisma.notification.create({
+    data: {
+      type: 'ORDER_REFUNDED',
+      title: isCompleted ? '返金完了' : '返金処理中',
+      message: `Joom注文の返金が${isCompleted ? '完了' : '開始'}されました（注文ID: ${refundData.id}）`,
+      severity: isCompleted ? 'SUCCESS' : 'WARNING',
+      metadata: {
+        orderId: order.id,
+        refundAmount: refundData.refund_amount,
+        refundStatus,
+      },
+    },
+  });
+
+  // 自動メッセージ生成トリガー（Phase 16）
+  await createCustomerMessageFromEvent(webhookEventId, order.id, 'ORDER_REFUNDED', 'JOOM');
+
+  await prisma.webhookEvent.update({
+    where: { id: webhookEventId },
+    data: { orderId: order.id },
+  });
+
+  log.info({ orderId: order.id, refundStatus }, 'Joom refund processed');
 }
 
 /**
