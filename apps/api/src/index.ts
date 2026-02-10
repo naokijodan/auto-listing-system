@@ -67,6 +67,8 @@ import { batchJobsRouter } from './routes/batch-jobs';
 import { i18nRouter } from './routes/i18n';
 import { cacheRouter } from './routes/cache';
 import { metricsRouter } from './routes/metrics';
+import { securityRouter } from './routes/security';
+import { integrationsRouter } from './routes/integrations';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -183,6 +185,8 @@ app.use('/api/batch-jobs', batchJobsRouter);
 app.use('/api/i18n', i18nRouter);
 app.use('/api/cache', cacheRouter);
 app.use('/api/metrics', metricsRouter);
+app.use('/api/security', securityRouter);
+app.use('/api/integrations', integrationsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

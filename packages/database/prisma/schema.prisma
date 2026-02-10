@@ -1874,6 +1874,14 @@ model User {
   apiKeys       UserApiKey[]
   auditLogs     UserAuditLog[]
 
+  // Phase 33: セキュリティ強化
+  securityEvents   SecurityEvent[]
+  loginAttempts    LoginAttempt[]
+  deviceSessions   DeviceSession[]
+  twoFactorAuth    TwoFactorAuth?
+  twoFactorChallenges TwoFactorChallenge[]
+  passwordHistory  PasswordHistory[]
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -1997,6 +2005,9 @@ model UserApiKey {
   // 使用制限
   rateLimit     Int      @default(1000)
   dailyLimit    Int?
+
+  // Phase 33: セキュリティ強化
+  policy        ApiKeyPolicy?
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -3705,4 +3716,657 @@ enum HealthStatus {
   DEGRADED    // 劣化
   UNHEALTHY   // 異常
   UNKNOWN     // 不明
+}
+
+// ========================================
+// Phase 33: セキュリティ強化
+// ========================================
+
+model SecurityEvent {
+  id          String   @id @default(cuid())
+
+  // イベント情報
+  eventType   SecurityEventType
+  severity    SecurityEventSeverity @default(INFO)
+  description String
+  details     Json     @default("{}")
+
+  // アクター情報
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  apiKeyId    String?
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  deviceId    String?
+
+  // リソース情報
+  resourceType String?
+  resourceId   String?
+  action       String?
+
+  // 結果
+  success     Boolean  @default(true)
+  errorCode   String?
+  errorMessage String?
+
+  // タイムスタンプ
+  occurredAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([eventType, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([ipAddress, occurredAt])
+  @@index([severity])
+  @@map("security_events")
+}
+
+model LoginAttempt {
+  id          String   @id @default(cuid())
+
+  // ユーザー情報
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  email       String?
+  username    String?
+
+  // 接続情報
+  ipAddress   String
+  userAgent   String?  @db.Text
+  deviceFingerprint String?
+  geoLocation Json?    // { country, city, region }
+
+  // 結果
+  success     Boolean  @default(false)
+  failureReason LoginFailureReason?
+  mfaRequired Boolean  @default(false)
+  mfaCompleted Boolean @default(false)
+
+  // ブルートフォース保護
+  attemptCount Int     @default(1)
+  isBlocked    Boolean @default(false)
+  blockedUntil DateTime?
+
+  // タイムスタンプ
+  attemptedAt DateTime @default(now())
+
+  @@index([email, attemptedAt])
+  @@index([ipAddress, attemptedAt])
+  @@index([userId, attemptedAt])
+  @@index([isBlocked])
+  @@map("login_attempts")
+}
+
+model DeviceSession {
+  id          String   @id @default(cuid())
+
+  // ユーザー情報
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // デバイス情報
+  deviceId    String
+  deviceName  String?
+  deviceType  DeviceType @default(UNKNOWN)
+  browser     String?
+  browserVersion String?
+  os          String?
+  osVersion   String?
+
+  // 接続情報
+  ipAddress   String
+  geoLocation Json?    // { country, city, region }
+
+  // セッション状態
+  isTrusted   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  lastActivityAt DateTime @default(now())
+
+  // タイムスタンプ
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+  revokedAt   DateTime?
+
+  @@unique([userId, deviceId])
+  @@index([userId, isActive])
+  @@index([lastActivityAt])
+  @@map("device_sessions")
+}
+
+model TwoFactorAuth {
+  id          String   @id @default(cuid())
+
+  // ユーザー情報
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 2FA設定
+  method      TwoFactorMethod
+  isEnabled   Boolean  @default(false)
+  isVerified  Boolean  @default(false)
+
+  // TOTP用
+  totpSecret  String?  // 暗号化済み
+  totpUri     String?
+
+  // バックアップコード
+  backupCodes String[] // 暗号化済み
+  backupCodesUsed Int  @default(0)
+
+  // SMS/Email用
+  phoneNumber String?
+  email       String?
+
+  // 使用履歴
+  lastUsedAt  DateTime?
+  useCount    Int      @default(0)
+
+  // タイムスタンプ
+  enabledAt   DateTime?
+  verifiedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("two_factor_auth")
+}
+
+model TwoFactorChallenge {
+  id          String   @id @default(cuid())
+
+  // ユーザー情報
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // チャレンジ情報
+  method      TwoFactorMethod
+  code        String?  // 送信されたコード（SMS/Email用）
+  expiresAt   DateTime
+
+  // 状態
+  isUsed      Boolean  @default(false)
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  usedAt      DateTime?
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("two_factor_challenges")
+}
+
+model ApiKeyPolicy {
+  id          String   @id @default(cuid())
+
+  // 対象
+  apiKeyId    String   @unique
+  apiKey      UserApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  // 有効期限
+  expiresAt   DateTime?
+  maxUsageCount Int?   // 最大使用回数
+  currentUsageCount Int @default(0)
+
+  // IP制限
+  allowedIps  String[] // 許可IPアドレス（CIDR対応）
+  deniedIps   String[] // 拒否IPアドレス
+
+  // スコープ制限
+  scopes      String[] // 許可スコープ（例: read:products, write:orders）
+  isReadOnly  Boolean  @default(false)
+
+  // レート制限
+  rateLimit   Int?     // リクエスト/分
+  rateLimitWindow Int  @default(60) // 秒
+
+  // 使用統計
+  lastUsedAt  DateTime?
+  lastUsedIp  String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("api_key_policies")
+}
+
+model PasswordPolicy {
+  id          String   @id @default(cuid())
+
+  // 識別
+  name        String   @unique
+  description String?
+  isDefault   Boolean  @default(false)
+
+  // パスワード要件
+  minLength   Int      @default(8)
+  maxLength   Int      @default(128)
+  requireUppercase Boolean @default(true)
+  requireLowercase Boolean @default(true)
+  requireNumbers   Boolean @default(true)
+  requireSymbols   Boolean @default(false)
+  forbiddenPatterns String[] // 禁止パターン
+
+  // 履歴・有効期限
+  passwordHistoryCount Int @default(5) // 過去N個のパスワードを禁止
+  maxAgeDays   Int?     // パスワード有効期限（日）
+  warnBeforeDays Int?   // 期限切れ警告（日前）
+
+  // ロックアウト
+  maxFailedAttempts Int @default(5)
+  lockoutDurationMinutes Int @default(30)
+
+  // ステータス
+  isActive    Boolean  @default(true)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("password_policies")
+}
+
+model PasswordHistory {
+  id          String   @id @default(cuid())
+
+  // ユーザー情報
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // パスワード情報
+  passwordHash String  // 過去のパスワードハッシュ
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("password_histories")
+}
+
+// ========================================
+// Phase 34: 外部連携強化
+// ========================================
+
+model ExternalIntegration {
+  id          String   @id @default(cuid())
+
+  // 識別
+  name        String   @unique
+  displayName String
+  description String?
+  type        IntegrationType
+  provider    String   // google, freee, yayoi, moneyforward
+
+  // 設定
+  config      Json     @default("{}") // プロバイダ固有設定
+  webhookUrl  String?  // コールバックURL
+  scopes      String[] // 要求スコープ
+
+  // ステータス
+  isEnabled   Boolean  @default(true)
+  isConfigured Boolean @default(false)
+  lastHealthCheck DateTime?
+  healthStatus IntegrationHealthStatus @default(UNKNOWN)
+
+  // 統計
+  totalSyncs  Int      @default(0)
+  successfulSyncs Int  @default(0)
+  failedSyncs Int      @default(0)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  credentials IntegrationCredential[]
+  syncLogs    IntegrationSyncLog[]
+  analyticsEvents AnalyticsEvent[]
+  accountingExports AccountingExport[]
+
+  @@map("external_integrations")
+}
+
+model IntegrationCredential {
+  id          String   @id @default(cuid())
+
+  // 連携情報
+  integrationId String
+  integration ExternalIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  // 認証タイプ
+  authType    IntegrationAuthType
+
+  // OAuth用
+  accessToken String?  @db.Text // 暗号化済み
+  refreshToken String? @db.Text // 暗号化済み
+  tokenType   String?
+  scope       String?
+  expiresAt   DateTime?
+
+  // APIキー用
+  apiKey      String?  @db.Text // 暗号化済み
+  apiSecret   String?  @db.Text // 暗号化済み
+
+  // Basic認証用
+  username    String?
+  password    String?  // 暗号化済み
+
+  // 追加情報
+  accountId   String?  // 外部サービスのアカウントID
+  metadata    Json     @default("{}")
+
+  // ステータス
+  isValid     Boolean  @default(true)
+  lastValidatedAt DateTime?
+  lastRefreshedAt DateTime?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([integrationId, isValid])
+  @@map("integration_credentials")
+}
+
+model IntegrationSyncLog {
+  id          String   @id @default(cuid())
+
+  // 連携情報
+  integrationId String
+  integration ExternalIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  // 同期情報
+  syncType    IntegrationSyncType
+  direction   SyncDirection
+  entityType  String?  // products, orders, etc.
+  entityCount Int      @default(0)
+
+  // 実行情報
+  status      IntegrationSyncStatus
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  duration    Int?     // ミリ秒
+
+  // 結果
+  successCount Int     @default(0)
+  failureCount Int     @default(0)
+  skippedCount Int     @default(0)
+
+  // エラー情報
+  errorCode   String?
+  errorMessage String? @db.Text
+  errorDetails Json?
+
+  // リトライ情報
+  retryCount  Int      @default(0)
+  maxRetries  Int      @default(3)
+  nextRetryAt DateTime?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([integrationId, createdAt])
+  @@index([status])
+  @@index([syncType])
+  @@map("integration_sync_logs")
+}
+
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+
+  // 連携情報
+  integrationId String
+  integration ExternalIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  // イベント情報
+  eventName   String
+  eventCategory String?
+  eventLabel  String?
+  eventValue  Float?
+  parameters  Json     @default("{}")
+
+  // ユーザー情報
+  userId      String?
+  sessionId   String?
+  clientId    String?
+
+  // 送信状態
+  status      AnalyticsEventStatus @default(PENDING)
+  sentAt      DateTime?
+  retryCount  Int      @default(0)
+
+  // エラー情報
+  errorMessage String?
+
+  // タイムスタンプ
+  occurredAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([integrationId, status])
+  @@index([eventName, occurredAt])
+  @@index([status, createdAt])
+  @@map("analytics_events")
+}
+
+model AccountingExport {
+  id          String   @id @default(cuid())
+
+  // 連携情報
+  integrationId String
+  integration ExternalIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  // エクスポート設定
+  exportType  AccountingExportType
+  periodStart DateTime
+  periodEnd   DateTime
+  format      AccountingFormat @default(CSV)
+
+  // データ範囲
+  includeOrders Boolean @default(true)
+  includeRefunds Boolean @default(true)
+  includeShipping Boolean @default(true)
+  includeFees Boolean @default(true)
+
+  // 実行情報
+  status      AccountingExportStatus @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // 結果
+  totalRecords Int     @default(0)
+  totalAmount  Float   @default(0)
+  currency    String  @default("JPY")
+
+  // ファイル情報
+  fileUrl     String?
+  fileSize    Int?
+
+  // エラー情報
+  errorMessage String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([integrationId, createdAt])
+  @@index([status])
+  @@map("accounting_exports")
+}
+
+model AccountingMapping {
+  id          String   @id @default(cuid())
+
+  // マッピング情報
+  provider    String   // freee, yayoi, moneyforward
+  sourceField String   // RAKUDAのフィールド
+  targetField String   // 外部サービスのフィールド
+  transformation String? // 変換ルール
+
+  // カテゴリマッピング
+  categoryType AccountingCategoryType?
+  categoryCode String?
+  categoryName String?
+
+  // ステータス
+  isActive    Boolean  @default(true)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([provider, sourceField])
+  @@map("accounting_mappings")
+}
+
+// ========================================
+// Phase 33-34 Enums
+// ========================================
+
+enum SecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_CHANGE
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETE
+  MFA_ENABLED
+  MFA_DISABLED
+  MFA_CHALLENGE_SUCCESS
+  MFA_CHALLENGE_FAILURE
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  API_KEY_USED
+  SESSION_CREATED
+  SESSION_REVOKED
+  PERMISSION_GRANTED
+  PERMISSION_REVOKED
+  ROLE_ASSIGNED
+  ROLE_REMOVED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  SUSPICIOUS_ACTIVITY
+  DATA_EXPORT
+  DATA_DELETE
+}
+
+enum SecurityEventSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum LoginFailureReason {
+  INVALID_CREDENTIALS
+  ACCOUNT_LOCKED
+  ACCOUNT_DISABLED
+  MFA_REQUIRED
+  MFA_FAILED
+  IP_BLOCKED
+  RATE_LIMITED
+  SESSION_EXPIRED
+  INVALID_TOKEN
+}
+
+enum DeviceType {
+  DESKTOP
+  MOBILE
+  TABLET
+  API_CLIENT
+  UNKNOWN
+}
+
+enum TwoFactorMethod {
+  TOTP        // Time-based One-Time Password
+  SMS         // SMS認証
+  EMAIL       // メール認証
+  BACKUP_CODE // バックアップコード
+}
+
+enum IntegrationType {
+  ANALYTICS   // 分析ツール
+  ACCOUNTING  // 会計ソフト
+  MARKETING   // マーケティング
+  SHIPPING    // 配送
+  PAYMENT     // 決済
+  CRM         // 顧客管理
+  CUSTOM      // カスタム
+}
+
+enum IntegrationAuthType {
+  OAUTH2
+  API_KEY
+  BASIC
+  BEARER
+  CUSTOM
+}
+
+enum IntegrationHealthStatus {
+  HEALTHY
+  DEGRADED
+  UNHEALTHY
+  UNKNOWN
+}
+
+enum IntegrationSyncType {
+  FULL        // 全件同期
+  INCREMENTAL // 差分同期
+  MANUAL      // 手動同期
+  WEBHOOK     // Webhook起動
+  SCHEDULED   // スケジュール同期
+}
+
+enum SyncDirection {
+  INBOUND     // 外部→RAKUDA
+  OUTBOUND    // RAKUDA→外部
+  BIDIRECTIONAL // 双方向
+}
+
+enum IntegrationSyncStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  PARTIAL     // 一部成功
+}
+
+enum AnalyticsEventStatus {
+  PENDING
+  SENT
+  FAILED
+  RETRYING
+}
+
+enum AccountingExportType {
+  SALES       // 売上
+  PURCHASES   // 仕入
+  EXPENSES    // 経費
+  JOURNAL     // 仕訳
+  FULL        // 全部
+}
+
+enum AccountingFormat {
+  CSV
+  JSON
+  XML
+  FREEE
+  YAYOI
+  MONEYFORWARD
+}
+
+enum AccountingExportStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum AccountingCategoryType {
+  REVENUE     // 収益
+  COST        // 原価
+  EXPENSE     // 経費
+  ASSET       // 資産
+  LIABILITY   // 負債
 }
