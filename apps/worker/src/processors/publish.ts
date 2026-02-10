@@ -7,6 +7,7 @@ import {
   BatchProcessorConfig,
   BatchProcessorResult,
   BatchProgressInfo,
+  MARKETPLACE_PRICE_LIMITS,
 } from '@rakuda/config';
 import { joomApi, isJoomConfigured } from '../lib/joom-api';
 import { ebayApi, isEbayConfigured, mapConditionToEbay } from '../lib/ebay-api';
@@ -382,7 +383,147 @@ async function publishToJoom(
 }
 
 /**
- * eBayに出品
+ * eBay APIエラーコード
+ */
+const EBAY_ERROR_CODES = {
+  UNAUTHORIZED: 401,
+  VALIDATION_ERROR: 422,
+  RATE_LIMIT: 429,
+} as const;
+
+/**
+ * eBay APIエラーをパース
+ */
+function parseEbayError(error: any): {
+  code: number | string;
+  message: string;
+  isRetryable: boolean;
+} {
+  const errorCode = error?.code || 'UNKNOWN';
+  const errorMessage = error?.message || 'Unknown eBay API error';
+
+  // レート制限はリトライ可能
+  if (errorCode === 'RATE_LIMIT' || errorMessage.includes('rate limit') || errorMessage.includes('too many requests')) {
+    return { code: EBAY_ERROR_CODES.RATE_LIMIT, message: errorMessage, isRetryable: true };
+  }
+
+  // 認証エラーはリトライ不可（トークン更新が必要）
+  if (errorCode === 'AUTH_ERROR' || errorMessage.includes('unauthorized') || errorMessage.includes('token')) {
+    return { code: EBAY_ERROR_CODES.UNAUTHORIZED, message: errorMessage, isRetryable: false };
+  }
+
+  // バリデーションエラーはリトライ不可
+  if (errorCode === 'VALIDATION' || errorMessage.includes('validation')) {
+    return { code: EBAY_ERROR_CODES.VALIDATION_ERROR, message: errorMessage, isRetryable: false };
+  }
+
+  // その他のエラー（ネットワーク等）はリトライ可能
+  return { code: errorCode, message: errorMessage, isRetryable: true };
+}
+
+/**
+ * Item Specifics を構造化
+ */
+function buildItemSpecifics(product: any, categoryDefaults: Record<string, string[]>): Record<string, string[]> {
+  const aspects: Record<string, string[]> = { ...categoryDefaults };
+
+  // ブランド
+  if (product.brand) {
+    aspects['Brand'] = [product.brand];
+  } else if (product.attributes?.brand) {
+    aspects['Brand'] = [product.attributes.brand];
+  }
+
+  // コンディション（eBay標準フォーマット）
+  const conditionMap: Record<string, string> = {
+    '新品': 'New',
+    '未使用': 'New',
+    '新品・未使用': 'New',
+    '未使用に近い': 'New other',
+    '目立った傷や汚れなし': 'Used',
+    'やや傷や汚れあり': 'Used',
+    '傷や汚れあり': 'Used',
+    '全体的に状態が悪い': 'For parts or not working',
+  };
+  if (product.condition && conditionMap[product.condition]) {
+    // Item Specificsの「Condition」は別途設定される
+  }
+
+  // カテゴリ固有の属性を追加
+  if (product.attributes) {
+    const attrs = product.attributes;
+
+    // 時計カテゴリ
+    if (attrs.model) aspects['Model'] = [attrs.model];
+    if (attrs.movement) aspects['Movement'] = [attrs.movement];
+    if (attrs.caseMaterial) aspects['Case Material'] = [attrs.caseMaterial];
+    if (attrs.bandMaterial) aspects['Band Material'] = [attrs.bandMaterial];
+    if (attrs.dialColor) aspects['Dial Color'] = [attrs.dialColor];
+    if (attrs.caseSize) aspects['Case Size'] = [attrs.caseSize];
+
+    // 一般的な属性
+    if (attrs.color) aspects['Color'] = [attrs.color];
+    if (attrs.size) aspects['Size'] = [attrs.size];
+    if (attrs.material) aspects['Material'] = [attrs.material];
+  }
+
+  // Country/Region of Manufacture（日本固定）
+  aspects['Country/Region of Manufacture'] = ['Japan'];
+
+  return aspects;
+}
+
+/**
+ * eBay出品のリトライロジック付き実行
+ */
+async function executeWithEbayRetry<T>(
+  operation: () => Promise<T>,
+  log: any,
+  operationName: string,
+  maxRetries: number = 3
+): Promise<T> {
+  let lastError: Error | null = null;
+  let retryDelay = 1000; // 初期遅延 1秒
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      const parsedError = parseEbayError(error);
+
+      log.warn({
+        type: 'ebay_operation_retry',
+        operation: operationName,
+        attempt,
+        maxRetries,
+        error: parsedError.message,
+        isRetryable: parsedError.isRetryable,
+      });
+
+      if (!parsedError.isRetryable) {
+        throw error;
+      }
+
+      lastError = error;
+
+      if (attempt < maxRetries) {
+        // 指数バックオフ
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        retryDelay *= 2;
+
+        // レート制限の場合は長めに待機
+        if (parsedError.code === EBAY_ERROR_CODES.RATE_LIMIT) {
+          retryDelay = Math.max(retryDelay, 5000);
+        }
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+/**
+ * eBayに出品（完全実装版）
  */
 async function publishToEbay(
   product: any,
@@ -391,107 +532,189 @@ async function publishToEbay(
 ): Promise<{ id: string; url?: string }> {
   if (!(await isEbayConfigured())) {
     log.warn({ type: 'ebay_not_configured' });
-    // プレースホルダーを返す
     return {
       id: `ebay-placeholder-${Date.now()}`,
       url: undefined,
     };
   }
 
-  // 価格計算
-  const priceResult = await calculatePrice({
-    sourcePrice: product.price,
-    weight: product.weight || 200,
-    category: product.category,
-    marketplace: 'ebay',
-    region: 'US',
-  });
-
-  // SKU生成
+  // SKU生成: ALS-{productId の先頭8文字}
   const sku = `ALS-${product.id.substring(0, 8)}`;
 
-  // Phase 45: 改善されたカテゴリマッピング
-  // タイトル・説明文を使って高精度なカテゴリ推定
-  const categoryResult = await ebayApi.getCategoryWithSpecifics(
-    product.category || '',
-    product.titleEn || product.title,
-    product.descriptionEn || product.description
-  );
-  const finalCategoryId = categoryResult.categoryId || '99'; // デフォルト: Everything Else
-
-  // ItemSpecificsをマージ（商品属性 + カテゴリデフォルト）
-  const mergedAspects = {
-    ...categoryResult.itemSpecifics,
-    ...(product.attributes?.itemSpecifics || {}),
-  };
-
   log.info({
-    type: 'ebay_category_mapped',
-    sourceCategory: product.category,
-    ebayCategoryId: finalCategoryId,
-    aspectsCount: Object.keys(mergedAspects).length,
+    type: 'ebay_publish_start',
+    productId: product.id,
+    sku,
+    sourcePrice: product.price,
   });
 
-  // 1. インベントリアイテム作成
-  const inventoryResult = await ebayApi.createOrUpdateInventoryItem(sku, {
-    title: product.titleEn || product.title,
-    description: product.descriptionEn || product.description,
-    imageUrls: product.processedImages || product.images,
-    condition: mapConditionToEbay(product.condition),
-    conditionDescription: product.condition,
-    aspects: mergedAspects,
-  });
+  try {
+    // 1. 価格計算
+    const priceResult = await calculatePrice({
+      sourcePrice: product.price,
+      weight: product.weight || 200,
+      category: product.category,
+      marketplace: 'ebay',
+      region: 'US',
+    });
 
-  if (!inventoryResult.success) {
-    throw new Error(`eBay Inventory API error: ${inventoryResult.error?.message}`);
-  }
+    log.info({
+      type: 'ebay_price_calculated',
+      sku,
+      sourcePrice: product.price,
+      listingPrice: priceResult.listingPrice,
+      shippingCost: priceResult.shippingCost,
+    });
 
-  // 2. オファー作成
-  const offerResult = await ebayApi.createOffer(sku, {
-    marketplaceId: 'EBAY_US',
-    format: 'FIXED_PRICE',
-    categoryId: finalCategoryId,
-    pricingPrice: priceResult.listingPrice,
-    pricingCurrency: 'USD',
-    quantity: 1,
-    listingDescription: product.descriptionEn || product.description,
-  });
+    // 2. カテゴリマッピング（EbayCategoryMapping参照）
+    const categoryResult = await ebayApi.getCategoryWithSpecifics(
+      product.category || '',
+      product.titleEn || product.title,
+      product.descriptionEn || product.description
+    );
+    const finalCategoryId = categoryResult.categoryId || '99'; // デフォルト: Everything Else
 
-  if (!offerResult.success) {
-    throw new Error(`eBay Offer API error: ${offerResult.error?.message}`);
-  }
+    log.info({
+      type: 'ebay_category_mapped',
+      sku,
+      sourceCategory: product.category,
+      ebayCategoryId: finalCategoryId,
+    });
 
-  const offerId = offerResult.data?.offerId;
+    // 3. Item Specifics構造化
+    const itemSpecifics = buildItemSpecifics(product, categoryResult.itemSpecifics);
 
-  // 3. オファー公開
-  if (offerId) {
-    const publishResult = await ebayApi.publishOffer(offerId);
+    log.info({
+      type: 'ebay_item_specifics_built',
+      sku,
+      aspectsCount: Object.keys(itemSpecifics).length,
+      aspects: Object.keys(itemSpecifics),
+    });
 
-    if (!publishResult.success) {
-      throw new Error(`eBay Publish API error: ${publishResult.error?.message}`);
+    // 4. 画像URL選択（外部アクセス可能なURLを優先）
+    const imageUrls = (product.processedImages?.length > 0 ? product.processedImages : product.images) || [];
+    const validImageUrls = imageUrls.filter((url: string) =>
+      url && !url.includes('localhost') && !url.includes('127.0.0.1')
+    );
+
+    if (validImageUrls.length === 0) {
+      throw new Error('No valid external image URLs available for eBay listing');
     }
 
-    const listingId = publishResult.data?.listingId;
+    // 5. タイトル・説明文の処理
+    const title = removeTranslationPrefix(product.titleEn || product.title).substring(0, 80); // eBayタイトル上限80文字
+    const description = ensureMinimumDescription(
+      removeTranslationPrefix(product.descriptionEn || product.description),
+      product.attributes
+    );
+
+    // 6. Inventory Item作成（リトライ付き）
+    const inventoryResult = await executeWithEbayRetry(
+      () => ebayApi.createOrUpdateInventoryItem(sku, {
+        title,
+        description,
+        imageUrls: validImageUrls.slice(0, 12), // eBay上限12枚
+        condition: mapConditionToEbay(product.condition),
+        conditionDescription: product.condition,
+        aspects: itemSpecifics,
+      }),
+      log,
+      'createInventoryItem'
+    );
+
+    if (!inventoryResult.success) {
+      const errorInfo = parseEbayError(inventoryResult.error);
+      throw new Error(`eBay Inventory API error (${errorInfo.code}): ${errorInfo.message}`);
+    }
+
+    log.info({
+      type: 'ebay_inventory_created',
+      sku,
+    });
+
+    // 7. Offer作成（リトライ付き）
+    const offerResult = await executeWithEbayRetry(
+      () => ebayApi.createOffer(sku, {
+        marketplaceId: 'EBAY_US',
+        format: 'FIXED_PRICE',
+        categoryId: finalCategoryId,
+        pricingPrice: priceResult.listingPrice,
+        pricingCurrency: 'USD',
+        quantity: 1,
+        listingDescription: description,
+      }),
+      log,
+      'createOffer'
+    );
+
+    if (!offerResult.success) {
+      const errorInfo = parseEbayError(offerResult.error);
+      throw new Error(`eBay Offer API error (${errorInfo.code}): ${errorInfo.message}`);
+    }
+
+    const offerId = offerResult.data?.offerId;
+
+    if (!offerId) {
+      throw new Error('eBay Offer creation returned no offerId');
+    }
+
+    log.info({
+      type: 'ebay_offer_created',
+      sku,
+      offerId,
+    });
+
+    // 8. Offer公開（リトライ付き）
+    const publishResult = await executeWithEbayRetry(
+      () => ebayApi.publishOffer(offerId),
+      log,
+      'publishOffer'
+    );
+
+    if (!publishResult.success) {
+      const errorInfo = parseEbayError(publishResult.error);
+      throw new Error(`eBay Publish API error (${errorInfo.code}): ${errorInfo.message}`);
+    }
+
+    const ebayListingId = publishResult.data?.listingId;
 
     log.info({
       type: 'ebay_published',
-      ebayListingId: listingId,
+      sku,
       offerId,
+      ebayListingId,
       price: priceResult.listingPrice,
+      category: finalCategoryId,
     });
 
     return {
-      id: listingId || offerId,
-      url: listingId
-        ? `https://www.ebay.com/itm/${listingId}`
+      id: ebayListingId || offerId,
+      url: ebayListingId
+        ? `https://www.ebay.com/itm/${ebayListingId}`
         : undefined,
     };
-  }
 
-  return {
-    id: `ebay-${Date.now()}`,
-    url: undefined,
-  };
+  } catch (error: any) {
+    const errorInfo = parseEbayError(error);
+
+    log.error({
+      type: 'ebay_publish_failed',
+      sku,
+      productId: product.id,
+      errorCode: errorInfo.code,
+      errorMessage: errorInfo.message,
+      isRetryable: errorInfo.isRetryable,
+    });
+
+    // エラーメッセージを構造化して再スロー
+    const structuredError = new Error(
+      `eBay publish failed [${errorInfo.code}]: ${errorInfo.message}`
+    );
+    (structuredError as any).code = errorInfo.code;
+    (structuredError as any).isRetryable = errorInfo.isRetryable;
+
+    throw structuredError;
+  }
 }
 
 // ========================================
@@ -1147,4 +1370,314 @@ export async function getPublishStats(
   }
 
   return stats.reverse();
+}
+
+// ========================================
+// Phase 51: 高価格帯ルーティング
+// ========================================
+
+/**
+ * マーケットプレイス振り分け結果
+ */
+export interface MarketplaceRoutingResult {
+  marketplace: 'joom' | 'ebay';
+  reason: string;
+  priceJpy: number;
+  isHighValue: boolean;
+}
+
+/**
+ * 商品の価格に基づいてマーケットプレイスを決定
+ * - JOOM_PRICE_LIMIT_JPY（900,000円）以下 → Joom
+ * - JOOM_PRICE_LIMIT_JPY 超 → eBay専用
+ */
+export function determineMarketplace(priceJpy: number): MarketplaceRoutingResult {
+  const { JOOM_PRICE_LIMIT_JPY } = MARKETPLACE_PRICE_LIMITS;
+  const isHighValue = priceJpy > JOOM_PRICE_LIMIT_JPY;
+
+  if (isHighValue) {
+    return {
+      marketplace: 'ebay',
+      reason: `High-value item (¥${priceJpy.toLocaleString()} > ¥${JOOM_PRICE_LIMIT_JPY.toLocaleString()}) - eBay only`,
+      priceJpy,
+      isHighValue: true,
+    };
+  }
+
+  return {
+    marketplace: 'joom',
+    reason: `Standard price (¥${priceJpy.toLocaleString()}) - Joom eligible`,
+    priceJpy,
+    isHighValue: false,
+  };
+}
+
+/**
+ * バッチ出品（価格ベースルーティング付き）
+ *
+ * 高価格帯商品を自動的にeBayに振り分け、低価格帯はJoomに振り分ける
+ *
+ * @param listingIds 出品するリスティングIDの配列
+ * @param options オプション設定
+ * @returns マーケットプレイス別のバッチ出品結果
+ */
+export async function processBatchPublishWithRouting(
+  listingIds: string[],
+  options: {
+    concurrency?: number;
+    isDryRun?: boolean;
+    onProgress?: (info: BatchProgressInfo<string, PublishJobResult>) => void;
+    maxErrors?: number;
+  } = {}
+): Promise<{
+  joom: BatchPublishResult;
+  ebay: BatchPublishResult;
+  routing: {
+    total: number;
+    joomEligible: number;
+    ebayOnly: number;
+  };
+}> {
+  const log = logger.child({ processor: 'batch-publish-routing' });
+
+  log.info({
+    type: 'routing_batch_publish_start',
+    totalListings: listingIds.length,
+  });
+
+  // リスティングを取得して価格で振り分け
+  const listings = await prisma.listing.findMany({
+    where: { id: { in: listingIds } },
+    include: { product: { select: { id: true, price: true, title: true } } },
+  });
+
+  const joomListingIds: string[] = [];
+  const ebayListingIds: string[] = [];
+
+  for (const listing of listings) {
+    const routing = determineMarketplace(listing.product.price);
+
+    log.debug({
+      type: 'listing_routed',
+      listingId: listing.id,
+      productPrice: listing.product.price,
+      marketplace: routing.marketplace,
+      reason: routing.reason,
+    });
+
+    if (routing.marketplace === 'ebay') {
+      ebayListingIds.push(listing.id);
+    } else {
+      joomListingIds.push(listing.id);
+    }
+  }
+
+  log.info({
+    type: 'routing_complete',
+    total: listings.length,
+    joomEligible: joomListingIds.length,
+    ebayOnly: ebayListingIds.length,
+  });
+
+  // 並列でJoomとeBayに出品
+  const [joomResult, ebayResult] = await Promise.all([
+    joomListingIds.length > 0
+      ? processBatchPublish(joomListingIds, {
+          marketplace: 'joom',
+          concurrency: options.concurrency || 2,
+          isDryRun: options.isDryRun || false,
+          onProgress: options.onProgress,
+          maxErrors: options.maxErrors,
+        })
+      : {
+          total: 0,
+          succeeded: 0,
+          failed: 0,
+          results: [],
+          stats: { duration: 0, averageTimePerItem: 0, itemsPerMinute: 0 },
+        },
+    ebayListingIds.length > 0
+      ? processBatchPublish(ebayListingIds, {
+          marketplace: 'ebay',
+          concurrency: options.concurrency || 2,
+          isDryRun: options.isDryRun || false,
+          onProgress: options.onProgress,
+          maxErrors: options.maxErrors,
+        })
+      : {
+          total: 0,
+          succeeded: 0,
+          failed: 0,
+          results: [],
+          stats: { duration: 0, averageTimePerItem: 0, itemsPerMinute: 0 },
+        },
+  ]);
+
+  log.info({
+    type: 'routing_batch_publish_complete',
+    joom: {
+      total: joomResult.total,
+      succeeded: joomResult.succeeded,
+      failed: joomResult.failed,
+    },
+    ebay: {
+      total: ebayResult.total,
+      succeeded: ebayResult.succeeded,
+      failed: ebayResult.failed,
+    },
+  });
+
+  return {
+    joom: joomResult,
+    ebay: ebayResult,
+    routing: {
+      total: listings.length,
+      joomEligible: joomListingIds.length,
+      ebayOnly: ebayListingIds.length,
+    },
+  };
+}
+
+/**
+ * 高価格帯商品のeBay専用出品処理
+ *
+ * JOOM_PRICE_LIMIT_JPY を超える商品を検索し、eBayに出品
+ */
+export async function processHighValuePublish(
+  options: {
+    maxListings?: number;
+    concurrency?: number;
+    isDryRun?: boolean;
+    onProgress?: (info: BatchProgressInfo<string, PublishJobResult>) => void;
+  } = {}
+): Promise<BatchPublishResult> {
+  const log = logger.child({ processor: 'high-value-publish' });
+  const { JOOM_PRICE_LIMIT_JPY } = MARKETPLACE_PRICE_LIMITS;
+
+  log.info({
+    type: 'high_value_publish_start',
+    priceThreshold: JOOM_PRICE_LIMIT_JPY,
+    maxListings: options.maxListings || 50,
+  });
+
+  // 高価格帯で出品待ちの商品を検索
+  const highValueListings = await prisma.listing.findMany({
+    where: {
+      marketplace: 'EBAY',
+      status: 'PENDING_PUBLISH',
+      product: {
+        price: { gt: JOOM_PRICE_LIMIT_JPY },
+        titleEn: { not: null },
+        images: { isEmpty: false },
+      },
+    },
+    take: options.maxListings || 50,
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, product: { select: { price: true } } },
+  });
+
+  if (highValueListings.length === 0) {
+    log.info({
+      type: 'high_value_publish_no_items',
+      priceThreshold: JOOM_PRICE_LIMIT_JPY,
+    });
+
+    return {
+      total: 0,
+      succeeded: 0,
+      failed: 0,
+      results: [],
+      stats: { duration: 0, averageTimePerItem: 0, itemsPerMinute: 0 },
+    };
+  }
+
+  const listingIds = highValueListings.map(l => l.id);
+  const priceRange = {
+    min: Math.min(...highValueListings.map(l => l.product.price)),
+    max: Math.max(...highValueListings.map(l => l.product.price)),
+  };
+
+  log.info({
+    type: 'high_value_publish_found',
+    count: listingIds.length,
+    priceRange,
+  });
+
+  return processBatchPublish(listingIds, {
+    marketplace: 'ebay',
+    concurrency: options.concurrency || 2,
+    isDryRun: options.isDryRun || false,
+    onProgress: options.onProgress,
+    maxErrors: 5,
+  });
+}
+
+/**
+ * 出品待ち商品のマーケットプレイス統計を取得
+ */
+export async function getPendingListingStats(): Promise<{
+  total: number;
+  joomEligible: number;
+  ebayOnly: number;
+  byPriceRange: {
+    range: string;
+    count: number;
+    marketplace: 'joom' | 'ebay';
+  }[];
+}> {
+  const { JOOM_PRICE_LIMIT_JPY } = MARKETPLACE_PRICE_LIMITS;
+
+  // 出品待ちリスティングを取得
+  const pendingListings = await prisma.listing.findMany({
+    where: {
+      status: 'PENDING_PUBLISH',
+    },
+    include: {
+      product: {
+        select: { price: true },
+      },
+    },
+  });
+
+  let joomEligible = 0;
+  let ebayOnly = 0;
+  const priceRanges: Record<string, { count: number; marketplace: 'joom' | 'ebay' }> = {
+    '0-100k': { count: 0, marketplace: 'joom' },
+    '100k-300k': { count: 0, marketplace: 'joom' },
+    '300k-500k': { count: 0, marketplace: 'joom' },
+    '500k-900k': { count: 0, marketplace: 'joom' },
+    '900k+': { count: 0, marketplace: 'ebay' },
+  };
+
+  for (const listing of pendingListings) {
+    const price = listing.product.price;
+
+    if (price > JOOM_PRICE_LIMIT_JPY) {
+      ebayOnly++;
+      priceRanges['900k+'].count++;
+    } else {
+      joomEligible++;
+
+      if (price < 100000) {
+        priceRanges['0-100k'].count++;
+      } else if (price < 300000) {
+        priceRanges['100k-300k'].count++;
+      } else if (price < 500000) {
+        priceRanges['300k-500k'].count++;
+      } else {
+        priceRanges['500k-900k'].count++;
+      }
+    }
+  }
+
+  return {
+    total: pendingListings.length,
+    joomEligible,
+    ebayOnly,
+    byPriceRange: Object.entries(priceRanges).map(([range, data]) => ({
+      range,
+      count: data.count,
+      marketplace: data.marketplace,
+    })),
+  };
 }

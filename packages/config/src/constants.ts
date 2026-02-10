@@ -174,6 +174,11 @@ export const EXCHANGE_RATE_DEFAULTS = {
   JPY_TO_USD: 0.0067,            // 1 JPY = 0.0067 USD (約150円/ドル)
 } as const;
 
+// マーケットプレイス価格制限
+export const MARKETPLACE_PRICE_LIMITS = {
+  JOOM_PRICE_LIMIT_JPY: 900000,  // Joom出品上限（≒$6,000）、これ以上はeBay専用
+} as const;
+
 // 画像処理設定
 export const IMAGE_CONFIG = {
   maxWidth: 1600,

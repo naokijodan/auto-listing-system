@@ -68,6 +68,9 @@ vi.mock('@rakuda/database', () => ({
 
 vi.mock('@rakuda/config', () => ({
   processBatch: mockProcessBatch,
+  MARKETPLACE_PRICE_LIMITS: {
+    JOOM_PRICE_LIMIT_JPY: 900000,
+  },
 }));
 
 vi.mock('../../lib/joom-api', () => ({
@@ -103,6 +106,10 @@ import {
   processPublishJob,
   processBatchPublish,
   processPendingPublish,
+  determineMarketplace,
+  processBatchPublishWithRouting,
+  processHighValuePublish,
+  getPendingListingStats,
 } from '../../processors/publish';
 
 describe('Publish Processor', () => {
@@ -558,6 +565,168 @@ describe('Publish Processor', () => {
       expect(mockPrisma.listing.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ take: 100 })
       );
+    });
+  });
+
+  describe('High-Value Routing', () => {
+    describe('determineMarketplace', () => {
+      it('should route low-price items to Joom', () => {
+        const result = determineMarketplace(500000);
+
+        expect(result.marketplace).toBe('joom');
+        expect(result.isHighValue).toBe(false);
+        expect(result.reason).toContain('Joom eligible');
+      });
+
+      it('should route items at price limit to Joom', () => {
+        const result = determineMarketplace(900000);
+
+        expect(result.marketplace).toBe('joom');
+        expect(result.isHighValue).toBe(false);
+      });
+
+      it('should route high-price items to eBay only', () => {
+        const result = determineMarketplace(950000);
+
+        expect(result.marketplace).toBe('ebay');
+        expect(result.isHighValue).toBe(true);
+        expect(result.reason).toContain('eBay only');
+      });
+
+      it('should route very high-price items to eBay only', () => {
+        const result = determineMarketplace(2000000);
+
+        expect(result.marketplace).toBe('ebay');
+        expect(result.isHighValue).toBe(true);
+      });
+    });
+
+    describe('processBatchPublishWithRouting', () => {
+      it('should route listings by price', async () => {
+        mockPrisma.listing.findMany.mockResolvedValue([
+          { id: 'listing-1', product: { id: 'prod-1', price: 500000, title: 'Low price' } },
+          { id: 'listing-2', product: { id: 'prod-2', price: 1000000, title: 'High price' } },
+          { id: 'listing-3', product: { id: 'prod-3', price: 300000, title: 'Low price 2' } },
+        ]);
+
+        mockProcessBatch.mockResolvedValue({
+          results: [],
+          stats: { succeeded: 0, failed: 0, duration: 0, averageItemDuration: 0, itemsPerSecond: 0 },
+          aborted: false,
+        });
+
+        const result = await processBatchPublishWithRouting(
+          ['listing-1', 'listing-2', 'listing-3'],
+          { isDryRun: true }
+        );
+
+        expect(result.routing.total).toBe(3);
+        expect(result.routing.joomEligible).toBe(2);
+        expect(result.routing.ebayOnly).toBe(1);
+      });
+
+      it('should handle all low-price listings', async () => {
+        mockPrisma.listing.findMany.mockResolvedValue([
+          { id: 'listing-1', product: { id: 'prod-1', price: 100000, title: 'Low 1' } },
+          { id: 'listing-2', product: { id: 'prod-2', price: 200000, title: 'Low 2' } },
+        ]);
+
+        mockProcessBatch.mockResolvedValue({
+          results: [],
+          stats: { succeeded: 0, failed: 0, duration: 0, averageItemDuration: 0, itemsPerSecond: 0 },
+          aborted: false,
+        });
+
+        const result = await processBatchPublishWithRouting(
+          ['listing-1', 'listing-2'],
+          { isDryRun: true }
+        );
+
+        expect(result.routing.joomEligible).toBe(2);
+        expect(result.routing.ebayOnly).toBe(0);
+      });
+
+      it('should handle all high-price listings', async () => {
+        mockPrisma.listing.findMany.mockResolvedValue([
+          { id: 'listing-1', product: { id: 'prod-1', price: 1500000, title: 'High 1' } },
+          { id: 'listing-2', product: { id: 'prod-2', price: 2000000, title: 'High 2' } },
+        ]);
+
+        mockProcessBatch.mockResolvedValue({
+          results: [],
+          stats: { succeeded: 0, failed: 0, duration: 0, averageItemDuration: 0, itemsPerSecond: 0 },
+          aborted: false,
+        });
+
+        const result = await processBatchPublishWithRouting(
+          ['listing-1', 'listing-2'],
+          { isDryRun: true }
+        );
+
+        expect(result.routing.joomEligible).toBe(0);
+        expect(result.routing.ebayOnly).toBe(2);
+      });
+    });
+
+    describe('processHighValuePublish', () => {
+      it('should return empty result when no high-value listings', async () => {
+        mockPrisma.listing.findMany.mockResolvedValue([]);
+
+        const result = await processHighValuePublish();
+
+        expect(result.total).toBe(0);
+        expect(result.succeeded).toBe(0);
+      });
+
+      it('should process high-value listings', async () => {
+        mockPrisma.listing.findMany.mockResolvedValue([
+          { id: 'listing-1', product: { price: 1500000 } },
+          { id: 'listing-2', product: { price: 2000000 } },
+        ]);
+
+        mockProcessBatch.mockResolvedValue({
+          results: [
+            { item: 'listing-1', success: true },
+            { item: 'listing-2', success: true },
+          ],
+          stats: { succeeded: 2, failed: 0, duration: 5000, averageItemDuration: 2500, itemsPerSecond: 0.4 },
+          aborted: false,
+        });
+
+        const result = await processHighValuePublish();
+
+        expect(result.succeeded).toBe(2);
+      });
+    });
+
+    describe('getPendingListingStats', () => {
+      it('should categorize listings by price range', async () => {
+        mockPrisma.listing.findMany.mockResolvedValue([
+          { product: { price: 50000 } },    // 0-100k
+          { product: { price: 150000 } },   // 100k-300k
+          { product: { price: 400000 } },   // 300k-500k
+          { product: { price: 700000 } },   // 500k-900k
+          { product: { price: 1200000 } },  // 900k+
+        ]);
+
+        const result = await getPendingListingStats();
+
+        expect(result.total).toBe(5);
+        expect(result.joomEligible).toBe(4);
+        expect(result.ebayOnly).toBe(1);
+        expect(result.byPriceRange.find(r => r.range === '0-100k')?.count).toBe(1);
+        expect(result.byPriceRange.find(r => r.range === '900k+')?.count).toBe(1);
+      });
+
+      it('should handle empty listings', async () => {
+        mockPrisma.listing.findMany.mockResolvedValue([]);
+
+        const result = await getPendingListingStats();
+
+        expect(result.total).toBe(0);
+        expect(result.joomEligible).toBe(0);
+        expect(result.ebayOnly).toBe(0);
+      });
     });
   });
 });
