@@ -6,7 +6,7 @@ import { QUEUE_NAMES, QUEUE_CONFIG } from '@rakuda/config';
 import { processScrapeJob } from '../processors/scrape';
 import { processImageJob } from '../processors/image';
 import { processTranslateJob } from '../processors/translate';
-import { processPublishJob } from '../processors/publish';
+import { processPublishJob, processAutoPublishJob } from '../processors/publish';
 import { processInventoryJob, processScheduledInventoryCheck, processSyncListingStatus } from '../processors/inventory';
 import { processNotificationJob } from '../processors/notification';
 import { pricingProcessor } from '../processors/pricing';
@@ -92,7 +92,14 @@ export async function startWorkers(connection: IORedis): Promise<void> {
   // 出品ワーカー
   const publishWorker = createWorker(
     QUEUE_NAMES.PUBLISH,
-    processPublishJob,
+    async (job) => {
+      // 自動出品ジョブ（Phase 50: 本番運用）
+      if (job.name === 'auto-publish') {
+        return processAutoPublishJob(job);
+      }
+      // 通常の出品ジョブ
+      return processPublishJob(job);
+    },
     connection,
     QUEUE_CONFIG[QUEUE_NAMES.PUBLISH]
   );

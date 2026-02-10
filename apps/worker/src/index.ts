@@ -29,11 +29,11 @@ async function main() {
     await startWorkers(connection);
     logger.info('✅ Workers started');
 
-    // スケジューラー初期化
-    await initializeScheduler({
+    // 環境変数からスケジューラー設定を読み込み
+    const schedulerConfig = {
       inventoryCheck: {
-        enabled: true,
-        timesPerDay: 3,
+        enabled: process.env.INVENTORY_CHECK_ENABLED !== 'false',
+        timesPerDay: parseInt(process.env.INVENTORY_CHECK_TIMES_PER_DAY || '3', 10),
         startHour: 9, // JST 9:00開始 (UTC 0:00)
       },
       exchangeRate: {
@@ -41,10 +41,36 @@ async function main() {
         cronExpression: '0 0 * * *', // 毎日0時
       },
       priceSync: {
-        enabled: true,
-        cronExpression: '0 */6 * * *', // 6時間ごと
+        enabled: process.env.PRICE_SYNC_ENABLED !== 'false',
+        cronExpression: process.env.PRICE_SYNC_CRON || '0 */6 * * *',
       },
-    });
+      orderSync: {
+        enabled: process.env.ORDER_SYNC_ENABLED !== 'false',
+        cronExpression: process.env.ORDER_SYNC_CRON || '0 */4 * * *',
+        sinceDays: 7,
+        maxOrders: 100,
+      },
+      inventorySync: {
+        enabled: process.env.INVENTORY_SYNC_ENABLED !== 'false',
+        cronExpression: process.env.INVENTORY_SYNC_CRON || '30 */6 * * *',
+        maxListings: 100,
+      },
+      tokenRefresh: {
+        enabled: process.env.TOKEN_REFRESH_ENABLED !== 'false',
+        cronExpression: process.env.TOKEN_REFRESH_CRON || '0 * * * *',
+        refreshBeforeExpiry: 3600000,
+        warnBeforeExpiry: 86400000,
+      },
+      autoPublish: {
+        enabled: process.env.AUTO_PUBLISH_ENABLED !== 'false',
+        cronExpression: process.env.AUTO_PUBLISH_CRON || '0 * * * *',
+        maxListingsPerRun: parseInt(process.env.AUTO_PUBLISH_MAX_PER_RUN || '20', 10),
+        marketplace: (process.env.AUTO_PUBLISH_MARKETPLACE as 'joom' | 'ebay' | 'all') || 'all',
+      },
+    };
+
+    // スケジューラー初期化
+    await initializeScheduler(schedulerConfig);
     logger.info('✅ Scheduler initialized');
 
     // Graceful Shutdown設定
@@ -59,9 +85,13 @@ async function main() {
 
     logger.info('🎉 Worker process ready');
     logger.info('📅 Scheduled jobs:');
-    logger.info('   - Inventory check: 3x/day (9:00, 17:00, 01:00 JST)');
+    logger.info(`   - Inventory check: ${schedulerConfig.inventoryCheck.enabled ? `${schedulerConfig.inventoryCheck.timesPerDay}x/day` : 'DISABLED'}`);
     logger.info('   - Exchange rate update: daily at 00:00');
-    logger.info('   - Price sync: every 6 hours');
+    logger.info(`   - Price sync: ${schedulerConfig.priceSync.enabled ? schedulerConfig.priceSync.cronExpression : 'DISABLED'}`);
+    logger.info(`   - Order sync: ${schedulerConfig.orderSync.enabled ? schedulerConfig.orderSync.cronExpression : 'DISABLED'}`);
+    logger.info(`   - Inventory sync: ${schedulerConfig.inventorySync.enabled ? schedulerConfig.inventorySync.cronExpression : 'DISABLED'}`);
+    logger.info(`   - Token refresh: ${schedulerConfig.tokenRefresh.enabled ? schedulerConfig.tokenRefresh.cronExpression : 'DISABLED'}`);
+    logger.info(`   - Auto publish: ${schedulerConfig.autoPublish.enabled ? `${schedulerConfig.autoPublish.cronExpression} (max ${schedulerConfig.autoPublish.maxListingsPerRun}/run, ${schedulerConfig.autoPublish.marketplace})` : 'DISABLED'}`);
   } catch (error) {
     logger.error('Failed to start worker process', error);
     process.exit(1);

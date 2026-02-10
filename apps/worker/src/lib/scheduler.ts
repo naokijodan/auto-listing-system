@@ -20,6 +20,7 @@ const inventoryQueue = new Queue(QUEUE_NAMES.INVENTORY, { connection: redis });
 const scrapeQueue = new Queue(QUEUE_NAMES.SCRAPE, { connection: redis });
 const pricingQueue = new Queue(QUEUE_NAMES.PRICING, { connection: redis });
 const competitorQueue = new Queue(QUEUE_NAMES.COMPETITOR, { connection: redis });
+const publishQueue = new Queue(QUEUE_NAMES.PUBLISH, { connection: redis });
 
 /**
  * スケジューラー設定
@@ -84,6 +85,13 @@ export interface SchedulerConfig {
     refreshBeforeExpiry: number;  // 有効期限の何ミリ秒前に更新するか
     warnBeforeExpiry: number;     // 有効期限の何ミリ秒前に警告するか
   };
+  // 自動出品（Phase 50: 本番運用）
+  autoPublish: {
+    enabled: boolean;
+    cronExpression: string;   // 新商品チェック間隔
+    maxListingsPerRun: number;  // 1回の実行で出品する最大数
+    marketplace: 'joom' | 'ebay' | 'all';  // 対象マーケットプレイス
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -135,6 +143,12 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     cronExpression: '0 * * * *',       // 毎時0分にチェック
     refreshBeforeExpiry: 3600000,      // 1時間前に更新
     warnBeforeExpiry: 86400000,        // 24時間前に警告
+  },
+  autoPublish: {
+    enabled: true,
+    cronExpression: '0 * * * *',       // 毎時0分に新商品チェック
+    maxListingsPerRun: 20,             // 1回の実行で最大20件出品
+    marketplace: 'all',                // 全マーケットプレイス対象
   },
 };
 
@@ -546,6 +560,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     orderSync: { ...DEFAULT_CONFIG.orderSync, ...config.orderSync },
     inventorySync: { ...DEFAULT_CONFIG.inventorySync, ...config.inventorySync },
     tokenRefresh: { ...DEFAULT_CONFIG.tokenRefresh, ...config.tokenRefresh },
+    autoPublish: { ...DEFAULT_CONFIG.autoPublish, ...config.autoPublish },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -560,6 +575,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleOrderSync(finalConfig.orderSync);
   await scheduleInventorySync(finalConfig.inventorySync);
   await scheduleTokenRefresh(finalConfig.tokenRefresh);
+  await scheduleAutoPublish(finalConfig.autoPublish);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -887,6 +903,104 @@ async function scheduleTokenRefresh(config: SchedulerConfig['tokenRefresh']) {
     refreshBeforeExpiry: config.refreshBeforeExpiry,
     warnBeforeExpiry: config.warnBeforeExpiry,
   });
+}
+
+/**
+ * 自動出品ジョブをスケジュール（Phase 50: 本番運用）
+ * PENDING_PUBLISHステータスの商品を自動的に出品
+ */
+async function scheduleAutoPublish(config: SchedulerConfig['autoPublish']) {
+  if (!config.enabled) {
+    log.info({ type: 'auto_publish_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await publishQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'auto-publish') {
+      await publishQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // Joom自動出品ジョブを追加
+  if (config.marketplace === 'all' || config.marketplace === 'joom') {
+    await publishQueue.add(
+      'auto-publish',
+      {
+        marketplace: 'joom',
+        maxListings: config.maxListingsPerRun,
+        scheduledAt: new Date().toISOString(),
+      },
+      {
+        repeat: {
+          pattern: config.cronExpression,
+        },
+        jobId: 'auto-publish-joom-scheduled',
+      }
+    );
+  }
+
+  // eBay自動出品ジョブを追加（30分後にずらして実行）
+  if (config.marketplace === 'all' || config.marketplace === 'ebay') {
+    const ebayOffset = config.cronExpression.replace(/^(\d+)/, (match) => {
+      const minute = parseInt(match, 10);
+      return String((minute + 30) % 60);
+    });
+
+    await publishQueue.add(
+      'auto-publish',
+      {
+        marketplace: 'ebay',
+        maxListings: config.maxListingsPerRun,
+        scheduledAt: new Date().toISOString(),
+      },
+      {
+        repeat: {
+          pattern: ebayOffset,
+        },
+        jobId: 'auto-publish-ebay-scheduled',
+      }
+    );
+  }
+
+  log.info({
+    type: 'auto_publish_scheduled',
+    cronExpression: config.cronExpression,
+    maxListingsPerRun: config.maxListingsPerRun,
+    marketplace: config.marketplace,
+  });
+}
+
+/**
+ * 手動で自動出品をトリガー（Phase 50）
+ */
+export async function triggerAutoPublish(options?: {
+  marketplace?: 'joom' | 'ebay';
+  maxListings?: number;
+  isDryRun?: boolean;
+}) {
+  const job = await publishQueue.add(
+    'auto-publish',
+    {
+      marketplace: options?.marketplace || 'joom',
+      maxListings: options?.maxListings || 20,
+      isDryRun: options?.isDryRun || false,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_auto_publish_triggered',
+    jobId: job.id,
+    options,
+  });
+
+  return job.id;
 }
 
 /**

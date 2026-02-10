@@ -843,3 +843,308 @@ export async function processPendingPublish(
     onProgress: options.onProgress,
   });
 }
+
+// ========================================
+// Phase 50: 自動出品ジョブハンドラ
+// ========================================
+
+/**
+ * 出品統計情報
+ */
+export interface PublishStats {
+  period: string;
+  marketplace: string;
+  totalAttempted: number;
+  succeeded: number;
+  failed: number;
+  successRate: number;
+  errorBreakdown: Record<string, number>;
+  avgProcessingTime: number;
+}
+
+/**
+ * 自動出品ジョブデータ
+ */
+export interface AutoPublishJobData {
+  marketplace: 'joom' | 'ebay';
+  maxListings: number;
+  scheduledAt: string;
+  isDryRun?: boolean;
+  manual?: boolean;
+  triggeredAt?: string;
+}
+
+/**
+ * 自動出品ジョブプロセッサー
+ * スケジューラーから1時間ごとに呼び出される
+ */
+export async function processAutoPublishJob(
+  job: Job<AutoPublishJobData>
+): Promise<BatchPublishResult> {
+  const { marketplace, maxListings, isDryRun } = job.data;
+  const log = logger.child({ jobId: job.id, processor: 'auto-publish', marketplace });
+
+  log.info({
+    type: 'auto_publish_start',
+    marketplace,
+    maxListings,
+    isDryRun,
+    scheduled: job.data.scheduledAt,
+    manual: job.data.manual,
+  });
+
+  // 出品待ちリスティングを取得
+  const pendingListings = await prisma.listing.findMany({
+    where: {
+      marketplace: marketplace.toUpperCase() as any,
+      status: 'PENDING_PUBLISH',
+      product: {
+        // 必須フィールドが揃っているか確認
+        titleEn: { not: null },
+        images: { isEmpty: false },
+      },
+    },
+    take: maxListings,
+    orderBy: [
+      { createdAt: 'asc' }, // 古いものから
+    ],
+    select: { id: true },
+  });
+
+  if (pendingListings.length === 0) {
+    log.info({ type: 'auto_publish_no_pending', marketplace });
+    return {
+      total: 0,
+      succeeded: 0,
+      failed: 0,
+      results: [],
+      stats: { duration: 0, averageTimePerItem: 0, itemsPerMinute: 0 },
+    };
+  }
+
+  const listingIds = pendingListings.map(l => l.id);
+
+  log.info({
+    type: 'auto_publish_found',
+    count: listingIds.length,
+    marketplace,
+  });
+
+  // バッチ出品を実行
+  const result = await processBatchPublish(listingIds, {
+    marketplace,
+    concurrency: 2,
+    isDryRun: isDryRun || false,
+    maxErrors: 5, // 5件エラーで停止（Circuit Breaker）
+    onProgress: (info) => {
+      log.debug({
+        type: 'auto_publish_progress',
+        current: info.current,
+        total: info.total,
+        percentage: info.percentage,
+      });
+    },
+  });
+
+  // 統計ログ出力
+  await logPublishStats(marketplace, result, log);
+
+  // アラート判定
+  await checkPublishAlerts(marketplace, result, log);
+
+  log.info({
+    type: 'auto_publish_complete',
+    marketplace,
+    total: result.total,
+    succeeded: result.succeeded,
+    failed: result.failed,
+    successRate: result.total > 0 ? ((result.succeeded / result.total) * 100).toFixed(1) : 100,
+    duration: result.stats.duration,
+  });
+
+  return result;
+}
+
+/**
+ * 出品統計をログ出力
+ */
+async function logPublishStats(
+  marketplace: string,
+  result: BatchPublishResult,
+  log: any
+): Promise<void> {
+  const errorBreakdown: Record<string, number> = {};
+
+  // エラー種別を集計
+  for (const r of result.results) {
+    if (!r.success && r.error) {
+      // エラーメッセージから種別を抽出
+      const errorType = categorizeError(r.error);
+      errorBreakdown[errorType] = (errorBreakdown[errorType] || 0) + 1;
+    }
+  }
+
+  const stats: PublishStats = {
+    period: new Date().toISOString().slice(0, 13), // 時間単位
+    marketplace,
+    totalAttempted: result.total,
+    succeeded: result.succeeded,
+    failed: result.failed,
+    successRate: result.total > 0 ? (result.succeeded / result.total) * 100 : 100,
+    errorBreakdown,
+    avgProcessingTime: result.stats.averageTimePerItem,
+  };
+
+  log.info({
+    type: 'publish_stats',
+    stats,
+  });
+
+  // 統計をRedisに保存（24時間分保持）
+  try {
+    const { default: IORedis } = await import('ioredis');
+    const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379');
+    const key = `rakuda:publish_stats:${marketplace}:${stats.period}`;
+    await redis.set(key, JSON.stringify(stats), 'EX', 86400 * 7); // 7日間保持
+    await redis.quit();
+  } catch (error) {
+    log.warn({ type: 'publish_stats_save_failed', error });
+  }
+}
+
+/**
+ * エラーを種別に分類
+ */
+function categorizeError(errorMessage: string): string {
+  const lower = errorMessage.toLowerCase();
+
+  if (lower.includes('rate limit') || lower.includes('too many requests')) {
+    return 'RATE_LIMIT';
+  }
+  if (lower.includes('authentication') || lower.includes('unauthorized') || lower.includes('token')) {
+    return 'AUTH_ERROR';
+  }
+  if (lower.includes('image') || lower.includes('photo')) {
+    return 'IMAGE_ERROR';
+  }
+  if (lower.includes('category') || lower.includes('attribute')) {
+    return 'CATEGORY_ERROR';
+  }
+  if (lower.includes('price') || lower.includes('currency')) {
+    return 'PRICE_ERROR';
+  }
+  if (lower.includes('network') || lower.includes('timeout') || lower.includes('connection')) {
+    return 'NETWORK_ERROR';
+  }
+  if (lower.includes('already_exists') || lower.includes('duplicate')) {
+    return 'DUPLICATE';
+  }
+  if (lower.includes('validation')) {
+    return 'VALIDATION_ERROR';
+  }
+
+  return 'OTHER';
+}
+
+/**
+ * 出品結果に基づくアラート判定
+ * エラー率が高い場合は通知
+ */
+async function checkPublishAlerts(
+  marketplace: string,
+  result: BatchPublishResult,
+  log: any
+): Promise<void> {
+  if (result.total === 0) return;
+
+  const errorRate = (result.failed / result.total) * 100;
+
+  // エラー率50%超でWARNING
+  if (errorRate >= 50) {
+    const severity: 'ERROR' | 'WARNING' = errorRate >= 80 ? 'ERROR' : 'WARNING';
+
+    log.warn({
+      type: 'publish_high_error_rate',
+      severity,
+      marketplace,
+      errorRate: errorRate.toFixed(1),
+      failed: result.failed,
+      total: result.total,
+    });
+
+    // 通知送信
+    try {
+      const { sendNotification } = await import('../lib/notification-service');
+
+      await sendNotification({
+        eventType: 'SYSTEM_ALERT',
+        severity,
+        title: `High Error Rate in ${marketplace.toUpperCase()} Publishing`,
+        message: `Error rate: ${errorRate.toFixed(1)}% (${result.failed}/${result.total} failed)`,
+        data: {
+          marketplace,
+          errorRate,
+          failed: result.failed,
+          total: result.total,
+          topErrors: Object.entries(
+            result.results
+              .filter(r => !r.success && r.error)
+              .reduce((acc, r) => {
+                const type = categorizeError(r.error!);
+                acc[type] = (acc[type] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>)
+          ).slice(0, 3),
+        },
+      });
+    } catch (notifyError) {
+      log.warn({ type: 'publish_alert_send_failed', error: notifyError });
+    }
+  }
+
+  // 5回連続エラーでCircuit Breaker発動（既にBatchPublishで処理済み）
+  const consecutiveErrors = result.results
+    .slice(-10)
+    .filter(r => !r.success).length;
+
+  if (consecutiveErrors >= 5) {
+    log.warn({
+      type: 'publish_circuit_breaker_triggered',
+      marketplace,
+      consecutiveErrors,
+    });
+  }
+}
+
+/**
+ * 直近の出品統計を取得
+ */
+export async function getPublishStats(
+  marketplace: string,
+  hours: number = 24
+): Promise<PublishStats[]> {
+  const stats: PublishStats[] = [];
+
+  try {
+    const { default: IORedis } = await import('ioredis');
+    const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379');
+
+    const now = new Date();
+    for (let i = 0; i < hours; i++) {
+      const hour = new Date(now.getTime() - i * 3600000);
+      const period = hour.toISOString().slice(0, 13);
+      const key = `rakuda:publish_stats:${marketplace}:${period}`;
+
+      const data = await redis.get(key);
+      if (data) {
+        stats.push(JSON.parse(data));
+      }
+    }
+
+    await redis.quit();
+  } catch (error) {
+    logger.warn({ type: 'get_publish_stats_failed', error });
+  }
+
+  return stats.reverse();
+}
