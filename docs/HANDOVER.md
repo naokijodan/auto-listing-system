@@ -14,52 +14,53 @@
 | 23-24 | ユーザー管理/RBAC・Webhook管理の強化 | 2025-02-10 |
 | 25-26 | バックアップ/リストア・ダッシュボードウィジェット | 2025-02-10 |
 | 27-28 | 通知チャンネル拡張・レポート機能強化 | 2026-02-11 |
+| 29-30 | バッチ処理最適化・多言語対応 | 2026-02-11 |
 
 ### 最新コミット
-- ハッシュ: `76df8fb`
-- メッセージ: `feat: Phase 27-28 通知チャンネル拡張とレポート機能強化`
+- ハッシュ: `98e1ceb`
+- メッセージ: `feat: Phase 29-30 バッチ処理最適化と多言語対応を実装`
 
 ---
 
-## Phase 27-28 実装内容
+## Phase 29-30 実装内容
 
-### Phase 27: 通知チャンネル拡張
+### Phase 29: バッチ処理の最適化
 **新規モデル:**
-- NotificationDispatch, NotificationTemplate, NotificationPreference
+- BatchJob, BatchExecution, BatchStep, BatchEvent
 
 **新規ファイル:**
-- `apps/worker/src/lib/notification-channel-service.ts` - 通知ディスパッチサービス
-- `apps/api/src/routes/notification-dispatches.ts` - 通知ディスパッチAPI
+- `apps/worker/src/lib/batch-service.ts` - バッチ処理サービス
+- `apps/api/src/routes/batch-jobs.ts` - バッチジョブAPI
 
 **機能:**
-- Slack Webhook通知（Block Kit使用）
-- Discord Embed通知
-- LINE Notify API連携
-- Email送信（シミュレーション）
-- 重要度に応じた色分け（INFO=青, SUCCESS=緑, WARNING=オレンジ, ERROR=赤）
-- 通知テンプレート管理
-- ユーザー通知プリファレンス
-- 失敗通知のリトライ機能
-- 通知統計
+- BullMQを活用した並列実行
+- 進捗追跡（推定/確定の区別）
+- キャンセルフラグによるグレースフル停止
+- イベント駆動による進捗記録
+- 12種類のジョブタイプ（PRODUCT_SYNC, PRICE_UPDATE, ORDER_SYNC等）
 
-### Phase 28: レポート機能強化
+### Phase 30: 多言語対応（i18n）
 **新規モデル:**
-- Report, ReportTemplate, ReportScheduleConfig, ReportExecution
+- TranslationNamespace, TranslationKey, Translation, SupportedLocale, TranslationHistory
 
 **新規ファイル:**
-- `apps/worker/src/lib/report-service.ts` - レポート生成サービス
-- `apps/api/src/routes/reports.ts` - レポート管理API
+- `apps/worker/src/lib/i18n-service.ts` - i18nサービス
+- `apps/api/src/routes/i18n.ts` - i18n API
 
 **機能:**
-- レポートタイプ：SALES_SUMMARY, INVENTORY_STATUS, PRODUCT_PERFORMANCE, ORDER_DETAIL, CUSTOMER_ANALYSIS, PROFIT_ANALYSIS, MARKETPLACE_COMPARISON, AUDIT_REPORT, CUSTOM
-- 出力フォーマット：PDF, Excel, CSV, HTML
-- スケジュール実行機能
-- 古いレポートの自動クリーンアップ
-- レポートテンプレート管理
+- フォールバックチェーン対応（zh-TW→zh→en等）
+- ETag/Last-Modified対応のバンドルAPI
+- 翻訳ステータス管理（未翻訳/機械翻訳/承認済み/公開済み）
+- インポート/エクスポート機能
+- 対応言語: en, ja, zh, zh-TW, ko, es, de, fr
 
 ---
 
 ## 累積実装内容
+
+### Phase 27-28
+- **通知チャンネル拡張**: NotificationDispatch, NotificationTemplate, NotificationPreference
+- **レポート機能強化**: Report, ReportTemplate, ReportScheduleConfig, ReportExecution
 
 ### Phase 25-26
 - **バックアップ/リストア**: Backup, BackupSchedule, RestoreJob
@@ -85,11 +86,11 @@
 
 ## 次のPhase候補
 
-### Phase 29-30 候補
-1. **バッチ処理の最適化** - 並列実行・進捗追跡・キャンセル機能
-2. **多言語対応** - i18n基盤の構築
-3. **パフォーマンス最適化** - クエリ最適化・キャッシュ強化
-4. **監視・アラート** - メトリクス収集・しきい値アラート
+### Phase 31-32 候補
+1. **パフォーマンス最適化** - クエリ最適化・キャッシュ強化
+2. **監視・アラート** - メトリクス収集・しきい値アラート
+3. **セキュリティ強化** - 2FA・セッション管理・監査強化
+4. **外部連携強化** - Google Analytics連携・会計ソフト連携
 
 ---
 
@@ -114,6 +115,8 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 - バックアップ暗号化キーは環境変数 `BACKUP_ENCRYPTION_KEY` で設定
 - 通知チャンネル設定: webhookUrl, token, email, smtpHost, smtpPort, smtpUser
 - Orderモデルは `total` (not `totalAmount`)、`marketplaceOrderId` (not `orderNumber`)、`fulfillmentStatus` (not `shippingStatus`) を使用
+- BullMQ JobsOptionsにtimeoutオプションは存在しない（データに含めてワーカーで処理）
+- i18nフォールバックチェーン: zh-TW→zh→en, ko→en, ja→en 等
 
 ---
 
