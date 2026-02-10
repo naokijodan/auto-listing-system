@@ -20,12 +20,15 @@ RAKUDAは日本のECサイト（ヤフオク、メルカリ、Amazon JP）から
 | 45A-B | eBay出品ロジック | ✅ 実装完了（認証未設定） |
 | **Joom運用 Phase 1** | **防御基盤** | ✅ **完了** |
 | **Joom運用 Phase 2** | **注文処理半自動化** | ✅ **完了** |
+| **Phase 3** | **通知基盤** | ✅ **完了** |
+| **Phase 4** | **商品パイプライン拡張** | ✅ **完了** |
 
 ### カナリアリリース状況
 
 | ステータス | 件数 | 説明 |
 |-----------|------|------|
 | ACTIVE | 28件 | Joom出品成功 |
+| PENDING_PUBLISH | 5件 | 新規出品キュー（Phase 4で追加） |
 | PAUSED | 14件 | 高価格帯（eBay用に保持） |
 
 ### 重要な発見
@@ -36,57 +39,47 @@ RAKUDAは日本のECサイト（ヤフオク、メルカリ、Amazon JP）から
 
 ---
 
-## 本日の実装（Joom運用基盤 Phase 1-2）
+## 本日の実装
 
-### Phase 1: 防御基盤
+### Phase 3: 通知基盤
 
-#### 新規スキーマ
+#### NotificationEventモデル
 ```prisma
-// packages/database/prisma/schema.prisma
-model InventoryLog { ... }   // 在庫履歴
-model ShadowLog { ... }      // 自動化判定用ログ
-model ProfitThreshold { ... } // 利益率閾値設定
+model NotificationEvent {
+  id          String   @id @default(cuid())
+  type        String   // ORDER_RECEIVED, PROFIT_ALERT, STOCK_OUT
+  channel     String   // SLACK, DISCORD, WEBHOOK
+  status      String   // PENDING, SENT, FAILED, ACTION_TAKEN
+  payload     Json
+  referenceId String?
+  ...
+}
 ```
 
-#### 高頻度在庫監視
-- **1時間毎**にActive商品をチェック
-- 在庫切れ検知 → 即時PAUSED + アラート通知
-- InventoryLogに記録
+#### 通知サービス
+- ファイル: `apps/worker/src/lib/notification-service.ts`
+- Slack/Discord Webhook送信
+- リトライロジック（最大3回、指数バックオフ）
+- 通知テンプレート（注文、在庫切れ、利益アラート）
 
 ```bash
 # 環境変数
-ACTIVE_INVENTORY_MONITOR_ENABLED=true
-ACTIVE_INVENTORY_MONITOR_CRON=0 * * * *
+SLACK_WEBHOOK_URL=https://hooks.slack.com/...
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 
-### Phase 2: 注文処理 半自動化
+### Phase 4: 商品パイプライン拡張
 
-#### 赤字ストッパー（Profit Guard）
-- ファイル: `apps/worker/src/lib/profit-guard.ts`
-- 機能: 注文時に利益計算、赤字リスク検知
-- モード: isDryRun=true（赤字でも通過、ログ記録）
+#### 安全カテゴリ拡張
+- カメラ、オーディオ、ゲーム追加
+- BRAND_WHITELIST: G-SHOCK、Sony、Nikon、Canon、Nintendo等
 
-```typescript
-// 利益計算
-const result = await checkProfit({
-  salePrice: 100,  // USD
-  costPrice: 5000, // JPY
-  marketplace: 'JOOM',
-});
-// → profitJpy, profitRate, isDangerous
-```
+#### PAUSED再評価ジョブ
+- 毎日3時に自動実行
+- 新ルールで安全と判定 → ACTIVEに復帰
 
-#### 注文通知Bot
-- ファイル: `apps/worker/src/processors/order-processor.ts`
-- 機能: Webhook受信 → 利益計算 → 発注推奨通知
-- **自動購入なし**（Human-in-the-loop）
-
-```
-通知内容:
-- 注文ID、購入者、合計金額
-- 商品リスト（価格、仕入価格、利益、購入リンク）
-- 利益サマリー（赤字リスク警告）
-```
+#### 結果
+- 5件新規出品: Nikon D850、Sony WH-1000XM5、Nintendo Switch、G-SHOCK x2
 
 ---
 
@@ -134,11 +127,13 @@ JOOM_PRICE_LIMIT_JPY = 900000   // Joom出品上限
 | ファイル | 説明 |
 |---------|------|
 | `apps/worker/src/processors/publish.ts` | Joom/eBay出品ロジック |
-| `apps/worker/src/processors/order-processor.ts` | **注文処理（半自動化）** |
-| `apps/worker/src/lib/profit-guard.ts` | **赤字ストッパー** |
-| `apps/worker/src/lib/scheduler.ts` | **在庫監視スケジューラ** |
+| `apps/worker/src/processors/order-processor.ts` | 注文処理（半自動化） |
+| `apps/worker/src/lib/profit-guard.ts` | 赤字ストッパー |
+| `apps/worker/src/lib/scheduler.ts` | 在庫監視・再評価スケジューラ |
+| `apps/worker/src/lib/notification-service.ts` | **通知サービス** |
 | `apps/worker/src/lib/ebay-api.ts` | eBay API クライアント |
 | `packages/database/prisma/schema.prisma` | DBスキーマ |
+| `scripts/canary-release.ts` | カナリアリリース（カテゴリ拡張済み） |
 
 ---
 
@@ -150,8 +145,12 @@ npm run dev                    # 開発サーバー起動
 npm run test:unit              # 単体テスト
 
 # カナリアリリース
-npm run canary:status          # ステータス確認
-npm run canary:rollback        # ロールバック
+npx tsx scripts/canary-release.ts --status    # ステータス確認
+npx tsx scripts/canary-release.ts --phase=5   # 出品実行
+npx tsx scripts/canary-release.ts --rollback  # ロールバック
+
+# PAUSED再評価
+npx tsx scripts/run-paused-reevaluation.ts
 
 # 本番運用
 npm run start:prod             # APIサーバー起動
@@ -163,14 +162,13 @@ npm run docker:prod:up         # Docker本番起動
 
 ## 次のタスク
 
-### 優先度1: Joom運用監視
-1. 通知チャンネル設定（Slack/Discord）
-2. 実際の注文を待って処理フロー確認
-3. ShadowLog分析 → 自動化移行判定
+### 優先度1: 通知設定
+1. Slack/Discord Webhook URL設定
+2. テスト通知送信確認
 
-### 優先度2: 追加商品の出品
-1. 新規商品スクレイピング
-2. カナリアリリース継続（週10-20件ペース）
+### 優先度2: 出品完了確認
+1. 5件の出品ジョブ完了を監視
+2. Joom Merchant Portalで確認
 
 ### 優先度3: eBay連携（後回し）
 1. eBay Sandboxアカウント作成
@@ -182,11 +180,10 @@ npm run docker:prod:up         # Docker本番起動
 ## Git履歴（直近）
 
 ```
+e05c1d1 feat: Phase 3-4 通知基盤・カテゴリ拡張
+700966e chore: add test scripts for inventory monitor and profit guard
 c91e941 feat: Phase 1-2 Joom運用基盤 - 在庫監視・注文処理半自動化
 6be8e18 feat: 赤字ストッパー（Profit Guard）を実装
-bd34cc4 docs: 次セッション用引き継ぎ書・指示文を追加
-b335aa4 docs: 引き継ぎ書最終更新
-9412888 feat: eBay出品ロジック実装・高価格帯ルーティング
 ```
 
 ---
@@ -198,3 +195,4 @@ b335aa4 docs: 引き継ぎ書最終更新
 - `開発ログ/rakuda_phase45_ebay_design_20260210.md`
 - `開発ログ/rakuda_profit-guard_20260210.md`
 - `開発ログ/rakuda_joom_operation_phase1-2_20260210.md`
+- `開発ログ/rakuda_phase3-4_notification_category_20260210.md`
