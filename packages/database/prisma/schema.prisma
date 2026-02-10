@@ -3292,3 +3292,417 @@ enum TextDirection {
   LTR             // 左から右
   RTL             // 右から左
 }
+
+// ========================================
+// Phase 31: パフォーマンス最適化
+// ========================================
+
+model CacheConfig {
+  id          String   @id @default(cuid())
+
+  // キャッシュ設定
+  name        String   @unique   // キャッシュ名（例: products, categories）
+  description String?
+  cacheType   CacheType @default(QUERY)
+
+  // TTL設定
+  ttlSeconds  Int      @default(300)  // デフォルト5分
+  maxEntries  Int?                    // 最大エントリ数
+
+  // 無効化設定
+  tags        String[] @default([])   // タグベース無効化用
+  invalidateOn String[] @default([])  // 無効化トリガー（例: product.update）
+
+  // 統計
+  hitCount    Int      @default(0)
+  missCount   Int      @default(0)
+  evictCount  Int      @default(0)
+
+  // メタデータ
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 関連
+  entries     CacheEntry[]
+
+  @@map("cache_configs")
+}
+
+model CacheEntry {
+  id          String   @id @default(cuid())
+
+  // キャッシュ参照
+  configId    String
+  config      CacheConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  // キー・値
+  cacheKey    String           // キャッシュキー
+  value       Json             // キャッシュ値
+  valueHash   String?          // 値のハッシュ（検証用）
+
+  // タグ
+  tags        String[] @default([])
+
+  // 有効期限
+  expiresAt   DateTime
+
+  // メタデータ
+  hitCount    Int      @default(0)
+  lastHitAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([configId, cacheKey])
+  @@index([expiresAt])
+  @@index([tags])
+  @@map("cache_entries")
+}
+
+model QueryPerformance {
+  id          String   @id @default(cuid())
+
+  // クエリ情報
+  queryHash   String           // クエリのハッシュ
+  queryText   String   @db.Text // クエリテキスト（サニタイズ済み）
+  operation   String           // SELECT, INSERT, UPDATE, DELETE
+  tableName   String?          // 主テーブル名
+
+  // パフォーマンス
+  executionTime Float          // 実行時間（ミリ秒）
+  rowsExamined  Int?           // 検査行数
+  rowsReturned  Int?           // 返却行数
+
+  // 問題検出
+  isSlowQuery   Boolean @default(false)
+  hasN1Problem  Boolean @default(false)
+  suggestions   Json    @default("[]")  // 最適化提案
+
+  // コンテキスト
+  endpoint      String?         // APIエンドポイント
+  requestId     String?         // リクエストID
+  userId        String?
+
+  // タイムスタンプ
+  recordedAt    DateTime @default(now())
+
+  @@index([queryHash])
+  @@index([isSlowQuery, recordedAt])
+  @@index([tableName])
+  @@map("query_performances")
+}
+
+model QueryStats {
+  id          String   @id @default(cuid())
+
+  // 集計期間
+  periodStart DateTime
+  periodEnd   DateTime
+  periodType  StatsPeriodType @default(HOURLY)
+
+  // クエリ識別
+  queryHash   String
+  tableName   String?
+
+  // 統計
+  executionCount Int    @default(0)
+  totalTime      Float  @default(0)   // 合計実行時間
+  avgTime        Float  @default(0)   // 平均実行時間
+  maxTime        Float  @default(0)   // 最大実行時間
+  minTime        Float  @default(0)   // 最小実行時間
+  p95Time        Float?               // 95パーセンタイル
+  p99Time        Float?               // 99パーセンタイル
+
+  // 問題
+  slowQueryCount Int    @default(0)
+  n1ProblemCount Int    @default(0)
+
+  @@unique([periodStart, periodType, queryHash])
+  @@index([periodStart, periodType])
+  @@map("query_stats")
+}
+
+enum CacheType {
+  QUERY       // クエリ結果キャッシュ
+  DATA        // データキャッシュ
+  PAGE        // ページキャッシュ
+  FRAGMENT    // フラグメントキャッシュ
+  SESSION     // セッションキャッシュ
+  API         // API レスポンスキャッシュ
+}
+
+enum StatsPeriodType {
+  MINUTELY
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+// ========================================
+// Phase 32: 監視・アラート
+// ========================================
+
+model MetricDefinition {
+  id          String   @id @default(cuid())
+
+  // メトリクス定義
+  name        String   @unique   // 例: system.cpu.usage, business.orders.count
+  displayName String             // 表示名
+  description String?
+  unit        String?            // 単位（%, ms, count等）
+
+  // 分類
+  category    MetricCategory
+  metricType  MetricType @default(GAUGE)
+
+  // 収集設定
+  collectInterval Int  @default(60)  // 収集間隔（秒）
+  retentionDays   Int  @default(30)  // 保持日数
+
+  // メタデータ
+  isActive    Boolean  @default(true)
+  tags        String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 関連
+  snapshots   MetricSnapshot[]
+  alertRules  MetricAlertRule[]
+
+  @@map("metric_definitions")
+}
+
+model MetricSnapshot {
+  id          String   @id @default(cuid())
+
+  // メトリクス参照
+  metricId    String
+  metric      MetricDefinition @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  // 値
+  value       Float
+  minValue    Float?
+  maxValue    Float?
+  avgValue    Float?
+  count       Int?     // カウンター系メトリクス用
+
+  // ラベル（ディメンション）
+  labels      Json     @default("{}")  // 例: { "host": "server-1", "endpoint": "/api/products" }
+
+  // タイムスタンプ
+  timestamp   DateTime @default(now())
+
+  @@index([metricId, timestamp])
+  @@index([timestamp])
+  @@map("metric_snapshots")
+}
+
+model MetricAlertRule {
+  id          String   @id @default(cuid())
+
+  // ルール定義
+  name        String
+  description String?
+  metricId    String
+  metric      MetricDefinition @relation(fields: [metricId], references: [id])
+
+  // 条件
+  condition   MetricAlertCondition
+  threshold   Float
+  duration    Int      @default(60)   // 判定期間（秒）
+  comparison  MetricAlertComparison
+
+  // 重要度
+  severity    MetricAlertSeverity @default(WARNING)
+
+  // 通知設定
+  channelIds  String[] @default([])   // 通知チャンネルID
+  notifyInterval Int   @default(300)  // 再通知間隔（秒）
+  maxNotifications Int @default(5)    // 最大通知回数
+
+  // Playbook
+  playbookUrl String?          // 対応手順書URL
+  runbook     Json?            // 対応手順（JSON形式）
+
+  // メタデータ
+  isActive    Boolean  @default(true)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 関連
+  alerts      MetricAlert[]
+
+  @@index([metricId])
+  @@index([severity, isActive])
+  @@map("metric_alert_rules")
+}
+
+model MetricAlert {
+  id          String   @id @default(cuid())
+
+  // ルール参照
+  ruleId      String
+  rule        MetricAlertRule @relation(fields: [ruleId], references: [id])
+
+  // アラート状態
+  status      MetricAlertStatus @default(FIRING)
+  severity    MetricAlertSeverity
+
+  // 値
+  currentValue Float           // 現在値
+  threshold    Float           // しきい値
+
+  // 詳細
+  message     String   @db.Text
+  labels      Json     @default("{}")
+  annotations Json     @default("{}")
+
+  // 対応状況
+  assignedTo  String?
+  assignedAt  DateTime?
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  resolution  String?  @db.Text
+
+  // 通知
+  notificationCount Int @default(0)
+  lastNotifiedAt DateTime?
+
+  // タイムスタンプ
+  firedAt     DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 関連
+  history     MetricAlertHistory[]
+
+  @@index([ruleId, status])
+  @@index([status, firedAt])
+  @@index([severity, status])
+  @@map("metric_alerts")
+}
+
+model MetricAlertHistory {
+  id          String   @id @default(cuid())
+
+  // アラート参照
+  alertId     String
+  alert       MetricAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  // 変更内容
+  action      MetricAlertAction
+  oldStatus   MetricAlertStatus?
+  newStatus   MetricAlertStatus?
+
+  // 詳細
+  comment     String?  @db.Text
+  changedBy   String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([alertId, createdAt])
+  @@map("metric_alert_histories")
+}
+
+model SystemHealth {
+  id          String   @id @default(cuid())
+
+  // システム情報
+  hostname    String?
+  component   String           // api, worker, database, redis
+
+  // リソース使用率
+  cpuUsage    Float?           // CPU使用率（%）
+  memoryUsage Float?           // メモリ使用率（%）
+  diskUsage   Float?           // ディスク使用率（%）
+
+  // パフォーマンス
+  responseTime Float?          // 平均レスポンス時間（ms）
+  requestCount Int?            // リクエスト数
+  errorCount   Int?            // エラー数
+  errorRate    Float?          // エラー率（%）
+
+  // 接続
+  activeConnections Int?       // アクティブ接続数
+  queuedJobs       Int?        // キュー内ジョブ数
+
+  // ステータス
+  status      HealthStatus @default(HEALTHY)
+  lastError   String?
+
+  // タイムスタンプ
+  recordedAt  DateTime @default(now())
+
+  @@index([component, recordedAt])
+  @@index([status])
+  @@map("system_health")
+}
+
+enum MetricCategory {
+  SYSTEM      // システムメトリクス
+  BUSINESS    // ビジネスメトリクス
+  PERFORMANCE // パフォーマンスメトリクス
+  SECURITY    // セキュリティメトリクス
+  CUSTOM      // カスタムメトリクス
+}
+
+enum MetricType {
+  GAUGE       // ゲージ（現在値）
+  COUNTER     // カウンター（累積値）
+  HISTOGRAM   // ヒストグラム
+  SUMMARY     // サマリー
+}
+
+enum MetricAlertCondition {
+  ABOVE       // 以上
+  BELOW       // 以下
+  EQUAL       // 等しい
+  NOT_EQUAL   // 等しくない
+  INCREASE_BY // 増加率
+  DECREASE_BY // 減少率
+}
+
+enum MetricAlertComparison {
+  GT          // より大きい
+  GTE         // 以上
+  LT          // より小さい
+  LTE         // 以下
+  EQ          // 等しい
+  NE          // 等しくない
+}
+
+enum MetricAlertSeverity {
+  CRITICAL    // 緊急
+  WARNING     // 警告
+  INFO        // 情報
+}
+
+enum MetricAlertStatus {
+  FIRING      // 発火中
+  ACKNOWLEDGED // 確認済み
+  RESOLVED    // 解決済み
+  SILENCED    // 抑制中
+}
+
+enum MetricAlertAction {
+  CREATED     // 作成
+  ACKNOWLEDGED // 確認
+  ASSIGNED    // アサイン
+  ESCALATED   // エスカレーション
+  RESOLVED    // 解決
+  SILENCED    // 抑制
+  REOPENED    // 再オープン
+  COMMENTED   // コメント
+  NOTIFIED    // 通知
+}
+
+enum HealthStatus {
+  HEALTHY     // 正常
+  DEGRADED    // 劣化
+  UNHEALTHY   // 異常
+  UNKNOWN     // 不明
+}

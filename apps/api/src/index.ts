@@ -65,6 +65,8 @@ import { notificationDispatchesRouter } from './routes/notification-dispatches';
 import { reportsRouter } from './routes/reports';
 import { batchJobsRouter } from './routes/batch-jobs';
 import { i18nRouter } from './routes/i18n';
+import { cacheRouter } from './routes/cache';
+import { metricsRouter } from './routes/metrics';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -179,6 +181,8 @@ app.use('/api/notification-dispatches', notificationDispatchesRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/batch-jobs', batchJobsRouter);
 app.use('/api/i18n', i18nRouter);
+app.use('/api/cache', cacheRouter);
+app.use('/api/metrics', metricsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
