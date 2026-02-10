@@ -102,9 +102,99 @@ const PHASE_LIMITS = {
   1: 3,   // Phase 1: 最初の3件（最小リスク）
   2: 10,  // Phase 2: 10件に拡大
   3: 25,  // Phase 3: 25件に拡大
-  4: 50,  // Phase 4: 50件に拡大
+  4: 20,  // Phase 4: 高価格帯テスト（$5,000+のみ）
   5: 100, // Phase 5: 100件（フル運用移行前）
 };
+
+/**
+ * Phase 4用: 高価格帯閾値（円）
+ * $5,000 = 約75万円 (為替150円想定)
+ */
+const HIGH_VALUE_THRESHOLD_JPY = 750000;
+
+/**
+ * Joom出品価格上限（円）
+ * Phase 5テストの結果、¥950,000以上の商品が全てエラーとなった
+ * 安全マージンを取り、¥900,000を上限とする（≒$6,000）
+ */
+const JOOM_PRICE_LIMIT_JPY = 900000;
+
+// ============================================================================
+// Circuit Breaker設定
+// ============================================================================
+
+/**
+ * 連続エラー上限: この回数連続でエラーが発生したら処理を停止
+ */
+const MAX_CONSECUTIVE_ERRORS = 3;
+
+/**
+ * エラー率閾値: 全体のエラー率がこの値を超えたら処理を中断
+ */
+const ERROR_RATE_THRESHOLD = 0.05; // 5%
+
+/**
+ * Circuit Breaker状態管理
+ */
+interface CircuitBreakerState {
+  consecutiveErrors: number;
+  totalRequests: number;
+  totalErrors: number;
+  isTripped: boolean;
+  tripReason?: string;
+}
+
+/**
+ * Circuit Breakerの状態をリセット
+ */
+function resetCircuitBreaker(): CircuitBreakerState {
+  return {
+    consecutiveErrors: 0,
+    totalRequests: 0,
+    totalErrors: 0,
+    isTripped: false,
+  };
+}
+
+/**
+ * エラー発生時のCircuit Breaker更新
+ */
+function recordError(state: CircuitBreakerState, errorMessage: string): CircuitBreakerState {
+  const newState = {
+    ...state,
+    consecutiveErrors: state.consecutiveErrors + 1,
+    totalRequests: state.totalRequests + 1,
+    totalErrors: state.totalErrors + 1,
+    isTripped: false,
+    tripReason: undefined as string | undefined,
+  };
+
+  // 連続エラーチェック
+  if (newState.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+    newState.isTripped = true;
+    newState.tripReason = `Consecutive errors reached ${MAX_CONSECUTIVE_ERRORS}: ${errorMessage}`;
+  }
+
+  // エラー率チェック
+  const errorRate = newState.totalErrors / newState.totalRequests;
+  if (newState.totalRequests >= 5 && errorRate > ERROR_RATE_THRESHOLD) {
+    newState.isTripped = true;
+    newState.tripReason = `Error rate ${(errorRate * 100).toFixed(1)}% exceeded threshold ${ERROR_RATE_THRESHOLD * 100}%`;
+  }
+
+  return newState;
+}
+
+/**
+ * 成功時のCircuit Breaker更新（連続エラーカウンタをリセット）
+ */
+function recordSuccess(state: CircuitBreakerState): CircuitBreakerState {
+  return {
+    ...state,
+    consecutiveErrors: 0,
+    totalRequests: state.totalRequests + 1,
+  };
+}
 
 interface CanaryProduct {
   id: string;
@@ -366,7 +456,16 @@ async function runCanaryRelease(phase: number) {
     }
 
     // 4. 出品候補を取得
-    logSection('FETCHING SAFE PRODUCTS');
+    // Phase 4: 高価格帯テスト - $5,000以上の商品のみ
+    const isHighValuePhase = phase === 4;
+
+    if (isHighValuePhase) {
+      logSection('PHASE 4: HIGH-VALUE TEST MODE');
+      console.log(`  Testing products >= ¥${HIGH_VALUE_THRESHOLD_JPY.toLocaleString()} (~$${Math.round(HIGH_VALUE_THRESHOLD_JPY / 150).toLocaleString()})`);
+      console.log('  Purpose: Test if errors are Patek-specific or high-value-wide');
+    }
+
+    logSection('FETCHING PRODUCTS');
     const products = await prisma.product.findMany({
       where: {
         status: {
@@ -378,12 +477,26 @@ async function runCanaryRelease(phase: number) {
             marketplace: 'JOOM',
           },
         },
+        // Phase 4: 高価格帯のみ（テスト用）
+        // 通常フェーズ: Joom価格上限を適用（¥900,000以下）
+        ...(isHighValuePhase
+          ? { price: { gte: HIGH_VALUE_THRESHOLD_JPY } }
+          : { price: { lte: JOOM_PRICE_LIMIT_JPY } }
+        ),
       },
       take: remainingSlots * 3, // 安全チェックで除外されるものを考慮
-      orderBy: { createdAt: 'desc' },
+      orderBy: { price: 'desc' }, // Phase 4では価格順でソート
     });
 
-    log(`Found ${products.length} candidates.`);
+    log(`Found ${products.length} candidates${isHighValuePhase ? ' (high-value only)' : ''}.`);
+
+    if (isHighValuePhase && products.length > 0) {
+      console.log('\n  High-value candidates by price:');
+      for (const p of products.slice(0, 10)) {
+        const priceUSD = Math.round(p.price / 150);
+        console.log(`    - ¥${p.price.toLocaleString()} (~$${priceUSD}) ${p.brand}: ${p.titleEn?.slice(0, 35)}...`);
+      }
+    }
 
     // 5. 安全性評価
     logSection('SAFETY EVALUATION');
@@ -426,57 +539,104 @@ async function runCanaryRelease(phase: number) {
     const publishQueue = new Queue(QUEUE_NAMES.PUBLISH, { connection: redis });
     const results: CanaryResult[] = [];
 
+    // Circuit Breaker初期化
+    let circuitBreaker = resetCircuitBreaker();
+    log(`Circuit Breaker initialized (max consecutive errors: ${MAX_CONSECUTIVE_ERRORS}, error rate threshold: ${ERROR_RATE_THRESHOLD * 100}%)`);
+
     for (const product of safeProducts) {
-      // Listingレコード作成
-      const listing = await prisma.listing.create({
-        data: {
-          productId: product.id,
-          marketplace: 'JOOM',
-          status: 'PENDING_PUBLISH',
-          listingPrice: 0,
-          shippingCost: 0,
-          currency: 'USD',
-          marketplaceData: {
+      // Circuit Breakerがトリップしていたら処理を停止
+      if (circuitBreaker.isTripped) {
+        logError('Circuit Breaker TRIPPED - Stopping canary release');
+        logError(`Reason: ${circuitBreaker.tripReason}`);
+        logError(`Stats: ${circuitBreaker.totalErrors}/${circuitBreaker.totalRequests} errors (${((circuitBreaker.totalErrors / circuitBreaker.totalRequests) * 100).toFixed(1)}%)`);
+        break;
+      }
+
+      try {
+        // Listingレコード作成
+        const listing = await prisma.listing.create({
+          data: {
+            productId: product.id,
+            marketplace: 'JOOM',
+            status: 'PENDING_PUBLISH',
+            listingPrice: 0,
+            shippingCost: 0,
+            currency: 'USD',
+            marketplaceData: {
+              canaryRelease: true,
+              canaryPhase: phase,
+              createdAt: new Date().toISOString(),
+              safetyReason: product.safetyReason,
+            },
+          },
+        });
+
+        // 出品ジョブをキューに追加
+        const job = await publishQueue.add(
+          'publish',
+          {
+            productId: product.id,
+            listingId: listing.id,
+            marketplace: 'joom',
+            listingData: {},
+            isDryRun: false,
             canaryRelease: true,
             canaryPhase: phase,
-            createdAt: new Date().toISOString(),
-            safetyReason: product.safetyReason,
           },
-        },
-      });
+          {
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 5000,
+            },
+            removeOnComplete: 100,
+            removeOnFail: 50,
+          }
+        );
 
-      // 出品ジョブをキューに追加
-      const job = await publishQueue.add(
-        'publish',
-        {
+        // 成功時: Circuit Breakerの連続エラーカウンタをリセット
+        circuitBreaker = recordSuccess(circuitBreaker);
+        logSuccess(`Queued: ${product.titleEn?.slice(0, 40)}... (Job: ${job.id})`);
+
+        results.push({
           productId: product.id,
+          title: product.titleEn || product.title,
           listingId: listing.id,
-          marketplace: 'joom',
-          listingData: {},
-          isDryRun: false,
-          canaryRelease: true,
-          canaryPhase: phase,
-        },
-        {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 5000,
-          },
-          removeOnComplete: 100,
-          removeOnFail: 50,
+          jobId: job.id,
+          status: 'queued',
+        });
+      } catch (error: any) {
+        // エラー時: Circuit Breakerを更新
+        const errorMessage = error.message || 'Unknown error';
+        circuitBreaker = recordError(circuitBreaker, errorMessage);
+
+        logError(`Failed to queue: ${product.titleEn?.slice(0, 40)}...`);
+        logError(`Error: ${errorMessage}`);
+        logWarning(`Circuit Breaker: ${circuitBreaker.consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS} consecutive errors`);
+
+        results.push({
+          productId: product.id,
+          title: product.titleEn || product.title,
+          status: 'skipped',
+          skipReason: errorMessage,
+        });
+
+        // Circuit Breakerがトリップしたかチェック
+        if (circuitBreaker.isTripped) {
+          logError('Circuit Breaker TRIPPED - Stopping canary release');
+          logError(`Reason: ${circuitBreaker.tripReason}`);
+          break;
         }
-      );
+      }
+    }
 
-      logSuccess(`Queued: ${product.titleEn?.slice(0, 40)}... (Job: ${job.id})`);
-
-      results.push({
-        productId: product.id,
-        title: product.titleEn || product.title,
-        listingId: listing.id,
-        jobId: job.id,
-        status: 'queued',
-      });
+    // Circuit Breaker統計をログ出力
+    if (circuitBreaker.totalRequests > 0) {
+      const errorRate = (circuitBreaker.totalErrors / circuitBreaker.totalRequests) * 100;
+      log(`Circuit Breaker Summary: ${circuitBreaker.totalErrors}/${circuitBreaker.totalRequests} errors (${errorRate.toFixed(1)}%)`);
+      if (circuitBreaker.isTripped) {
+        logWarning('Canary release was stopped early due to Circuit Breaker');
+      }
     }
 
     // 7. 結果レポート
@@ -485,6 +645,33 @@ async function runCanaryRelease(phase: number) {
     console.log(`Products queued: ${results.length}`);
     console.log(`Total canary listings: ${existingCanary + results.length}`);
     console.log(`Phase ${phase} limit: ${limit}`);
+
+    // Phase 4: 高価格帯テストの場合、追加情報を表示
+    if (isHighValuePhase) {
+      console.log('\n📊 Phase 4 High-Value Test Summary:');
+      const queuedProducts = results.filter(r => r.status === 'queued');
+      if (queuedProducts.length > 0) {
+        console.log('  Queued products by brand:');
+        const brandCounts: Record<string, number> = {};
+        for (const r of queuedProducts) {
+          const product = safeProducts.find(p => p.id === r.productId);
+          if (product?.brand) {
+            brandCounts[product.brand] = (brandCounts[product.brand] || 0) + 1;
+          }
+        }
+        for (const [brand, count] of Object.entries(brandCounts).sort((a, b) => b[1] - a[1])) {
+          console.log(`    - ${brand}: ${count} items`);
+        }
+      }
+      console.log('\n  Watch for errors on:');
+      console.log('    - Patek Philippe (known issue)');
+      console.log('    - Rolex (high-value test)');
+      console.log('    - Other $5,000+ watches');
+      console.log('\n  Analysis goal:');
+      console.log('    - If only Patek fails: Brand-specific issue');
+      console.log('    - If all $5,000+ fail: Price-related issue');
+      console.log('    - If random failures: Network/rate limit issue');
+    }
 
     console.log('\n📤 Jobs queued! Monitor progress:');
     console.log('  - Bull Board: http://localhost:3000/admin/queues');
