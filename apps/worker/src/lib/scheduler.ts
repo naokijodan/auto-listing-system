@@ -43,10 +43,19 @@ export interface SchedulerConfig {
     enabled: boolean;
     cronExpression: string;
   };
-  // 日次レポート
+  // 日次レポート（運用統計）
   dailyReport: {
     enabled: boolean;
     cronExpression: string;
+  };
+  // 売上レポート（日次/週次売上サマリー）
+  salesReport: {
+    enabled: boolean;
+    dailyCron: string;      // 日次売上レポートのcron
+    weeklyCron: string;     // 週次売上レポートのcron
+    saveToDb: boolean;      // DBに保存するか
+    exportCsv: boolean;     // CSV出力するか
+    csvDir: string;         // CSV出力先ディレクトリ
   };
   // ヘルスチェック
   healthCheck: {
@@ -113,6 +122,15 @@ export interface SchedulerConfig {
     delayMs: number;          // チェック間の待機時間（ミリ秒）
     marketplace?: 'JOOM' | 'EBAY'; // 対象マーケットプレイス（未指定で全て）
   };
+  // 自動価格調整エンジン（Phase 54）
+  priceAdjustment: {
+    enabled: boolean;
+    cronExpression: string;   // 実行間隔（デフォルト: 4時間ごと）
+    limit: number;            // 1回の実行で処理する最大数
+    targetProfitRate: number; // 目標利益率（%）
+    minProfitRate: number;    // 最低利益率（%）
+    maxPriceChangePercent: number; // 最大価格変更率（%）
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -131,7 +149,15 @@ const DEFAULT_CONFIG: SchedulerConfig = {
   },
   dailyReport: {
     enabled: true,
-    cronExpression: '0 21 * * *', // 毎日21時
+    cronExpression: '0 23 * * *', // 毎日23時
+  },
+  salesReport: {
+    enabled: true,
+    dailyCron: '0 23 * * *',      // 毎日23時に日次売上レポート
+    weeklyCron: '0 9 * * 1',      // 毎週月曜9時に週次売上レポート
+    saveToDb: true,               // DBに保存
+    exportCsv: false,             // CSV出力しない（デフォルト）
+    csvDir: '/tmp/reports',       // CSV出力先
   },
   healthCheck: {
     enabled: true,
@@ -186,6 +212,14 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     cronExpression: '0 */6 * * *',     // 6時間ごとにマルチソース在庫同期
     limit: 50,                          // 1回の実行で最大50件
     delayMs: 3000,                      // チェック間3秒待機
+  },
+  priceAdjustment: {
+    enabled: true,
+    cronExpression: '0 */4 * * *',     // 4時間ごとに価格調整
+    limit: 50,                          // 1回の実行で最大50件
+    targetProfitRate: 15,               // 目標利益率15%
+    minProfitRate: 10,                  // 最低利益率10%
+    maxPriceChangePercent: 20,          // 最大価格変更率20%
   },
 };
 
@@ -355,6 +389,68 @@ async function scheduleDailyReport(config: SchedulerConfig['dailyReport']) {
   log.info({
     type: 'daily_report_scheduled',
     cronExpression: config.cronExpression,
+  });
+}
+
+/**
+ * 売上レポートジョブをスケジュール（日次・週次）
+ */
+async function scheduleSalesReport(config: SchedulerConfig['salesReport']) {
+  if (!config.enabled) {
+    log.info({ type: 'sales_report_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await scrapeQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'daily-sales-report' || job.name === 'weekly-sales-report') {
+      await scrapeQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // 日次売上レポートジョブを追加
+  await scrapeQueue.add(
+    'daily-sales-report',
+    {
+      type: 'daily',
+      saveToDb: config.saveToDb,
+      exportCsv: config.exportCsv,
+      csvDir: config.csvDir,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.dailyCron,
+      },
+      jobId: 'daily-sales-report',
+    }
+  );
+
+  // 週次売上レポートジョブを追加
+  await scrapeQueue.add(
+    'weekly-sales-report',
+    {
+      type: 'weekly',
+      saveToDb: config.saveToDb,
+      exportCsv: config.exportCsv,
+      csvDir: config.csvDir,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.weeklyCron,
+      },
+      jobId: 'weekly-sales-report',
+    }
+  );
+
+  log.info({
+    type: 'sales_report_scheduled',
+    dailyCron: config.dailyCron,
+    weeklyCron: config.weeklyCron,
+    saveToDb: config.saveToDb,
+    exportCsv: config.exportCsv,
   });
 }
 
@@ -638,6 +734,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     exchangeRate: { ...DEFAULT_CONFIG.exchangeRate, ...config.exchangeRate },
     priceSync: { ...DEFAULT_CONFIG.priceSync, ...config.priceSync },
     dailyReport: { ...DEFAULT_CONFIG.dailyReport, ...config.dailyReport },
+    salesReport: { ...DEFAULT_CONFIG.salesReport, ...config.salesReport },
     healthCheck: { ...DEFAULT_CONFIG.healthCheck, ...config.healthCheck },
     pricingOptimization: { ...DEFAULT_CONFIG.pricingOptimization, ...config.pricingOptimization },
     competitorMonitoring: { ...DEFAULT_CONFIG.competitorMonitoring, ...config.competitorMonitoring },
@@ -648,6 +745,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     activeInventoryMonitor: { ...DEFAULT_CONFIG.activeInventoryMonitor, ...config.activeInventoryMonitor },
     pausedReEvaluation: { ...DEFAULT_CONFIG.pausedReEvaluation, ...config.pausedReEvaluation },
     batchInventorySync: { ...DEFAULT_CONFIG.batchInventorySync, ...config.batchInventorySync },
+    priceAdjustment: { ...DEFAULT_CONFIG.priceAdjustment, ...config.priceAdjustment },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -656,6 +754,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleExchangeRateUpdate(finalConfig.exchangeRate);
   await schedulePriceSync(finalConfig.priceSync);
   await scheduleDailyReport(finalConfig.dailyReport);
+  await scheduleSalesReport(finalConfig.salesReport);
   await scheduleHealthCheck(finalConfig.healthCheck);
   await schedulePricingOptimization(finalConfig.pricingOptimization);
   await scheduleCompetitorMonitoring(finalConfig.competitorMonitoring);
@@ -666,6 +765,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleActiveInventoryMonitor(finalConfig.activeInventoryMonitor);
   await schedulePausedReEvaluation(finalConfig.pausedReEvaluation);
   await scheduleBatchInventorySync(finalConfig.batchInventorySync);
+  await schedulePriceAdjustment(finalConfig.priceAdjustment);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -749,6 +849,48 @@ export async function triggerDailyReport() {
   log.info({
     type: 'manual_daily_report_triggered',
     jobId: job.id,
+  });
+
+  return job.id;
+}
+
+/**
+ * 手動で売上レポートをトリガー
+ * @param type 'daily' | 'weekly'
+ * @param options オプション
+ */
+export async function triggerSalesReport(
+  type: 'daily' | 'weekly',
+  options?: {
+    date?: Date;
+    saveToDb?: boolean;
+    exportCsv?: boolean;
+    csvDir?: string;
+  }
+) {
+  const jobName = type === 'daily' ? 'daily-sales-report' : 'weekly-sales-report';
+
+  const job = await scrapeQueue.add(
+    jobName,
+    {
+      type,
+      date: options?.date?.toISOString(),
+      saveToDb: options?.saveToDb ?? true,
+      exportCsv: options?.exportCsv ?? false,
+      csvDir: options?.csvDir || '/tmp/reports',
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_sales_report_triggered',
+    jobId: job.id,
+    reportType: type,
+    options,
   });
 
   return job.id;
@@ -2329,6 +2471,95 @@ export async function triggerPausedReEvaluation(): Promise<string> {
   log.info({
     type: 'manual_paused_reevaluation_triggered',
     jobId: job.id,
+  });
+
+  return job.id || '';
+}
+
+// ========================================
+// Phase 54: 自動価格調整エンジン
+// ========================================
+
+/**
+ * 価格調整ジョブをスケジュール（Phase 54）
+ * 為替レート連動・利益率ベースの自動価格調整
+ */
+async function schedulePriceAdjustment(config: SchedulerConfig['priceAdjustment']) {
+  if (!config.enabled) {
+    log.info({ type: 'price_adjustment_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await pricingQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'price-adjustment') {
+      await pricingQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // 価格調整ジョブを追加（4時間ごと）
+  await pricingQueue.add(
+    'price-adjustment',
+    {
+      type: 'price-adjustment',
+      limit: config.limit,
+      targetProfitRate: config.targetProfitRate,
+      minProfitRate: config.minProfitRate,
+      maxPriceChangePercent: config.maxPriceChangePercent,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'price-adjustment-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({
+    type: 'price_adjustment_scheduled',
+    cronExpression: config.cronExpression,
+    limit: config.limit,
+    targetProfitRate: config.targetProfitRate,
+    minProfitRate: config.minProfitRate,
+    maxPriceChangePercent: config.maxPriceChangePercent,
+  });
+}
+
+/**
+ * 手動で価格調整をトリガー（Phase 54）
+ */
+export async function triggerScheduledPriceAdjustment(options?: {
+  marketplace?: 'JOOM' | 'EBAY';
+  limit?: number;
+  targetProfitRate?: number;
+  minProfitRate?: number;
+  maxPriceChangePercent?: number;
+}): Promise<string> {
+  const job = await pricingQueue.add(
+    'price-adjustment',
+    {
+      type: 'price-adjustment',
+      marketplace: options?.marketplace,
+      limit: options?.limit || 50,
+      targetProfitRate: options?.targetProfitRate || 15,
+      minProfitRate: options?.minProfitRate || 10,
+      maxPriceChangePercent: options?.maxPriceChangePercent || 20,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_price_adjustment_triggered',
+    jobId: job.id,
+    options,
   });
 
   return job.id || '';

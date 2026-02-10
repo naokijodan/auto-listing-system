@@ -21,6 +21,7 @@ import { alertManager } from './alert-manager';
 import { updateExchangeRate } from './exchange-rate';
 import { syncAllPrices } from './price-sync';
 import { sendDailyReportNotification, generateDailyReport } from './daily-report';
+import { runDailyReportJob, runWeeklyReportJob } from './report-generator';
 import { notifyHealthIssues, checkSystemHealth, recordError } from './error-monitor';
 import { notifyExchangeRateUpdated } from './notifications';
 
@@ -55,6 +56,10 @@ export async function startWorkers(connection: IORedis): Promise<void> {
       // 日次レポートジョブ
       if (job.name === 'daily-report') {
         return handleDailyReport(job);
+      }
+      // 売上レポートジョブ（日次・週次）
+      if (job.name === 'daily-sales-report' || job.name === 'weekly-sales-report') {
+        return handleSalesReport(job);
       }
       // ヘルスチェックジョブ
       if (job.name === 'health-check') {
@@ -326,6 +331,53 @@ async function handleDailyReport(job: any): Promise<any> {
     };
   } catch (error: any) {
     log.error({ type: 'daily_report_job_error', error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * 売上レポートジョブのハンドラー（日次・週次）
+ */
+async function handleSalesReport(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'sales-report' });
+  const { type, date, saveToDb, exportCsv, csvDir } = job.data;
+  const isWeekly = type === 'weekly' || job.name === 'weekly-sales-report';
+
+  log.info({ type: 'sales_report_job_start', reportType: isWeekly ? 'weekly' : 'daily' });
+
+  try {
+    const options = {
+      saveToDb: saveToDb ?? true,
+      exportCsv: exportCsv ?? false,
+      csvDir: csvDir || '/tmp/reports',
+    };
+
+    let result;
+    if (isWeekly) {
+      const weekStart = date ? new Date(date) : undefined;
+      result = await runWeeklyReportJob(weekStart, options);
+    } else {
+      const targetDate = date ? new Date(date) : undefined;
+      result = await runDailyReportJob(targetDate, options);
+    }
+
+    log.info({
+      type: 'sales_report_job_complete',
+      reportType: isWeekly ? 'weekly' : 'daily',
+      savedTo: result.savedTo?.id,
+      csvPath: result.csvPath,
+    });
+
+    return {
+      success: true,
+      reportType: isWeekly ? 'weekly' : 'daily',
+      report: result.report,
+      savedTo: result.savedTo,
+      csvPath: result.csvPath,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'sales_report_job_error', error: error.message });
     throw error;
   }
 }
