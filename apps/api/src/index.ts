@@ -44,6 +44,8 @@ import { batchOperationsRouter } from './routes/batch-operations';
 import { scheduledReportsRouter } from './routes/scheduled-reports';
 import { settingsRouter } from './routes/settings';
 import ebayAuthRouter from './routes/ebay-auth';
+import { bulkOperationsRouter } from './routes/bulk-operations';
+import { refundsRouter } from './routes/refunds';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -137,6 +139,8 @@ app.use('/api/batch', batchOperationsRouter);
 app.use('/api/scheduled-reports', scheduledReportsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/ebay', ebayAuthRouter);
+app.use('/api/bulk', bulkOperationsRouter);
+app.use('/api/refunds', refundsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
