@@ -17,55 +17,66 @@
 | 29-30 | バッチ処理最適化・多言語対応 | 2026-02-11 |
 | 31-32 | パフォーマンス最適化・監視アラート | 2026-02-11 |
 | 33-34 | セキュリティ強化・外部連携 | 2026-02-11 |
+| 35-36 | ワークフロー自動化・AI機能強化 | 2026-02-11 |
 
 ### 最新コミット
-- ハッシュ: `cccee1c`
-- メッセージ: `feat: Phase 33-34 セキュリティ強化と外部連携機能を実装`
+- ハッシュ: `5b5d66b`
+- メッセージ: `feat: Phase 35-36 ワークフロー自動化とAI機能強化を実装`
 
 ---
 
-## Phase 33-34 実装内容
+## Phase 35-36 実装内容
 
-### Phase 33: セキュリティ強化
+### Phase 35: ワークフロー自動化
 **新規モデル:**
-- SecurityEvent, LoginAttempt, DeviceSession
-- TwoFactorAuth, TwoFactorChallenge
-- ApiKeyPolicy, PasswordPolicy, PasswordHistory
+- Workflow, WorkflowStep（ワークフロー定義）
+- WorkflowExecution, WorkflowStepExecution（実行インスタンス）
+- ApprovalRequest, ApprovalAction（承認フロー）
+- AutomationRule, AutomationExecution（自動化ルール）
 
 **新規ファイル:**
-- `apps/worker/src/lib/security-service.ts` - セキュリティサービス
-- `apps/api/src/routes/security.ts` - セキュリティAPI
+- `apps/worker/src/lib/workflow-service.ts` - ワークフロー・承認・自動化サービス
+- `apps/api/src/routes/workflows.ts` - ワークフローAPI
 
 **機能:**
-- セキュリティイベントログ（24種類のイベントタイプ）
-- ブルートフォース保護（IPブロック、試行回数制限）
-- デバイスセッション管理（信頼済みデバイス、同時ログイン制限）
-- TOTP 2FA（speakeasy + QRcode + バックアップコード）
-- APIキーポリシー（IP制限、スコープ、有効期限、使用回数制限）
-- パスワードポリシー（強度要件、履歴チェック、有効期限）
-- AES-256-GCM暗号化
+- ワークフロー定義・実行管理
+- 8種類のステップタイプ（ACTION, CONDITION, APPROVAL, DELAY, NOTIFICATION, LOOP, PARALLEL, AI, INTEGRATION）
+- 承認フロー（複数承認者、期限、エスカレーション）
+- 自動化ルールエンジン（条件評価、アクション実行）
+- イベント駆動型自動化（product.created, order.completed等）
+- レート制限・クールダウン機能
 
-### Phase 34: 外部連携強化
+### Phase 36: AI機能強化
 **新規モデル:**
-- ExternalIntegration, IntegrationCredential, IntegrationSyncLog
-- AnalyticsEvent, AccountingExport, AccountingMapping
+- AiModel（AIモデル設定）
+- AiTrainingJob（学習ジョブ）
+- AiPredictionLog（予測ログ）
+- PricePrediction（価格予測）
+- DemandForecast（需要予測）
+- ProductRecommendation（商品推薦）
+- CompetitorPrice（競合価格）
+- PriceOptimization（価格最適化設定）
 
 **新規ファイル:**
-- `apps/worker/src/lib/integration-service.ts` - 外部連携サービス
-- `apps/api/src/routes/integrations.ts` - 外部連携API
+- `apps/worker/src/lib/ai-service.ts` - AI機能サービス
+- `apps/api/src/routes/ai.ts` - AI機能API
 
 **機能:**
-- 外部連携の一元管理
-- OAuth 2.0/APIキー認証の統一
-- 認証情報の暗号化保存
-- 同期ログ・リトライ機能
-- Google Analytics 4連携基盤
-- 会計ソフト連携基盤（freee/弥生/マネーフォワード対応）
-- BaseIntegrationService抽象クラス（SDK）
+- AIモデル管理（OpenAI, Anthropic, Google対応）
+- 価格予測（競合分析、市場需要、季節性考慮）
+- 需要予測（トレンド分析、季節性指数）
+- 商品推薦（類似商品、クロスセル、アップセル等8種類）
+- 競合価格監視・統計
+- 価格最適化（5種類の戦略: COMPETITIVE, PROFIT_MAXIMIZATION, MARKET_PENETRATION, DYNAMIC, RULE_BASED）
+- AI学習ジョブ管理
 
 ---
 
 ## 累積実装内容
+
+### Phase 33-34
+- **セキュリティ強化**: SecurityEvent, LoginAttempt, DeviceSession, TwoFactorAuth
+- **外部連携**: ExternalIntegration, IntegrationCredential, AnalyticsEvent, AccountingExport
 
 ### Phase 31-32
 - **パフォーマンス最適化**: CacheConfig, CacheEntry, QueryPerformance
@@ -103,11 +114,11 @@
 
 ## 次のPhase候補
 
-### Phase 35-36 候補
+### Phase 37-38 候補
 1. **データ可視化** - グラフ・チャート・ダッシュボード強化
 2. **検索機能強化** - Elasticsearch連携・全文検索
-3. **ワークフロー自動化** - 承認フロー・自動化ルール
-4. **AI機能強化** - 商品推薦・価格最適化・需要予測
+3. **Joom出品ワークフロー** - Phase 40の実装開始
+4. **テスト強化** - 単体・統合・E2Eテストのカバレッジ向上
 
 ---
 
@@ -139,6 +150,8 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 - i18nフォールバックチェーン: zh-TW→zh→en, ko→en, ja→en 等
 - 既存のAlertモデルと競合するため、メトリクス関連はMetricAlertRule等のプレフィックスを使用
 - 認証情報の暗号化には環境変数 `ENCRYPTION_KEY` を使用（AES-256-GCM）
+- Saleモデルには `soldAt` フィールドがない（`createdAt` を使用）
+- AI API呼び出しには環境変数 `OPENAI_API_KEY` が必要
 
 ---
 
