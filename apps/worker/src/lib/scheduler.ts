@@ -8,6 +8,7 @@ import {
   BatchProgressInfo,
 } from '@rakuda/config';
 import { prisma, Marketplace } from '@rakuda/database';
+import { checkSingleProductInventory, InventoryCheckResult } from './inventory-checker';
 
 const log = logger.child({ module: 'scheduler' });
 
@@ -92,6 +93,13 @@ export interface SchedulerConfig {
     maxListingsPerRun: number;  // 1回の実行で出品する最大数
     marketplace: 'joom' | 'ebay' | 'all';  // 対象マーケットプレイス
   };
+  // Active商品の高頻度在庫監視（Phase 52）
+  activeInventoryMonitor: {
+    enabled: boolean;
+    cronExpression: string;   // チェック間隔（デフォルト: 毎時0分）
+    batchSize: number;        // 1回の実行でチェックする最大数
+    delayBetweenChecks: number; // チェック間の待機時間（ミリ秒）
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -149,6 +157,12 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     cronExpression: '0 * * * *',       // 毎時0分に新商品チェック
     maxListingsPerRun: 20,             // 1回の実行で最大20件出品
     marketplace: 'all',                // 全マーケットプレイス対象
+  },
+  activeInventoryMonitor: {
+    enabled: true,
+    cronExpression: '0 * * * *',       // 毎時0分にActive商品チェック
+    batchSize: 50,                     // 1回の実行で最大50件チェック
+    delayBetweenChecks: 3000,          // チェック間3秒待機
   },
 };
 
@@ -561,6 +575,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     inventorySync: { ...DEFAULT_CONFIG.inventorySync, ...config.inventorySync },
     tokenRefresh: { ...DEFAULT_CONFIG.tokenRefresh, ...config.tokenRefresh },
     autoPublish: { ...DEFAULT_CONFIG.autoPublish, ...config.autoPublish },
+    activeInventoryMonitor: { ...DEFAULT_CONFIG.activeInventoryMonitor, ...config.activeInventoryMonitor },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -576,6 +591,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleInventorySync(finalConfig.inventorySync);
   await scheduleTokenRefresh(finalConfig.tokenRefresh);
   await scheduleAutoPublish(finalConfig.autoPublish);
+  await scheduleActiveInventoryMonitor(finalConfig.activeInventoryMonitor);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -1745,4 +1761,265 @@ export async function queueParallelJobs<T>(
     failed,
     jobIds,
   };
+}
+
+// ========================================
+// Phase 52: Active商品の高頻度在庫監視
+// ========================================
+
+/**
+ * Active商品の高頻度在庫監視ジョブをスケジュール（Phase 52）
+ * 1時間毎にACTIVEステータスの出品を持つ商品の在庫をチェック
+ */
+async function scheduleActiveInventoryMonitor(config: SchedulerConfig['activeInventoryMonitor']) {
+  if (!config.enabled) {
+    log.info({ type: 'active_inventory_monitor_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await inventoryQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'active-inventory-check') {
+      await inventoryQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // 高頻度在庫監視ジョブを追加
+  await inventoryQueue.add(
+    'active-inventory-check',
+    {
+      type: 'inventory-check',
+      target: 'active',
+      batchSize: config.batchSize,
+      delayBetweenChecks: config.delayBetweenChecks,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'active-inventory-check-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({
+    type: 'active_inventory_monitor_scheduled',
+    cronExpression: config.cronExpression,
+    batchSize: config.batchSize,
+    delayBetweenChecks: config.delayBetweenChecks,
+  });
+}
+
+/**
+ * 高頻度在庫監視スケジュールをセットアップ（外部から呼び出し可能）
+ */
+export async function setupInventoryMonitorSchedule(): Promise<void> {
+  const scheduler = inventoryQueue;
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await scheduler.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'active-inventory-check') {
+      await scheduler.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // 1時間毎のActive商品監視
+  await scheduler.add(
+    'active-inventory-check',
+    {
+      type: 'inventory-check',
+      target: 'active',
+      batchSize: 50,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: '0 * * * *', // 毎時0分
+      },
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({ type: 'inventory_monitor_schedule_setup' });
+}
+
+/**
+ * Active商品の在庫監視を実行（Phase 52）
+ * ACTIVE状態のリスティングを持つ商品の在庫をチェックし、
+ * 在庫切れの場合は即座に停止してアラートを送信
+ */
+export async function runActiveInventoryCheck(options?: {
+  batchSize?: number;
+  delayBetweenChecks?: number;
+  marketplace?: 'JOOM' | 'EBAY';
+}): Promise<{
+  total: number;
+  checked: number;
+  outOfStock: number;
+  priceChanged: number;
+  errors: number;
+}> {
+  const checkLog = logger.child({ module: 'active-inventory-check' });
+  const batchSize = options?.batchSize || 50;
+  const delayBetweenChecks = options?.delayBetweenChecks || 3000;
+  const marketplace = options?.marketplace;
+
+  checkLog.info({
+    type: 'active_inventory_check_start',
+    batchSize,
+    delayBetweenChecks,
+    marketplace: marketplace || 'all',
+  });
+
+  // Active状態のリスティングを持つ商品を取得
+  const whereClause: any = {
+    status: 'ACTIVE',
+  };
+
+  // マーケットプレイスフィルター（指定がある場合）
+  if (marketplace) {
+    whereClause.marketplace = marketplace;
+  } else {
+    // デフォルトはJoomを優先
+    whereClause.marketplace = 'JOOM';
+  }
+
+  const activeListings = await prisma.listing.findMany({
+    where: whereClause,
+    include: {
+      product: {
+        select: {
+          id: true,
+          sourceUrl: true,
+          price: true,
+          title: true,
+        },
+      },
+    },
+    take: batchSize,
+    orderBy: { updatedAt: 'asc' },
+  });
+
+  const stats = {
+    total: activeListings.length,
+    checked: 0,
+    outOfStock: 0,
+    priceChanged: 0,
+    errors: 0,
+  };
+
+  if (activeListings.length === 0) {
+    checkLog.info({ type: 'active_inventory_check_no_listings' });
+    return stats;
+  }
+
+  for (const listing of activeListings) {
+    try {
+      const result = await checkSingleProductInventory(listing.product.id);
+      stats.checked++;
+
+      // InventoryLogに記録
+      await prisma.inventoryLog.create({
+        data: {
+          productId: listing.product.id,
+          listingId: listing.id,
+          price: result.currentPrice || listing.product.price,
+          stock: result.isAvailable ? 1 : 0,
+          isAvailable: result.isAvailable,
+          priceChanged: result.priceChanged,
+          stockChanged: !result.isAvailable,
+          previousPrice: listing.product.price,
+          previousStock: 1,
+          sourceUrl: listing.product.sourceUrl,
+          metadata: {
+            action: result.action,
+            hash: result.newHash,
+            checkedBy: 'active-inventory-monitor',
+          },
+        },
+      });
+
+      if (!result.isAvailable) {
+        stats.outOfStock++;
+
+        // リスティングをPAUSEDに変更（即時停止）
+        await prisma.listing.update({
+          where: { id: listing.id },
+          data: {
+            status: 'PAUSED',
+            updatedAt: new Date(),
+          },
+        });
+
+        checkLog.warn({
+          type: 'active_listing_out_of_stock',
+          listingId: listing.id,
+          productId: listing.product.id,
+          title: listing.product.title,
+          marketplace: listing.marketplace,
+        });
+      }
+
+      if (result.priceChanged) {
+        stats.priceChanged++;
+      }
+
+      // レート制限: 指定された待機時間
+      await new Promise(resolve => setTimeout(resolve, delayBetweenChecks));
+
+    } catch (error: any) {
+      stats.errors++;
+      checkLog.error({
+        type: 'active_inventory_check_item_error',
+        listingId: listing.id,
+        productId: listing.product.id,
+        error: error.message,
+      });
+    }
+  }
+
+  checkLog.info({
+    type: 'active_inventory_check_complete',
+    stats,
+  });
+
+  return stats;
+}
+
+/**
+ * 手動でActive商品の在庫監視をトリガー（Phase 52）
+ */
+export async function triggerActiveInventoryCheck(options?: {
+  batchSize?: number;
+  delayBetweenChecks?: number;
+  marketplace?: 'JOOM' | 'EBAY';
+}): Promise<string> {
+  const job = await inventoryQueue.add(
+    'active-inventory-check',
+    {
+      type: 'inventory-check',
+      target: 'active',
+      batchSize: options?.batchSize || 50,
+      delayBetweenChecks: options?.delayBetweenChecks || 3000,
+      marketplace: options?.marketplace,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_active_inventory_check_triggered',
+    jobId: job.id,
+    options,
+  });
+
+  return job.id || '';
 }

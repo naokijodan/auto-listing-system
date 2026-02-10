@@ -1108,3 +1108,86 @@ model MarketplaceSyncSetting {
   @@index([isEnabled])
   @@map("marketplace_sync_settings")
 }
+
+// ========================================
+// 在庫履歴（Phase 41）
+// ========================================
+model InventoryLog {
+  id          String   @id @default(cuid())
+  productId   String
+  listingId   String?
+
+  // 在庫・価格情報
+  price       Int      // 仕入価格（円）
+  stock       Int      @default(1) // 在庫数
+  isAvailable Boolean  @default(true)
+
+  // 変動検知
+  priceChanged   Boolean @default(false)
+  stockChanged   Boolean @default(false)
+  previousPrice  Int?
+  previousStock  Int?
+
+  // メタデータ
+  sourceUrl   String?
+  checkedAt   DateTime @default(now())
+  metadata    Json     @default("{}")
+
+  @@index([productId, checkedAt])
+  @@index([checkedAt])
+  @@map("inventory_logs")
+}
+
+// ========================================
+// 自動化判定用ログ（Phase 41）
+// ========================================
+model ShadowLog {
+  id        String   @id @default(cuid())
+
+  // サービス・操作
+  service   String   // 'profit-guard' | 'order-processor' | 'inventory-sync'
+  operation String   // 'check' | 'process' | 'decide'
+
+  // 入力・出力
+  input     Json     // 入力データ
+  output    Json     // 出力データ（判定結果など）
+
+  // 判定結果
+  decision      String?  // 'approve' | 'reject' | 'hold'
+  decisionReason String?
+  isDryRun      Boolean  @default(true)
+
+  // パフォーマンス
+  durationMs    Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([service, createdAt])
+  @@index([decision, createdAt])
+  @@map("shadow_logs")
+}
+
+// ========================================
+// 利益率閾値設定（Phase 41）
+// ========================================
+model ProfitThreshold {
+  id          String   @id @default(cuid())
+
+  marketplace String   // 'JOOM' | 'EBAY' | 'ALL'
+  category    String?  // カテゴリ（nullはデフォルト）
+
+  // 閾値
+  minProfitRate     Float @default(10)  // 最低利益率 (%)
+  minProfitAmount   Int   @default(500) // 最低利益額（円）
+  alertProfitRate   Float @default(15)  // アラート閾値 (%)
+
+  // 設定
+  isActive    Boolean  @default(true)
+  isDryRun    Boolean  @default(true) // Dry Runモード
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([marketplace, category])
+  @@map("profit_thresholds")
+}

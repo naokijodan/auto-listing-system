@@ -14,6 +14,7 @@ import { competitorProcessor } from '../processors/competitor';
 import { processOrderSyncJob } from '../processors/order-sync';
 import { processPriceSyncJob } from '../processors/price-sync';
 import { processInventorySyncJob } from '../processors/inventory-sync';
+import { runActiveInventoryCheck } from './scheduler';
 import { JoomApiClient } from './joom-api';
 import { EbayApiClient } from './ebay-api';
 import { alertManager } from './alert-manager';
@@ -124,6 +125,10 @@ export async function startWorkers(connection: IORedis): Promise<void> {
       // 出品状態同期
       if (job.name === 'sync-listing-status') {
         return processSyncListingStatus(job);
+      }
+      // Active商品の高頻度在庫監視（Phase 52）
+      if (job.name === 'active-inventory-check') {
+        return handleActiveInventoryCheck(job);
       }
       // スケジュールされた在庫チェック
       if (job.name === 'scheduled-inventory-check' || job.name === 'manual-inventory-check') {
@@ -492,6 +497,50 @@ async function handleShipToMarketplace(job: any): Promise<any> {
       marketplace,
       error: error.message,
     });
+    throw error;
+  }
+}
+
+/**
+ * Active商品の高頻度在庫監視ジョブのハンドラー（Phase 52）
+ * ACTIVE状態のリスティングを持つ商品の在庫をチェックし、
+ * 在庫切れ検知時に即時停止・アラート送信
+ */
+async function handleActiveInventoryCheck(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'active-inventory-check' });
+  const { batchSize, delayBetweenChecks, marketplace, manual } = job.data;
+
+  log.info({
+    type: 'active_inventory_check_job_start',
+    batchSize,
+    delayBetweenChecks,
+    marketplace: marketplace || 'JOOM',
+    manual: !!manual,
+  });
+
+  try {
+    const result = await runActiveInventoryCheck({
+      batchSize: batchSize || 50,
+      delayBetweenChecks: delayBetweenChecks || 3000,
+      marketplace: marketplace || 'JOOM',
+    });
+
+    log.info({
+      type: 'active_inventory_check_job_complete',
+      total: result.total,
+      checked: result.checked,
+      outOfStock: result.outOfStock,
+      priceChanged: result.priceChanged,
+      errors: result.errors,
+    });
+
+    return {
+      success: true,
+      ...result,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'active_inventory_check_job_error', error: error.message });
     throw error;
   }
 }

@@ -67,6 +67,12 @@ async function main() {
         maxListingsPerRun: parseInt(process.env.AUTO_PUBLISH_MAX_PER_RUN || '20', 10),
         marketplace: (process.env.AUTO_PUBLISH_MARKETPLACE as 'joom' | 'ebay' | 'all') || 'all',
       },
+      activeInventoryMonitor: {
+        enabled: process.env.ACTIVE_INVENTORY_MONITOR_ENABLED !== 'false',
+        cronExpression: process.env.ACTIVE_INVENTORY_MONITOR_CRON || '0 * * * *',
+        batchSize: parseInt(process.env.ACTIVE_INVENTORY_MONITOR_BATCH_SIZE || '50', 10),
+        delayBetweenChecks: parseInt(process.env.ACTIVE_INVENTORY_MONITOR_DELAY || '3000', 10),
+      },
     };
 
     // スケジューラー初期化
@@ -92,6 +98,7 @@ async function main() {
     logger.info(`   - Inventory sync: ${schedulerConfig.inventorySync.enabled ? schedulerConfig.inventorySync.cronExpression : 'DISABLED'}`);
     logger.info(`   - Token refresh: ${schedulerConfig.tokenRefresh.enabled ? schedulerConfig.tokenRefresh.cronExpression : 'DISABLED'}`);
     logger.info(`   - Auto publish: ${schedulerConfig.autoPublish.enabled ? `${schedulerConfig.autoPublish.cronExpression} (max ${schedulerConfig.autoPublish.maxListingsPerRun}/run, ${schedulerConfig.autoPublish.marketplace})` : 'DISABLED'}`);
+    logger.info(`   - Active inventory monitor: ${schedulerConfig.activeInventoryMonitor.enabled ? `${schedulerConfig.activeInventoryMonitor.cronExpression} (batch ${schedulerConfig.activeInventoryMonitor.batchSize})` : 'DISABLED'}`);
   } catch (error) {
     logger.error('Failed to start worker process', error);
     process.exit(1);
