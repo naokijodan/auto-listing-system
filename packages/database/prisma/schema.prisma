@@ -91,6 +91,10 @@ model Product {
   listings Listing[]
   jobLogs  JobLog[]
 
+  // Phase 36: AI機能強化
+  pricePredictions PricePrediction[]
+  competitorPrices CompetitorPrice[]
+
   @@unique([sourceId, sourceItemId])
   @@index([status])
   @@index([sourceHash])
@@ -1881,6 +1885,11 @@ model User {
   twoFactorAuth    TwoFactorAuth?
   twoFactorChallenges TwoFactorChallenge[]
   passwordHistory  PasswordHistory[]
+
+  // Phase 35: ワークフロー自動化
+  createdWorkflows Workflow[]
+  createdAutomationRules AutomationRule[]
+  approvalActions  ApprovalAction[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -4369,4 +4378,976 @@ enum AccountingCategoryType {
   EXPENSE     // 経費
   ASSET       // 資産
   LIABILITY   // 負債
+}
+
+// ========================================
+// Phase 35: ワークフロー自動化
+// ========================================
+
+// ワークフロー定義
+model Workflow {
+  id          String   @id @default(cuid())
+
+  // 基本情報
+  name        String
+  description String?  @db.Text
+  version     Int      @default(1)
+
+  // トリガー設定
+  triggerType WorkflowTriggerType
+  triggerConfig Json   @default("{}") // イベント名、スケジュール等
+
+  // 設定
+  isActive    Boolean  @default(true)
+  priority    Int      @default(0)
+  timeout     Int      @default(3600000) // タイムアウト（ミリ秒）
+  maxRetries  Int      @default(3)
+
+  // オーナー
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  // 統計
+  totalExecutions Int  @default(0)
+  successfulExecutions Int @default(0)
+  failedExecutions Int @default(0)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  steps       WorkflowStep[]
+  executions  WorkflowExecution[]
+
+  @@index([triggerType, isActive])
+  @@index([createdById])
+  @@map("workflows")
+}
+
+// ワークフローステップ
+model WorkflowStep {
+  id          String   @id @default(cuid())
+
+  // ワークフロー
+  workflowId  String
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  // ステップ情報
+  name        String
+  description String?
+  order       Int      // 実行順序
+
+  // ステップタイプ
+  stepType    WorkflowStepType
+
+  // 設定（タイプ別）
+  config      Json     @default("{}") // アクション、条件、承認者等
+
+  // 条件分岐
+  condition   Json?    // 実行条件
+  onSuccess   String?  // 成功時の次ステップID
+  onFailure   String?  // 失敗時の次ステップID
+
+  // エラーハンドリング
+  retryOnError Boolean @default(true)
+  maxRetries  Int      @default(3)
+  retryDelay  Int      @default(60000) // リトライ間隔（ミリ秒）
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  executions  WorkflowStepExecution[]
+
+  @@index([workflowId, order])
+  @@map("workflow_steps")
+}
+
+// ワークフロー実行インスタンス
+model WorkflowExecution {
+  id          String   @id @default(cuid())
+
+  // ワークフロー
+  workflowId  String
+  workflow    Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  // トリガー情報
+  triggeredBy WorkflowTriggerSource
+  triggeredById String? // ユーザーID or システムID
+  triggerData Json     @default("{}") // トリガーデータ
+
+  // 対象エンティティ
+  entityType  String?  // Product, Order, Listing等
+  entityId    String?
+
+  // 実行状態
+  status      WorkflowExecutionStatus @default(PENDING)
+  currentStepId String?
+
+  // コンテキスト
+  context     Json     @default("{}") // 実行中の変数・データ
+
+  // 実行情報
+  startedAt   DateTime?
+  completedAt DateTime?
+  duration    Int?     // ミリ秒
+
+  // エラー情報
+  errorCode   String?
+  errorMessage String? @db.Text
+  errorDetails Json?
+
+  // リトライ
+  retryCount  Int      @default(0)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  stepExecutions WorkflowStepExecution[]
+  approvalRequests ApprovalRequest[]
+
+  @@index([workflowId, status])
+  @@index([entityType, entityId])
+  @@index([status, createdAt])
+  @@map("workflow_executions")
+}
+
+// ワークフローステップ実行
+model WorkflowStepExecution {
+  id          String   @id @default(cuid())
+
+  // 実行インスタンス
+  executionId String
+  execution   WorkflowExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  // ステップ
+  stepId      String
+  step        WorkflowStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  // 実行状態
+  status      WorkflowStepStatus @default(PENDING)
+
+  // 入出力
+  input       Json     @default("{}") // ステップへの入力
+  output      Json?    // ステップの出力
+
+  // 実行情報
+  startedAt   DateTime?
+  completedAt DateTime?
+  duration    Int?     // ミリ秒
+
+  // エラー情報
+  errorCode   String?
+  errorMessage String? @db.Text
+
+  // リトライ
+  retryCount  Int      @default(0)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([executionId, stepId])
+  @@index([status])
+  @@map("workflow_step_executions")
+}
+
+// 承認リクエスト
+model ApprovalRequest {
+  id          String   @id @default(cuid())
+
+  // ワークフロー実行
+  executionId String?
+  execution   WorkflowExecution? @relation(fields: [executionId], references: [id], onDelete: SetNull)
+
+  // 承認情報
+  title       String
+  description String?  @db.Text
+  requestType ApprovalRequestType
+
+  // 対象エンティティ
+  entityType  String   // Product, Order, Listing, PriceChange等
+  entityId    String
+
+  // 変更内容
+  currentValue Json?   // 変更前の値
+  proposedValue Json?  // 提案された値
+  changeReason String? @db.Text
+
+  // 承認者設定
+  requiredApprovers Int @default(1) // 必要な承認数
+  approverRoleIds String[] // 承認可能なロールID
+  approverUserIds String[] // 承認可能なユーザーID
+
+  // 期限
+  deadline    DateTime?
+
+  // エスカレーション設定
+  escalationEnabled Boolean @default(false)
+  escalationDelay Int?     // エスカレーションまでの時間（ミリ秒）
+  escalatedTo   String?   // エスカレーション先ユーザーID
+  escalatedAt   DateTime?
+
+  // ステータス
+  status      ApprovalStatus @default(PENDING)
+
+  // 統計
+  approvalCount Int     @default(0)
+  rejectionCount Int    @default(0)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  actions     ApprovalAction[]
+
+  @@index([status, deadline])
+  @@index([entityType, entityId])
+  @@index([status, createdAt])
+  @@map("approval_requests")
+}
+
+// 承認アクション
+model ApprovalAction {
+  id          String   @id @default(cuid())
+
+  // 承認リクエスト
+  requestId   String
+  request     ApprovalRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  // アクション実行者
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // アクション
+  action      ApprovalActionType
+  comment     String?  @db.Text
+
+  // 条件付き承認
+  conditions  Json?    // 条件（修正要求等）
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([requestId])
+  @@index([userId])
+  @@map("approval_actions")
+}
+
+// 自動化ルール
+model AutomationRule {
+  id          String   @id @default(cuid())
+
+  // 基本情報
+  name        String
+  description String?  @db.Text
+
+  // トリガー
+  triggerEvent String  // product.created, order.completed, inventory.low等
+
+  // 設定
+  isActive    Boolean  @default(true)
+  priority    Int      @default(0) // 高い方が優先
+
+  // 条件
+  conditions  Json     @default("[]") // 条件配列
+  conditionLogic ConditionLogic @default(AND) // AND/OR
+
+  // アクション
+  actions     Json     @default("[]") // アクション配列
+
+  // 制限
+  rateLimit   Int?     // 一定期間の実行回数制限
+  rateLimitPeriod Int? // 制限期間（秒）
+  cooldownPeriod Int?  // クールダウン期間（秒）
+
+  // 通知設定
+  notifyOnSuccess Boolean @default(false)
+  notifyOnFailure Boolean @default(true)
+  notifyUserIds String[] // 通知先ユーザーID
+
+  // オーナー
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  // 統計
+  totalExecutions Int  @default(0)
+  successfulExecutions Int @default(0)
+  failedExecutions Int @default(0)
+  lastExecutedAt DateTime?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  executions  AutomationExecution[]
+
+  @@index([triggerEvent, isActive])
+  @@index([isActive, priority])
+  @@map("automation_rules")
+}
+
+// 自動化ルール実行ログ
+model AutomationExecution {
+  id          String   @id @default(cuid())
+
+  // ルール
+  ruleId      String
+  rule        AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  // トリガー情報
+  triggerEvent String
+  triggerData Json     @default("{}") // イベントデータ
+
+  // 対象エンティティ
+  entityType  String?
+  entityId    String?
+
+  // 条件評価
+  conditionsMet Boolean @default(true)
+  conditionResults Json? // 各条件の評価結果
+
+  // アクション実行
+  actionsExecuted Json @default("[]") // 実行したアクションと結果
+
+  // ステータス
+  status      AutomationExecutionStatus
+
+  // 実行情報
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  duration    Int?     // ミリ秒
+
+  // エラー情報
+  errorCode   String?
+  errorMessage String? @db.Text
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([ruleId, createdAt])
+  @@index([triggerEvent, createdAt])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@map("automation_executions")
+}
+
+// ========================================
+// Phase 36: AI機能強化
+// ========================================
+
+// AIモデル設定
+model AiModel {
+  id          String   @id @default(cuid())
+
+  // 基本情報
+  name        String
+  description String?
+  modelType   AiModelType
+  provider    AiProvider @default(OPENAI)
+
+  // モデル設定
+  modelId     String   // gpt-4o, gpt-3.5-turbo等
+  apiEndpoint String?  // カスタムエンドポイント
+  config      Json     @default("{}") // temperature, max_tokens等
+
+  // プロンプト
+  systemPrompt String? @db.Text
+  promptTemplate String? @db.Text
+
+  // バージョン
+  version     String   @default("1.0")
+  isLatest    Boolean  @default(true)
+
+  // ステータス
+  isActive    Boolean  @default(true)
+
+  // パフォーマンス統計
+  totalPredictions Int @default(0)
+  averageLatency Float? // 平均レイテンシ（ミリ秒）
+  accuracy    Float?   // 精度（0-1）
+  lastEvaluatedAt DateTime?
+
+  // コスト追跡
+  totalInputTokens Int @default(0)
+  totalOutputTokens Int @default(0)
+  totalCost   Float    @default(0)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  predictions AiPredictionLog[]
+  trainingJobs AiTrainingJob[]
+  pricePredictions PricePrediction[]
+  demandForecasts DemandForecast[]
+  recommendations ProductRecommendation[]
+
+  @@index([modelType, isActive])
+  @@index([provider, modelId])
+  @@map("ai_models")
+}
+
+// 価格予測
+model PricePrediction {
+  id          String   @id @default(cuid())
+
+  // AIモデル
+  modelId     String?
+  model       AiModel? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+
+  // 対象商品
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // マーケットプレイス
+  marketplace Marketplace
+
+  // 予測結果
+  currentPrice Float    // 現在価格
+  predictedPrice Float  // 予測価格
+  confidence  Float     // 確信度（0-1）
+  priceRange  Json?     // { "min": 10.0, "max": 20.0 }
+
+  // 予測の根拠
+  factors     Json      @default("[]") // 影響要因と重み
+  reasoning   String?   @db.Text // AI生成の説明
+
+  // 推奨アクション
+  recommendedAction PriceRecommendedAction?
+  recommendedPrice Float?
+
+  // 競合分析
+  competitorCount Int   @default(0)
+  averageCompetitorPrice Float?
+  lowestCompetitorPrice Float?
+
+  // 市場データ
+  marketDemand Float?   // 需要指数（0-1）
+  seasonalFactor Float? // 季節性係数
+
+  // 有効期限
+  validUntil  DateTime
+
+  // 検証
+  actualPrice Float?    // 実際の価格（検証用）
+  wasAccurate Boolean?  // 予測が正確だったか
+  accuracy    Float?    // 予測精度
+
+  // タイムスタンプ
+  predictedAt DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  @@index([productId, marketplace])
+  @@index([marketplace, predictedAt])
+  @@index([validUntil])
+  @@map("price_predictions")
+}
+
+// 需要予測
+model DemandForecast {
+  id          String   @id @default(cuid())
+
+  // AIモデル
+  modelId     String?
+  model       AiModel? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+
+  // 予測対象
+  targetType  DemandForecastTarget
+  targetId    String?  // カテゴリID、ブランドID、商品ID等
+  targetName  String?  // カテゴリ名、ブランド名等
+  marketplace Marketplace?
+
+  // 予測期間
+  forecastPeriod ForecastPeriod
+  startDate   DateTime
+  endDate     DateTime
+
+  // 予測結果
+  predictedDemand Float   // 予測需要（販売数）
+  confidence  Float       // 確信度（0-1）
+  demandRange Json?       // { "min": 10, "max": 50 }
+
+  // トレンド
+  trend       DemandTrend
+  trendStrength Float?    // トレンド強度（0-1）
+  growthRate  Float?      // 成長率（%）
+
+  // 季節性
+  seasonalIndex Float?    // 季節性指数
+  isSeasonalPeak Boolean @default(false)
+
+  // 影響要因
+  factors     Json       @default("[]") // 影響要因
+
+  // 推奨在庫
+  recommendedStock Int?
+  reorderPoint Int?      // 発注点
+
+  // 検証
+  actualDemand Float?    // 実際の需要（検証用）
+  wasAccurate Boolean?
+  accuracy    Float?
+
+  // タイムスタンプ
+  forecastedAt DateTime @default(now())
+  createdAt   DateTime  @default(now())
+
+  @@index([targetType, targetId])
+  @@index([marketplace, forecastPeriod])
+  @@index([startDate, endDate])
+  @@map("demand_forecasts")
+}
+
+// 商品推薦
+model ProductRecommendation {
+  id          String   @id @default(cuid())
+
+  // AIモデル
+  modelId     String?
+  model       AiModel? @relation(fields: [modelId], references: [id], onDelete: SetNull)
+
+  // 推薦タイプ
+  recommendationType RecommendationType
+
+  // 入力情報
+  inputData   Json     // 推薦生成に使用したデータ
+
+  // 推薦商品
+  recommendations Json @default("[]") // [{ productId, score, reason }]
+
+  // スコア情報
+  totalCandidates Int  @default(0) // 候補総数
+  topScore    Float?   // 最高スコア
+
+  // 対象ユーザー/商品
+  userId      String?  // パーソナライズ推薦の場合
+  sourceProductId String? // 関連商品推薦の場合
+  category    String?  // カテゴリ推薦の場合
+
+  // マーケットプレイス
+  marketplace Marketplace?
+
+  // 配信状態
+  isDelivered Boolean @default(false)
+  deliveredAt DateTime?
+
+  // 効果測定
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  revenue     Float    @default(0)
+
+  // 有効期限
+  validUntil  DateTime
+
+  // タイムスタンプ
+  generatedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([recommendationType, marketplace])
+  @@index([userId, createdAt])
+  @@index([validUntil])
+  @@map("product_recommendations")
+}
+
+// AI学習ジョブ
+model AiTrainingJob {
+  id          String   @id @default(cuid())
+
+  // AIモデル
+  modelId     String
+  model       AiModel  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  // ジョブ情報
+  jobType     AiTrainingJobType
+  name        String
+  description String?
+
+  // 学習データ
+  datasetConfig Json   @default("{}") // データセット設定
+  datasetSize Int      @default(0)
+
+  // ハイパーパラメータ
+  hyperparameters Json @default("{}")
+
+  // 実行情報
+  status      AiTrainingStatus @default(PENDING)
+  progress    Float    @default(0) // 進捗（0-100）
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  duration    Int?     // ミリ秒
+
+  // 結果
+  metrics     Json?    // { accuracy, loss, etc. }
+  outputModelId String? // 学習後のモデルID
+  artifactUrl String?  // 成果物のURL
+
+  // エラー情報
+  errorMessage String? @db.Text
+
+  // コスト
+  estimatedCost Float?
+  actualCost  Float?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([modelId, status])
+  @@index([status, createdAt])
+  @@map("ai_training_jobs")
+}
+
+// AI予測ログ
+model AiPredictionLog {
+  id          String   @id @default(cuid())
+
+  // AIモデル
+  modelId     String
+  model       AiModel  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  // リクエスト
+  predictionType AiPredictionType
+  input       Json     // 入力データ
+
+  // レスポンス
+  output      Json?    // 出力データ
+  confidence  Float?   // 確信度
+
+  // パフォーマンス
+  latency     Int?     // レイテンシ（ミリ秒）
+  inputTokens Int      @default(0)
+  outputTokens Int     @default(0)
+  cost        Float    @default(0)
+
+  // ステータス
+  status      AiPredictionStatus
+  errorMessage String?
+
+  // キャッシュ
+  cacheHit    Boolean  @default(false)
+  cacheKey    String?
+
+  // タイムスタンプ
+  requestedAt DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([modelId, predictionType])
+  @@index([predictionType, requestedAt])
+  @@index([status])
+  @@map("ai_prediction_logs")
+}
+
+// 価格最適化設定
+model PriceOptimization {
+  id          String   @id @default(cuid())
+
+  // 対象
+  targetType  PriceOptimizationTarget
+  targetId    String?  // カテゴリID、ブランドID、商品ID等
+  marketplace Marketplace?
+
+  // 最適化戦略
+  strategy    PriceOptimizationStrategy
+
+  // 制約
+  minPrice    Float?   // 最低価格
+  maxPrice    Float?   // 最高価格
+  minMargin   Float?   // 最低マージン率（%）
+  maxDiscount Float?   // 最大割引率（%）
+
+  // 目標
+  targetMetric PriceOptimizationMetric @default(PROFIT)
+  targetValue Float?   // 目標値
+
+  // ルール
+  rules       Json     @default("[]") // 追加ルール
+
+  // 自動更新
+  autoUpdate  Boolean  @default(false)
+  updateFrequency Int? // 更新頻度（分）
+  lastUpdatedAt DateTime?
+
+  // 競合監視
+  monitorCompetitors Boolean @default(true)
+  competitorThreshold Float? // 競合価格との差異閾値（%）
+
+  // ステータス
+  isActive    Boolean  @default(true)
+
+  // 統計
+  totalOptimizations Int @default(0)
+  averagePriceChange Float?
+  revenueImpact Float?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([targetType, targetId])
+  @@index([marketplace, isActive])
+  @@map("price_optimizations")
+}
+
+// 競合価格
+model CompetitorPrice {
+  id          String   @id @default(cuid())
+
+  // 自社商品
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // 競合情報
+  competitorName String
+  competitorUrl String?
+  marketplace String   // eBay, Amazon, etc.
+
+  // 商品マッチング
+  matchedTitle String?
+  matchConfidence Float? // マッチング確信度（0-1）
+
+  // 価格情報
+  price       Float
+  currency    String   @default("USD")
+  shippingCost Float?
+  totalPrice  Float?   // 価格 + 送料
+
+  // 在庫状態
+  inStock     Boolean  @default(true)
+  stockQuantity Int?
+
+  // 販売者情報
+  sellerRating Float?
+  sellerReviews Int?
+
+  // 収集情報
+  collectedAt DateTime @default(now())
+  source      String   // manual, api, scraper
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([productId, marketplace])
+  @@index([competitorName, marketplace])
+  @@index([collectedAt])
+  @@map("competitor_prices")
+}
+
+// ========================================
+// Phase 35-36 Enums
+// ========================================
+
+enum WorkflowTriggerType {
+  MANUAL      // 手動起動
+  EVENT       // イベント駆動
+  SCHEDULE    // スケジュール
+  CONDITION   // 条件達成時
+  API         // API経由
+}
+
+enum WorkflowTriggerSource {
+  USER        // ユーザー
+  SYSTEM      // システム
+  SCHEDULE    // スケジュール
+  WEBHOOK     // Webhook
+  API         // API
+  AUTOMATION  // 自動化ルール
+}
+
+enum WorkflowStepType {
+  ACTION      // アクション実行
+  CONDITION   // 条件分岐
+  APPROVAL    // 承認
+  DELAY       // 待機
+  NOTIFICATION // 通知
+  LOOP        // ループ
+  PARALLEL    // 並列処理
+  SCRIPT      // カスタムスクリプト
+  AI          // AI処理
+  INTEGRATION // 外部連携
+}
+
+enum WorkflowExecutionStatus {
+  PENDING
+  RUNNING
+  WAITING_APPROVAL
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+  TIMEOUT
+}
+
+enum WorkflowStepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+  WAITING
+}
+
+enum ApprovalRequestType {
+  PRODUCT_LISTING    // 商品出品承認
+  PRICE_CHANGE       // 価格変更承認
+  BULK_OPERATION     // 一括操作承認
+  REFUND             // 返金承認
+  ORDER_CANCELLATION // 注文キャンセル承認
+  INVENTORY_ADJUSTMENT // 在庫調整承認
+  SYSTEM_CHANGE      // システム変更承認
+  CUSTOM             // カスタム
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
+  ESCALATED
+}
+
+enum ApprovalActionType {
+  APPROVE
+  REJECT
+  REQUEST_CHANGES
+  DELEGATE
+  ESCALATE
+  COMMENT
+}
+
+enum ConditionLogic {
+  AND
+  OR
+}
+
+enum AutomationExecutionStatus {
+  SUCCESS
+  PARTIAL_SUCCESS
+  FAILED
+  SKIPPED
+}
+
+enum AiModelType {
+  PRICE_PREDICTION    // 価格予測
+  DEMAND_FORECAST     // 需要予測
+  PRODUCT_RECOMMENDATION // 商品推薦
+  TRANSLATION         // 翻訳
+  ATTRIBUTE_EXTRACTION // 属性抽出
+  IMAGE_ANALYSIS      // 画像分析
+  SENTIMENT_ANALYSIS  // 感情分析
+  CUSTOM              // カスタム
+}
+
+enum AiProvider {
+  OPENAI
+  ANTHROPIC
+  GOOGLE
+  AZURE
+  CUSTOM
+}
+
+enum PriceRecommendedAction {
+  INCREASE
+  DECREASE
+  MAINTAIN
+  REVIEW
+}
+
+enum DemandForecastTarget {
+  PRODUCT     // 個別商品
+  CATEGORY    // カテゴリ
+  BRAND       // ブランド
+  MARKETPLACE // マーケットプレイス全体
+  OVERALL     // 全体
+}
+
+enum ForecastPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+}
+
+enum DemandTrend {
+  INCREASING
+  DECREASING
+  STABLE
+  VOLATILE
+}
+
+enum RecommendationType {
+  SIMILAR_PRODUCTS    // 類似商品
+  FREQUENTLY_BOUGHT   // よく一緒に購入
+  TRENDING            // トレンド
+  PERSONALIZED        // パーソナライズ
+  CROSS_SELL          // クロスセル
+  UP_SELL             // アップセル
+  NEW_ARRIVALS        // 新着
+  BEST_SELLERS        // ベストセラー
+}
+
+enum AiTrainingJobType {
+  FINE_TUNING         // ファインチューニング
+  EMBEDDING           // 埋め込み生成
+  EVALUATION          // モデル評価
+  DATA_PREPARATION    // データ準備
+}
+
+enum AiTrainingStatus {
+  PENDING
+  PREPARING
+  TRAINING
+  EVALUATING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AiPredictionType {
+  PRICE
+  DEMAND
+  RECOMMENDATION
+  TRANSLATION
+  ATTRIBUTE
+  IMAGE
+  SENTIMENT
+  CUSTOM
+}
+
+enum AiPredictionStatus {
+  SUCCESS
+  FAILED
+  TIMEOUT
+  RATE_LIMITED
+}
+
+enum PriceOptimizationTarget {
+  PRODUCT     // 個別商品
+  CATEGORY    // カテゴリ
+  BRAND       // ブランド
+  GLOBAL      // 全体
+}
+
+enum PriceOptimizationStrategy {
+  COMPETITIVE         // 競合価格追従
+  PROFIT_MAXIMIZATION // 利益最大化
+  MARKET_PENETRATION  // 市場浸透
+  DYNAMIC             // 動的価格設定
+  RULE_BASED          // ルールベース
+}
+
+enum PriceOptimizationMetric {
+  PROFIT      // 利益
+  REVENUE     // 売上
+  MARGIN      // マージン
+  VOLUME      // 販売数
 }
