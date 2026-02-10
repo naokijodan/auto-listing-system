@@ -105,6 +105,14 @@ export interface SchedulerConfig {
     enabled: boolean;
     cronExpression: string;   // 日次実行（デフォルト: 毎日3時）
   };
+  // マルチソース在庫同期（Phase 53: 強化版）
+  batchInventorySync: {
+    enabled: boolean;
+    cronExpression: string;   // 実行間隔（デフォルト: 6時間ごと）
+    limit: number;            // 1回の実行で処理する最大数
+    delayMs: number;          // チェック間の待機時間（ミリ秒）
+    marketplace?: 'JOOM' | 'EBAY'; // 対象マーケットプレイス（未指定で全て）
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -172,6 +180,12 @@ const DEFAULT_CONFIG: SchedulerConfig = {
   pausedReEvaluation: {
     enabled: true,
     cronExpression: '0 3 * * *',       // 毎日3時にPAUSED商品を再評価
+  },
+  batchInventorySync: {
+    enabled: true,
+    cronExpression: '0 */6 * * *',     // 6時間ごとにマルチソース在庫同期
+    limit: 50,                          // 1回の実行で最大50件
+    delayMs: 3000,                      // チェック間3秒待機
   },
 };
 
@@ -567,6 +581,53 @@ async function scheduleOrderSync(config: SchedulerConfig['orderSync']) {
 }
 
 /**
+ * バッチ在庫同期ジョブをスケジュール（Phase 53: 強化版マルチソース対応）
+ * メルカリ、ヤフオク、Amazon JPからの在庫・価格変動を検知
+ */
+async function scheduleBatchInventorySync(config: SchedulerConfig['batchInventorySync']) {
+  if (!config.enabled) {
+    log.info({ type: 'batch_inventory_sync_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await inventoryQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'batch-inventory-sync') {
+      await inventoryQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // バッチ在庫同期ジョブを追加
+  await inventoryQueue.add(
+    'batch-inventory-sync',
+    {
+      type: 'batch-inventory-sync',
+      limit: config.limit,
+      delayMs: config.delayMs,
+      marketplace: config.marketplace,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'batch-inventory-sync-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({
+    type: 'batch_inventory_sync_scheduled',
+    cronExpression: config.cronExpression,
+    limit: config.limit,
+    delayMs: config.delayMs,
+    marketplace: config.marketplace || 'all',
+  });
+}
+
+/**
  * スケジューラーを初期化
  */
 export async function initializeScheduler(config: Partial<SchedulerConfig> = {}) {
@@ -586,6 +647,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     autoPublish: { ...DEFAULT_CONFIG.autoPublish, ...config.autoPublish },
     activeInventoryMonitor: { ...DEFAULT_CONFIG.activeInventoryMonitor, ...config.activeInventoryMonitor },
     pausedReEvaluation: { ...DEFAULT_CONFIG.pausedReEvaluation, ...config.pausedReEvaluation },
+    batchInventorySync: { ...DEFAULT_CONFIG.batchInventorySync, ...config.batchInventorySync },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -603,6 +665,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleAutoPublish(finalConfig.autoPublish);
   await scheduleActiveInventoryMonitor(finalConfig.activeInventoryMonitor);
   await schedulePausedReEvaluation(finalConfig.pausedReEvaluation);
+  await scheduleBatchInventorySync(finalConfig.batchInventorySync);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -823,6 +886,39 @@ export async function triggerOrderSync(options?: {
   });
 
   return job.id;
+}
+
+/**
+ * 手動でバッチ在庫同期をトリガー（Phase 53）
+ * マルチソース対応：メルカリ、ヤフオク、Amazon JPの在庫を一括チェック
+ */
+export async function triggerBatchInventorySync(options?: {
+  marketplace?: 'JOOM' | 'EBAY';
+  limit?: number;
+  delayMs?: number;
+}): Promise<string> {
+  const job = await inventoryQueue.add(
+    'batch-inventory-sync',
+    {
+      type: 'batch-inventory-sync',
+      marketplace: options?.marketplace,
+      limit: options?.limit || 50,
+      delayMs: options?.delayMs || 3000,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    {
+      priority: 1,
+    }
+  );
+
+  log.info({
+    type: 'manual_batch_inventory_sync_triggered',
+    jobId: job.id,
+    options,
+  });
+
+  return job.id || '';
 }
 
 /**
