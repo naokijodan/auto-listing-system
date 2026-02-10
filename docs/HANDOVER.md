@@ -18,10 +18,60 @@
 | 31-32 | パフォーマンス最適化・監視アラート | 2026-02-11 |
 | 33-34 | セキュリティ強化・外部連携 | 2026-02-11 |
 | 35-36 | ワークフロー自動化・AI機能強化 | 2026-02-11 |
+| 37-38 | データ可視化・検索機能 | 2026-02-11 |
 
 ### 最新コミット
-- ハッシュ: `5b5d66b`
-- メッセージ: `feat: Phase 35-36 ワークフロー自動化とAI機能強化を実装`
+- ハッシュ: `0f20b6e`
+- メッセージ: `feat: Phase 37-38 データ可視化と検索機能を実装`
+
+---
+
+## Phase 37-38 実装内容
+
+### Phase 37: データ可視化
+**新規モデル:**
+- ChartConfig（グラフ設定）
+- ChartData（グラフデータ）
+- DashboardChartItem（ダッシュボード内グラフ）
+- WidgetPreset（ウィジェットプリセット）
+- UserFeedback（ユーザーフィードバック）
+- PredictionFeedback（予測フィードバック）
+
+**新規ファイル:**
+- `apps/worker/src/lib/visualization-service.ts` - 可視化サービス
+- `apps/api/src/routes/visualization.ts` - 可視化API
+
+**機能:**
+- グラフ設定管理（LINE, BAR, PIE, AREA, SCATTER, DONUT, RADAR, HEATMAP, TREEMAP, FUNNEL）
+- 時間粒度別データ集計（HOURLY, DAILY, WEEKLY, MONTHLY, QUARTERLY, YEARLY）
+- データソース対応（SALES, ORDERS, PRODUCTS, PREDICTIONS, CUSTOM）
+- ダッシュボードへのグラフ配置
+- ウィジェットプリセット管理
+- ユーザーフィードバック収集
+- AI予測フィードバック収集・統計
+
+### Phase 38: 検索機能
+**新規モデル:**
+- SearchIndex（検索インデックス）
+- SearchLog（検索ログ）
+- SearchSynonym（同義語辞書）
+- SearchFilter（検索フィルター）
+- PopularSearch（人気検索）
+- SearchSuggestion（検索サジェスト）
+
+**新規ファイル:**
+- `apps/worker/src/lib/search-service.ts` - 検索サービス
+- `apps/api/src/routes/search.ts` - 検索API
+
+**機能:**
+- PostgreSQL全文検索（to_tsvector, ts_rank）
+- 商品・注文検索
+- 同義語展開（日本語・英語対応）
+- 検索サジェスト（オートコンプリート）
+- 人気検索・トレンド分析
+- クリック/コンバージョン追跡
+- 検索フィルター管理
+- 検索アナリティクス（CTR、コンバージョン率）
 
 ---
 
@@ -114,11 +164,11 @@
 
 ## 次のPhase候補
 
-### Phase 37-38 候補
-1. **データ可視化** - グラフ・チャート・ダッシュボード強化
-2. **検索機能強化** - Elasticsearch連携・全文検索
-3. **Joom出品ワークフロー** - Phase 40の実装開始
-4. **テスト強化** - 単体・統合・E2Eテストのカバレッジ向上
+### Phase 39-40 候補
+1. **Joom出品ワークフロー** - Phase 40の実装開始
+2. **テスト強化** - 単体・統合・E2Eテストのカバレッジ向上
+3. **フロントエンド強化** - ダッシュボードUI、検索UI
+4. **Elasticsearch連携** - 高度な全文検索（Phase 38を基盤に）
 
 ---
 
@@ -152,6 +202,7 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 - 認証情報の暗号化には環境変数 `ENCRYPTION_KEY` を使用（AES-256-GCM）
 - Saleモデルには `soldAt` フィールドがない（`createdAt` を使用）
 - AI API呼び出しには環境変数 `OPENAI_API_KEY` が必要
+- PostgreSQL全文検索には日本語設定 `japanese` を使用
 
 ---
 
