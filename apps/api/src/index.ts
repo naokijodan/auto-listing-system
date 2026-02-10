@@ -56,6 +56,9 @@ import { exportsRouter } from './routes/exports';
 import { auditLogsRouter } from './routes/audit-logs';
 import { systemSettingsRouter } from './routes/system-settings';
 import { apiKeysRouter } from './routes/api-keys';
+import { usersRouter } from './routes/users';
+import { rolesRouter } from './routes/roles';
+import { webhookEndpointsRouter } from './routes/webhook-endpoints';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -161,6 +164,9 @@ app.use('/api/exports', exportsRouter);
 app.use('/api/audit-logs', auditLogsRouter);
 app.use('/api/system-settings', systemSettingsRouter);
 app.use('/api/api-keys', apiKeysRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/roles', rolesRouter);
+app.use('/api/webhook-endpoints', webhookEndpointsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

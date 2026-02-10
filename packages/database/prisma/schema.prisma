@@ -1841,3 +1841,389 @@ enum UsagePeriodType {
   DAILY
   MONTHLY
 }
+
+// ========================================
+// Phase 23: ユーザー管理/RBAC
+// ========================================
+
+model User {
+  id            String   @id @default(cuid())
+
+  // 認証情報
+  email         String   @unique
+  passwordHash  String?          // nullの場合はOAuth専用
+  emailVerified Boolean  @default(false)
+  emailVerifiedAt DateTime?
+
+  // プロフィール
+  name          String?
+  avatar        String?
+
+  // ステータス
+  status        UserStatus @default(ACTIVE)
+  lastLoginAt   DateTime?
+  lastLoginIp   String?
+
+  // 二要素認証
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+
+  // リレーション
+  roles         UserRole[]
+  sessions      UserSession[]
+  apiKeys       UserApiKey[]
+  auditLogs     UserAuditLog[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id            String   @id @default(cuid())
+
+  // ロール情報
+  name          String   @unique
+  displayName   String
+  description   String?
+
+  // 権限
+  permissions   Permission[]
+
+  // システムロール（削除不可）
+  isSystem      Boolean  @default(false)
+
+  // リレーション
+  users         UserRole[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([name])
+  @@map("roles")
+}
+
+model Permission {
+  id            String   @id @default(cuid())
+
+  // 権限情報
+  resource      String           // 対象リソース（products, orders, etc.）
+  action        PermissionAction // 操作種別
+
+  // リレーション
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+
+  @@unique([roleId, resource, action])
+  @@index([resource, action])
+  @@map("permissions")
+}
+
+model UserRole {
+  id            String   @id @default(cuid())
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  roleId        String
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  // 付与情報
+  grantedBy     String?
+  grantedAt     DateTime @default(now())
+  expiresAt     DateTime?        // 期限付きロール
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model UserSession {
+  id            String   @id @default(cuid())
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // セッション情報
+  token         String   @unique
+  refreshToken  String?  @unique
+  userAgent     String?
+  ipAddress     String?
+
+  // 有効期限
+  expiresAt     DateTime
+  refreshExpiresAt DateTime?
+
+  // ステータス
+  isActive      Boolean  @default(true)
+  revokedAt     DateTime?
+  revokedReason String?
+
+  createdAt     DateTime @default(now())
+  lastUsedAt    DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([isActive, expiresAt])
+  @@map("user_sessions")
+}
+
+model UserApiKey {
+  id            String   @id @default(cuid())
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // キー情報
+  name          String
+  keyHash       String   @unique
+  keyPrefix     String
+
+  // 権限（ユーザーの権限をオーバーライド）
+  scopes        String[]         // 許可されたスコープ
+  permissions   Json     @default("[]") // カスタム権限
+
+  // ステータス
+  isActive      Boolean  @default(true)
+  expiresAt     DateTime?
+  lastUsedAt    DateTime?
+
+  // 使用制限
+  rateLimit     Int      @default(1000)
+  dailyLimit    Int?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([keyHash])
+  @@map("user_api_keys")
+}
+
+model UserAuditLog {
+  id            String   @id @default(cuid())
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 操作情報
+  action        String           // login, logout, password_change, etc.
+  description   String   @db.Text
+
+  // コンテキスト
+  ipAddress     String?
+  userAgent     String?
+  metadata      Json     @default("{}")
+
+  // 結果
+  success       Boolean  @default(true)
+  errorMessage  String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@map("user_audit_logs")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum PermissionAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  MANAGE      // 全権限
+  EXPORT
+  IMPORT
+  APPROVE
+  PUBLISH
+}
+
+// ========================================
+// Phase 24: Webhook管理の強化
+// ========================================
+
+model WebhookEndpoint {
+  id            String   @id @default(cuid())
+
+  // エンドポイント情報
+  name          String
+  url           String
+  description   String?
+
+  // 認証設定
+  authType      WebhookAuthType @default(NONE)
+  authConfig    Json     @default("{}")  // {secret, header, token, etc.}
+
+  // 署名設定
+  signatureEnabled Boolean @default(true)
+  signatureSecret  String?         // HMAC署名用シークレット
+  signatureHeader  String  @default("X-Webhook-Signature")
+  signatureAlgorithm String @default("sha256")
+
+  // イベント設定
+  events        WebhookEventType[]
+  filters       Json     @default("{}")  // イベントフィルター条件
+
+  // リトライ設定
+  retryEnabled  Boolean  @default(true)
+  maxRetries    Int      @default(5)
+  retryDelayMs  Int      @default(1000)
+  retryBackoffMultiplier Float @default(2.0)
+
+  // タイムアウト
+  timeoutMs     Int      @default(30000)
+
+  // ステータス
+  isActive      Boolean  @default(true)
+  lastDeliveryAt DateTime?
+  lastDeliveryStatus String?
+  consecutiveFailures Int @default(0)
+  disabledAt    DateTime?
+  disabledReason String?
+
+  // 統計
+  totalDeliveries Int     @default(0)
+  successfulDeliveries Int @default(0)
+  failedDeliveries Int    @default(0)
+
+  // リレーション
+  deliveries    WebhookDelivery[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([events])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id            String   @id @default(cuid())
+
+  endpointId    String
+  endpoint      WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  // イベント情報
+  eventType     String
+  eventId       String?          // 元イベントのID
+  payload       Json
+
+  // リクエスト情報
+  requestHeaders Json    @default("{}")
+  requestBody   String   @db.Text
+
+  // レスポンス情報
+  responseStatus Int?
+  responseHeaders Json?
+  responseBody  String?  @db.Text
+  responseTimeMs Int?
+
+  // 配信状態
+  status        WebhookDeliveryStatus @default(PENDING)
+  attemptCount  Int      @default(0)
+  maxAttempts   Int      @default(5)
+  nextRetryAt   DateTime?
+
+  // エラー情報
+  errorType     String?          // timeout, connection_error, http_error, etc.
+  errorMessage  String?  @db.Text
+
+  // 署名
+  signature     String?
+
+  deliveredAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([endpointId, createdAt])
+  @@index([status, nextRetryAt])
+  @@index([eventType, createdAt])
+  @@map("webhook_deliveries")
+}
+
+model WebhookSecret {
+  id            String   @id @default(cuid())
+
+  // プロバイダー情報
+  provider      String   @unique  // EBAY, JOOM, STRIPE, etc.
+
+  // シークレット情報
+  secret        String           // 署名検証用シークレット
+  algorithm     String   @default("sha256")
+  headerName    String   @default("X-Webhook-Signature")
+
+  // 検証設定
+  verifyTimestamp Boolean @default(true)
+  timestampToleranceSeconds Int @default(300)
+
+  // ステータス
+  isActive      Boolean  @default(true)
+  lastVerifiedAt DateTime?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([provider])
+  @@map("webhook_secrets")
+}
+
+enum WebhookAuthType {
+  NONE
+  BASIC
+  BEARER
+  API_KEY
+  HMAC
+  CUSTOM
+}
+
+enum WebhookEventType {
+  // 注文関連
+  ORDER_CREATED
+  ORDER_UPDATED
+  ORDER_PAID
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  // 商品関連
+  PRODUCT_CREATED
+  PRODUCT_UPDATED
+  PRODUCT_DELETED
+  // 出品関連
+  LISTING_PUBLISHED
+  LISTING_UPDATED
+  LISTING_ENDED
+  LISTING_SOLD
+  // 在庫関連
+  INVENTORY_LOW
+  INVENTORY_OUT
+  INVENTORY_UPDATED
+  // 価格関連
+  PRICE_CHANGED
+  PRICE_RECOMMENDATION
+  // システム関連
+  SYSTEM_ERROR
+  SYSTEM_ALERT
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SENDING
+  DELIVERED
+  FAILED
+  RETRYING
+  EXHAUSTED    // リトライ上限到達
+}
