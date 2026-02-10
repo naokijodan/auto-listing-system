@@ -46,6 +46,8 @@ import { settingsRouter } from './routes/settings';
 import ebayAuthRouter from './routes/ebay-auth';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
+import { shippingRouter } from './routes/shipping';
+import { performanceRouter } from './routes/performance';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -141,6 +143,8 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/ebay', ebayAuthRouter);
 app.use('/api/bulk', bulkOperationsRouter);
 app.use('/api/refunds', refundsRouter);
+app.use('/api/shipping', shippingRouter);
+app.use('/api/performance', performanceRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
