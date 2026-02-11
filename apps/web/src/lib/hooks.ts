@@ -457,3 +457,72 @@ export function useShipmentStats() {
 export function useCarriers() {
   return useSWR<ApiResponse<Carrier[]>>(api.getCarriers(), fetcher);
 }
+
+// Sourcing (Phase 55-56)
+export type SourcingStatus = 'PENDING' | 'CONFIRMED' | 'ORDERED' | 'RECEIVED' | 'UNAVAILABLE';
+
+export interface SourcingOrder {
+  id: string;
+  marketplace: 'EBAY' | 'JOOM';
+  marketplaceOrderId: string;
+  buyerUsername: string;
+  buyerName?: string;
+  total: number;
+  currency: string;
+  status: string;
+  orderedAt: string;
+  sourcingStatus: SourcingStatus;
+  sourcingNotes?: string;
+  sourcingUpdatedAt?: string;
+  costPrice?: number;
+  supplierOrderId?: string;
+  expectedDeliveryDate?: string;
+  sales: Array<{
+    id: string;
+    sku: string;
+    title: string;
+    quantity: number;
+    unitPrice: number;
+    product?: {
+      id: string;
+      title: string;
+      titleEn?: string;
+      sourceUrl?: string;
+      price: number;
+      images: string[];
+      brand?: string;
+      category?: string;
+    };
+  }>;
+}
+
+export interface SourcingStats {
+  total: number;
+  byStatus: Record<SourcingStatus, number>;
+  byMarketplace: Record<string, { total: number; byStatus: Record<string, number> }>;
+  costSummary: {
+    totalCost: number;
+    ordersWithCost: number;
+    averageCost: number;
+  };
+  readyToShip: number;
+  needsAttention: number;
+}
+
+export function usePendingSourcing(params?: {
+  status?: string;
+  marketplace?: string;
+  limit?: number;
+}) {
+  return useSWR<ApiResponse<SourcingOrder[]> & { statusCounts: Record<string, number> }>(
+    api.getPendingSourcing(params),
+    fetcher,
+    { refreshInterval: 30000 } // 30秒ごと
+  );
+}
+
+export function useSourcingStats() {
+  return useSWR<ApiResponse<SourcingStats>>(api.getSourcingStats(), fetcher, {
+    refreshInterval: 60000, // 1分ごと
+  });
+}

@@ -257,6 +257,17 @@ export const api = {
   },
   getShipmentStats: () => `/api/shipments/stats`,
   getCarriers: () => `/api/shipments/carriers`,
+
+  // Sourcing (Phase 55-56)
+  getPendingSourcing: (params?: { status?: string; marketplace?: string; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.marketplace) query.set('marketplace', params.marketplace);
+    if (params?.limit) query.set('limit', params.limit.toString());
+    const queryStr = query.toString();
+    return `/api/sourcing/pending${queryStr ? `?${queryStr}` : ''}`;
+  },
+  getSourcingStats: () => `/api/sourcing/stats`,
 };
 
 // POST/PUT/DELETE helpers

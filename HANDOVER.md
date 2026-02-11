@@ -3,10 +3,44 @@
 ## 最終更新
 
 **日付**: 2026-02-11
-**Phase**: 53-54完了
+**Phase**: 55-56完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 55-56: 仕入れ管理機能
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 55-56: 仕入れ管理**
+1. 仕入れ管理API (`apps/api/src/routes/sourcing.ts`)
+   - GET /api/sourcing/pending - 仕入れ待ち一覧
+   - PATCH /api/sourcing/:orderId/status - ステータス更新
+   - GET /api/sourcing/stats - 仕入れ統計
+   - POST /api/sourcing/bulk-update - 一括ステータス更新
+
+2. 仕入れ管理ページ (`apps/web/src/app/sourcing/page.tsx`)
+   - 仕入れ待ち注文一覧（ステータス別フィルター）
+   - ステータス更新フォーム（未確認→確認済み→発注済み→入荷済み）
+   - 仕入れコスト入力
+   - 仕入れ元URL表示（外部リンク）
+   - 仕入れ統計ダッシュボード
+   - マーケットプレイス別フィルター
+
+3. APIクライアント更新 (`apps/web/src/lib/api.ts`)
+   - `getPendingSourcing()` - 仕入れ待ち取得
+   - `getSourcingStats()` - 仕入れ統計取得
+
+4. SWRフック追加 (`apps/web/src/lib/hooks.ts`)
+   - `usePendingSourcing()` - 仕入れ待ち
+   - `useSourcingStats()` - 仕入れ統計
+
+5. サイドバー更新
+   - 仕入れ管理リンク追加（ShoppingBagアイコン）
+
+---
 
 ### Phase 53-54: 発送管理UI & フロントエンド強化
 
@@ -89,6 +123,17 @@
 
 ## ファイル変更一覧
 
+### Phase 55-56
+#### 新規作成
+- `apps/api/src/routes/sourcing.ts` - 仕入れ管理API
+- `apps/web/src/app/sourcing/page.tsx` - 仕入れ管理ページ
+
+#### 更新
+- `apps/api/src/index.ts` - sourcingルート登録
+- `apps/web/src/lib/api.ts` - 仕入れ関連API追加
+- `apps/web/src/lib/hooks.ts` - 仕入れ関連SWRフック追加
+- `apps/web/src/components/layout/sidebar.tsx` - 仕入れ管理リンク追加
+
 ### Phase 53-54
 #### 新規作成
 - `apps/web/src/app/shipments/page.tsx` - 発送管理ページ
@@ -138,7 +183,7 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 55-56候補
+### Phase 57-58候補
 
 1. **価格最適化AI**
    - 競合分析エンジン
@@ -150,10 +195,10 @@
    - データベースインデックス最適化
    - CDN設定
 
-3. **仕入れ管理機能**
-   - 仕入れ状況管理UI
-   - 在庫補充アラート
-   - 仕入れ先連携
+3. **ダッシュボード統合**
+   - メインダッシュボードの実データ連携
+   - リアルタイムKPI表示
+   - グラフ・チャートの強化
 
 ## 技術的注意事項
 
