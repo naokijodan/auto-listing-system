@@ -19,10 +19,51 @@
 | 33-34 | セキュリティ強化・外部連携 | 2026-02-11 |
 | 35-36 | ワークフロー自動化・AI機能強化 | 2026-02-11 |
 | 37-38 | データ可視化・検索機能 | 2026-02-11 |
+| 39-40 | エンリッチメントエンジン・Joom出品ワークフロー | 2026-02-11 |
 
 ### 最新コミット
-- ハッシュ: `0f20b6e`
-- メッセージ: `feat: Phase 37-38 データ可視化と検索機能を実装`
+- ハッシュ: `5bd8317`
+- メッセージ: `feat: Phase 39-40 エンリッチメントエンジンとJoom出品ワークフローを実装`
+
+---
+
+## Phase 39-40 実装内容
+
+### Phase 39: エンリッチメントエンジン
+**新規モデル:**
+- EnrichmentTask（エンリッチメントタスク）
+- EnrichmentStep（ステップ履歴）
+- ProhibitedKeyword（禁制品キーワード辞書）
+
+**新規ファイル:**
+- `apps/worker/src/lib/enrichment-service.ts` - エンリッチメントサービス
+- `apps/api/src/routes/enrichment.ts` - エンリッチメントAPI
+
+**機能:**
+- GPT-4oによる翻訳・属性抽出・検証（1回のAPI呼び出しで3処理）
+- 禁制品キーワードチェック（battery, hazardous, cites, trademark, adult, pharmaceutical, weapon）
+- 価格計算（仕入価格→Joom販売価格）
+- タスク管理（作成・実行・承認・却下・リトライ）
+- ステップ履歴記録
+- 禁制品キーワード辞書管理
+
+### Phase 40: Joom出品ワークフロー
+**新規モデル:**
+- JoomListing（Joom出品情報）
+- JoomPublishBatch（一括出品バッチ）
+- JoomApiLog（APIログ）
+
+**新規ファイル:**
+- `apps/worker/src/lib/joom-publish-service.ts` - Joom出品サービス
+- `apps/api/src/routes/joom.ts` - Joom出品API
+
+**機能:**
+- 画像パイプライン（ダウンロード→最適化→S3アップロード）
+- Joom出品（Draft→Ready→Publishing→Active）
+- Dry-Run（出品プレビュー）
+- 一括出品（BatchPublishService）
+- 完全ワークフロー（エンリッチメント→画像処理→出品）
+- APIログ記録
 
 ---
 
@@ -75,54 +116,11 @@
 
 ---
 
-## Phase 35-36 実装内容
-
-### Phase 35: ワークフロー自動化
-**新規モデル:**
-- Workflow, WorkflowStep（ワークフロー定義）
-- WorkflowExecution, WorkflowStepExecution（実行インスタンス）
-- ApprovalRequest, ApprovalAction（承認フロー）
-- AutomationRule, AutomationExecution（自動化ルール）
-
-**新規ファイル:**
-- `apps/worker/src/lib/workflow-service.ts` - ワークフロー・承認・自動化サービス
-- `apps/api/src/routes/workflows.ts` - ワークフローAPI
-
-**機能:**
-- ワークフロー定義・実行管理
-- 8種類のステップタイプ（ACTION, CONDITION, APPROVAL, DELAY, NOTIFICATION, LOOP, PARALLEL, AI, INTEGRATION）
-- 承認フロー（複数承認者、期限、エスカレーション）
-- 自動化ルールエンジン（条件評価、アクション実行）
-- イベント駆動型自動化（product.created, order.completed等）
-- レート制限・クールダウン機能
-
-### Phase 36: AI機能強化
-**新規モデル:**
-- AiModel（AIモデル設定）
-- AiTrainingJob（学習ジョブ）
-- AiPredictionLog（予測ログ）
-- PricePrediction（価格予測）
-- DemandForecast（需要予測）
-- ProductRecommendation（商品推薦）
-- CompetitorPrice（競合価格）
-- PriceOptimization（価格最適化設定）
-
-**新規ファイル:**
-- `apps/worker/src/lib/ai-service.ts` - AI機能サービス
-- `apps/api/src/routes/ai.ts` - AI機能API
-
-**機能:**
-- AIモデル管理（OpenAI, Anthropic, Google対応）
-- 価格予測（競合分析、市場需要、季節性考慮）
-- 需要予測（トレンド分析、季節性指数）
-- 商品推薦（類似商品、クロスセル、アップセル等8種類）
-- 競合価格監視・統計
-- 価格最適化（5種類の戦略: COMPETITIVE, PROFIT_MAXIMIZATION, MARKET_PENETRATION, DYNAMIC, RULE_BASED）
-- AI学習ジョブ管理
-
----
-
 ## 累積実装内容
+
+### Phase 35-36
+- **ワークフロー自動化**: Workflow, WorkflowStep, WorkflowExecution, ApprovalRequest, AutomationRule
+- **AI機能強化**: AiModel, PricePrediction, DemandForecast, ProductRecommendation, CompetitorPrice, PriceOptimization
 
 ### Phase 33-34
 - **セキュリティ強化**: SecurityEvent, LoginAttempt, DeviceSession, TwoFactorAuth
@@ -162,13 +160,68 @@
 
 ---
 
+## Joom出品ワークフロー
+
+### パイプライン
+```
+[Chrome拡張] → [Product登録]
+        ↓
+[エンリッチメント]
+ ├─ 翻訳（日→英/露）
+ ├─ 属性抽出（ブランド、色、サイズ等）
+ ├─ 禁制品チェック
+ └─ 価格計算
+        ↓
+[レビュー] → approved / rejected / review_required
+        ↓
+[画像処理]
+ ├─ ダウンロード（リトライ3回）
+ ├─ 最適化（1200x1200, WebP）
+ └─ S3アップロード
+        ↓
+[Joom出品]
+ ├─ Dry-Run（プレビュー）
+ └─ 実出品
+```
+
+### API エンドポイント
+
+#### エンリッチメント (`/api/enrichment`)
+| メソッド | パス | 説明 |
+|----------|------|------|
+| GET | /tasks | タスク一覧 |
+| POST | /tasks | タスク作成 |
+| GET | /tasks/:id | タスク詳細 |
+| POST | /tasks/:id/approve | 承認 |
+| POST | /tasks/:id/reject | 却下 |
+| POST | /tasks/:id/retry | リトライ |
+| GET | /review | レビュー待ち一覧 |
+| GET | /stats | 統計 |
+| GET | /keywords | 禁制品キーワード一覧 |
+| POST | /keywords | キーワード追加 |
+
+#### Joom (`/api/joom`)
+| メソッド | パス | 説明 |
+|----------|------|------|
+| GET | /listings | 出品一覧 |
+| POST | /listings | 出品作成 |
+| GET | /listings/:id | 出品詳細 |
+| POST | /listings/:id/preview | Dry-Run |
+| POST | /listings/:id/publish | 出品実行 |
+| GET | /batches | バッチ一覧 |
+| POST | /batches | バッチ作成 |
+| POST | /batches/:id/execute | バッチ実行 |
+| POST | /workflow/full | 完全ワークフロー |
+
+---
+
 ## 次のPhase候補
 
-### Phase 39-40 候補
-1. **Joom出品ワークフロー** - Phase 40の実装開始
-2. **テスト強化** - 単体・統合・E2Eテストのカバレッジ向上
-3. **フロントエンド強化** - ダッシュボードUI、検索UI
-4. **Elasticsearch連携** - 高度な全文検索（Phase 38を基盤に）
+### Phase 41-42 候補
+1. **テスト強化** - 単体・統合・E2Eテストのカバレッジ向上
+2. **フロントエンドUI** - エンリッチメント/Joom管理画面
+3. **BullMQワーカー統合** - ジョブキュー経由の非同期処理
+4. **eBay出品ワークフロー** - Joomと同様のフロー
 
 ---
 
@@ -190,6 +243,7 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 - ioredis: Redis接続（Phase 31）
 - speakeasy: TOTP 2FA用（Phase 33）
 - qrcode: QRコード生成用（Phase 33）
+- openai: GPT-4o API（Phase 39）
 
 ### 注意事項
 - Prisma JSON型には `as any` キャストが必要な場合あり
@@ -203,6 +257,7 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 - Saleモデルには `soldAt` フィールドがない（`createdAt` を使用）
 - AI API呼び出しには環境変数 `OPENAI_API_KEY` が必要
 - PostgreSQL全文検索には日本語設定 `japanese` を使用
+- ExchangeRateモデルは `fetchedAt` でソート（`createdAt` ではない）
 
 ---
 
