@@ -6280,3 +6280,67 @@ enum BatchPublishStatus {
   FAILED            // 失敗
   CANCELLED         // キャンセル
 }
+
+// ========================================
+// Phase 43: ジョブリカバリー・冪等性
+// ========================================
+
+// 失敗ジョブ追跡
+model FailedJob {
+  id          String   @id @default(cuid())
+
+  // ジョブ情報
+  queueName   String
+  jobId       String
+  jobName     String
+  jobData     Json
+
+  // エラー情報
+  error       String   @db.Text
+  stackTrace  String?  @db.Text
+
+  // リトライ情報
+  attemptsMade Int
+  maxAttempts  Int
+  canRetry     Boolean  @default(true)
+  retryAfter   DateTime?
+
+  // ステータス
+  status      FailedJobStatus @default(PENDING)
+  retriedAt   DateTime?
+  newJobId    String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([queueName, status])
+  @@index([canRetry, retryAfter])
+  @@index([status, createdAt])
+  @@map("failed_jobs")
+}
+
+enum FailedJobStatus {
+  PENDING           // リトライ待ち
+  RETRIED           // リトライ済み
+  ABANDONED         // 諦め
+}
+
+// 冪等性キー
+model IdempotencyKey {
+  id        String   @id @default(cuid())
+
+  // キー情報
+  key       String   @unique
+  result    Json?
+
+  // 有効期限
+  expiresAt DateTime
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}

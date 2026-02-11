@@ -121,6 +121,25 @@ async function processPublish(joomListingId: string): Promise<any> {
     joomProductId: result.joomProductId,
   });
 
+  // Phase 44: 出品成功時のSlackアラート
+  if (result.success && result.joomProductId) {
+    try {
+      const listing = await prisma.joomListing.findUnique({
+        where: { id: joomListingId },
+      });
+      if (listing) {
+        const { alertManager: slackAlertManager } = await import('../lib/slack-alert');
+        await slackAlertManager.alertPublishSuccess(
+          listing.title || 'Unknown Product',
+          result.joomProductId,
+          listing.price || 0
+        );
+      }
+    } catch (alertErr) {
+      log.error({ type: 'failed_to_send_publish_alert', error: (alertErr as Error).message });
+    }
+  }
+
   return {
     joomListingId,
     success: result.success,
@@ -144,6 +163,19 @@ async function processBatchPublish(batchId: string): Promise<any> {
     failed: result.failed,
     skipped: result.skipped,
   });
+
+  // Phase 44: バッチ完了時のSlackアラート
+  try {
+    const { alertManager: slackAlertManager } = await import('../lib/slack-alert');
+    await slackAlertManager.alertBatchComplete(
+      batchId,
+      result.total,
+      result.success,
+      result.failed
+    );
+  } catch (alertErr) {
+    log.error({ type: 'failed_to_send_batch_alert', error: (alertErr as Error).message });
+  }
 
   return result;
 }

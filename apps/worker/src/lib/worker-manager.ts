@@ -717,6 +717,30 @@ function createWorker(
       error: err.message,
     });
 
+    // Phase 43-44: ジョブ失敗をDBに記録（リカバリー用）
+    if (job) {
+      try {
+        const { recordFailedJob } = await import('./job-recovery');
+        await recordFailedJob(job, err);
+      } catch (recordErr) {
+        logger.error({ type: 'failed_to_record_job', error: (recordErr as Error).message });
+      }
+
+      // Phase 44: Slackアラート送信
+      try {
+        const { alertManager: slackAlertManager } = await import('./slack-alert');
+        await slackAlertManager.alertJobFailure(
+          queueName,
+          job.id || 'unknown',
+          job.name,
+          err.message,
+          job.attemptsMade
+        );
+      } catch (alertErr) {
+        logger.error({ type: 'failed_to_send_slack_alert', error: (alertErr as Error).message });
+      }
+    }
+
     // 最大リトライ回数超過時はDLQへ
     if (job && job.attemptsMade >= (job.opts.attempts || 3)) {
       await moveToDeadLetter(job, err);

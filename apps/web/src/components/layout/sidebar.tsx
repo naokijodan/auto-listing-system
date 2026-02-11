@@ -18,6 +18,7 @@ import {
   FileText,
   Gauge,
   Sparkles,
+  Layers,
 } from 'lucide-react';
 
 const navigation = [
@@ -25,6 +26,7 @@ const navigation = [
   { name: '商品管理', href: '/products', icon: Package },
   { name: '商品レビュー', href: '/products/review', icon: ClipboardCheck },
   { name: 'エンリッチメント', href: '/enrichment', icon: Sparkles },
+  { name: 'バッチ処理', href: '/batch', icon: Layers },
   { name: 'Joom管理', href: '/joom', icon: Store },
   { name: 'eBay管理', href: '/ebay', icon: Store },
   { name: '出品管理', href: '/listings', icon: ShoppingCart },
