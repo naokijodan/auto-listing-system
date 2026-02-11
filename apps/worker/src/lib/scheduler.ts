@@ -22,6 +22,7 @@ const scrapeQueue = new Queue(QUEUE_NAMES.SCRAPE, { connection: redis });
 const pricingQueue = new Queue(QUEUE_NAMES.PRICING, { connection: redis });
 const competitorQueue = new Queue(QUEUE_NAMES.COMPETITOR, { connection: redis });
 const publishQueue = new Queue(QUEUE_NAMES.PUBLISH, { connection: redis });
+const orderQueue = new Queue(QUEUE_NAMES.ORDER, { connection: redis });
 
 /**
  * スケジューラー設定
@@ -154,6 +155,12 @@ export interface SchedulerConfig {
     dailyCron: string;        // 日次サマリー計算（デフォルト: 毎日1時）
     weeklyCron: string;       // 週次サマリー計算（デフォルト: 毎週月曜2時）
   };
+  // 発送期限チェック（Phase 51-52）
+  shipmentDeadlineCheck: {
+    enabled: boolean;
+    cronExpression: string;   // チェック間隔（デフォルト: 6時間ごと）
+    urgentHours: number;      // 緊急アラートの閾値（時間）
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -262,6 +269,11 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     enabled: true,
     dailyCron: '0 1 * * *',            // 毎日1時に日次サマリー計算
     weeklyCron: '0 2 * * 1',           // 毎週月曜2時に週次サマリー計算
+  },
+  shipmentDeadlineCheck: {
+    enabled: true,
+    cronExpression: '0 */6 * * *',     // 6時間ごとに発送期限チェック
+    urgentHours: 24,                    // 24時間以内が緊急
   },
 };
 
@@ -792,6 +804,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     webhookProcessing: { ...DEFAULT_CONFIG.webhookProcessing, ...config.webhookProcessing },
     inventoryAlertProcessing: { ...DEFAULT_CONFIG.inventoryAlertProcessing, ...config.inventoryAlertProcessing },
     salesSummaryCalculation: { ...DEFAULT_CONFIG.salesSummaryCalculation, ...config.salesSummaryCalculation },
+    shipmentDeadlineCheck: { ...DEFAULT_CONFIG.shipmentDeadlineCheck, ...config.shipmentDeadlineCheck },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -816,6 +829,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleWebhookProcessing(finalConfig.webhookProcessing);
   await scheduleInventoryAlertProcessing(finalConfig.inventoryAlertProcessing);
   await scheduleSalesSummaryCalculation(finalConfig.salesSummaryCalculation);
+  await scheduleShipmentDeadlineCheck(finalConfig.shipmentDeadlineCheck);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -2816,6 +2830,48 @@ async function scheduleSalesSummaryCalculation(config: SchedulerConfig['salesSum
     type: 'sales_summary_calculation_scheduled',
     dailyCron: config.dailyCron,
     weeklyCron: config.weeklyCron,
+  });
+}
+
+/**
+ * 発送期限チェックをスケジュール（Phase 51-52）
+ */
+async function scheduleShipmentDeadlineCheck(config: SchedulerConfig['shipmentDeadlineCheck']) {
+  if (!config.enabled) {
+    log.info({ type: 'shipment_deadline_check_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await orderQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'deadline-check') {
+      await orderQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // 発送期限チェックジョブ
+  await orderQueue.add(
+    'deadline-check',
+    {
+      type: 'deadline-check',
+      urgentHours: config.urgentHours,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'shipment-deadline-check-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({
+    type: 'shipment_deadline_check_scheduled',
+    cronExpression: config.cronExpression,
+    urgentHours: config.urgentHours,
   });
 }
 

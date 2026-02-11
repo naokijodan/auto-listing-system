@@ -1,8 +1,17 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { QUEUE_NAMES } from '@rakuda/config';
 import { AppError } from '../middleware/error-handler';
+
+// Redis接続とキュー（Phase 51）
+const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
+const orderQueue = new Queue(QUEUE_NAMES.ORDER, { connection: redis });
 
 const router = Router();
 const log = logger.child({ module: 'webhooks' });
@@ -401,7 +410,24 @@ async function processEbayOrder(
       data: { orderId: order.id },
     });
 
-    log.info({ orderId: order.id, marketplaceOrderId: orderData.orderId }, 'eBay order created');
+    // Phase 51: 注文処理ジョブをキューに追加
+    await orderQueue.add(
+      'process-order',
+      {
+        orderId: order.id,
+        marketplace: 'EBAY',
+        type: 'process',
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      }
+    );
+
+    log.info({ orderId: order.id, marketplaceOrderId: orderData.orderId }, 'eBay order created and queued for processing');
   }
 }
 
@@ -917,7 +943,24 @@ async function processJoomOrder(
       data: { orderId: order.id },
     });
 
-    log.info({ orderId: order.id, marketplaceOrderId: orderData.id }, 'Joom order created');
+    // Phase 51: 注文処理ジョブをキューに追加
+    await orderQueue.add(
+      'process-order',
+      {
+        orderId: order.id,
+        marketplace: 'JOOM',
+        type: 'process',
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+      }
+    );
+
+    log.info({ orderId: order.id, marketplaceOrderId: orderData.id }, 'Joom order created and queued for processing');
   }
 }
 

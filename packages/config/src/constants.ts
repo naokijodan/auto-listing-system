@@ -76,6 +76,9 @@ export const QUEUE_NAMES = {
   // Phase 41: エンリッチメント・Joom出品
   ENRICHMENT: 'enrichment-queue',
   JOOM_PUBLISH: 'joom-publish-queue',
+  // Phase 51-52: 注文・発送処理
+  ORDER: 'order-queue',
+  SHIPMENT: 'shipment-queue',
 } as const;
 
 // キュー設定
@@ -150,6 +153,22 @@ export const QUEUE_CONFIG = {
     concurrency: 3,
     attempts: 3,
     backoff: { type: 'exponential', delay: 30000 },
+  },
+  // Phase 51: 注文処理キュー
+  [QUEUE_NAMES.ORDER]: {
+    priority: 1, // 高優先度（注文は即時処理）
+    rateLimit: { max: 30, duration: 60000 }, // 30件/分
+    concurrency: 5,
+    attempts: 5,
+    backoff: { type: 'exponential', delay: 5000 },
+  },
+  // Phase 52: 発送処理キュー
+  [QUEUE_NAMES.SHIPMENT]: {
+    priority: 1, // 高優先度
+    rateLimit: { max: 20, duration: 60000 }, // 20件/分
+    concurrency: 3,
+    attempts: 5,
+    backoff: { type: 'exponential', delay: 10000 },
   },
 } as const;
 
