@@ -91,13 +91,50 @@ export class JoomApiClient {
   }
 
   /**
+   * Phase 45: APIリクエストをDBに記録
+   */
+  private async logApiCall(
+    method: string,
+    endpoint: string,
+    requestBody: any,
+    statusCode: number | null,
+    responseBody: any,
+    success: boolean,
+    errorMessage: string | null,
+    duration: number,
+    joomProductId?: string,
+    productId?: string
+  ): Promise<void> {
+    try {
+      await prisma.joomApiLog.create({
+        data: {
+          method,
+          endpoint,
+          requestBody,
+          statusCode,
+          responseBody,
+          joomProductId,
+          productId,
+          success,
+          errorMessage,
+          duration,
+        },
+      });
+    } catch (err) {
+      log.error({ type: 'joom_api_log_error', error: (err as Error).message });
+    }
+  }
+
+  /**
    * APIリクエスト（レート制限・リトライ付き）
    */
   private async request<T>(
     method: string,
     endpoint: string,
-    body?: any
+    body?: any,
+    options?: { joomProductId?: string; productId?: string }
   ): Promise<JoomApiResponse<T>> {
+    const startTime = Date.now();
     const token = await this.ensureAccessToken();
 
     const url = `${JOOM_API_BASE}${endpoint}`;
@@ -133,7 +170,16 @@ export class JoomApiClient {
           data = { message: responseText || 'Unknown error', code: 'PARSE_ERROR' };
         }
 
+        const duration = Date.now() - startTime;
+
         if (!response.ok) {
+          // Phase 45: エラー時もログ記録
+          await this.logApiCall(
+            method, endpoint, body, response.status, data,
+            false, data.message || 'Unknown error', duration,
+            options?.joomProductId, options?.productId
+          );
+
           // レート制限エラーの場合はリトライ可能としてスロー
           if (response.status === 429) {
             throw new RateLimitError(
@@ -168,6 +214,14 @@ export class JoomApiClient {
         // Joom APIのレスポンスは { code: 0, data: { id: "..." } } 形式
         // data.data から実際のデータを取り出す
         const actualData = data.data || data;
+
+        // Phase 45: 成功時もログ記録
+        await this.logApiCall(
+          method, endpoint, body, response.status, actualData,
+          true, null, duration,
+          options?.joomProductId || actualData?.id, options?.productId
+        );
+
         return {
           success: true,
           data: actualData,
@@ -178,6 +232,15 @@ export class JoomApiClient {
         retryableStatuses: [429, 500, 502, 503, 504],
       });
     } catch (error: any) {
+      const duration = Date.now() - startTime;
+
+      // Phase 45: 例外時もログ記録
+      await this.logApiCall(
+        method, endpoint, body, null, null,
+        false, error.message, duration,
+        options?.joomProductId, options?.productId
+      );
+
       log.error({
         type: 'joom_api_exception',
         error: error.message,

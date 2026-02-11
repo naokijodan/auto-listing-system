@@ -378,4 +378,135 @@ router.post('/test', async (req: Request, res: Response, next: NextFunction) => 
   }
 });
 
+// ========================================
+// Phase 46: キュー監視SSE
+// ========================================
+
+import { Queue } from 'bullmq';
+import { QUEUE_NAMES } from '@rakuda/config';
+
+// キューインスタンス
+const queues: Map<string, Queue> = new Map();
+
+// キュー初期化（遅延初期化）
+function initQueues(): void {
+  if (queues.size > 0) return;
+
+  const connection = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    maxRetriesPerRequest: null,
+  });
+
+  Object.values(QUEUE_NAMES).forEach((name) => {
+    queues.set(name, new Queue(name, { connection }));
+  });
+}
+
+/**
+ * @swagger
+ * /api/realtime/queue-stats:
+ *   get:
+ *     tags: [Realtime]
+ *     summary: キュー統計（SSE）
+ *     description: Server-Sent Eventsでキュー統計をリアルタイム配信
+ *     responses:
+ *       200:
+ *         description: SSEストリーム
+ */
+router.get('/queue-stats', async (req: Request, res: Response) => {
+  initQueues();
+
+  const clientId = uuidv4();
+  const interval = parseInt(req.query.interval as string, 10) || 3000;
+
+  // SSEヘッダー設定
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  // 初期メッセージ
+  sendSSEMessage(res, {
+    type: 'connected',
+    clientId,
+    timestamp: new Date().toISOString(),
+  });
+
+  log.info({ type: 'queue_sse_connected', clientId });
+
+  // 定期的にキュー統計を送信
+  const statsInterval = setInterval(async () => {
+    try {
+      const stats = await getQueueStatsAll();
+      sendSSEMessage(res, {
+        type: 'queue-stats',
+        data: stats,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      log.error({ type: 'queue_stats_error', error, clientId });
+    }
+  }, interval);
+
+  // クリーンアップ
+  const cleanup = () => {
+    clearInterval(statsInterval);
+    log.info({ type: 'queue_sse_disconnected', clientId });
+  };
+
+  req.on('close', cleanup);
+  req.on('error', cleanup);
+  res.on('error', cleanup);
+});
+
+/**
+ * 全キューの統計を取得
+ */
+async function getQueueStatsAll(): Promise<Record<string, any>> {
+  const stats: Record<string, any> = {};
+
+  for (const [name, queue] of queues) {
+    try {
+      const [waiting, active, completed, failed, delayed] = await Promise.all([
+        queue.getWaitingCount(),
+        queue.getActiveCount(),
+        queue.getCompletedCount(),
+        queue.getFailedCount(),
+        queue.getDelayedCount(),
+      ]);
+
+      stats[name] = { waiting, active, completed, failed, delayed };
+    } catch (error) {
+      stats[name] = { error: (error as Error).message };
+    }
+  }
+
+  return stats;
+}
+
+/**
+ * @swagger
+ * /api/realtime/queue-stats/snapshot:
+ *   get:
+ *     tags: [Realtime]
+ *     summary: キュー統計スナップショット
+ *     responses:
+ *       200:
+ *         description: キュー統計
+ */
+router.get('/queue-stats/snapshot', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    initQueues();
+    const stats = await getQueueStatsAll();
+
+    res.json({
+      success: true,
+      data: stats,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export { router as realtimeRouter };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import {
   Activity,
@@ -13,6 +13,9 @@ import {
   BarChart3,
   Trash2,
   RotateCcw,
+  Wifi,
+  WifiOff,
+  Radio,
 } from 'lucide-react';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -46,21 +49,80 @@ interface RecoveryStats {
   byQueue: Record<string, { pending: number; retried: number }>;
 }
 
+// Phase 46: SSE接続フック
+function useQueueSSE(enabled: boolean) {
+  const [stats, setStats] = useState<Record<string, QueueStats> | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    if (!enabled) {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      setConnected(false);
+      return;
+    }
+
+    const eventSource = new EventSource('/api/realtime/queue-stats?interval=2000');
+    eventSourceRef.current = eventSource;
+
+    eventSource.onopen = () => {
+      setConnected(true);
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'queue-stats' && data.data) {
+          setStats(data.data);
+          setLastUpdate(new Date());
+        }
+      } catch (error) {
+        console.error('SSE parse error:', error);
+      }
+    };
+
+    eventSource.onerror = () => {
+      setConnected(false);
+      // 自動再接続はEventSourceが処理
+    };
+
+    return () => {
+      eventSource.close();
+      setConnected(false);
+    };
+  }, [enabled]);
+
+  return { stats, connected, lastUpdate };
+}
+
 export default function BatchDashboardPage() {
   const [isRetrying, setIsRetrying] = useState(false);
   const [selectedQueue, setSelectedQueue] = useState<string | null>(null);
+  const [useSSE, setUseSSE] = useState(true);
 
+  // SSEでリアルタイム更新
+  const { stats: sseStats, connected: sseConnected, lastUpdate } = useQueueSSE(useSSE);
+
+  // フォールバック: SSE無効時はポーリング
   const { data: enrichmentStats, mutate: mutateEnrichment } = useSWR<QueueStats>(
-    '/api/enrichment/queue-stats',
+    !useSSE ? '/api/enrichment/queue-stats' : null,
     fetcher,
     { refreshInterval: 5000 }
   );
 
   const { data: joomStats, mutate: mutateJoom } = useSWR<QueueStats>(
-    '/api/joom/queue-stats',
+    !useSSE ? '/api/joom/queue-stats' : null,
     fetcher,
     { refreshInterval: 5000 }
   );
+
+  // SSEから取得した統計を使用
+  const enrichmentQueueStats = useSSE ? sseStats?.enrichment : enrichmentStats;
+  const joomQueueStats = useSSE ? sseStats?.['joom-publish'] : joomStats;
 
   const { data: failedJobs, mutate: mutateFailedJobs } = useSWR<FailedJob[]>(
     '/api/jobs/failed',
@@ -193,7 +255,45 @@ export default function BatchDashboardPage() {
             ジョブキューの状態監視とリカバリー管理
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
+          {/* Phase 46: リアルタイム接続状態 */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setUseSSE(!useSSE)}
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                useSSE
+                  ? sseConnected
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                  : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+              }`}
+            >
+              {useSSE ? (
+                sseConnected ? (
+                  <>
+                    <Radio className="h-4 w-4 animate-pulse" />
+                    リアルタイム
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="h-4 w-4" />
+                    接続中...
+                  </>
+                )
+              ) : (
+                <>
+                  <Wifi className="h-4 w-4" />
+                  ポーリング
+                </>
+              )}
+            </button>
+            {lastUpdate && useSSE && (
+              <span className="text-xs text-zinc-500">
+                {lastUpdate.toLocaleTimeString('ja-JP')}
+              </span>
+            )}
+          </div>
+
           <button
             onClick={refreshAll}
             className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
@@ -218,8 +318,8 @@ export default function BatchDashboardPage() {
 
       {/* Queue Stats */}
       <div className="grid grid-cols-2 gap-6">
-        {renderStatCard('Enrichment Queue', enrichmentStats, 'text-blue-600 dark:text-blue-400')}
-        {renderStatCard('Joom Publish Queue', joomStats, 'text-purple-600 dark:text-purple-400')}
+        {renderStatCard('Enrichment Queue', enrichmentQueueStats, 'text-blue-600 dark:text-blue-400')}
+        {renderStatCard('Joom Publish Queue', joomQueueStats, 'text-purple-600 dark:text-purple-400')}
       </div>
 
       {/* Recovery Stats */}
