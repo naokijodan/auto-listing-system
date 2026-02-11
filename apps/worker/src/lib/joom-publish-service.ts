@@ -9,6 +9,7 @@ import { downloadImages, isValidImageUrl } from './image-downloader';
 import { optimizeImage, optimizeImagesParallel } from './image-optimizer';
 import { uploadFile } from './storage';
 import { enrichmentTaskManager } from './enrichment-service';
+import { getCategoryMapping, fillRequiredAttributes, type ProductInfo } from './category-mapper';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
@@ -292,6 +293,36 @@ export class JoomPublishService {
         data: { status: 'PUBLISHING' },
       });
 
+      // Phase 49: カテゴリマッピングを取得
+      const productInfo: ProductInfo = {
+        title: task.product.title,
+        titleEn: translations.en.title,
+        description: task.product.description,
+        descriptionEn: translations.en.description,
+        category: attributes?.category,
+        brand: attributes?.brand,
+        attributes: attributes,
+      };
+
+      const categoryMapping = await getCategoryMapping(productInfo);
+      let joomCategory = attributes?.category || '';
+      let filledAttributes = attributes || {};
+
+      if (categoryMapping.success) {
+        const mappingData = categoryMapping.existingMapping || categoryMapping.suggestion;
+        if (mappingData) {
+          joomCategory = mappingData.joomCategoryPath;
+          // 必須属性を自動補完
+          filledAttributes = await fillRequiredAttributes(productInfo, categoryMapping);
+          log.info({
+            type: 'category_mapped',
+            joomListingId,
+            categoryId: mappingData.joomCategoryId,
+            categoryPath: mappingData.joomCategoryPath,
+          });
+        }
+      }
+
       // Joom商品データを構築
       const joomProduct: JoomProduct = {
         name: translations.en.title,
@@ -306,7 +337,7 @@ export class JoomPublishService {
           price: pricing.shippingCost,
           time: '7-14 business days',
         },
-        tags: attributes?.category ? [attributes.category] : [],
+        tags: joomCategory ? [joomCategory] : [],
       };
 
       // Joom APIに出品
@@ -316,7 +347,7 @@ export class JoomPublishService {
         throw new Error(response.error?.message || 'Joom API error');
       }
 
-      // 成功時の更新
+      // 成功時の更新（Phase 49: カテゴリ情報も保存）
       await prisma.$transaction([
         prisma.joomListing.update({
           where: { id: joomListingId },
@@ -328,6 +359,8 @@ export class JoomPublishService {
             status: 'ACTIVE',
             publishedAt: new Date(),
             lastSyncedAt: new Date(),
+            joomCategory: joomCategory || null,
+            joomAttributes: filledAttributes,
           },
         }),
         prisma.enrichmentTask.update({

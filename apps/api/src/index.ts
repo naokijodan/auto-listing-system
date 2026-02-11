@@ -71,6 +71,8 @@ import { securityRouter } from './routes/security';
 import { integrationsRouter } from './routes/integrations';
 import enrichmentRouter from './routes/enrichment';
 import joomRouter from './routes/joom';
+import joomCategoriesRouter from './routes/joom-categories';
+import uploadsRouter from './routes/uploads';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -191,6 +193,8 @@ app.use('/api/security', securityRouter);
 app.use('/api/integrations', integrationsRouter);
 app.use('/api/enrichment', enrichmentRouter);
 app.use('/api/joom', joomRouter);
+app.use('/api/joom-categories', joomCategoriesRouter);
+app.use('/api/uploads', uploadsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

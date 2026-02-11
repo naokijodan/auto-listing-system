@@ -500,3 +500,244 @@ export async function healthCheck(): Promise<{
     };
   }
 }
+
+// ========================================
+// Phase 50: S3直接アップロード
+// ========================================
+
+/**
+ * アップロード用プリサインURL結果
+ */
+export interface PresignedUploadResult {
+  uploadUrl: string;
+  key: string;
+  publicUrl: string;
+  expiresAt: Date;
+  fields?: Record<string, string>; // POST用の追加フィールド
+}
+
+/**
+ * Phase 50: アップロード用プリサインURLを生成
+ * クライアントが直接S3にアップロードするためのURL
+ */
+export async function generatePresignedUploadUrl(
+  key: string,
+  options: {
+    bucket?: string;
+    contentType?: string;
+    expiresIn?: number; // 秒（デフォルト: 1時間）
+    maxFileSize?: number; // バイト（デフォルト: 10MB）
+  } = {}
+): Promise<PresignedUploadResult> {
+  const bucket = options.bucket || getDefaultBucket();
+  const expiresIn = options.expiresIn || 3600; // 1時間
+  const contentType = options.contentType || 'application/octet-stream';
+
+  try {
+    const command = new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(getS3Client(), command, { expiresIn });
+    const publicUrl = buildPublicUrl(bucket, key);
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+
+    log.info({
+      type: 'presigned_upload_url_generated',
+      key,
+      bucket,
+      contentType,
+      expiresIn,
+    });
+
+    return {
+      uploadUrl,
+      key,
+      publicUrl,
+      expiresAt,
+    };
+  } catch (error: any) {
+    log.error({
+      type: 'presigned_upload_url_error',
+      key,
+      bucket,
+      error: error.message,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Phase 50: 複数ファイル用のプリサインURLをバッチ生成
+ */
+export async function generateBatchPresignedUploadUrls(
+  files: Array<{
+    key: string;
+    contentType?: string;
+  }>,
+  options: {
+    bucket?: string;
+    expiresIn?: number;
+  } = {}
+): Promise<PresignedUploadResult[]> {
+  const results = await Promise.all(
+    files.map(file =>
+      generatePresignedUploadUrl(file.key, {
+        bucket: options.bucket,
+        contentType: file.contentType,
+        expiresIn: options.expiresIn,
+      })
+    )
+  );
+
+  log.info({
+    type: 'batch_presigned_urls_generated',
+    count: results.length,
+  });
+
+  return results;
+}
+
+/**
+ * Phase 50: 商品画像アップロード用のプリサインURLを生成
+ */
+export async function generateProductImageUploadUrls(
+  productId: string,
+  imageCount: number,
+  options: {
+    format?: string;
+    expiresIn?: number;
+  } = {}
+): Promise<PresignedUploadResult[]> {
+  const format = options.format || 'webp';
+  const timestamp = Date.now();
+
+  const files = Array.from({ length: imageCount }, (_, i) => ({
+    key: `products/${productId}/${timestamp}-${i}.${format}`,
+    contentType: `image/${format}`,
+  }));
+
+  return generateBatchPresignedUploadUrls(files, {
+    expiresIn: options.expiresIn,
+  });
+}
+
+/**
+ * Phase 50: アップロード完了を確認
+ */
+export async function verifyUploadComplete(
+  key: string,
+  bucket: string = getDefaultBucket()
+): Promise<{
+  exists: boolean;
+  size?: number;
+  contentType?: string;
+}> {
+  try {
+    const response = await getS3Client().send(
+      new HeadObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      })
+    );
+
+    return {
+      exists: true,
+      size: response.ContentLength,
+      contentType: response.ContentType,
+    };
+  } catch (error: any) {
+    if (error.name === 'NotFound') {
+      return { exists: false };
+    }
+    throw error;
+  }
+}
+
+/**
+ * Phase 50: 並列アップロード進捗トラッカー
+ */
+export interface UploadProgress {
+  total: number;
+  completed: number;
+  failed: number;
+  inProgress: number;
+  files: Array<{
+    key: string;
+    status: 'pending' | 'uploading' | 'completed' | 'failed';
+    error?: string;
+  }>;
+}
+
+export class ParallelUploadTracker {
+  private progress: UploadProgress;
+  private onProgressCallback?: (progress: UploadProgress) => void;
+
+  constructor(totalFiles: number) {
+    this.progress = {
+      total: totalFiles,
+      completed: 0,
+      failed: 0,
+      inProgress: 0,
+      files: [],
+    };
+  }
+
+  onProgress(callback: (progress: UploadProgress) => void): void {
+    this.onProgressCallback = callback;
+  }
+
+  addFile(key: string): void {
+    this.progress.files.push({
+      key,
+      status: 'pending',
+    });
+    this.notifyProgress();
+  }
+
+  startUpload(key: string): void {
+    const file = this.progress.files.find(f => f.key === key);
+    if (file) {
+      file.status = 'uploading';
+      this.progress.inProgress++;
+      this.notifyProgress();
+    }
+  }
+
+  completeUpload(key: string): void {
+    const file = this.progress.files.find(f => f.key === key);
+    if (file) {
+      file.status = 'completed';
+      this.progress.inProgress--;
+      this.progress.completed++;
+      this.notifyProgress();
+    }
+  }
+
+  failUpload(key: string, error: string): void {
+    const file = this.progress.files.find(f => f.key === key);
+    if (file) {
+      file.status = 'failed';
+      file.error = error;
+      this.progress.inProgress--;
+      this.progress.failed++;
+      this.notifyProgress();
+    }
+  }
+
+  getProgress(): UploadProgress {
+    return { ...this.progress };
+  }
+
+  isComplete(): boolean {
+    return this.progress.completed + this.progress.failed === this.progress.total;
+  }
+
+  private notifyProgress(): void {
+    if (this.onProgressCallback) {
+      this.onProgressCallback(this.getProgress());
+    }
+  }
+}

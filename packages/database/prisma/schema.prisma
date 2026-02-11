@@ -368,6 +368,47 @@ model EbayCategoryMapping {
 }
 
 // ========================================
+// Phase 49: Joom カテゴリマッピング
+// ========================================
+model JoomCategoryMapping {
+  id String @id @default(cuid())
+
+  // 元カテゴリ（日本語キーワード）
+  sourceKeywords String[] // 元カテゴリキーワード群
+  sourceBrand    String?  // ブランドマッチ（オプション）
+
+  // Joomカテゴリ情報
+  joomCategoryId   String // JoomカテゴリID
+  joomCategoryName String // Joomカテゴリ名（英語）
+  joomCategoryPath String // カテゴリパス（例: "Electronics > Watches > Smart Watches"）
+
+  // 必須属性テンプレート
+  requiredAttributes Json @default("{}") // { "material": "string", "color": ["red", "blue"], ... }
+
+  // 推奨属性
+  recommendedAttributes Json @default("{}") // オプションで指定可能な属性
+
+  // AIマッピング情報
+  aiConfidence Float   @default(0) // AIが提案した場合の信頼度 (0-1)
+  aiSuggested  Boolean @default(false) // AIによる提案かどうか
+  verifiedAt   DateTime? // 人間による検証日時
+  verifiedBy   String?   // 検証者
+
+  // 統計
+  usageCount   Int      @default(0) // 使用回数
+  lastUsedAt   DateTime? // 最終使用日時
+
+  isActive  Boolean  @default(true)
+  priority  Int      @default(0) // 優先度（高いほど優先）
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([joomCategoryId])
+  @@index([isActive, priority])
+  @@map("joom_category_mappings")
+}
+
+// ========================================
 // 出品テンプレート
 // ========================================
 model ListingTemplate {

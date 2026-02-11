@@ -3,60 +3,76 @@
 ## 最終更新
 
 **日付**: 2026-02-11
-**Phase**: 47-48完了
+**Phase**: 49-50完了
 **担当**: Claude
 
 ## 現在のステータス
 
-### Phase 47-48: E2Eテスト & 画像処理最適化
+### Phase 49-50: Joomカテゴリマッピング & S3直接アップロード
 
 **ステータス**: 完了 ✅
 
 #### 実装内容
 
-**Phase 47: E2Eテスト**
-1. バッチダッシュボードE2Eテスト (`apps/web/e2e/batch-dashboard.spec.ts`)
-   - ページタイトル表示
-   - キュー統計カード表示
-   - リカバリー統計セクション
-   - リアルタイム/ポーリング切り替え
-   - キューフィルターボタン
+**Phase 49: Joomカテゴリマッピング**
+1. JoomCategoryMappingモデル追加 (`packages/database/prisma/schema.prisma`)
+   - sourceKeywords: キーワード配列
+   - joomCategoryId/Name/Path
+   - requiredAttributes/recommendedAttributes
+   - aiConfidence, aiSuggested, verifiedAt
 
-2. エンリッチメント管理E2Eテスト (`apps/web/e2e/enrichment.spec.ts`)
-   - ページタイトル・ステータスフィルター
-   - キュー統計表示
-   - タスクリスト表示
-   - サイドバーナビゲーション
+2. カテゴリマッピングサービス (`apps/worker/src/lib/category-mapper.ts`)
+   - `suggestCategoryWithAI()` - GPT-4oでカテゴリ推定
+   - `getCategoryMapping()` - 既存マッピング or AI推定
+   - `fillRequiredAttributes()` - 必須属性自動補完
+   - `createCategoryMapping()` - 手動マッピング作成
 
-3. ジョブリカバリーユニットテスト (`apps/worker/src/test/job-recovery.test.ts`)
-   - generateIdempotencyKey
-   - checkIdempotencyKey
-   - recordIdempotencyKey
-   - JobRecoveryService メソッド
+3. APIエンドポイント (`apps/api/src/routes/joom-categories.ts`)
+   - GET /api/joom-categories - カテゴリ一覧
+   - GET /api/joom-categories/mappings - マッピング一覧
+   - POST /api/joom-categories/suggest - AI推定
+   - POST /api/joom-categories/mappings - マッピング作成
+   - POST /api/joom-categories/mappings/:id/verify - 検証
+   - GET /api/joom-categories/stats - 統計
 
-**Phase 48: 画像処理最適化**
-1. 並列画像処理 (`apps/worker/src/lib/image-optimizer.ts`)
-   - `optimizeImagesParallel()` - 並列処理（concurrency制御）
-   - `optimizeImagesStream()` - ストリーミング処理（大量画像向け）
-   - 進捗コールバック対応
-   - パフォーマンスログ出力
+4. joom-publish-service.ts更新
+   - publishToJoomでカテゴリマッピング統合
+   - 属性自動補完機能
 
-2. ImagePipelineService更新 (`apps/worker/src/lib/joom-publish-service.ts`)
-   - 並列画像処理に変更（concurrency: 4）
-   - 進捗ログ出力
+**Phase 50: S3直接アップロード**
+1. storage.ts拡張 (`apps/worker/src/lib/storage.ts`)
+   - `generatePresignedUploadUrl()` - アップロード用プリサインURL
+   - `generateBatchPresignedUploadUrls()` - バッチ生成
+   - `generateProductImageUploadUrls()` - 商品画像用
+   - `verifyUploadComplete()` - アップロード完了確認
+   - `ParallelUploadTracker` - 並列アップロード進捗管理
+
+2. APIエンドポイント (`apps/api/src/routes/uploads.ts`)
+   - POST /api/uploads/presigned - 単一プリサインURL
+   - POST /api/uploads/batch - バッチプリサインURL
+   - POST /api/uploads/product-images - 商品画像用
+   - POST /api/uploads/verify - アップロード確認
+   - POST /api/uploads/verify-batch - バッチ確認
+   - GET /api/uploads/instructions - 使用方法
 
 ## ファイル変更一覧
 
 ### 新規作成
-- `apps/web/e2e/batch-dashboard.spec.ts`
-- `apps/web/e2e/enrichment.spec.ts`
-- `apps/worker/src/test/job-recovery.test.ts`
+- `apps/worker/src/lib/category-mapper.ts`
+- `apps/api/src/routes/joom-categories.ts`
+- `apps/api/src/routes/uploads.ts`
 
 ### 更新
-- `apps/worker/src/lib/image-optimizer.ts` - 並列処理機能追加
-- `apps/worker/src/lib/joom-publish-service.ts` - 並列画像処理使用
+- `packages/database/prisma/schema.prisma` - JoomCategoryMappingモデル追加
+- `apps/worker/src/lib/storage.ts` - S3直接アップロード機能追加
+- `apps/worker/src/lib/joom-publish-service.ts` - カテゴリマッピング統合
+- `apps/api/src/index.ts` - 新ルート登録
 
 ## 過去のPhase
+
+### Phase 47-48: E2Eテスト & 画像処理最適化
+- Playwright E2Eテスト
+- 並列画像処理
 
 ### Phase 45-46: Joom APIログ強化 & リアルタイム監視
 - APIログDB記録
@@ -70,46 +86,39 @@
 - 共有キューパッケージ
 - エンリッチメント管理ページ
 
-## テスト実行方法
-
-```bash
-# E2Eテスト（Playwright）
-cd apps/web
-npx playwright test
-
-# ユニットテスト（Vitest）
-cd apps/worker
-npm test
-```
-
 ## 次のPhaseへの推奨事項
 
-### Phase 49候補
+### Phase 51候補
 
-1. **Joomカテゴリマッピング**
-   - カテゴリ自動選択
-   - 必須属性の自動入力
-
-2. **S3直接アップロード**
-   - プリサインドURL使用
-   - アップロード並列化
-
-3. **価格最適化AI**
+1. **価格最適化AI**
    - 競合分析
    - 動的価格調整
+   - 需要予測
+
+2. **注文自動処理**
+   - Joom注文webhook
+   - 在庫自動連携
+   - 発送通知自動送信
+
+3. **パフォーマンス最適化**
+   - キャッシュ戦略
+   - データベースインデックス最適化
+   - CDN設定
 
 ## 技術的注意事項
 
-1. **E2Eテスト**
-   - `npx playwright install` でブラウザ初回インストール必要
-   - テスト実行前にdevサーバーが起動している必要あり
+1. **Joomカテゴリマッピング**
+   - AI推定の信頼度が0.85以上で自動保存
+   - 検証済みマッピングは信頼度1.0に設定
 
-2. **並列画像処理**
-   - デフォルト同時処理数: 4
-   - メモリ使用量に注意（大量画像時）
+2. **S3直接アップロード**
+   - プリサインURLのデフォルト有効期限: 1時間
+   - 最大ファイルサイズ: 10MB
+   - 対応フォーマット: webp, jpg, jpeg, png
 
 3. **Prisma**
    - スキーマ変更後は `npx prisma generate` が必要
+   - マイグレーション: `npx prisma migrate dev`
 
 ## 環境変数
 
@@ -118,6 +127,10 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/xxx/xxx/xxx
 DATABASE_URL=postgresql://...
 REDIS_URL=redis://localhost:6379
 OPENAI_API_KEY=sk-...
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_BUCKET=rakuda-images
 ```
 
 ## 動作確認
@@ -129,8 +142,8 @@ npm run build
 # 開発サーバー起動
 npm run dev
 
-# ワーカー起動（別ターミナル）
-npm run dev -w @rakuda/worker
+# Prisma生成
+npx prisma generate --schema=packages/database/prisma/schema.prisma
 ```
 
 ## 関連ドキュメント
