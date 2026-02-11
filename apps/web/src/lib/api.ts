@@ -268,6 +268,21 @@ export const api = {
     return `/api/sourcing/pending${queryStr ? `?${queryStr}` : ''}`;
   },
   getSourcingStats: () => `/api/sourcing/stats`,
+
+  // Pricing AI (Phase 61-62)
+  getPricingStats: () => `/api/pricing-ai/stats`,
+  getPriceRecommendations: (params?: { marketplace?: string; strategy?: string; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.marketplace) query.set('marketplace', params.marketplace);
+    if (params?.strategy) query.set('strategy', params.strategy);
+    if (params?.limit) query.set('limit', params.limit.toString());
+    const queryStr = query.toString();
+    return `/api/pricing-ai/recommendations${queryStr ? `?${queryStr}` : ''}`;
+  },
+  getPriceAdjustmentsNeeded: (threshold?: number) => {
+    const query = threshold ? `?threshold=${threshold}` : '';
+    return `/api/pricing-ai/adjustments-needed${query}`;
+  },
 };
 
 // POST/PUT/DELETE helpers

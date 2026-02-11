@@ -76,6 +76,7 @@ import uploadsRouter from './routes/uploads';
 import { shipmentsRouter } from './routes/shipments';
 import { sourcingRouter } from './routes/sourcing';
 import { cacheAdminRouter } from './routes/cache-admin';
+import { pricingAiRouter } from './routes/pricing-ai';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -201,6 +202,7 @@ app.use('/api/uploads', uploadsRouter);
 app.use('/api/shipments', shipmentsRouter);
 app.use('/api/sourcing', sourcingRouter);
 app.use('/api/admin/cache', cacheAdminRouter);
+app.use('/api/pricing-ai', pricingAiRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

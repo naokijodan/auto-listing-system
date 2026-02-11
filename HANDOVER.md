@@ -3,10 +3,66 @@
 ## 最終更新
 
 **日付**: 2026-02-11
-**Phase**: 59-60完了
+**Phase**: 61-62完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 61-62: 価格最適化AI
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 61-62: 価格最適化AI**
+1. 価格最適化エンジン (`apps/api/src/lib/pricing-engine.ts`)
+   - 原価→販売価格計算（為替・手数料考慮）
+   - 利益率計算（マージン算出）
+   - 競合価格分析（過去7日データ）
+   - 価格推奨生成（5戦略対応）
+   - 一括価格推奨生成
+   - 価格調整が必要なリスティング検出
+   - 価格自動調整（履歴記録付き）
+   - 価格最適化統計取得
+
+2. 価格戦略
+   - COMPETITIVE: 競合対抗（最安値付近）
+   - PROFIT_MAXIMIZE: 利益最大化
+   - MARKET_AVERAGE: 市場平均
+   - PENETRATION: 浸透価格（低価格）
+   - PREMIUM: プレミアム価格
+
+3. 価格最適化API (`apps/api/src/routes/pricing-ai.ts`)
+   - GET /api/pricing-ai/stats - 価格最適化統計
+   - POST /api/pricing-ai/calculate - 原価から販売価格計算
+   - GET /api/pricing-ai/recommendation/:listingId - 個別価格推奨
+   - GET /api/pricing-ai/recommendations - 一括価格推奨
+   - GET /api/pricing-ai/adjustments-needed - 調整必要なリスティング
+   - POST /api/pricing-ai/apply/:listingId - 価格調整適用
+   - POST /api/pricing-ai/bulk-apply - 一括価格調整
+   - POST /api/pricing-ai/simulate - 価格変更シミュレーション
+
+4. APIクライアント更新 (`apps/web/src/lib/api.ts`)
+   - `getPricingStats()` - 価格最適化統計取得
+   - `getPriceRecommendations()` - 価格推奨取得
+   - `getPriceAdjustmentsNeeded()` - 調整必要リスティング取得
+
+5. SWRフック追加 (`apps/web/src/lib/hooks.ts`)
+   - `usePricingStats()` - 価格最適化統計
+   - `usePriceRecommendations()` - 価格推奨
+   - `usePriceAdjustmentsNeeded()` - 調整必要リスティング
+
+6. 価格最適化ページ (`apps/web/src/app/pricing-ai/page.tsx`)
+   - 価格最適化統計ダッシュボード
+   - 戦略選択UI（5戦略）
+   - 価格推奨一覧テーブル
+   - 個別価格適用機能
+   - 一括価格適用機能
+   - マーケットプレイスフィルター
+   - 信頼度表示（HIGH/MEDIUM/LOW）
+   - 価格差・マージン差分表示
+
+---
 
 ### Phase 59-60: パフォーマンス最適化（Redisキャッシュ）
 
@@ -191,6 +247,17 @@
 
 ## ファイル変更一覧
 
+### Phase 61-62
+#### 新規作成
+- `apps/api/src/lib/pricing-engine.ts` - 価格最適化エンジン
+- `apps/api/src/routes/pricing-ai.ts` - 価格最適化API
+- `apps/web/src/app/pricing-ai/page.tsx` - 価格最適化ページ
+
+#### 更新
+- `apps/api/src/index.ts` - pricing-aiルート登録
+- `apps/web/src/lib/api.ts` - 価格最適化API追加
+- `apps/web/src/lib/hooks.ts` - 価格最適化SWRフック追加
+
 ### Phase 59-60
 #### 新規作成
 - `apps/api/src/lib/cache-service.ts` - Redisキャッシュサービス
@@ -266,36 +333,42 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 61-62候補
+### Phase 63-64候補
 
-1. **価格最適化AI**
-   - 競合分析エンジン
-   - 動的価格調整ロジック
-   - 需要予測モデル
-
-2. **顧客対応自動化**
+1. **顧客対応自動化**
    - メッセージテンプレート強化
    - 自動返信ルール
    - 顧客満足度トラッキング
 
-3. **データベースインデックス最適化**
+2. **データベースインデックス最適化**
    - 複合インデックス追加
    - クエリパフォーマンス分析
    - スロークエリ最適化
 
+3. **売上予測AI**
+   - 過去データ分析
+   - 需要予測モデル
+   - 在庫最適化提案
+
 ## 技術的注意事項
 
-1. **注文処理**
+1. **価格最適化AI**
+   - 最低利益率15%、最大50%、目標25%
+   - 競合価格は過去7日のデータを分析
+   - 価格変更は履歴テーブル（PriceHistory）に記録
+   - 5つの価格戦略から選択可能
+
+2. **注文処理**
    - 注文受信時にORDERキューにジョブ追加
    - 在庫はProductのstatusをSOLDに更新
    - 仕入れ確認通知はNotificationとして作成
 
-2. **発送処理**
+3. **発送処理**
    - 追跡番号登録時にJoom/eBay APIに自動連携
    - 発送期限は営業日計算（土日除外）
    - 期限24時間前に緊急アラート
 
-3. **Slack通知**
+4. **Slack通知**
    - alertManager.sendCustomAlert()を使用
    - 新規注文、発送完了、期限アラートを通知
 

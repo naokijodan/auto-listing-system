@@ -526,3 +526,62 @@ export function useSourcingStats() {
     refreshInterval: 60000, // 1分ごと
   });
 }
+
+// Pricing AI (Phase 61-62)
+export type PricingStrategy = 'COMPETITIVE' | 'PROFIT_MAXIMIZE' | 'MARKET_AVERAGE' | 'PENETRATION' | 'PREMIUM';
+
+export interface PriceRecommendation {
+  listingId: string;
+  productId: string;
+  currentPrice: number;
+  recommendedPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  costPrice: number;
+  currentMargin: number;
+  recommendedMargin: number;
+  competitorAvgPrice: number | null;
+  competitorMinPrice: number | null;
+  reason: string;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  strategy: PricingStrategy;
+}
+
+export interface PricingStats {
+  totalListings: number;
+  adjustmentNeeded: number;
+  avgMargin: number;
+  lowMarginCount: number;
+  highMarginCount: number;
+  byStrategy: Record<string, number>;
+}
+
+export function usePricingStats() {
+  return useSWR<ApiResponse<PricingStats>>(api.getPricingStats(), fetcher, {
+    refreshInterval: 60000,
+  });
+}
+
+export function usePriceRecommendations(params?: {
+  marketplace?: string;
+  strategy?: string;
+  limit?: number;
+}) {
+  return useSWR<ApiResponse<PriceRecommendation[]> & {
+    summary: {
+      needsAdjustment: number;
+      avgCurrentMargin: number;
+      avgRecommendedMargin: number;
+    };
+  }>(api.getPriceRecommendations(params), fetcher, {
+    refreshInterval: 60000,
+  });
+}
+
+export function usePriceAdjustmentsNeeded(threshold?: number) {
+  return useSWR<ApiResponse<PriceRecommendation[]>>(
+    api.getPriceAdjustmentsNeeded(threshold),
+    fetcher,
+    { refreshInterval: 60000 }
+  );
+}
