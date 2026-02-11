@@ -6,7 +6,7 @@ import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { JoomApiClient, JoomProduct } from './joom-api';
 import { downloadImages, isValidImageUrl } from './image-downloader';
-import { optimizeImage } from './image-optimizer';
+import { optimizeImage, optimizeImagesParallel } from './image-optimizer';
 import { uploadFile } from './storage';
 import { enrichmentTaskManager } from './enrichment-service';
 import path from 'path';
@@ -93,28 +93,38 @@ export class ImagePipelineService {
         throw new Error('All image downloads failed');
       }
 
-      // 2. 最適化
+      // 2. 最適化（Phase 48: 並列処理）
       log.info({
         type: 'image_optimize_start',
         productId,
         count: downloadedPaths.length,
+        mode: 'parallel',
       });
 
-      const optimizedPaths: string[] = [];
-      for (const downloadedPath of downloadedPaths) {
-        const optimizedPath = downloadedPath.replace('.tmp', '-optimized.webp');
-        const result = await optimizeImage(downloadedPath, optimizedPath, {
+      const optimizeResults = await optimizeImagesParallel(
+        downloadedPaths,
+        tempDir,
+        {
           maxWidth: 1200,
           maxHeight: 1200,
           format: 'webp',
           quality: 85,
           background: 'white',
-        });
-
-        if (result.success && result.outputPath) {
-          optimizedPaths.push(result.outputPath);
+          concurrency: 4,  // 同時処理数
+          onProgress: (completed, total) => {
+            log.debug({
+              type: 'image_optimize_progress',
+              productId,
+              completed,
+              total,
+            });
+          },
         }
-      }
+      );
+
+      const optimizedPaths = optimizeResults
+        .filter(r => r.success && r.outputPath)
+        .map(r => r.outputPath!);
 
       // 3. S3/MinIOにアップロード
       log.info({

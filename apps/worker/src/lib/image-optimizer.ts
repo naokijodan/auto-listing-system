@@ -265,6 +265,165 @@ export async function optimizeImages(
 }
 
 /**
+ * Phase 48: 並列画像処理オプション
+ */
+export interface ParallelOptimizationOptions extends OptimizationOptions {
+  concurrency?: number;  // 同時処理数（デフォルト: 4）
+  onProgress?: (completed: number, total: number) => void;
+}
+
+/**
+ * Phase 48: 複数画像を並列最適化
+ * Sharp並列処理でパフォーマンスを向上
+ */
+export async function optimizeImagesParallel(
+  inputPaths: string[],
+  outputDir: string,
+  options: ParallelOptimizationOptions = {}
+): Promise<OptimizationResult[]> {
+  const { concurrency = 4, onProgress, ...optimizeOptions } = options;
+
+  log.info({
+    type: 'parallel_optimize_start',
+    totalImages: inputPaths.length,
+    concurrency,
+  });
+
+  const startTime = Date.now();
+  const results: OptimizationResult[] = new Array(inputPaths.length);
+  let completedCount = 0;
+
+  // チャンクに分割して並列処理
+  const chunks: string[][] = [];
+  for (let i = 0; i < inputPaths.length; i += concurrency) {
+    chunks.push(inputPaths.slice(i, i + concurrency));
+  }
+
+  let currentIndex = 0;
+  for (const chunk of chunks) {
+    const chunkPromises = chunk.map(async (inputPath, chunkIndex) => {
+      const globalIndex = currentIndex + chunkIndex;
+      const baseName = `image-${globalIndex}`;
+      const outputPath = `${outputDir}/${baseName}`;
+
+      try {
+        const result = await optimizeImage(inputPath, outputPath, optimizeOptions);
+        results[globalIndex] = result;
+
+        completedCount++;
+        if (onProgress) {
+          onProgress(completedCount, inputPaths.length);
+        }
+
+        return result;
+      } catch (error: any) {
+        const errorResult: OptimizationResult = {
+          success: false,
+          error: error.message,
+        };
+        results[globalIndex] = errorResult;
+        completedCount++;
+
+        if (onProgress) {
+          onProgress(completedCount, inputPaths.length);
+        }
+
+        return errorResult;
+      }
+    });
+
+    await Promise.all(chunkPromises);
+    currentIndex += chunk.length;
+  }
+
+  const duration = Date.now() - startTime;
+  const successCount = results.filter(r => r.success).length;
+
+  log.info({
+    type: 'parallel_optimize_complete',
+    totalImages: inputPaths.length,
+    successCount,
+    failedCount: inputPaths.length - successCount,
+    duration,
+    avgPerImage: Math.round(duration / inputPaths.length),
+  });
+
+  return results;
+}
+
+/**
+ * Phase 48: ストリーミング並列処理（大量画像向け）
+ * メモリ効率を重視した実装
+ */
+export async function* optimizeImagesStream(
+  inputPaths: string[],
+  outputDir: string,
+  options: ParallelOptimizationOptions = {}
+): AsyncGenerator<OptimizationResult> {
+  const { concurrency = 4, ...optimizeOptions } = options;
+
+  const pending: Promise<{ index: number; result: OptimizationResult }>[] = [];
+  const completed: Map<number, OptimizationResult> = new Map();
+  let nextYieldIndex = 0;
+  let startIndex = 0;
+
+  // 初期バッチを開始
+  while (startIndex < Math.min(concurrency, inputPaths.length)) {
+    pending.push(processImage(startIndex, inputPaths[startIndex], outputDir, optimizeOptions));
+    startIndex++;
+  }
+
+  while (nextYieldIndex < inputPaths.length) {
+    // 完了済みを順番に返す
+    while (completed.has(nextYieldIndex)) {
+      yield completed.get(nextYieldIndex)!;
+      completed.delete(nextYieldIndex);
+      nextYieldIndex++;
+    }
+
+    if (pending.length === 0) break;
+
+    // 次の完了を待つ
+    const { index, result } = await Promise.race(pending);
+    pending.splice(pending.findIndex(p => p.then(r => r.index === index)), 1);
+    completed.set(index, result);
+
+    // 新しいタスクを追加
+    if (startIndex < inputPaths.length) {
+      pending.push(processImage(startIndex, inputPaths[startIndex], outputDir, optimizeOptions));
+      startIndex++;
+    }
+  }
+
+  // 残りを返す
+  while (completed.has(nextYieldIndex)) {
+    yield completed.get(nextYieldIndex)!;
+    completed.delete(nextYieldIndex);
+    nextYieldIndex++;
+  }
+}
+
+async function processImage(
+  index: number,
+  inputPath: string,
+  outputDir: string,
+  options: OptimizationOptions
+): Promise<{ index: number; result: OptimizationResult }> {
+  const baseName = `image-${index}`;
+  const outputPath = `${outputDir}/${baseName}`;
+
+  try {
+    const result = await optimizeImage(inputPath, outputPath, options);
+    return { index, result };
+  } catch (error: any) {
+    return {
+      index,
+      result: { success: false, error: error.message },
+    };
+  }
+}
+
+/**
  * サムネイル生成
  */
 export async function generateThumbnail(
