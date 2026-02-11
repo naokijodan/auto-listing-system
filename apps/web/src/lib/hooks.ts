@@ -689,3 +689,74 @@ export function useTemplateVariables() {
     fetcher
   );
 }
+
+// Reports (Phase 65-66)
+import {
+  reportApi,
+  Report,
+  ReportTemplate,
+  ReportSchedule,
+  ReportStats,
+  ReportType,
+  ReportFormat,
+  ReportStatus,
+} from './api';
+
+export function useReports(params?: {
+  status?: ReportStatus;
+  reportType?: ReportType;
+  format?: ReportFormat;
+  limit?: number;
+  offset?: number;
+}) {
+  return useSWR<ApiResponse<Report[]>>(
+    reportApi.getReports(params),
+    fetcher,
+    { refreshInterval: 10000 } // 10秒ごとに更新（進捗確認のため）
+  );
+}
+
+export function useReport(id: string | null) {
+  return useSWR<ApiResponse<Report>>(
+    id ? reportApi.getReport(id) : null,
+    fetcher,
+    { refreshInterval: 5000 } // 5秒ごとに更新（生成中の進捗確認）
+  );
+}
+
+export function useReportStats() {
+  return useSWR<ApiResponse<ReportStats>>(
+    reportApi.getReportStats(),
+    fetcher,
+    { refreshInterval: 60000 }
+  );
+}
+
+export function useReportTypes() {
+  return useSWR<ApiResponse<{ value: string; label: string; description: string }[]>>(
+    reportApi.getReportTypes(),
+    fetcher
+  );
+}
+
+export function useReportFormats() {
+  return useSWR<ApiResponse<{ value: string; label: string; extension: string; mimeType: string }[]>>(
+    reportApi.getReportFormats(),
+    fetcher
+  );
+}
+
+export function useReportTemplates(params?: { reportType?: ReportType; isActive?: boolean }) {
+  return useSWR<ApiResponse<ReportTemplate[]>>(
+    reportApi.getReportTemplates(params),
+    fetcher
+  );
+}
+
+export function useReportSchedules(params?: { isActive?: boolean }) {
+  return useSWR<ApiResponse<ReportSchedule[]>>(
+    reportApi.getReportSchedules(params),
+    fetcher,
+    { refreshInterval: 30000 }
+  );
+}

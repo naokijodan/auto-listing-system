@@ -2981,3 +2981,132 @@ export async function triggerSalesSummaryCalculation(
 
   return job.id || '';
 }
+
+// レポートキュー追加
+const reportQueue = new Queue(QUEUE_NAMES.NOTIFICATION, { connection: redis });
+
+/**
+ * スケジュールされたレポートを実行（Phase 65）
+ */
+export async function runScheduledReports(): Promise<{ processed: number; errors: number }> {
+  log.info({ type: 'scheduled_reports_start' }, 'Starting scheduled report execution');
+
+  const now = new Date();
+  let processed = 0;
+  let errors = 0;
+
+  try {
+    // 実行予定時刻を過ぎたアクティブなスケジュールを取得
+    const dueSchedules = await prisma.reportScheduleConfig.findMany({
+      where: {
+        isActive: true,
+        nextRunAt: { lte: now },
+      },
+      include: {
+        template: true,
+      },
+    });
+
+    log.info({ count: dueSchedules.length }, 'Found due report schedules');
+
+    for (const schedule of dueSchedules) {
+      try {
+        // レポートレコードを作成
+        const report = await prisma.report.create({
+          data: {
+            name: `${schedule.name} - ${now.toLocaleDateString('ja-JP')}`,
+            description: schedule.description || undefined,
+            reportType: schedule.template?.reportType || 'CUSTOM',
+            templateId: schedule.templateId,
+            parameters: schedule.parameters as any,
+            format: schedule.format,
+            status: 'PENDING',
+          },
+        });
+
+        // ジョブをキューに追加
+        await reportQueue.add(
+          'generate-report',
+          {
+            reportId: report.id,
+            scheduleId: schedule.id,
+          },
+          {
+            priority: 2,
+            attempts: 3,
+            backoff: {
+              type: 'exponential',
+              delay: 30000,
+            },
+          }
+        );
+
+        // 次回実行時刻を計算して更新
+        const { CronExpressionParser } = await import('cron-parser');
+        try {
+          const interval = CronExpressionParser.parse(schedule.cronExpression, {
+            currentDate: now,
+          });
+          const nextRun = interval.next().toDate();
+
+          await prisma.reportScheduleConfig.update({
+            where: { id: schedule.id },
+            data: { nextRunAt: nextRun },
+          });
+        } catch (cronError) {
+          log.warn(
+            { scheduleId: schedule.id, cronExpression: schedule.cronExpression },
+            'Failed to parse cron expression'
+          );
+        }
+
+        processed++;
+        log.info(
+          { scheduleId: schedule.id, reportId: report.id, scheduleName: schedule.name },
+          'Scheduled report queued'
+        );
+      } catch (scheduleError) {
+        errors++;
+        log.error(
+          { scheduleId: schedule.id, error: scheduleError },
+          'Failed to queue scheduled report'
+        );
+      }
+    }
+
+    log.info({ processed, errors }, 'Scheduled reports execution completed');
+    return { processed, errors };
+  } catch (error) {
+    log.error({ error }, 'Failed to run scheduled reports');
+    throw error;
+  }
+}
+
+/**
+ * 手動でレポート生成をトリガー（Phase 65）
+ */
+export async function triggerReportGeneration(reportId: string): Promise<string> {
+  const job = await reportQueue.add(
+    'generate-report',
+    {
+      reportId,
+      manual: true,
+    },
+    {
+      priority: 1,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 30000,
+      },
+    }
+  );
+
+  log.info({
+    type: 'manual_report_generation_triggered',
+    jobId: job.id,
+    reportId,
+  });
+
+  return job.id || '';
+}

@@ -497,3 +497,250 @@ export const syncScheduleApi = {
     );
   },
 };
+
+// Report Types (Phase 65-66)
+export type ReportType =
+  | 'SALES_SUMMARY'
+  | 'ORDER_DETAIL'
+  | 'INVENTORY_STATUS'
+  | 'PRODUCT_PERFORMANCE'
+  | 'PROFIT_ANALYSIS'
+  | 'CUSTOMER_ANALYSIS'
+  | 'MARKETPLACE_COMPARISON'
+  | 'AUDIT_REPORT'
+  | 'CUSTOM';
+
+export type ReportFormat = 'PDF' | 'EXCEL' | 'CSV' | 'HTML';
+export type ReportStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+export interface Report {
+  id: string;
+  name: string;
+  description?: string;
+  reportType: ReportType;
+  templateId?: string;
+  parameters: Record<string, unknown>;
+  timeRange?: string;
+  format: ReportFormat;
+  orientation: string;
+  paperSize: string;
+  fileName?: string;
+  filePath?: string;
+  fileSize?: number;
+  mimeType?: string;
+  status: ReportStatus;
+  progress: number;
+  errorMessage?: string;
+  generatedBy?: string;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  reportType: ReportType;
+  layout: Record<string, unknown>;
+  sections: unknown[];
+  header?: Record<string, unknown>;
+  footer?: Record<string, unknown>;
+  theme: string;
+  customStyles: Record<string, unknown>;
+  logoUrl?: string;
+  dataSources: unknown[];
+  charts: unknown[];
+  isActive: boolean;
+  isSystem: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportSchedule {
+  id: string;
+  name: string;
+  description?: string;
+  cronExpression: string;
+  timezone: string;
+  templateId: string;
+  template?: ReportTemplate;
+  parameters: Record<string, unknown>;
+  format: ReportFormat;
+  recipients: string[];
+  channels: string[];
+  uploadToStorage: boolean;
+  isActive: boolean;
+  lastRunAt?: string;
+  lastRunStatus?: string;
+  nextRunAt?: string;
+  retentionDays: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportStats {
+  totalReports: number;
+  completedReports: number;
+  failedReports: number;
+  successRate: string;
+  totalFileSize: number;
+  byType: Record<string, number>;
+  byFormat: Record<string, number>;
+}
+
+// Report API
+export const reportApi = {
+  // レポート一覧
+  getReports: (params?: {
+    status?: ReportStatus;
+    reportType?: ReportType;
+    format?: ReportFormat;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.reportType) query.set('reportType', params.reportType);
+    if (params?.format) query.set('format', params.format);
+    if (params?.limit) query.set('limit', params.limit.toString());
+    if (params?.offset) query.set('offset', params.offset.toString());
+    const queryStr = query.toString();
+    return `/api/reports${queryStr ? `?${queryStr}` : ''}`;
+  },
+
+  // レポート詳細
+  getReport: (id: string) => `/api/reports/${id}`,
+
+  // レポート統計
+  getReportStats: () => `/api/reports/stats/summary`,
+
+  // レポートタイプ一覧
+  getReportTypes: () => `/api/reports/types`,
+
+  // レポートフォーマット一覧
+  getReportFormats: () => `/api/reports/formats`,
+
+  // レポートテンプレート一覧
+  getReportTemplates: (params?: { reportType?: ReportType; isActive?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.reportType) query.set('reportType', params.reportType);
+    if (params?.isActive !== undefined) query.set('isActive', params.isActive.toString());
+    const queryStr = query.toString();
+    return `/api/reports/templates${queryStr ? `?${queryStr}` : ''}`;
+  },
+
+  // レポートスケジュール一覧
+  getReportSchedules: (params?: { isActive?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.isActive !== undefined) query.set('isActive', params.isActive.toString());
+    const queryStr = query.toString();
+    return `/api/reports/schedules${queryStr ? `?${queryStr}` : ''}`;
+  },
+
+  // レポート作成
+  createReport: async (data: {
+    name: string;
+    description?: string;
+    reportType: ReportType;
+    templateId?: string;
+    parameters?: Record<string, unknown>;
+    timeRange?: string;
+    format?: ReportFormat;
+    orientation?: string;
+    paperSize?: string;
+  }): Promise<ApiResponse<Report>> => {
+    return postApi<ApiResponse<Report>>('/api/reports', data);
+  },
+
+  // レポート生成トリガー
+  generateReport: async (id: string): Promise<ApiResponse<{ reportId: string; jobId: string }>> => {
+    return postApi<ApiResponse<{ reportId: string; jobId: string }>>(`/api/reports/${id}/generate`, {});
+  },
+
+  // レポートダウンロードURL取得
+  getDownloadInfo: async (id: string): Promise<ApiResponse<{
+    fileName: string;
+    filePath: string;
+    fileSize: number;
+    format: ReportFormat;
+    mimeType: string;
+  }>> => {
+    return fetcher<ApiResponse<{
+      fileName: string;
+      filePath: string;
+      fileSize: number;
+      format: ReportFormat;
+      mimeType: string;
+    }>>(`/api/reports/${id}/download`);
+  },
+
+  // レポートファイルダウンロード
+  downloadFile: (id: string) => `${API_BASE}/api/reports/${id}/file`,
+
+  // レポート削除
+  deleteReport: async (id: string): Promise<ApiResponse<null>> => {
+    return deleteApi<ApiResponse<null>>(`/api/reports/${id}`, {});
+  },
+
+  // テンプレート作成
+  createTemplate: async (data: {
+    name: string;
+    description?: string;
+    reportType: ReportType;
+    layout?: Record<string, unknown>;
+    sections?: unknown[];
+    header?: string;
+    footer?: string;
+    theme?: string;
+    customStyles?: Record<string, unknown>;
+    logoUrl?: string;
+    dataSources?: unknown[];
+    charts?: unknown[];
+  }): Promise<ApiResponse<ReportTemplate>> => {
+    return postApi<ApiResponse<ReportTemplate>>('/api/reports/templates', data);
+  },
+
+  // スケジュール作成
+  createSchedule: async (data: {
+    templateId: string;
+    name: string;
+    description?: string;
+    cronExpression: string;
+    timezone?: string;
+    format?: ReportFormat;
+    parameters?: Record<string, unknown>;
+    recipients?: string[];
+    channels?: string[];
+    uploadToStorage?: boolean;
+    retentionDays?: number;
+  }): Promise<ApiResponse<ReportSchedule>> => {
+    return postApi<ApiResponse<ReportSchedule>>('/api/reports/schedules', data);
+  },
+
+  // スケジュール更新
+  updateSchedule: async (
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      cronExpression: string;
+      timezone: string;
+      format: ReportFormat;
+      parameters: Record<string, unknown>;
+      recipients: string[];
+      channels: string[];
+      uploadToStorage: boolean;
+      retentionDays: number;
+      isActive: boolean;
+    }>
+  ): Promise<ApiResponse<ReportSchedule>> => {
+    return patchApi<ApiResponse<ReportSchedule>>(`/api/reports/schedules/${id}`, data);
+  },
+
+  // スケジュール削除
+  deleteSchedule: async (id: string): Promise<ApiResponse<null>> => {
+    return deleteApi<ApiResponse<null>>(`/api/reports/schedules/${id}`, {});
+  },
+};

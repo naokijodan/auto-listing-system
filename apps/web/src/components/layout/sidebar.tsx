@@ -37,6 +37,7 @@ const navigation = [
   { name: '発送管理', href: '/shipments', icon: PackageCheck },
   { name: 'ジョブ監視', href: '/jobs', icon: Activity },
   { name: 'レポート', href: '/reports', icon: BarChart3 },
+  { name: 'レポート生成', href: '/report-generator', icon: FileText },
   { name: '通知', href: '/notifications', icon: Bell },
   { name: '設定', href: '/settings', icon: Settings },
 ];

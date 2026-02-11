@@ -3,10 +3,66 @@
 ## 最終更新
 
 **日付**: 2026-02-12
-**Phase**: 63-64完了
+**Phase**: 65-66完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 65-66: レポート自動生成
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 65: レポート生成エンジン**
+1. レポート生成エンジン (`apps/api/src/lib/report-generator.ts`)
+   - データ収集関数（売上、注文、在庫、商品パフォーマンス、利益、顧客、マーケットプレイス比較）
+   - PDF生成（pdfkit）
+   - Excel生成（exceljs）
+   - CSV生成
+   - レポートタイプ別レンダリング
+
+2. レポート生成プロセッサ (`apps/worker/src/processors/report.ts`)
+   - BullMQジョブとしてレポート生成を実行
+   - スケジュール実行履歴の記録
+   - Slack通知連携
+
+3. スケジューラー更新 (`apps/worker/src/lib/scheduler.ts`)
+   - `runScheduledReports()` - スケジュールされたレポートを実行
+   - `triggerReportGeneration()` - 手動でレポート生成をトリガー
+
+4. レポートAPI更新 (`apps/api/src/routes/reports.ts`)
+   - GET /api/reports/:id/file - レポートファイルダウンロード
+   - POST /api/reports/:id/generate - レポート即時生成トリガー
+
+**Phase 66: レポートUI＆スケジュール配信**
+1. APIクライアント更新 (`apps/web/src/lib/api.ts`)
+   - `reportApi` - レポート関連API（CRUD、生成、ダウンロード）
+   - Report/ReportTemplate/ReportSchedule型定義
+
+2. SWRフック追加 (`apps/web/src/lib/hooks.ts`)
+   - `useReports()` - レポート一覧
+   - `useReport()` - レポート詳細
+   - `useReportStats()` - レポート統計
+   - `useReportTypes()` - レポートタイプ一覧
+   - `useReportFormats()` - フォーマット一覧
+   - `useReportTemplates()` - テンプレート一覧
+   - `useReportSchedules()` - スケジュール一覧
+
+3. レポート生成ページ (`apps/web/src/app/report-generator/page.tsx`)
+   - レポート統計ダッシュボード
+   - レポート作成ダイアログ（タイプ・形式・期間選択）
+   - レポート一覧テーブル（ステータス・進捗表示）
+   - ダウンロード・再生成・削除機能
+   - スケジュール管理タブ（CRUD）
+
+4. サイドバー更新 (`apps/web/src/components/layout/sidebar.tsx`)
+   - レポート生成リンク追加
+
+5. パッケージ更新 (`apps/api/package.json`)
+   - exceljs追加
+
+---
 
 ### Phase 63-64: 顧客対応自動化
 
@@ -306,6 +362,20 @@
 
 ## ファイル変更一覧
 
+### Phase 65-66
+#### 新規作成
+- `apps/api/src/lib/report-generator.ts` - レポート生成エンジン
+- `apps/worker/src/processors/report.ts` - レポート生成プロセッサ
+- `apps/web/src/app/report-generator/page.tsx` - レポート生成ページ
+
+#### 更新
+- `apps/api/src/routes/reports.ts` - ファイルダウンロード・即時生成エンドポイント追加
+- `apps/worker/src/lib/scheduler.ts` - レポートスケジュール実行関数追加
+- `apps/api/package.json` - exceljs追加
+- `apps/web/src/lib/api.ts` - レポートAPI追加
+- `apps/web/src/lib/hooks.ts` - レポートSWRフック追加
+- `apps/web/src/components/layout/sidebar.tsx` - レポート生成リンク追加
+
 ### Phase 63-64
 #### 新規作成
 - `apps/api/src/lib/customer-support-engine.ts` - 顧客対応エンジン
@@ -404,7 +474,7 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 65-66候補
+### Phase 67-68候補
 
 1. **データベースインデックス最適化**
    - 複合インデックス追加
@@ -421,14 +491,21 @@
    - 自動翻訳API連携
    - 地域別コンテンツ最適化
 
-4. **レポート自動生成**
-   - 日次/週次/月次レポート
-   - PDF/Excel出力
-   - スケジュール配信
+4. **ダッシュボードウィジェット**
+   - カスタマイズ可能なウィジェット
+   - ドラッグ&ドロップ配置
+   - リアルタイム更新
 
 ## 技術的注意事項
 
-1. **顧客対応自動化**
+1. **レポート自動生成**
+   - レポートタイプ: SALES_SUMMARY, ORDER_DETAIL, INVENTORY_STATUS, PRODUCT_PERFORMANCE, PROFIT_ANALYSIS, CUSTOMER_ANALYSIS, MARKETPLACE_COMPARISON
+   - 出力形式: PDF（pdfkit）, EXCEL（exceljs）, CSV
+   - 期間: last_7d, last_30d, last_90d, custom
+   - スケジュール: cron式で定義（例: "0 9 * * *" = 毎日9時）
+   - 出力先: /tmp/rakuda-reports/
+
+2. **顧客対応自動化**
    - トリガータイプ: KEYWORD, SENTIMENT, CATEGORY, FIRST_MESSAGE, NO_RESPONSE_24H
    - センチメント: positive(0.5以上), neutral(-0.5~0.5), negative(-0.5以下)
    - 緊急度: high(緊急キーワード含む), medium(質問含む), low(その他)

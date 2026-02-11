@@ -208,6 +208,116 @@ router.get('/:id/download', async (req, res, next) => {
 });
 
 /**
+ * レポートファイルをダウンロード（Phase 65）
+ */
+router.get('/:id/file', async (req, res, next) => {
+  try {
+    const report = await prisma.report.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!report) {
+      throw new AppError(404, 'Report not found', 'NOT_FOUND');
+    }
+
+    if (report.status !== 'COMPLETED') {
+      throw new AppError(400, 'Report is not completed', 'INVALID_OPERATION');
+    }
+
+    if (!report.filePath) {
+      throw new AppError(404, 'Report file not found', 'NOT_FOUND');
+    }
+
+    const fs = await import('fs');
+    if (!fs.existsSync(report.filePath)) {
+      throw new AppError(404, 'Report file not found on disk', 'FILE_NOT_FOUND');
+    }
+
+    res.setHeader('Content-Type', report.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(report.fileName || 'report')}"`);
+    res.setHeader('Content-Length', report.fileSize || 0);
+
+    const stream = fs.createReadStream(report.filePath);
+    stream.pipe(res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * レポートを即時生成（Phase 65）
+ */
+router.post('/:id/generate', async (req, res, next) => {
+  try {
+    const report = await prisma.report.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!report) {
+      throw new AppError(404, 'Report not found', 'NOT_FOUND');
+    }
+
+    if (report.status === 'PROCESSING') {
+      throw new AppError(400, 'Report is already being processed', 'ALREADY_PROCESSING');
+    }
+
+    // ステータスをリセット
+    await prisma.report.update({
+      where: { id: req.params.id },
+      data: {
+        status: 'PENDING',
+        progress: 0,
+        errorMessage: null,
+        filePath: null,
+        fileName: null,
+        fileSize: null,
+      },
+    });
+
+    // キューにジョブを追加
+    const { Queue } = await import('bullmq');
+    const IORedis = (await import('ioredis')).default;
+    const { QUEUE_NAMES } = await import('@rakuda/config');
+
+    const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+      maxRetriesPerRequest: null,
+    });
+    const reportQueue = new Queue(QUEUE_NAMES.NOTIFICATION, { connection: redis });
+
+    const job = await reportQueue.add(
+      'generate-report',
+      {
+        reportId: report.id,
+        manual: true,
+      },
+      {
+        priority: 1,
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 30000,
+        },
+      }
+    );
+
+    await redis.quit();
+
+    log.info({ reportId: report.id, jobId: job.id }, 'Report generation triggered');
+
+    res.json({
+      success: true,
+      message: 'Report generation started',
+      data: {
+        reportId: report.id,
+        jobId: job.id,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * レポートテンプレート一覧取得
  */
 router.get('/templates', async (req, res, next) => {
