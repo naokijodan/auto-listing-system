@@ -670,6 +670,7 @@ model Order {
 
   // 関連
   sales Sale[]
+  customerMessages CustomerMessage[]
 
   @@unique([marketplace, marketplaceOrderId])
   @@index([status])
@@ -1315,11 +1316,18 @@ model MessageTemplate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Phase 63-64: 追加フィールド
+  nameEn      String?  // 英語名
+  category    String?  // SHIPPING, REFUND, INQUIRY, AUTO_REPLY, etc.
+  variables   String[] // 使用変数リスト
+
   // リレーション
   customerMessages CustomerMessage[]
+  autoReplyRules   AutoReplyRule[]
 
   @@unique([triggerEvent, marketplace, language])
   @@index([triggerEvent, isActive])
+  @@index([category, isActive])
   @@map("message_templates")
 }
 
@@ -1371,13 +1379,25 @@ model CustomerMessage {
   marketplaceMessageId String? // 送信後のメッセージID
   marketplaceResponse Json?    // APIレスポンス
 
+  // Phase 63-64: 自動返信対応
+  isAutoReply   Boolean  @default(false)
+  autoReplyRuleId String?
+  respondedAt   DateTime?
+  category      String?  // SHIPPING, REFUND, PRODUCT, GENERAL, COMPLAINT
+  sentiment     String?  // POSITIVE, NEUTRAL, NEGATIVE
+  urgency       String?  // LOW, MEDIUM, HIGH
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  order         Order?   @relation(fields: [orderId], references: [id])
 
   @@index([orderId])
   @@index([status])
   @@index([status, lastAttemptedAt])
   @@index([marketplace, buyerUsername])
+  @@index([isAutoReply, createdAt])
+  @@index([category, urgency])
   @@map("customer_messages")
 }
 
@@ -1387,6 +1407,40 @@ enum MessageStatus {
   SENT
   FAILED
   FATAL  // リトライ上限到達または回復不能エラー
+}
+
+// ========================================
+// 自動返信ルール（Phase 63-64）
+// ========================================
+model AutoReplyRule {
+  id              String   @id @default(cuid())
+
+  // ルール識別
+  name            String   @unique
+  description     String?
+
+  // トリガー設定
+  triggerType     String   // KEYWORD, ORDER_STATUS, NO_RESPONSE, FIRST_MESSAGE, REFUND_REQUEST, SHIPPING_INQUIRY
+  triggerCondition Json    // { keywords: [], orderStatus: '', delayMinutes: 0, marketplace: '' }
+
+  // 返信テンプレート
+  templateId      String
+  template        MessageTemplate @relation(fields: [templateId], references: [id])
+
+  // 優先度と状態
+  priority        Int      @default(50) // 1-100, 低い方が高優先度
+  isActive        Boolean  @default(true)
+
+  // 統計
+  usageCount      Int      @default(0)
+  lastUsedAt      DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([triggerType, isActive])
+  @@index([priority])
+  @@map("auto_reply_rules")
 }
 
 // ========================================

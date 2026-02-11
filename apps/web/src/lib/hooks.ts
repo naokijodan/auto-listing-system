@@ -585,3 +585,107 @@ export function usePriceAdjustmentsNeeded(threshold?: number) {
     { refreshInterval: 60000 }
   );
 }
+
+// Customer Support (Phase 63-64)
+export interface CustomerSupportStats {
+  totalMessages: number;
+  pendingMessages: number;
+  avgResponseTime: number;
+  autoReplySent: number;
+  byCategory: Record<string, number>;
+  bySentiment: Record<string, number>;
+}
+
+export interface AutoReplyRule {
+  id: string;
+  name: string;
+  description?: string;
+  triggerType: string;
+  triggerCondition: {
+    keywords?: string[];
+    orderStatus?: string;
+    delayMinutes?: number;
+    marketplace?: string;
+  };
+  templateId: string;
+  template?: { id: string; name: string; category: string };
+  priority: number;
+  isActive: boolean;
+  usageCount: number;
+  lastUsedAt?: string;
+}
+
+export interface MessageTemplate {
+  id: string;
+  name: string;
+  nameEn?: string;
+  description?: string;
+  category?: string;
+  subject?: string;
+  body: string;
+  variables?: string[];
+  isActive: boolean;
+}
+
+export interface PendingMessage {
+  id: string;
+  orderId?: string;
+  marketplace: string;
+  buyerUsername: string;
+  subject: string;
+  body: string;
+  status: string;
+  category?: string;
+  sentiment?: string;
+  urgency?: string;
+  isAutoReply: boolean;
+  createdAt: string;
+  order?: {
+    id: string;
+    marketplaceOrderId: string;
+    total: number;
+  };
+}
+
+export interface TemplateVariable {
+  name: string;
+  description: string;
+  example: string;
+}
+
+export function useCustomerSupportStats() {
+  return useSWR<ApiResponse<CustomerSupportStats>>(
+    api.getCustomerSupportStats(),
+    fetcher,
+    { refreshInterval: 60000 }
+  );
+}
+
+export function usePendingMessages(limit?: number) {
+  return useSWR<ApiResponse<PendingMessage[]>>(
+    api.getPendingMessages(limit),
+    fetcher,
+    { refreshInterval: 30000 }
+  );
+}
+
+export function useAutoReplyRules() {
+  return useSWR<ApiResponse<AutoReplyRule[]>>(
+    api.getAutoReplyRules(),
+    fetcher
+  );
+}
+
+export function useMessageTemplates(category?: string) {
+  return useSWR<ApiResponse<MessageTemplate[]>>(
+    api.getMessageTemplates(category),
+    fetcher
+  );
+}
+
+export function useTemplateVariables() {
+  return useSWR<ApiResponse<TemplateVariable[]>>(
+    api.getTemplateVariables(),
+    fetcher
+  );
+}

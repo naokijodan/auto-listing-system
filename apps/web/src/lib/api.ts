@@ -283,6 +283,19 @@ export const api = {
     const query = threshold ? `?threshold=${threshold}` : '';
     return `/api/pricing-ai/adjustments-needed${query}`;
   },
+
+  // Customer Support (Phase 63-64)
+  getCustomerSupportStats: () => `/api/customer-support/stats`,
+  getPendingMessages: (limit?: number) => {
+    const query = limit ? `?limit=${limit}` : '';
+    return `/api/customer-support/messages/pending${query}`;
+  },
+  getAutoReplyRules: () => `/api/customer-support/rules`,
+  getMessageTemplates: (category?: string) => {
+    const query = category ? `?category=${category}` : '';
+    return `/api/customer-support/templates${query}`;
+  },
+  getTemplateVariables: () => `/api/customer-support/variables`,
 };
 
 // POST/PUT/DELETE helpers
