@@ -245,6 +245,18 @@ export const api = {
   // Sync Schedules (Phase 44-C)
   getSyncSchedules: () => `/api/sync-schedules`,
   getSyncSchedule: (marketplace: string) => `/api/sync-schedules/${marketplace}`,
+
+  // Shipments (Phase 53-54)
+  getPendingShipments: (params?: { marketplace?: string; limit?: number; urgentOnly?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.marketplace) query.set('marketplace', params.marketplace);
+    if (params?.limit) query.set('limit', params.limit.toString());
+    if (params?.urgentOnly) query.set('urgentOnly', params.urgentOnly.toString());
+    const queryStr = query.toString();
+    return `/api/shipments/pending${queryStr ? `?${queryStr}` : ''}`;
+  },
+  getShipmentStats: () => `/api/shipments/stats`,
+  getCarriers: () => `/api/shipments/carriers`,
 };
 
 // POST/PUT/DELETE helpers

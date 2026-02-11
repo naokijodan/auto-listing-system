@@ -389,3 +389,71 @@ export function useMarketplaceStats() {
     refreshInterval: 60000, // 1分ごと
   });
 }
+
+// Shipments (Phase 53-54)
+export interface PendingShipment {
+  id: string;
+  marketplace: 'EBAY' | 'JOOM';
+  marketplaceOrderId: string;
+  buyerUsername: string;
+  buyerName?: string;
+  shippingAddress: {
+    street?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
+  total: number;
+  currency: string;
+  status: string;
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  orderedAt: string;
+  shipmentDeadline: string | null;
+  hoursRemaining: number | null;
+  isUrgent: boolean;
+  sales: Array<{
+    id: string;
+    sku: string;
+    title: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
+}
+
+export interface ShipmentStats {
+  pending: number;
+  urgent: number;
+  shippedToday: number;
+  totalShipped: number;
+  byMarketplace: Record<string, number>;
+}
+
+export interface Carrier {
+  id: string;
+  name: string;
+  nameJa: string;
+}
+
+export function usePendingShipments(params?: {
+  marketplace?: string;
+  limit?: number;
+  urgentOnly?: boolean;
+}) {
+  return useSWR<ApiResponse<PendingShipment[]> & { urgentCount: number }>(
+    api.getPendingShipments(params),
+    fetcher,
+    { refreshInterval: 30000 } // 30秒ごと
+  );
+}
+
+export function useShipmentStats() {
+  return useSWR<ApiResponse<ShipmentStats>>(api.getShipmentStats(), fetcher, {
+    refreshInterval: 60000, // 1分ごと
+  });
+}
+
+export function useCarriers() {
+  return useSWR<ApiResponse<Carrier[]>>(api.getCarriers(), fetcher);
+}

@@ -19,6 +19,7 @@ import {
   Gauge,
   Sparkles,
   Layers,
+  PackageCheck,
 } from 'lucide-react';
 
 const navigation = [
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'eBay管理', href: '/ebay', icon: Store },
   { name: '出品管理', href: '/listings', icon: ShoppingCart },
   { name: '注文管理', href: '/orders', icon: Truck },
+  { name: '発送管理', href: '/shipments', icon: PackageCheck },
   { name: 'ジョブ監視', href: '/jobs', icon: Activity },
   { name: 'レポート', href: '/reports', icon: BarChart3 },
   { name: '通知', href: '/notifications', icon: Bell },

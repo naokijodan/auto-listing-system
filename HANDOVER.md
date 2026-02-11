@@ -3,72 +3,122 @@
 ## 最終更新
 
 **日付**: 2026-02-11
-**Phase**: 49-50完了
+**Phase**: 53-54完了
 **担当**: Claude
 
 ## 現在のステータス
 
-### Phase 49-50: Joomカテゴリマッピング & S3直接アップロード
+### Phase 53-54: 発送管理UI & フロントエンド強化
 
 **ステータス**: 完了 ✅
 
 #### 実装内容
 
-**Phase 49: Joomカテゴリマッピング**
-1. JoomCategoryMappingモデル追加 (`packages/database/prisma/schema.prisma`)
-   - sourceKeywords: キーワード配列
-   - joomCategoryId/Name/Path
-   - requiredAttributes/recommendedAttributes
-   - aiConfidence, aiSuggested, verifiedAt
+**Phase 53-54: 発送管理UI**
+1. 発送管理ページ (`apps/web/src/app/shipments/page.tsx`)
+   - 未発送注文一覧（緊急・通常フィルター）
+   - 発送処理フォーム（配送業者選択、追跡番号入力）
+   - 発送統計ダッシュボード（未発送、緊急、本日発送、累計）
+   - マーケットプレイス別フィルター（Joom/eBay）
+   - 発送期限表示（残り時間、緊急アラート）
+   - 検索機能（注文ID、購入者、商品名）
 
-2. カテゴリマッピングサービス (`apps/worker/src/lib/category-mapper.ts`)
-   - `suggestCategoryWithAI()` - GPT-4oでカテゴリ推定
-   - `getCategoryMapping()` - 既存マッピング or AI推定
-   - `fillRequiredAttributes()` - 必須属性自動補完
-   - `createCategoryMapping()` - 手動マッピング作成
+2. APIクライアント更新 (`apps/web/src/lib/api.ts`)
+   - `getPendingShipments()` - 未発送注文取得
+   - `getShipmentStats()` - 発送統計取得
+   - `getCarriers()` - 配送業者一覧取得
 
-3. APIエンドポイント (`apps/api/src/routes/joom-categories.ts`)
-   - GET /api/joom-categories - カテゴリ一覧
-   - GET /api/joom-categories/mappings - マッピング一覧
-   - POST /api/joom-categories/suggest - AI推定
-   - POST /api/joom-categories/mappings - マッピング作成
-   - POST /api/joom-categories/mappings/:id/verify - 検証
-   - GET /api/joom-categories/stats - 統計
+3. SWRフック追加 (`apps/web/src/lib/hooks.ts`)
+   - `usePendingShipments()` - 未発送注文
+   - `useShipmentStats()` - 発送統計
+   - `useCarriers()` - 配送業者一覧
 
-4. joom-publish-service.ts更新
-   - publishToJoomでカテゴリマッピング統合
-   - 属性自動補完機能
+4. サイドバー更新 (`apps/web/src/components/layout/sidebar.tsx`)
+   - 発送管理リンク追加（PackageCheckアイコン）
 
-**Phase 50: S3直接アップロード**
-1. storage.ts拡張 (`apps/worker/src/lib/storage.ts`)
-   - `generatePresignedUploadUrl()` - アップロード用プリサインURL
-   - `generateBatchPresignedUploadUrls()` - バッチ生成
-   - `generateProductImageUploadUrls()` - 商品画像用
-   - `verifyUploadComplete()` - アップロード完了確認
-   - `ParallelUploadTracker` - 並列アップロード進捗管理
+---
 
-2. APIエンドポイント (`apps/api/src/routes/uploads.ts`)
-   - POST /api/uploads/presigned - 単一プリサインURL
-   - POST /api/uploads/batch - バッチプリサインURL
-   - POST /api/uploads/product-images - 商品画像用
-   - POST /api/uploads/verify - アップロード確認
-   - POST /api/uploads/verify-batch - バッチ確認
-   - GET /api/uploads/instructions - 使用方法
+### Phase 51-52: 注文処理 & 発送処理自動化
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 51: 注文処理強化**
+1. order-processor.ts (`apps/worker/src/lib/order-processor.ts`)
+   - `processOrder()` - 注文の自動処理
+   - `updateInventory()` - 在庫更新（商品ステータスをSOLDに）
+   - `checkSourcingAvailability()` - 仕入れ元確認通知
+   - `setShipmentDeadline()` - 発送期限設定
+   - `notifyNewOrder()` - Slack通知
+   - `sendDeadlineAlerts()` - 発送期限アラート
+   - `updateSourcingStatus()` - 仕入れステータス更新
+
+2. キュー追加 (`packages/config/src/constants.ts`)
+   - ORDER: 'order-queue' - 注文処理キュー
+   - SHIPMENT: 'shipment-queue' - 発送処理キュー
+
+3. 注文処理プロセッサ (`apps/worker/src/processors/order.ts`)
+   - BullMQジョブとして注文処理を実行
+
+4. webhooks.ts更新 (`apps/api/src/routes/webhooks.ts`)
+   - Joom/eBay注文受信時にジョブキューに追加
+
+**Phase 52: 発送処理自動化**
+1. shipment-service.ts (`apps/worker/src/lib/shipment-service.ts`)
+   - `processShipment()` - 発送処理実行
+   - `processBatchShipment()` - 一括発送処理
+   - `getPendingShipments()` - 未発送注文一覧
+   - `extendShipmentDeadline()` - 発送期限延長
+   - `getAvailableCarriers()` - 配送業者一覧
+   - Joom/eBay API連携（追跡番号登録）
+
+2. 発送処理プロセッサ (`apps/worker/src/processors/shipment.ts`)
+   - BullMQジョブとして発送処理を実行
+
+3. APIエンドポイント (`apps/api/src/routes/shipments.ts`)
+   - POST /api/shipments - 発送処理
+   - POST /api/shipments/batch - 一括発送処理
+   - GET /api/shipments/pending - 未発送注文一覧
+   - GET /api/shipments/carriers - 配送業者一覧
+   - POST /api/shipments/:orderId/extend-deadline - 発送期限延長
+   - GET /api/shipments/stats - 発送統計
+
+4. スケジューラー更新 (`apps/worker/src/lib/scheduler.ts`)
+   - 発送期限チェック（6時間ごと）
 
 ## ファイル変更一覧
 
-### 新規作成
-- `apps/worker/src/lib/category-mapper.ts`
-- `apps/api/src/routes/joom-categories.ts`
-- `apps/api/src/routes/uploads.ts`
+### Phase 53-54
+#### 新規作成
+- `apps/web/src/app/shipments/page.tsx` - 発送管理ページ
 
-### 更新
-- `packages/database/prisma/schema.prisma` - JoomCategoryMappingモデル追加
-- `apps/worker/src/lib/storage.ts` - S3直接アップロード機能追加
-- `apps/worker/src/lib/joom-publish-service.ts` - カテゴリマッピング統合
-- `apps/api/src/index.ts` - 新ルート登録
+#### 更新
+- `apps/web/src/lib/api.ts` - 発送関連API追加
+- `apps/web/src/lib/hooks.ts` - 発送関連SWRフック追加
+- `apps/web/src/components/layout/sidebar.tsx` - 発送管理リンク追加
+
+### Phase 51-52
+#### 新規作成
+- `apps/worker/src/lib/order-processor.ts`
+- `apps/worker/src/lib/shipment-service.ts`
+- `apps/worker/src/processors/order.ts`
+- `apps/worker/src/processors/shipment.ts`
+- `apps/api/src/routes/shipments.ts`
+
+#### 更新
+- `packages/config/src/constants.ts` - ORDER/SHIPMENTキュー追加
+- `apps/worker/src/lib/worker-manager.ts` - 注文/発送ワーカー追加
+- `apps/worker/src/lib/scheduler.ts` - 発送期限チェック追加
+- `apps/api/src/routes/webhooks.ts` - ジョブキュー連携
+- `apps/api/src/index.ts` - shipmentsルート登録
 
 ## 過去のPhase
+
+### Phase 49-50: Joomカテゴリマッピング & S3直接アップロード
+- JoomCategoryMappingモデル
+- GPT-4oカテゴリ自動推定
+- S3プリサインURLアップロード
 
 ### Phase 47-48: E2Eテスト & 画像処理最適化
 - Playwright E2Eテスト
@@ -88,37 +138,38 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 51候補
+### Phase 55-56候補
 
 1. **価格最適化AI**
-   - 競合分析
-   - 動的価格調整
-   - 需要予測
+   - 競合分析エンジン
+   - 動的価格調整ロジック
+   - 需要予測モデル
 
-2. **注文自動処理**
-   - Joom注文webhook
-   - 在庫自動連携
-   - 発送通知自動送信
-
-3. **パフォーマンス最適化**
-   - キャッシュ戦略
+2. **パフォーマンス最適化**
+   - Redis キャッシュ戦略
    - データベースインデックス最適化
    - CDN設定
 
+3. **仕入れ管理機能**
+   - 仕入れ状況管理UI
+   - 在庫補充アラート
+   - 仕入れ先連携
+
 ## 技術的注意事項
 
-1. **Joomカテゴリマッピング**
-   - AI推定の信頼度が0.85以上で自動保存
-   - 検証済みマッピングは信頼度1.0に設定
+1. **注文処理**
+   - 注文受信時にORDERキューにジョブ追加
+   - 在庫はProductのstatusをSOLDに更新
+   - 仕入れ確認通知はNotificationとして作成
 
-2. **S3直接アップロード**
-   - プリサインURLのデフォルト有効期限: 1時間
-   - 最大ファイルサイズ: 10MB
-   - 対応フォーマット: webp, jpg, jpeg, png
+2. **発送処理**
+   - 追跡番号登録時にJoom/eBay APIに自動連携
+   - 発送期限は営業日計算（土日除外）
+   - 期限24時間前に緊急アラート
 
-3. **Prisma**
-   - スキーマ変更後は `npx prisma generate` が必要
-   - マイグレーション: `npx prisma migrate dev`
+3. **Slack通知**
+   - alertManager.sendCustomAlert()を使用
+   - 新規注文、発送完了、期限アラートを通知
 
 ## 環境変数
 
@@ -131,6 +182,7 @@ S3_ENDPOINT=http://localhost:9000
 S3_ACCESS_KEY=minioadmin
 S3_SECRET_KEY=minioadmin
 S3_BUCKET=rakuda-images
+JOOM_WEBHOOK_SECRET=xxx
 ```
 
 ## 動作確認
