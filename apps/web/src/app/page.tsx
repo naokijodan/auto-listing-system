@@ -19,8 +19,10 @@ import {
   BarChart3,
   Truck,
   Store,
+  PackageCheck,
+  ShoppingBag,
 } from 'lucide-react';
-import { useDashboardStats, useJobLogs, useExchangeRate, useOrderStats, useMarketplaceStats } from '@/lib/hooks';
+import { useDashboardStats, useJobLogs, useExchangeRate, useOrderStats, useMarketplaceStats, useShipmentStats, useSourcingStats } from '@/lib/hooks';
 import { fetcher } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -81,6 +83,14 @@ export default function Dashboard() {
   // Fetch marketplace stats (Phase 42)
   const { data: marketplaceStatsData } = useMarketplaceStats();
   const mpStats = marketplaceStatsData?.data;
+
+  // Fetch shipment stats (Phase 53-54)
+  const { data: shipmentStatsData } = useShipmentStats();
+  const shipmentStats = shipmentStatsData?.data;
+
+  // Fetch sourcing stats (Phase 55-56)
+  const { data: sourcingStatsData } = useSourcingStats();
+  const sourcingStats = sourcingStatsData?.data;
 
   // Transform job logs to activity format
   const activities = useMemo(() => {
@@ -290,6 +300,94 @@ export default function Dashboard() {
         </Link>
       )}
 
+      {/* Shipment & Sourcing Status Cards (Phase 57-58) */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {/* Shipment Card */}
+        <Link
+          href="/shipments"
+          className="block rounded-xl border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+              <PackageCheck className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">発送管理</h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                本日発送: {shipmentStats?.shippedToday ?? 0}件
+              </p>
+            </div>
+            <div className="flex gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                  {shipmentStats?.pending ?? 0}
+                </p>
+                <p className="text-xs text-zinc-500">未発送</p>
+              </div>
+              <div>
+                <p className={cn(
+                  'text-2xl font-bold',
+                  (shipmentStats?.urgent ?? 0) > 0
+                    ? 'text-red-600 dark:text-red-400'
+                    : 'text-zinc-400'
+                )}>
+                  {shipmentStats?.urgent ?? 0}
+                </p>
+                <p className="text-xs text-zinc-500">緊急</p>
+              </div>
+            </div>
+          </div>
+          {(shipmentStats?.urgent ?? 0) > 0 && (
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 dark:bg-red-900/20">
+              <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                {shipmentStats?.urgent}件が24時間以内に発送期限
+              </span>
+            </div>
+          )}
+        </Link>
+
+        {/* Sourcing Card */}
+        <Link
+          href="/sourcing"
+          className="block rounded-xl border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
+              <ShoppingBag className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">仕入れ管理</h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                発送準備OK: {sourcingStats?.readyToShip ?? 0}件
+              </p>
+            </div>
+            <div className="flex gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                  {sourcingStats?.byStatus?.PENDING ?? 0}
+                </p>
+                <p className="text-xs text-zinc-500">未確認</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                  {sourcingStats?.byStatus?.ORDERED ?? 0}
+                </p>
+                <p className="text-xs text-zinc-500">発注済</p>
+              </div>
+            </div>
+          </div>
+          {(sourcingStats?.needsAttention ?? 0) > 0 && (
+            <div className="mt-3 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 dark:bg-amber-900/20">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                {sourcingStats?.needsAttention}件の対応が必要
+              </span>
+            </div>
+          )}
+        </Link>
+      </div>
+
       {/* Marketplace Stats (Phase 42) */}
       {mpStats && (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -378,7 +476,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/analytics/bestsellers"
           className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
@@ -395,18 +493,28 @@ export default function Dashboard() {
         >
           <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           <div>
-            <p className="font-medium text-zinc-900 dark:text-white">滞留在庫管理</p>
+            <p className="font-medium text-zinc-900 dark:text-white">滞留在庫</p>
             <p className="text-xs text-zinc-500">一括処理・アラート</p>
           </div>
         </Link>
         <Link
-          href="/pricing/recommendations"
+          href="/shipments"
           className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
         >
-          <TrendingUp className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+          <PackageCheck className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           <div>
-            <p className="font-medium text-zinc-900 dark:text-white">価格提案</p>
-            <p className="text-xs text-zinc-500">シミュレーション</p>
+            <p className="font-medium text-zinc-900 dark:text-white">発送処理</p>
+            <p className="text-xs text-zinc-500">追跡番号登録</p>
+          </div>
+        </Link>
+        <Link
+          href="/sourcing"
+          className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+        >
+          <ShoppingBag className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+          <div>
+            <p className="font-medium text-zinc-900 dark:text-white">仕入れ確認</p>
+            <p className="text-xs text-zinc-500">ステータス管理</p>
           </div>
         </Link>
       </div>
