@@ -15,8 +15,12 @@ import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { QUEUE_NAMES } from '@rakuda/config';
 import { AppError } from '../middleware/error-handler';
+import { cacheMiddleware, cacheInvalidationMiddleware } from '../middleware/cache';
 
 const router = Router();
+
+// キャッシュ無効化ミドルウェア（発送処理時に統計キャッシュを無効化）
+router.use(cacheInvalidationMiddleware(['shipment-stats*', 'pending-shipments*', 'order-stats*']));
 const log = logger.child({ module: 'shipments-api' });
 
 // Redis接続とキュー

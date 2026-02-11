@@ -12,8 +12,12 @@ import { z } from 'zod';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { AppError } from '../middleware/error-handler';
+import { cacheMiddleware, cacheInvalidationMiddleware } from '../middleware/cache';
 
 const router = Router();
+
+// キャッシュ無効化ミドルウェア（仕入れステータス更新時に統計キャッシュを無効化）
+router.use(cacheInvalidationMiddleware(['sourcing-stats*', 'pending-sourcing*', 'order-stats*']));
 const log = logger.child({ module: 'sourcing-api' });
 
 // 仕入れステータスの定義

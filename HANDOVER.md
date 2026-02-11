@@ -3,10 +3,48 @@
 ## 最終更新
 
 **日付**: 2026-02-11
-**Phase**: 57-58完了
+**Phase**: 59-60完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 59-60: パフォーマンス最適化（Redisキャッシュ）
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 59-60: Redisキャッシュシステム**
+1. キャッシュサービス (`apps/api/src/lib/cache-service.ts`)
+   - Redis接続管理
+   - TTL管理（30秒〜5分）
+   - キャッシュ設定マスター
+   - キャッシュ無効化機能
+   - キャッシュ統計取得
+
+2. キャッシュミドルウェア (`apps/api/src/middleware/cache.ts`)
+   - GETリクエスト自動キャッシュ
+   - Cache-Controlヘッダー設定
+   - X-Cache (HIT/MISS) ヘッダー
+   - キャッシュ無効化ミドルウェア
+
+3. キャッシュ管理API (`apps/api/src/routes/cache-admin.ts`)
+   - GET /api/admin/cache/stats - キャッシュ統計
+   - GET /api/admin/cache/config - キャッシュ設定
+   - POST /api/admin/cache/invalidate - キャッシュ無効化
+   - POST /api/admin/cache/warm - キャッシュウォームアップ
+
+4. 既存ルートにキャッシュ統合
+   - shipments.ts - 発送処理時に統計キャッシュ無効化
+   - sourcing.ts - 仕入れ更新時に統計キャッシュ無効化
+
+**キャッシュTTL設定**:
+- KPI/統計系: 60秒
+- 発送/仕入れ系: 30秒
+- マスタデータ系: 300秒（5分）
+- 為替レート: 300秒（5分）
+
+---
 
 ### Phase 57-58: ダッシュボード統合
 
@@ -153,6 +191,17 @@
 
 ## ファイル変更一覧
 
+### Phase 59-60
+#### 新規作成
+- `apps/api/src/lib/cache-service.ts` - Redisキャッシュサービス
+- `apps/api/src/middleware/cache.ts` - キャッシュミドルウェア
+- `apps/api/src/routes/cache-admin.ts` - キャッシュ管理API
+
+#### 更新
+- `apps/api/src/index.ts` - cache-adminルート登録
+- `apps/api/src/routes/shipments.ts` - キャッシュ無効化追加
+- `apps/api/src/routes/sourcing.ts` - キャッシュ無効化追加
+
 ### Phase 57-58
 #### 更新
 - `apps/web/src/app/page.tsx` - ダッシュボード統合（発送・仕入れカード追加）
@@ -217,22 +266,22 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 59-60候補
+### Phase 61-62候補
 
 1. **価格最適化AI**
    - 競合分析エンジン
    - 動的価格調整ロジック
    - 需要予測モデル
 
-2. **パフォーマンス最適化**
-   - Redis キャッシュ戦略
-   - データベースインデックス最適化
-   - CDN設定
-
-3. **顧客対応自動化**
+2. **顧客対応自動化**
    - メッセージテンプレート強化
    - 自動返信ルール
    - 顧客満足度トラッキング
+
+3. **データベースインデックス最適化**
+   - 複合インデックス追加
+   - クエリパフォーマンス分析
+   - スロークエリ最適化
 
 ## 技術的注意事項
 
