@@ -17,12 +17,14 @@ import {
   Shield,
   FileText,
   Gauge,
+  Sparkles,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'ダッシュボード', href: '/', icon: LayoutDashboard },
   { name: '商品管理', href: '/products', icon: Package },
   { name: '商品レビュー', href: '/products/review', icon: ClipboardCheck },
+  { name: 'エンリッチメント', href: '/enrichment', icon: Sparkles },
   { name: 'Joom管理', href: '/joom', icon: Store },
   { name: 'eBay管理', href: '/ebay', icon: Store },
   { name: '出品管理', href: '/listings', icon: ShoppingCart },

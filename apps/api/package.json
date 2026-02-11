@@ -22,6 +22,7 @@
     "@rakuda/database": "*",
     "@rakuda/enrichment": "*",
     "@rakuda/logger": "*",
+    "@rakuda/queue": "*",
     "@rakuda/schema": "*",
     "@types/pdfkit": "^0.17.4",
     "bullmq": "^5.1.0",

@@ -1,5 +1,6 @@
 /**
- * Phase 40: Joom出品ワークフロー API
+ * Phase 40-41: Joom出品ワークフロー API
+ * Phase 41: BullMQジョブキュー統合
  */
 
 import { Router, Request, Response } from 'express';
@@ -8,6 +9,16 @@ import type {
   JoomListingStatus,
   BatchPublishStatus,
 } from '@prisma/client';
+import {
+  addCreateListingJob,
+  addPublishJob,
+  addBatchPublishJob,
+  addFullJoomWorkflowJob,
+  addAutoJoomPublishJob,
+  getJoomPublishQueueStats,
+  getJobStatus,
+  QUEUE_NAMES,
+} from '@rakuda/queue';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -210,7 +221,7 @@ router.post('/listings/:id/preview', async (req: Request, res: Response) => {
 });
 
 /**
- * 出品実行
+ * 出品実行（ジョブキュー経由）
  */
 router.post('/listings/:id/publish', async (req: Request, res: Response) => {
   try {
@@ -231,16 +242,16 @@ router.post('/listings/:id/publish', async (req: Request, res: Response) => {
       return res.status(400).json({ error: `Cannot publish listing in status: ${listing.status}` });
     }
 
-    // ステータスを更新（実際の処理はワーカーで行う）
+    // ステータスを更新
     await prisma.joomListing.update({
       where: { id },
       data: { status: 'PUBLISHING' },
     });
 
-    // TODO: ジョブキューに追加
-    // await addToQueue('joom-publish', { joomListingId: id });
+    // ジョブキューに追加
+    const jobId = await addPublishJob(id);
 
-    res.json({ message: 'Publishing started', listingId: id });
+    res.json({ message: 'Publishing started', listingId: id, jobId });
   } catch (error) {
     console.error('Failed to publish Joom listing:', error);
     res.status(500).json({ error: 'Failed to publish Joom listing' });
@@ -423,7 +434,7 @@ router.post('/batches', async (req: Request, res: Response) => {
 });
 
 /**
- * バッチ実行
+ * バッチ実行（ジョブキュー経由）
  */
 router.post('/batches/:id/execute', async (req: Request, res: Response) => {
   try {
@@ -450,10 +461,10 @@ router.post('/batches/:id/execute', async (req: Request, res: Response) => {
       },
     });
 
-    // TODO: ジョブキューに追加
-    // await addToQueue('joom-batch-publish', { batchId: id });
+    // ジョブキューに追加
+    const jobId = await addBatchPublishJob(id);
 
-    res.json({ message: 'Batch execution started', batchId: id });
+    res.json({ message: 'Batch execution started', batchId: id, jobId });
   } catch (error) {
     console.error('Failed to execute Joom batch:', error);
     res.status(500).json({ error: 'Failed to execute Joom batch' });
@@ -533,45 +544,35 @@ router.get('/api-logs', async (req: Request, res: Response) => {
 // ========================================
 
 /**
- * 商品の完全ワークフロー実行
+ * 商品の完全ワークフロー実行（ジョブキュー経由）
  */
 router.post('/workflow/full', async (req: Request, res: Response) => {
   try {
-    const { productId } = req.body;
+    const { taskId, skipImages = false } = req.body;
 
-    if (!productId) {
-      return res.status(400).json({ error: 'productId is required' });
+    if (!taskId) {
+      return res.status(400).json({ error: 'taskId is required' });
     }
 
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
+    const task = await prisma.enrichmentTask.findUnique({
+      where: { id: taskId },
     });
 
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+    if (!task) {
+      return res.status(404).json({ error: 'Task not found' });
     }
 
-    // エンリッチメントタスク作成
-    const task = await prisma.enrichmentTask.upsert({
-      where: { productId },
-      create: {
-        productId,
-        priority: 10,
-        status: 'PENDING',
-      },
-      update: {
-        priority: 10,
-        status: 'PENDING',
-      },
-    });
+    if (task.status !== 'APPROVED') {
+      return res.status(400).json({ error: `Task not approved: ${task.status}` });
+    }
 
-    // TODO: ワーカーに処理を委譲
-    // await addToQueue('joom-full-workflow', { taskId: task.id });
+    // ジョブキューに追加
+    const jobId = await addFullJoomWorkflowJob(taskId, skipImages);
 
     res.json({
       message: 'Workflow started',
-      taskId: task.id,
-      productId,
+      taskId,
+      jobId,
     });
   } catch (error) {
     console.error('Failed to start workflow:', error);
@@ -580,33 +581,59 @@ router.post('/workflow/full', async (req: Request, res: Response) => {
 });
 
 /**
- * 承認済み商品の自動出品
+ * 承認済み商品の自動出品（ジョブキュー経由）
  */
 router.post('/workflow/publish-approved', async (req: Request, res: Response) => {
   try {
     const { limit = 10 } = req.body;
 
-    const approvedTasks = await prisma.enrichmentTask.findMany({
-      where: {
-        status: 'APPROVED',
-        joomListing: null,
-      },
-      take: limit,
-    });
-
-    // TODO: 各タスクをワーカーに委譲
-    // for (const task of approvedTasks) {
-    //   await addToQueue('joom-publish', { taskId: task.id });
-    // }
+    // ジョブキューに追加
+    const jobId = await addAutoJoomPublishJob(limit);
 
     res.json({
-      message: 'Publishing started',
-      count: approvedTasks.length,
-      taskIds: approvedTasks.map(t => t.id),
+      message: 'Auto publish job queued',
+      limit,
+      jobId,
     });
   } catch (error) {
     console.error('Failed to publish approved:', error);
     res.status(500).json({ error: 'Failed to publish approved' });
+  }
+});
+
+// ========================================
+// キュー管理
+// ========================================
+
+/**
+ * キュー統計
+ */
+router.get('/queue/stats', async (req: Request, res: Response) => {
+  try {
+    const stats = await getJoomPublishQueueStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Failed to get queue stats:', error);
+    res.status(500).json({ error: 'Failed to get queue stats' });
+  }
+});
+
+/**
+ * ジョブステータス
+ */
+router.get('/queue/jobs/:jobId', async (req: Request, res: Response) => {
+  try {
+    const { jobId } = req.params;
+    const status = await getJobStatus(QUEUE_NAMES.JOOM_PUBLISH, jobId);
+
+    if (!status) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    res.json(status);
+  } catch (error) {
+    console.error('Failed to get job status:', error);
+    res.status(500).json({ error: 'Failed to get job status' });
   }
 });
 

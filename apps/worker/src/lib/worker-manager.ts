@@ -14,6 +14,9 @@ import { competitorProcessor } from '../processors/competitor';
 import { processOrderSyncJob } from '../processors/order-sync';
 import { processPriceSyncJob } from '../processors/price-sync';
 import { processInventorySyncJob } from '../processors/inventory-sync';
+// Phase 41: エンリッチメント・Joom出品
+import { processEnrichmentJob, processFullWorkflow } from '../processors/enrichment';
+import { processJoomPublishJob, processFullJoomWorkflow, processAutoJoomPublish } from '../processors/joom-publish';
 import { runActiveInventoryCheck } from './scheduler';
 import { JoomApiClient } from './joom-api';
 import { EbayApiClient } from './ebay-api';
@@ -180,6 +183,42 @@ export async function startWorkers(connection: IORedis): Promise<void> {
     QUEUE_CONFIG[QUEUE_NAMES.COMPETITOR]
   );
   workers.push(competitorWorker);
+
+  // エンリッチメントワーカー（Phase 41）
+  const enrichmentWorker = createWorker(
+    QUEUE_NAMES.ENRICHMENT,
+    async (job) => {
+      // 完全ワークフロー
+      if (job.name === 'full-workflow') {
+        return processFullWorkflow(job as any);
+      }
+      // 通常のエンリッチメントジョブ
+      return processEnrichmentJob(job as any);
+    },
+    connection,
+    QUEUE_CONFIG[QUEUE_NAMES.ENRICHMENT]
+  );
+  workers.push(enrichmentWorker);
+
+  // Joom出品ワーカー（Phase 41）
+  const joomPublishWorker = createWorker(
+    QUEUE_NAMES.JOOM_PUBLISH,
+    async (job) => {
+      // 完全ワークフロー
+      if (job.name === 'full-joom-workflow') {
+        return processFullJoomWorkflow(job as any);
+      }
+      // 自動出品
+      if (job.name === 'auto-joom-publish') {
+        return processAutoJoomPublish(job as any);
+      }
+      // 通常のJoom出品ジョブ
+      return processJoomPublishJob(job as any);
+    },
+    connection,
+    QUEUE_CONFIG[QUEUE_NAMES.JOOM_PUBLISH]
+  );
+  workers.push(joomPublishWorker);
 
   // AlertManager初期化
   await alertManager.initialize();

@@ -23,6 +23,7 @@
     "@rakuda/database": "*",
     "@rakuda/enrichment": "*",
     "@rakuda/logger": "*",
+    "@rakuda/queue": "*",
     "@rakuda/schema": "*",
     "bullmq": "^5.1.0",
     "cron-parser": "^5.0.8",

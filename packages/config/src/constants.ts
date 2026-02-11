@@ -73,6 +73,9 @@ export const QUEUE_NAMES = {
   PRICING: 'pricing-queue',
   COMPETITOR: 'competitor-queue',
   DEAD_LETTER: 'dead-letter-queue',
+  // Phase 41: エンリッチメント・Joom出品
+  ENRICHMENT: 'enrichment-queue',
+  JOOM_PUBLISH: 'joom-publish-queue',
 } as const;
 
 // キュー設定
@@ -129,6 +132,22 @@ export const QUEUE_CONFIG = {
     priority: 4,
     rateLimit: { max: 10, duration: 60000 }, // 10件/分（スクレイピング負荷考慮）
     concurrency: 2,
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 30000 },
+  },
+  // Phase 41: エンリッチメントキュー
+  [QUEUE_NAMES.ENRICHMENT]: {
+    priority: 2,
+    rateLimit: { max: 20, duration: 60000 }, // 20件/分（OpenAI APIレート制限考慮）
+    concurrency: 5,
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 10000 },
+  },
+  // Phase 41: Joom出品キュー
+  [QUEUE_NAMES.JOOM_PUBLISH]: {
+    priority: 1,
+    rateLimit: { max: 10, duration: 60000 }, // 10件/分（Joom APIレート制限考慮）
+    concurrency: 3,
     attempts: 3,
     backoff: { type: 'exponential', delay: 30000 },
   },

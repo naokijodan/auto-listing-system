@@ -1,6 +1,7 @@
 /**
- * Phase 39: エンリッチメントエンジン API
+ * Phase 39-41: エンリッチメントエンジン API
  * 翻訳・属性抽出・コンテンツ検証
+ * Phase 41: BullMQジョブキュー統合
  */
 
 import { Router, Request, Response } from 'express';
@@ -13,6 +14,14 @@ import type {
   ProhibitedSeverity,
   KeywordMatchType,
 } from '@prisma/client';
+import {
+  addEnrichProductJob,
+  addEnrichBatchJob,
+  addFullWorkflowJob,
+  getEnrichmentQueueStats,
+  getJobStatus,
+  QUEUE_NAMES,
+} from '@rakuda/queue';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -95,11 +104,11 @@ router.get('/tasks/:id', async (req: Request, res: Response) => {
 });
 
 /**
- * タスク作成
+ * タスク作成（ジョブキュー経由）
  */
 router.post('/tasks', async (req: Request, res: Response) => {
   try {
-    const { productId, priority = 0 } = req.body;
+    const { productId, priority = 0, async = true } = req.body;
 
     if (!productId) {
       return res.status(400).json({ error: 'productId is required' });
@@ -114,6 +123,7 @@ router.post('/tasks', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Product not found' });
     }
 
+    // タスクレコード作成
     const task = await prisma.enrichmentTask.upsert({
       where: { productId },
       create: {
@@ -129,6 +139,12 @@ router.post('/tasks', async (req: Request, res: Response) => {
       },
     });
 
+    // ジョブキューに追加（非同期処理）
+    if (async) {
+      const jobId = await addEnrichProductJob(productId, priority);
+      return res.status(201).json({ ...task, jobId });
+    }
+
     res.status(201).json(task);
   } catch (error) {
     console.error('Failed to create enrichment task:', error);
@@ -137,16 +153,17 @@ router.post('/tasks', async (req: Request, res: Response) => {
 });
 
 /**
- * 一括タスク作成
+ * 一括タスク作成（ジョブキュー経由）
  */
 router.post('/tasks/bulk', async (req: Request, res: Response) => {
   try {
-    const { productIds, priority = 0 } = req.body;
+    const { productIds, priority = 0, async = true } = req.body;
 
     if (!Array.isArray(productIds) || productIds.length === 0) {
       return res.status(400).json({ error: 'productIds array is required' });
     }
 
+    // タスクレコード作成
     const results = await Promise.all(
       productIds.map(async (productId: string) => {
         try {
@@ -169,9 +186,17 @@ router.post('/tasks/bulk', async (req: Request, res: Response) => {
       })
     );
 
+    // バッチジョブをキューに追加
+    let jobId: string | undefined;
+    if (async && results.filter(r => r.success).length > 0) {
+      const successIds = results.filter(r => r.success).map(r => r.productId);
+      jobId = await addEnrichBatchJob(successIds, priority);
+    }
+
     res.status(201).json({
       created: results.filter(r => r.success).length,
       failed: results.filter(r => !r.success).length,
+      jobId,
       results,
     });
   } catch (error) {
@@ -358,6 +383,70 @@ router.get('/stats', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Failed to get enrichment stats:', error);
     res.status(500).json({ error: 'Failed to get enrichment stats' });
+  }
+});
+
+// ========================================
+// キュー管理
+// ========================================
+
+/**
+ * キュー統計
+ */
+router.get('/queue/stats', async (req: Request, res: Response) => {
+  try {
+    const stats = await getEnrichmentQueueStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Failed to get queue stats:', error);
+    res.status(500).json({ error: 'Failed to get queue stats' });
+  }
+});
+
+/**
+ * ジョブステータス
+ */
+router.get('/queue/jobs/:jobId', async (req: Request, res: Response) => {
+  try {
+    const { jobId } = req.params;
+    const status = await getJobStatus(QUEUE_NAMES.ENRICHMENT, jobId);
+
+    if (!status) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    res.json(status);
+  } catch (error) {
+    console.error('Failed to get job status:', error);
+    res.status(500).json({ error: 'Failed to get job status' });
+  }
+});
+
+/**
+ * 完全ワークフロージョブ追加
+ */
+router.post('/queue/full-workflow', async (req: Request, res: Response) => {
+  try {
+    const { productId, autoPublish = false } = req.body;
+
+    if (!productId) {
+      return res.status(400).json({ error: 'productId is required' });
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    const jobId = await addFullWorkflowJob(productId, autoPublish);
+
+    res.status(201).json({ jobId, productId, autoPublish });
+  } catch (error) {
+    console.error('Failed to add full workflow job:', error);
+    res.status(500).json({ error: 'Failed to add full workflow job' });
   }
 });
 
