@@ -102,6 +102,12 @@ model Product {
   @@index([status])
   @@index([sourceHash])
   @@index([createdAt])
+  // Phase 69: パフォーマンス最適化インデックス
+  @@index([status, updatedAt])
+  @@index([sourceId, status])
+  @@index([brand])
+  @@index([category])
+  @@index([translationStatus, imageStatus])
   @@map("products")
 }
 
@@ -170,6 +176,11 @@ model Listing {
   @@index([marketplace, status])
   @@index([marketplaceListingId])
   @@index([pausedByInventory, resumeAt])
+  // Phase 69: パフォーマンス最適化インデックス
+  @@index([status, updatedAt])
+  @@index([status, listedAt])
+  @@index([marketplace, status, listingPrice])
+  @@index([productId, status])
   @@map("listings")
 }
 
@@ -216,6 +227,10 @@ model JobLog {
   @@index([queueName, status])
   @@index([createdAt])
   @@index([jobId])
+  // Phase 69: パフォーマンス最適化インデックス
+  @@index([queueName, status, createdAt])
+  @@index([status, startedAt])
+  @@index([jobType, status])
   @@map("job_logs")
 }
 
@@ -676,6 +691,12 @@ model Order {
   @@index([status])
   @@index([marketplace, orderedAt])
   @@index([buyerUsername])
+  // Phase 69: パフォーマンス最適化インデックス
+  @@index([status, orderedAt])
+  @@index([paymentStatus, orderedAt])
+  @@index([fulfillmentStatus, orderedAt])
+  @@index([marketplace, status, orderedAt])
+  @@index([shippedAt])
   @@map("orders")
 }
 
@@ -739,6 +760,9 @@ model Sale {
   @@index([listingId])
   @@index([productId])
   @@index([sku])
+  // Phase 69: パフォーマンス最適化インデックス
+  @@index([createdAt])
+  @@index([orderId, createdAt])
   @@map("sales")
 }
 
@@ -6438,4 +6462,85 @@ model IdempotencyKey {
 
   @@index([expiresAt])
   @@map("idempotency_keys")
+}
+
+
+// ========================================
+// Phase 70: ダッシュボードウィジェット
+// ========================================
+
+model DashboardWidget {
+  id            String   @id @default(cuid())
+
+  // ウィジェット識別
+  name          String   // ウィジェット名
+  type          DashboardWidgetType
+  description   String?
+
+  // レイアウト情報（グリッド位置）
+  gridX         Int      @default(0)
+  gridY         Int      @default(0)
+  gridWidth     Int      @default(2) // グリッド単位の幅 (1-4)
+  gridHeight    Int      @default(2) // グリッド単位の高さ (1-4)
+
+  // 設定
+  config        Json     @default("{}") // ウィジェット固有の設定
+  refreshInterval Int    @default(60)   // 更新間隔（秒）
+
+  // ステータス
+  isVisible     Boolean  @default(true)
+  order         Int      @default(0)    // 表示順序
+
+  // 所有者（null = グローバル/デフォルト）
+  userId        String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, isVisible])
+  @@index([type])
+  @@map("dashboard_widgets")
+}
+
+enum DashboardWidgetType {
+  SALES_SUMMARY        // 売上サマリー
+  ORDER_STATUS         // 注文ステータス
+  INVENTORY_ALERT      // 在庫アラート
+  RECENT_ORDERS        // 最近の注文
+  TOP_PRODUCTS         // 人気商品
+  PROFIT_CHART         // 利益チャート
+  MARKETPLACE_COMPARISON // マーケットプレイス比較
+  SHIPMENT_STATUS      // 発送ステータス
+  FORECAST_SUMMARY     // 売上予測サマリー
+  JOB_QUEUE_STATUS     // ジョブキューステータス
+  QUICK_ACTIONS        // クイックアクション
+  CUSTOM               // カスタムウィジェット
+}
+
+model DashboardLayout {
+  id            String   @id @default(cuid())
+
+  // レイアウト情報
+  name          String   // レイアウト名
+  description   String?
+  
+  // グリッド設定
+  columns       Int      @default(4)
+  rowHeight     Int      @default(100)
+
+  // ウィジェット配置
+  widgets       Json     @default("[]") // [{widgetId, x, y, w, h}]
+
+  // ステータス
+  isDefault     Boolean  @default(false)
+  isActive      Boolean  @default(true)
+
+  // 所有者
+  userId        String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, isActive])
+  @@map("dashboard_layouts")
 }

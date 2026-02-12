@@ -22,6 +22,7 @@ import {
   PackageCheck,
   ShoppingBag,
   TrendingUp,
+  LayoutGrid,
 } from 'lucide-react';
 
 const navigation = [
@@ -45,6 +46,7 @@ const navigation = [
 ];
 
 const adminNavigation = [
+  { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
   { name: 'パフォーマンス', href: '/admin/performance', icon: Gauge },
   { name: 'システム監視', href: '/admin/monitoring', icon: Shield },
   { name: 'ログビューア', href: '/admin/logs', icon: FileText },

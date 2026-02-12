@@ -860,3 +860,86 @@ export function useTrends(historicalDays?: number) {
     { refreshInterval: 300000 }
   );
 }
+
+// ========================================
+// Dashboard Widget Hooks (Phase 70)
+// ========================================
+
+import {
+  dashboardWidgetApi,
+  queryPerformanceApi,
+  DashboardWidget,
+  WidgetType,
+  WidgetData,
+  QueryPerformanceStats,
+} from './api';
+
+export function useWidgetTypes() {
+  return useSWR<ApiResponse<WidgetType[]>>(
+    dashboardWidgetApi.getTypes(),
+    fetcher
+  );
+}
+
+export function useDashboardWidgets(userId?: string) {
+  return useSWR<ApiResponse<DashboardWidget[]>>(
+    dashboardWidgetApi.getWidgets(userId),
+    fetcher
+  );
+}
+
+export function useAllWidgetData(userId?: string) {
+  return useSWR<ApiResponse<WidgetData[]>>(
+    dashboardWidgetApi.getAllWidgetData(userId),
+    fetcher,
+    { refreshInterval: 60000 } // 1分ごとに更新
+  );
+}
+
+export function useWidgetData(widgetId: string) {
+  return useSWR<ApiResponse<{
+    widget: DashboardWidget;
+    content: unknown;
+    fetchedAt: string;
+  }>>(
+    widgetId ? dashboardWidgetApi.getWidgetData(widgetId) : null,
+    fetcher,
+    { refreshInterval: 60000 }
+  );
+}
+
+// Query Performance Hooks
+export function useQueryPerformanceSummary() {
+  return useSWR<ApiResponse<QueryPerformanceStats>>(
+    queryPerformanceApi.getSummary(),
+    fetcher,
+    { refreshInterval: 60000 }
+  );
+}
+
+export function useTableStats() {
+  return useSWR<ApiResponse<{
+    tableName: string;
+    rowCount: number;
+    totalSize: string;
+    indexSize: string;
+  }[]>>(
+    queryPerformanceApi.getTableStats(),
+    fetcher
+  );
+}
+
+export function useIndexUsage() {
+  return useSWR<ApiResponse<{
+    tableName: string;
+    indexName: string;
+    indexSize: string;
+    scans: number;
+    tuplesRead: number;
+    tuplesFetched: number;
+    efficiency: number;
+  }[]>>(
+    queryPerformanceApi.getIndexUsage(),
+    fetcher
+  );
+}

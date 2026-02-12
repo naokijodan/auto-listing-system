@@ -3,10 +3,76 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 67-68完了
+**Phase**: 69-70完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 69-70: データベース最適化 & ダッシュボードウィジェット
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 69: データベースインデックス最適化**
+1. 複合インデックス追加（Prismaスキーマ）
+   - Product: `[status, updatedAt]`, `[sourceId, status]`, `[brand]`, `[category]`, `[translationStatus, imageStatus]`
+   - Listing: `[status, updatedAt]`, `[status, listedAt]`, `[marketplace, status, listingPrice]`, `[productId, status]`
+   - Order: `[status, orderedAt]`, `[paymentStatus, orderedAt]`, `[fulfillmentStatus, orderedAt]`, `[marketplace, status, orderedAt]`, `[shippedAt]`
+   - Sale: `[createdAt]`, `[orderId, createdAt]`
+   - JobLog: `[queueName, status, createdAt]`, `[status, startedAt]`, `[jobType, status]`
+
+2. クエリパフォーマンス監視API (`apps/api/src/routes/query-performance.ts`)
+   - GET /api/query-performance/summary - パフォーマンスサマリー
+   - GET /api/query-performance/table-stats - テーブル統計
+   - GET /api/query-performance/index-usage - インデックス使用状況
+   - GET /api/query-performance/unused-indexes - 未使用インデックス
+   - GET /api/query-performance/seq-scans - シーケンシャルスキャン分析
+   - GET /api/query-performance/tables/:tableName - テーブル詳細統計
+   - POST /api/query-performance/vacuum/:tableName - VACUUM実行
+   - POST /api/query-performance/analyze/:tableName - ANALYZE実行
+
+**Phase 70: ダッシュボードウィジェット**
+1. Prismaスキーマ追加
+   - DashboardWidget: ウィジェット定義（タイプ・位置・設定）
+   - DashboardLayout: レイアウト設定
+   - DashboardWidgetType: 12種類のウィジェットタイプ
+
+2. ダッシュボードウィジェットAPI (`apps/api/src/routes/dashboard-widgets.ts`)
+   - GET /api/dashboard-widgets/types - ウィジェットタイプ一覧
+   - GET /api/dashboard-widgets - ウィジェット一覧
+   - POST /api/dashboard-widgets - ウィジェット作成
+   - PATCH /api/dashboard-widgets/:id - ウィジェット更新
+   - DELETE /api/dashboard-widgets/:id - ウィジェット削除
+   - PATCH /api/dashboard-widgets/reorder - 順序一括更新
+   - GET /api/dashboard-widgets/:id/data - ウィジェットデータ
+   - GET /api/dashboard-widgets/data/all - 全ウィジェットデータ
+   - POST /api/dashboard-widgets/setup-defaults - デフォルトセットアップ
+
+3. ウィジェットタイプ
+   - SALES_SUMMARY: 売上サマリー
+   - ORDER_STATUS: 注文ステータス
+   - INVENTORY_ALERT: 在庫アラート
+   - RECENT_ORDERS: 最近の注文
+   - TOP_PRODUCTS: 人気商品
+   - PROFIT_CHART: 利益チャート
+   - MARKETPLACE_COMPARISON: マーケットプレイス比較
+   - SHIPMENT_STATUS: 発送ステータス
+   - FORECAST_SUMMARY: 売上予測サマリー
+   - JOB_QUEUE_STATUS: ジョブキューステータス
+   - QUICK_ACTIONS: クイックアクション
+   - CUSTOM: カスタムウィジェット
+
+4. ウィジェット管理ページ (`apps/web/src/app/dashboard-widgets/page.tsx`)
+   - ウィジェット一覧・追加・削除
+   - 表示/非表示切り替え
+   - プレビュータブ（リアルタイムデータ）
+   - パフォーマンスタブ（DB健全性）
+
+5. サイドバー更新
+   - ウィジェット設定リンク追加（管理者セクション）
+
+---
 
 ### Phase 67-68: 売上予測AI & 在庫最適化
 
@@ -417,6 +483,19 @@
 
 ## ファイル変更一覧
 
+### Phase 69-70
+#### 新規作成
+- `apps/api/src/routes/query-performance.ts` - クエリパフォーマンス監視API
+- `apps/api/src/routes/dashboard-widgets.ts` - ダッシュボードウィジェットAPI
+- `apps/web/src/app/dashboard-widgets/page.tsx` - ウィジェット管理ページ
+
+#### 更新
+- `packages/database/prisma/schema.prisma` - 複合インデックス追加、DashboardWidget/DashboardLayoutモデル追加
+- `apps/api/src/index.ts` - query-performance, dashboard-widgetsルート登録
+- `apps/web/src/lib/api.ts` - ダッシュボードウィジェットAPI追加
+- `apps/web/src/lib/hooks.ts` - ダッシュボードウィジェットフック追加
+- `apps/web/src/components/layout/sidebar.tsx` - ウィジェット設定リンク追加
+
 ### Phase 67-68
 #### 新規作成
 - `apps/api/src/lib/sales-forecast-engine.ts` - 売上予測エンジン
@@ -541,31 +620,43 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 69-70候補
+### Phase 71-72候補
 
-1. **データベースインデックス最適化**
-   - 複合インデックス追加
-   - クエリパフォーマンス分析
-   - スロークエリ最適化
-
-2. **多言語対応強化**
+1. **多言語対応強化**
    - i18n完全実装
    - 自動翻訳API連携
    - 地域別コンテンツ最適化
 
-3. **ダッシュボードウィジェット**
-   - カスタマイズ可能なウィジェット
-   - ドラッグ&ドロップ配置
-   - リアルタイム更新
-
-4. **リアルタイム通知強化**
+2. **リアルタイム通知強化**
    - WebSocket実装
    - プッシュ通知
    - デスクトップ通知
 
+3. **ワークフロー自動化強化**
+   - 条件分岐ルール
+   - スケジュールトリガー
+   - イベントチェーン
+
+4. **AIチャットボット統合**
+   - 顧客対応自動化
+   - 商品問い合わせ応答
+   - 多言語サポート
+
 ## 技術的注意事項
 
-1. **売上予測AI**
+1. **データベースインデックス最適化**
+   - 複合インデックス: 頻出クエリパターンに基づいて追加
+   - キャッシュヒット率: 95%以上が目標（99%以上が理想）
+   - 未使用インデックス: 定期的に確認・削除検討
+   - VACUUM ANALYZE: 大量データ変更後に実行推奨
+
+2. **ダッシュボードウィジェット**
+   - グリッドレイアウト: 4列ベース
+   - 更新間隔: デフォルト60秒（ウィジェット毎に設定可能）
+   - ウィジェットサイズ: タイプ毎に最小サイズあり
+   - デフォルトセットアップ: 8ウィジェット（売上・注文・発送・予測等）
+
+3. **売上予測AI**
    - 予測手法: 移動平均（7日）＋ 指数平滑法（α=0.3）
    - 季節性係数: 曜日別、月別、週別で計算
    - 信頼度: 高(0.8以上)、中(0.5-0.8)、低(0.5未満)

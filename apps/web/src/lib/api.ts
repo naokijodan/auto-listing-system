@@ -900,3 +900,159 @@ export const salesForecastApi = {
   // 統計
   getStats: () => '/api/sales-forecast/stats',
 };
+
+// ========================================
+// Dashboard Widget Types (Phase 70)
+// ========================================
+
+export interface DashboardWidget {
+  id: string;
+  name: string;
+  type: string;
+  description?: string;
+  gridX: number;
+  gridY: number;
+  gridWidth: number;
+  gridHeight: number;
+  config: Record<string, unknown>;
+  refreshInterval: number;
+  isVisible: boolean;
+  order: number;
+  userId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WidgetType {
+  type: string;
+  name: string;
+  description: string;
+  defaultConfig: Record<string, unknown>;
+  minWidth: number;
+  minHeight: number;
+}
+
+export interface WidgetData {
+  id: string;
+  type: string;
+  name: string;
+  gridX: number;
+  gridY: number;
+  gridWidth: number;
+  gridHeight: number;
+  content: unknown;
+  error: string | null;
+}
+
+export interface QueryPerformanceStats {
+  tables: number;
+  indexes: number;
+  databaseSize: string;
+  cacheHitRatio: {
+    heap: number;
+    index: number;
+    status: string;
+  };
+  unusedIndexes: number;
+  highSeqScanTables: number;
+  health: {
+    score: number;
+    status: string;
+    issues: string[];
+  };
+}
+
+// Dashboard Widget API
+export const dashboardWidgetApi = {
+  // ウィジェットタイプ一覧
+  getTypes: () => '/api/dashboard-widgets/types',
+
+  // ウィジェット一覧
+  getWidgets: (userId?: string) => {
+    const query = userId ? `?userId=${userId}` : '';
+    return `/api/dashboard-widgets${query}`;
+  },
+
+  // ウィジェット作成
+  createWidget: async (data: {
+    name?: string;
+    type: string;
+    description?: string;
+    gridX?: number;
+    gridY?: number;
+    gridWidth?: number;
+    gridHeight?: number;
+    config?: Record<string, unknown>;
+    refreshInterval?: number;
+    userId?: string;
+  }) => {
+    const res = await fetch(`${API_BASE}/api/dashboard-widgets`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to create widget');
+    return res.json();
+  },
+
+  // ウィジェット更新
+  updateWidget: async (id: string, data: Partial<DashboardWidget>) => {
+    const res = await fetch(`${API_BASE}/api/dashboard-widgets/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update widget');
+    return res.json();
+  },
+
+  // ウィジェット削除
+  deleteWidget: async (id: string) => {
+    const res = await fetch(`${API_BASE}/api/dashboard-widgets/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete widget');
+    return res.json();
+  },
+
+  // ウィジェット順序更新
+  reorderWidgets: async (widgets: { id: string; gridX?: number; gridY?: number; order?: number }[]) => {
+    const res = await fetch(`${API_BASE}/api/dashboard-widgets/reorder`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ widgets }),
+    });
+    if (!res.ok) throw new Error('Failed to reorder widgets');
+    return res.json();
+  },
+
+  // ウィジェットデータ取得
+  getWidgetData: (id: string) => `/api/dashboard-widgets/${id}/data`,
+
+  // 全ウィジェットデータ取得
+  getAllWidgetData: (userId?: string) => {
+    const query = userId ? `?userId=${userId}` : '';
+    return `/api/dashboard-widgets/data/all${query}`;
+  },
+
+  // デフォルトセットアップ
+  setupDefaults: async (userId?: string) => {
+    const res = await fetch(`${API_BASE}/api/dashboard-widgets/setup-defaults`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    if (!res.ok) throw new Error('Failed to setup defaults');
+    return res.json();
+  },
+};
+
+// Query Performance API
+export const queryPerformanceApi = {
+  getSummary: () => '/api/query-performance/summary',
+  getTableStats: () => '/api/query-performance/table-stats',
+  getIndexUsage: () => '/api/query-performance/index-usage',
+  getUnusedIndexes: () => '/api/query-performance/unused-indexes',
+  getSeqScans: () => '/api/query-performance/seq-scans',
+  getTableDetails: (tableName: string) => `/api/query-performance/tables/${tableName}`,
+};
