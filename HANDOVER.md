@@ -2,11 +2,66 @@
 
 ## 最終更新
 
-**日付**: 2026-02-12
-**Phase**: 65-66完了
+**日付**: 2026-02-13
+**Phase**: 67-68完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 67-68: 売上予測AI & 在庫最適化
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 67: 売上予測エンジン**
+1. 売上予測エンジン (`apps/api/src/lib/sales-forecast-engine.ts`)
+   - 履歴売上データ取得（日別集計）
+   - 季節性検出（曜日別・月別・週別係数）
+   - 将来売上予測（移動平均＋指数平滑法）
+   - カテゴリ別予測
+   - 商品別需要予測
+   - 在庫補充推奨（緊急/まもなく/十分/過剰）
+   - 予測精度評価（MAPE, RMSE）
+
+2. 売上予測API (`apps/api/src/routes/sales-forecast.ts`)
+   - GET /api/sales-forecast/summary - 予測サマリー
+   - GET /api/sales-forecast/daily - 日別予測
+   - GET /api/sales-forecast/categories - カテゴリ別予測
+   - GET /api/sales-forecast/products - 商品別需要予測
+   - GET /api/sales-forecast/inventory-recommendations - 在庫補充推奨
+   - GET /api/sales-forecast/accuracy - 予測精度
+   - GET /api/sales-forecast/seasonality - 季節性パターン
+   - GET /api/sales-forecast/trends - トレンド分析
+   - GET /api/sales-forecast/stats - 予測統計ダッシュボードデータ
+
+**Phase 68: 売上予測UI & 在庫最適化**
+1. APIクライアント更新 (`apps/web/src/lib/api.ts`)
+   - `salesForecastApi` - 売上予測関連API
+   - 型定義: ForecastResult, CategoryForecast, ProductForecast, InventoryRecommendation, ForecastSummary, ForecastStats
+
+2. SWRフック追加 (`apps/web/src/lib/hooks.ts`)
+   - `useForecastSummary()` - 予測サマリー
+   - `useForecastStats()` - 予測統計
+   - `useForecastDaily()` - 日別予測
+   - `useForecastCategories()` - カテゴリ別予測
+   - `useForecastProducts()` - 商品別需要
+   - `useInventoryRecommendations()` - 在庫推奨
+   - `useSeasonality()` - 季節性パターン
+   - `useTrends()` - トレンド分析
+
+3. 売上予測ページ (`apps/web/src/app/sales-forecast/page.tsx`)
+   - 予測統計ダッシュボード（30日予測売上・注文数・成長率・精度）
+   - 日別予測チャートタブ（履歴＋予測）
+   - カテゴリ別分析タブ（成長率・トレンド）
+   - 商品別需要タブ（需要予測・成長率）
+   - 在庫補充推奨タブ（緊急/まもなく/十分/過剰分類）
+   - 季節性パターンタブ（曜日・月別係数）
+
+4. サイドバー更新 (`apps/web/src/components/layout/sidebar.tsx`)
+   - 売上予測リンク追加（TrendingUpアイコン）
+
+---
 
 ### Phase 65-66: レポート自動生成
 
@@ -362,6 +417,18 @@
 
 ## ファイル変更一覧
 
+### Phase 67-68
+#### 新規作成
+- `apps/api/src/lib/sales-forecast-engine.ts` - 売上予測エンジン
+- `apps/api/src/routes/sales-forecast.ts` - 売上予測API
+- `apps/web/src/app/sales-forecast/page.tsx` - 売上予測ページ
+
+#### 更新
+- `apps/api/src/index.ts` - sales-forecastルート登録
+- `apps/web/src/lib/api.ts` - 売上予測API追加
+- `apps/web/src/lib/hooks.ts` - 売上予測SWRフック追加
+- `apps/web/src/components/layout/sidebar.tsx` - 売上予測リンク追加
+
 ### Phase 65-66
 #### 新規作成
 - `apps/api/src/lib/report-generator.ts` - レポート生成エンジン
@@ -474,31 +541,38 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 67-68候補
+### Phase 69-70候補
 
 1. **データベースインデックス最適化**
    - 複合インデックス追加
    - クエリパフォーマンス分析
    - スロークエリ最適化
 
-2. **売上予測AI**
-   - 過去データ分析
-   - 需要予測モデル
-   - 在庫最適化提案
-
-3. **多言語対応強化**
+2. **多言語対応強化**
    - i18n完全実装
    - 自動翻訳API連携
    - 地域別コンテンツ最適化
 
-4. **ダッシュボードウィジェット**
+3. **ダッシュボードウィジェット**
    - カスタマイズ可能なウィジェット
    - ドラッグ&ドロップ配置
    - リアルタイム更新
 
+4. **リアルタイム通知強化**
+   - WebSocket実装
+   - プッシュ通知
+   - デスクトップ通知
+
 ## 技術的注意事項
 
-1. **レポート自動生成**
+1. **売上予測AI**
+   - 予測手法: 移動平均（7日）＋ 指数平滑法（α=0.3）
+   - 季節性係数: 曜日別、月別、週別で計算
+   - 信頼度: 高(0.8以上)、中(0.5-0.8)、低(0.5未満)
+   - 在庫アクション: restock_urgent（7日以内在庫切れ）、restock_soon（14日以内）、sufficient（十分）、overstock（過剰）
+   - 精度指標: MAPE（平均絶対パーセント誤差）、RMSE（二乗平均平方根誤差）
+
+2. **レポート自動生成**
    - レポートタイプ: SALES_SUMMARY, ORDER_DETAIL, INVENTORY_STATUS, PRODUCT_PERFORMANCE, PROFIT_ANALYSIS, CUSTOMER_ANALYSIS, MARKETPLACE_COMPARISON
    - 出力形式: PDF（pdfkit）, EXCEL（exceljs）, CSV
    - 期間: last_7d, last_30d, last_90d, custom

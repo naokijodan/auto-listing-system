@@ -744,3 +744,159 @@ export const reportApi = {
     return deleteApi<ApiResponse<null>>(`/api/reports/schedules/${id}`, {});
   },
 };
+
+// Sales Forecast Types (Phase 67-68)
+export interface ForecastResult {
+  date: string;
+  predictedRevenue: number;
+  predictedOrders: number;
+  confidence: number;
+  lowerBound: number;
+  upperBound: number;
+}
+
+export interface CategoryForecast {
+  category: string;
+  currentRevenue: number;
+  predictedRevenue: number;
+  growthRate: number;
+  trend: 'up' | 'down' | 'stable';
+  confidence: number;
+}
+
+export interface ProductForecast {
+  productId: string;
+  title: string;
+  currentSales: number;
+  predictedSales: number;
+  demandTrend: 'increasing' | 'decreasing' | 'stable';
+  restockRecommendation: boolean;
+  recommendedQuantity: number;
+}
+
+export interface InventoryRecommendation {
+  productId: string;
+  title: string;
+  currentStock: number;
+  predictedDemand: number;
+  daysOfStock: number;
+  action: 'restock_urgent' | 'restock_soon' | 'sufficient' | 'overstock';
+  recommendedQuantity: number;
+  urgency: 'high' | 'medium' | 'low';
+}
+
+export interface ForecastSummary {
+  period: { start: string; end: string };
+  forecastPeriod: { start: string; end: string };
+  totalPredictedRevenue: number;
+  totalPredictedOrders: number;
+  averageConfidence: number;
+  growthRate: number;
+  trend: 'up' | 'down' | 'stable';
+  dailyForecasts: ForecastResult[];
+  categoryForecasts: CategoryForecast[];
+  topGrowthProducts: ProductForecast[];
+  inventoryRecommendations: InventoryRecommendation[];
+}
+
+export interface ForecastStats {
+  predictedRevenue30d: number;
+  predictedOrders30d: number;
+  growthRate: number;
+  trend: 'up' | 'down' | 'stable';
+  confidence: number;
+  forecastAccuracy: number;
+  mape: number;
+  urgentRestockCount: number;
+  soonRestockCount: number;
+  topGrowthCategory: string;
+  topGrowthRate: number;
+  topDemandProduct: string;
+  topDemandPredicted: number;
+}
+
+export interface SeasonalityData {
+  dayOfWeek: { day: string; factor: number; impact: string }[];
+  monthOfYear: { month: string; factor: number; impact: string }[];
+  insights: string[];
+}
+
+export interface TrendData {
+  weeklyTrend: { week: string; revenue: number; orders: number }[];
+  growthRate: number;
+  trend: 'up' | 'down' | 'stable';
+  peakWeek: string;
+  peakRevenue: number;
+  summary: {
+    totalRevenue: number;
+    totalOrders: number;
+    avgDailyRevenue: number;
+    avgDailyOrders: number;
+  };
+}
+
+// Sales Forecast API
+export const salesForecastApi = {
+  // 予測サマリー
+  getSummary: (params?: { historicalDays?: number; forecastDays?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.historicalDays) query.set('historicalDays', params.historicalDays.toString());
+    if (params?.forecastDays) query.set('forecastDays', params.forecastDays.toString());
+    const queryStr = query.toString();
+    return `/api/sales-forecast/summary${queryStr ? `?${queryStr}` : ''}`;
+  },
+
+  // 日別予測
+  getDaily: (params?: { historicalDays?: number; forecastDays?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.historicalDays) query.set('historicalDays', params.historicalDays.toString());
+    if (params?.forecastDays) query.set('forecastDays', params.forecastDays.toString());
+    const queryStr = query.toString();
+    return `/api/sales-forecast/daily${queryStr ? `?${queryStr}` : ''}`;
+  },
+
+  // カテゴリ別予測
+  getCategories: (params?: { historicalDays?: number; forecastDays?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.historicalDays) query.set('historicalDays', params.historicalDays.toString());
+    if (params?.forecastDays) query.set('forecastDays', params.forecastDays.toString());
+    const queryStr = query.toString();
+    return `/api/sales-forecast/categories${queryStr ? `?${queryStr}` : ''}`;
+  },
+
+  // 商品別需要予測
+  getProducts: (params?: { historicalDays?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.historicalDays) query.set('historicalDays', params.historicalDays.toString());
+    if (params?.limit) query.set('limit', params.limit.toString());
+    const queryStr = query.toString();
+    return `/api/sales-forecast/products${queryStr ? `?${queryStr}` : ''}`;
+  },
+
+  // 在庫補充推奨
+  getInventoryRecommendations: (forecastDays?: number) => {
+    const query = forecastDays ? `?forecastDays=${forecastDays}` : '';
+    return `/api/sales-forecast/inventory-recommendations${query}`;
+  },
+
+  // 予測精度
+  getAccuracy: (testDays?: number) => {
+    const query = testDays ? `?testDays=${testDays}` : '';
+    return `/api/sales-forecast/accuracy${query}`;
+  },
+
+  // 季節性
+  getSeasonality: (historicalDays?: number) => {
+    const query = historicalDays ? `?historicalDays=${historicalDays}` : '';
+    return `/api/sales-forecast/seasonality${query}`;
+  },
+
+  // トレンド
+  getTrends: (historicalDays?: number) => {
+    const query = historicalDays ? `?historicalDays=${historicalDays}` : '';
+    return `/api/sales-forecast/trends${query}`;
+  },
+
+  // 統計
+  getStats: () => '/api/sales-forecast/stats',
+};

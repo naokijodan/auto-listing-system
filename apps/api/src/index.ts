@@ -78,6 +78,7 @@ import { sourcingRouter } from './routes/sourcing';
 import { cacheAdminRouter } from './routes/cache-admin';
 import { pricingAiRouter } from './routes/pricing-ai';
 import { customerSupportRouter } from './routes/customer-support';
+import { salesForecastRouter } from './routes/sales-forecast';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -205,6 +206,7 @@ app.use('/api/sourcing', sourcingRouter);
 app.use('/api/admin/cache', cacheAdminRouter);
 app.use('/api/pricing-ai', pricingAiRouter);
 app.use('/api/customer-support', customerSupportRouter);
+app.use('/api/sales-forecast', salesForecastRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

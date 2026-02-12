@@ -760,3 +760,103 @@ export function useReportSchedules(params?: { isActive?: boolean }) {
     { refreshInterval: 30000 }
   );
 }
+
+// Sales Forecast (Phase 67-68)
+import {
+  salesForecastApi,
+  ForecastSummary,
+  ForecastStats,
+  CategoryForecast,
+  ProductForecast,
+  InventoryRecommendation,
+  SeasonalityData,
+  TrendData,
+} from './api';
+
+export function useForecastSummary(params?: { historicalDays?: number; forecastDays?: number }) {
+  return useSWR<ApiResponse<ForecastSummary>>(
+    salesForecastApi.getSummary(params),
+    fetcher,
+    { refreshInterval: 300000 } // 5分ごと
+  );
+}
+
+export function useForecastStats() {
+  return useSWR<ApiResponse<ForecastStats>>(
+    salesForecastApi.getStats(),
+    fetcher,
+    { refreshInterval: 300000 }
+  );
+}
+
+export function useForecastDaily(params?: { historicalDays?: number; forecastDays?: number }) {
+  return useSWR<ApiResponse<{
+    historical: { date: string; revenue: number; orders: number; items: number }[];
+    forecasts: { date: string; predictedRevenue: number; predictedOrders: number; confidence: number; lowerBound: number; upperBound: number }[];
+    seasonality: any;
+  }>>(
+    salesForecastApi.getDaily(params),
+    fetcher,
+    { refreshInterval: 300000 }
+  );
+}
+
+export function useForecastCategories(params?: { historicalDays?: number; forecastDays?: number }) {
+  return useSWR<ApiResponse<CategoryForecast[]>>(
+    salesForecastApi.getCategories(params),
+    fetcher,
+    { refreshInterval: 300000 }
+  );
+}
+
+export function useForecastProducts(params?: { historicalDays?: number; limit?: number }) {
+  return useSWR<ApiResponse<ProductForecast[]>>(
+    salesForecastApi.getProducts(params),
+    fetcher,
+    { refreshInterval: 300000 }
+  );
+}
+
+export function useInventoryRecommendations(forecastDays?: number) {
+  return useSWR<ApiResponse<{
+    summary: {
+      totalProducts: number;
+      urgentRestock: number;
+      soonRestock: number;
+      sufficient: number;
+      overstock: number;
+    };
+    recommendations: InventoryRecommendation[];
+  }>>(
+    salesForecastApi.getInventoryRecommendations(forecastDays),
+    fetcher,
+    { refreshInterval: 300000 }
+  );
+}
+
+export function useForecastAccuracy(testDays?: number) {
+  return useSWR<ApiResponse<{
+    mape: number;
+    rmse: number;
+    accuracy: number;
+    description: Record<string, string>;
+  }>>(
+    salesForecastApi.getAccuracy(testDays),
+    fetcher
+  );
+}
+
+export function useSeasonality(historicalDays?: number) {
+  return useSWR<ApiResponse<SeasonalityData>>(
+    salesForecastApi.getSeasonality(historicalDays),
+    fetcher
+  );
+}
+
+export function useTrends(historicalDays?: number) {
+  return useSWR<ApiResponse<TrendData>>(
+    salesForecastApi.getTrends(historicalDays),
+    fetcher,
+    { refreshInterval: 300000 }
+  );
+}

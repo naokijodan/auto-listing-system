@@ -21,6 +21,7 @@ import {
   Layers,
   PackageCheck,
   ShoppingBag,
+  TrendingUp,
 } from 'lucide-react';
 
 const navigation = [
@@ -38,6 +39,7 @@ const navigation = [
   { name: 'ジョブ監視', href: '/jobs', icon: Activity },
   { name: 'レポート', href: '/reports', icon: BarChart3 },
   { name: 'レポート生成', href: '/report-generator', icon: FileText },
+  { name: '売上予測', href: '/sales-forecast', icon: TrendingUp },
   { name: '通知', href: '/notifications', icon: Bell },
   { name: '設定', href: '/settings', icon: Settings },
 ];
