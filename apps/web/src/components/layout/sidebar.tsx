@@ -23,6 +23,8 @@ import {
   ShoppingBag,
   TrendingUp,
   LayoutGrid,
+  GitBranch,
+  MessageCircle,
 } from 'lucide-react';
 
 const navigation = [
@@ -48,6 +50,8 @@ const navigation = [
 
 const adminNavigation = [
   { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
+  { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch },
+  { name: 'チャットボット', href: '/chatbot', icon: MessageCircle },
   { name: 'パフォーマンス', href: '/admin/performance', icon: Gauge },
   { name: 'システム監視', href: '/admin/monitoring', icon: Shield },
   { name: 'ログビューア', href: '/admin/logs', icon: FileText },

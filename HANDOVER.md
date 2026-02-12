@@ -3,10 +3,90 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 71-72完了
+**Phase**: 73-74完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 73-74: ワークフロー自動化 & AIチャットボット
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 73: ワークフロー自動化エンジン**
+1. Prismaスキーマ追加
+   - WorkflowRule: ワークフロールール定義（トリガー・条件・アクション）
+   - WorkflowExecution: 実行履歴
+   - WorkflowTriggerType: 14種類のトリガー（注文・出品・在庫・ジョブ等）
+   - WorkflowExecutionStatus: 実行状態
+
+2. ワークフローエンジン (`apps/api/src/lib/workflow-engine.ts`)
+   - 条件評価システム（12種類の演算子）
+   - アクション実行（通知・Slack・ステータス更新・タスク作成・ジョブ実行・Webhook）
+   - 変数置換（{{変数名}}形式）
+   - 実行制限（日次上限・クールダウン）
+   - 優先度ベースの実行順序
+
+3. ワークフローAPI (`apps/api/src/routes/workflow-rules.ts`)
+   - GET /api/workflow-rules/stats - 統計
+   - GET /api/workflow-rules/trigger-types - トリガータイプ一覧
+   - GET /api/workflow-rules/action-types - アクションタイプ一覧
+   - GET /api/workflow-rules - ルール一覧
+   - POST /api/workflow-rules - ルール作成
+   - PATCH /api/workflow-rules/:id - ルール更新
+   - DELETE /api/workflow-rules/:id - ルール削除
+   - PATCH /api/workflow-rules/:id/toggle - 有効/無効切り替え
+   - POST /api/workflow-rules/trigger - 手動トリガー
+   - GET /api/workflow-rules/executions/list - 実行履歴
+
+4. ワークフロー管理ページ (`apps/web/src/app/workflow-rules/page.tsx`)
+   - ルール一覧・作成・削除
+   - 有効/無効切り替え
+   - 手動実行
+   - 実行履歴表示
+   - トリガータイプフィルター
+
+**Phase 74: AIチャットボット統合**
+1. Prismaスキーマ追加
+   - ChatSession: チャットセッション
+   - ChatMessage: チャットメッセージ
+   - ChatbotConfig: チャットボット設定
+   - ChatMessageRole: USER/ASSISTANT/SYSTEM/OPERATOR
+
+2. チャットボットエンジン (`apps/api/src/lib/chatbot-engine.ts`)
+   - インテント検出（10種類: ORDER_STATUS, TRACKING_INFO, PRODUCT_INQUIRY等）
+   - エンティティ抽出（注文ID, 追跡番号）
+   - OpenAI GPT-4o連携
+   - コンテキスト管理（注文情報・商品情報）
+   - 自動エスカレーション判定
+   - セッション管理
+
+3. チャットボットAPI (`apps/api/src/routes/chatbot.ts`)
+   - GET /api/chatbot/stats - 統計
+   - GET /api/chatbot/config - 設定取得
+   - PATCH /api/chatbot/config - 設定更新
+   - POST /api/chatbot/sessions - セッション作成
+   - GET /api/chatbot/sessions - セッション一覧
+   - GET /api/chatbot/sessions/:id/messages - メッセージ履歴
+   - POST /api/chatbot/sessions/:id/messages - メッセージ送信
+   - POST /api/chatbot/sessions/:id/escalate - エスカレーション
+   - POST /api/chatbot/sessions/:id/resolve - 解決
+   - POST /api/chatbot/sessions/:id/operator-message - オペレーター返信
+
+4. チャットボット管理ページ (`apps/web/src/app/chatbot/page.tsx`)
+   - セッション一覧・詳細
+   - リアルタイムチャット表示
+   - オペレーター返信機能
+   - エスカレーション・解決
+   - 設定管理（モデル・Temperature・プロンプト）
+   - 分析（インテント別・マーケットプレイス別）
+
+5. サイドバー更新
+   - ワークフローリンク追加
+   - チャットボットリンク追加
+
+---
 
 ### Phase 71-72: 多言語対応(i18n) & リアルタイム通知強化
 
@@ -552,6 +632,20 @@
 
 ## ファイル変更一覧
 
+### Phase 73-74
+#### 新規作成
+- `apps/api/src/lib/workflow-engine.ts` - ワークフロー自動化エンジン
+- `apps/api/src/routes/workflow-rules.ts` - ワークフロールールAPI
+- `apps/web/src/app/workflow-rules/page.tsx` - ワークフロー管理ページ
+- `apps/api/src/lib/chatbot-engine.ts` - AIチャットボットエンジン
+- `apps/api/src/routes/chatbot.ts` - チャットボットAPI
+- `apps/web/src/app/chatbot/page.tsx` - チャットボット管理ページ
+
+#### 更新
+- `packages/database/prisma/schema.prisma` - WorkflowRule/WorkflowExecution/ChatSession/ChatMessage/ChatbotConfigモデル追加
+- `apps/api/src/index.ts` - workflow-rules, chatbotルート登録
+- `apps/web/src/components/layout/sidebar.tsx` - ワークフロー・チャットボットリンク追加
+
 ### Phase 71-72
 #### 新規作成
 - `apps/web/src/lib/i18n/translations/ja.ts` - 日本語翻訳ファイル
@@ -703,31 +797,47 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 73-74候補
+### Phase 75-76候補
 
-1. **ワークフロー自動化強化**
-   - 条件分岐ルール
-   - スケジュールトリガー
-   - イベントチェーン
-
-2. **AIチャットボット統合**
-   - 顧客対応自動化
-   - 商品問い合わせ応答
-   - 多言語サポート
-
-3. **モバイル最適化**
+1. **モバイル最適化**
    - レスポンシブUI改善
    - PWA対応
    - モバイル通知
 
-4. **高度な分析ダッシュボード**
+2. **高度な分析ダッシュボード**
    - カスタムチャート
    - ドリルダウン分析
    - データエクスポート強化
 
+3. **A/Bテスト機能**
+   - 価格テスト
+   - タイトル/説明文テスト
+   - 統計的有意性判定
+
+4. **サプライヤー管理**
+   - 仕入れ先マスタ
+   - 自動発注
+   - コスト分析
+
 ## 技術的注意事項
 
-1. **多言語対応(i18n)**
+1. **ワークフロー自動化**
+   - トリガータイプ: 14種類（ORDER_*, LISTING_*, INVENTORY_*, JOB_*, SCHEDULE, MANUAL）
+   - 条件演算子: equals, not_equals, contains, greater_than, less_than, in, is_null 等
+   - アクションタイプ: SEND_NOTIFICATION, SEND_SLACK, UPDATE_STATUS, CREATE_TASK, TRIGGER_JOB, WEBHOOK, LOG
+   - 変数置換: {{変数名}} 形式（orderId, marketplace, totalAmount, productTitle 等）
+   - 実行制限: maxExecutionsPerDay（日次上限）, cooldownMinutes（クールダウン）
+   - 優先度: 高いほど先に評価・実行
+
+2. **AIチャットボット**
+   - インテント: ORDER_STATUS, TRACKING_INFO, PRODUCT_INQUIRY, RETURN_REFUND, SHIPPING_QUESTION, COMPLAINT等
+   - AIモデル: GPT-4o（デフォルト）、Temperature 0.7
+   - エスカレーション条件: 苦情検出、キーワードマッチ、メッセージ数超過
+   - セッション管理: マーケットプレイス + customerId で識別
+   - 対応言語: 英語(en), 日本語(ja)
+   - ウェルカムメッセージ: セッション作成時に自動送信
+
+3. **多言語対応(i18n)**
    - 対応言語: 日本語(ja), 英語(en)
    - デフォルト: 日本語
    - ロケール検出: ブラウザ設定 → localStorage → デフォルト

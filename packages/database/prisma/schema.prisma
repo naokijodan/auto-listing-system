@@ -6544,3 +6544,249 @@ model DashboardLayout {
   @@index([userId, isActive])
   @@map("dashboard_layouts")
 }
+
+
+// ========================================
+// Phase 73: ワークフロー自動化エンジン
+// ========================================
+
+model WorkflowRule {
+  id          String   @id @default(cuid())
+
+  // ルール基本情報
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  priority    Int      @default(0) // 高いほど優先
+
+  // トリガー設定
+  triggerType WorkflowTriggerType
+  triggerConfig Json   @default("{}") // トリガー固有の設定
+
+  // 条件設定（JSONで条件ツリーを表現）
+  conditions  Json     @default("[]") // [{field, operator, value, logic}]
+
+  // アクション設定
+  actions     Json     @default("[]") // [{type, config}]
+
+  // スケジュール設定（SCHEDULE トリガー用）
+  cronExpression String?
+  timezone       String?  @default("Asia/Tokyo")
+
+  // 実行制限
+  maxExecutionsPerDay Int?
+  cooldownMinutes     Int? // 同一対象への再実行防止時間
+
+  // 統計
+  executionCount Int      @default(0)
+  lastExecutedAt DateTime?
+  lastError      String?  @db.Text
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  executions  WorkflowExecution[]
+
+  @@index([isActive, priority])
+  @@index([triggerType, isActive])
+  @@map("workflow_rules")
+}
+
+enum WorkflowTriggerType {
+  // イベントトリガー
+  ORDER_CREATED       // 注文作成時
+  ORDER_PAID          // 支払い完了時
+  ORDER_SHIPPED       // 発送時
+  ORDER_CANCELLED     // キャンセル時
+  LISTING_CREATED     // 出品作成時
+  LISTING_SOLD        // 販売時
+  INVENTORY_LOW       // 在庫僅少時
+  OUT_OF_STOCK        // 在庫切れ時
+  PRICE_CHANGED       // 価格変更時
+  MESSAGE_RECEIVED    // メッセージ受信時
+  JOB_COMPLETED       // ジョブ完了時
+  JOB_FAILED          // ジョブ失敗時
+
+  // スケジュールトリガー
+  SCHEDULE            // cron式によるスケジュール実行
+
+  // 手動トリガー
+  MANUAL              // 手動実行
+}
+
+model WorkflowExecution {
+  id          String   @id @default(cuid())
+
+  // ルール参照
+  ruleId      String
+  rule        WorkflowRule @relation(fields: [ruleId], references: [id])
+
+  // トリガー情報
+  triggerType WorkflowTriggerType
+  triggerData Json     @default("{}") // トリガー時のコンテキストデータ
+
+  // 対象エンティティ
+  entityType  String?  // 'order', 'listing', 'product' など
+  entityId    String?
+
+  // 実行結果
+  status      WorkflowExecutionStatus @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+  duration    Int?     // 実行時間（ミリ秒）
+
+  // アクション実行結果
+  actionResults Json   @default("[]") // [{action, status, result, error}]
+
+  // エラー情報
+  error       String?  @db.Text
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ruleId, status])
+  @@index([entityType, entityId])
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@map("workflow_executions")
+}
+
+enum WorkflowExecutionStatus {
+  PENDING     // 実行待ち
+  RUNNING     // 実行中
+  COMPLETED   // 完了
+  FAILED      // 失敗
+  SKIPPED     // スキップ（条件不一致）
+}
+
+
+// ========================================
+// Phase 74: AIチャットボット
+// ========================================
+
+model ChatSession {
+  id          String   @id @default(cuid())
+
+  // セッション識別
+  sessionKey  String   @unique // 外部識別子（顧客ID + マーケットプレイス）
+  marketplace String   // 'joom', 'ebay' など
+
+  // 顧客情報
+  customerId  String?
+  customerName String?
+  customerEmail String?
+  customerLocale String? @default("en") // 顧客の言語
+
+  // コンテキスト
+  context     Json     @default("{}") // {orderId, productId, etc.}
+  metadata    Json     @default("{}")
+
+  // セッション状態
+  status      ChatSessionStatus @default(ACTIVE)
+  lastMessageAt DateTime?
+  messageCount Int      @default(0)
+
+  // エスカレーション
+  isEscalated Boolean  @default(false)
+  escalatedAt DateTime?
+  escalationReason String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages    ChatMessage[]
+
+  @@index([marketplace, customerId])
+  @@index([status, lastMessageAt])
+  @@index([isEscalated])
+  @@map("chat_sessions")
+}
+
+enum ChatSessionStatus {
+  ACTIVE      // アクティブ
+  WAITING     // 返信待ち
+  RESOLVED    // 解決済み
+  ESCALATED   // エスカレーション済み
+  EXPIRED     // 期限切れ
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+
+  // セッション参照
+  sessionId   String
+  session     ChatSession @relation(fields: [sessionId], references: [id])
+
+  // メッセージ情報
+  role        ChatMessageRole
+  content     String   @db.Text
+  contentEn   String?  @db.Text // 英語翻訳（必要な場合）
+
+  // AI処理情報
+  intent      String?  // 検出されたインテント
+  confidence  Float?   // 信頼度 (0-1)
+  entities    Json     @default("{}") // 抽出されたエンティティ
+
+  // 参照情報
+  referencedOrderId   String?
+  referencedProductId String?
+
+  // メタデータ
+  metadata    Json     @default("{}")
+  isAutoReply Boolean  @default(false)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([role, createdAt])
+  @@map("chat_messages")
+}
+
+enum ChatMessageRole {
+  USER        // 顧客
+  ASSISTANT   // AI/ボット
+  SYSTEM      // システムメッセージ
+  OPERATOR    // 人間オペレーター
+}
+
+model ChatbotConfig {
+  id          String   @id @default(cuid())
+
+  // 設定識別
+  marketplace String   @unique // 'joom', 'ebay', 'default'
+
+  // AI設定
+  model       String   @default("gpt-4o") // 使用するモデル
+  temperature Float    @default(0.7)
+  maxTokens   Int      @default(1000)
+
+  // システムプロンプト
+  systemPrompt String  @db.Text
+
+  // 応答設定
+  defaultLanguage String @default("en")
+  supportedLanguages String[] @default(["en", "ja"])
+  responseTimeoutMs Int @default(30000)
+
+  // エスカレーション設定
+  autoEscalateOnNegativeSentiment Boolean @default(true)
+  autoEscalateAfterMessages Int @default(5) // N回やり取り後
+  escalationKeywords String[] @default(["refund", "cancel", "complaint", "angry"])
+
+  // 制限設定
+  maxMessagesPerSession Int @default(50)
+  sessionTimeoutMinutes Int @default(60)
+
+  // 有効/無効
+  isActive    Boolean  @default(true)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("chatbot_configs")
+}
