@@ -42,6 +42,7 @@ const navigation = [
   { name: 'レポート生成', href: '/report-generator', icon: FileText },
   { name: '売上予測', href: '/sales-forecast', icon: TrendingUp },
   { name: '通知', href: '/notifications', icon: Bell },
+  { name: '通知設定', href: '/notification-settings', icon: Bell },
   { name: '設定', href: '/settings', icon: Settings },
 ];
 

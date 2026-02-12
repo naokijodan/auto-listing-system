@@ -3,10 +3,79 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 69-70完了
+**Phase**: 71-72完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 71-72: 多言語対応(i18n) & リアルタイム通知強化
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 71: 国際化(i18n)システム**
+1. 翻訳ファイル
+   - `apps/web/src/lib/i18n/translations/ja.ts` - 日本語翻訳（完全実装）
+   - `apps/web/src/lib/i18n/translations/en.ts` - 英語翻訳（完全実装）
+   - カテゴリ: common, nav, dashboard, products, orders, shipments, sourcing, jobs, notifications, reports, settings, errors
+
+2. i18nコアシステム (`apps/web/src/lib/i18n/index.ts`)
+   - `I18nProvider` - React Context プロバイダー
+   - `useI18n()` - i18nコンテキストフック
+   - `useTranslation()` - 翻訳フック（t関数）
+   - `useLocale()` - ロケール取得フック
+   - `formatNumber()` - 数値フォーマット
+   - `formatCurrency()` - 通貨フォーマット（JPY/USD/EUR対応）
+   - `formatDate()` - 日付フォーマット
+   - `formatRelativeTime()` - 相対時間フォーマット
+   - ブラウザロケール自動検出
+   - localStorage永続化
+
+3. 言語切り替えUI (`apps/web/src/components/ui/language-switcher.tsx`)
+   - `LanguageSwitcher` - ドロップダウン式言語切り替え
+   - `LanguageSwitcherCompact` - コンパクト版（ヘッダー用）
+
+4. プロバイダー統合 (`apps/web/src/components/providers/app-providers.tsx`)
+   - I18nProvider追加（RealtimeProviderをラップ）
+
+5. ヘッダー更新 (`apps/web/src/components/layout/header.tsx`)
+   - LanguageSwitcherCompact追加
+   - 検索プレースホルダーの多言語化
+
+**Phase 72: リアルタイム通知強化**
+1. 強化リアルタイムシステム (`apps/web/src/lib/realtime-enhanced.ts`)
+   - WebSocketManager - WebSocket接続管理（自動再接続付き）
+   - 18種類のイベントタイプ対応
+   - ブラウザ通知API連携（Notification API）
+   - Web Audio APIによるサウンド通知
+   - SWRキャッシュ自動無効化
+   - 通知設定のlocalStorage永続化
+
+2. イベントタイプ（EnhancedEventType）
+   - ORDER_RECEIVED, ORDER_PAID, ORDER_SHIPPED, ORDER_DELIVERED, ORDER_CANCELLED
+   - INVENTORY_CHANGE, INVENTORY_LOW, OUT_OF_STOCK
+   - PRICE_CHANGE, LISTING_UPDATE, LISTING_PUBLISHED, LISTING_ERROR
+   - JOB_COMPLETED, JOB_FAILED
+   - CUSTOMER_MESSAGE, SHIPMENT_DEADLINE, SYSTEM_ALERT
+
+3. フック
+   - `useEnhancedRealtime()` - 拡張リアルタイム接続
+   - `useNotificationSettings()` - 通知設定管理
+   - `useUnreadNotificationCount()` - 未読通知カウント
+
+4. 通知設定ページ (`apps/web/src/app/notification-settings/page.tsx`)
+   - 接続状態表示（WebSocket/SSE/Polling）
+   - ブラウザ通知許可リクエスト
+   - テスト通知送信機能
+   - 一般設定タブ（通知有効/無効、ブラウザ通知、サウンド通知）
+   - イベント設定タブ（イベントタイプ別通知設定）
+   - サウンド設定タブ（音量スライダー、テスト再生）
+
+5. サイドバー更新 (`apps/web/src/components/layout/sidebar.tsx`)
+   - 通知設定リンク追加
+
+---
 
 ### Phase 69-70: データベース最適化 & ダッシュボードウィジェット
 
@@ -483,6 +552,20 @@
 
 ## ファイル変更一覧
 
+### Phase 71-72
+#### 新規作成
+- `apps/web/src/lib/i18n/translations/ja.ts` - 日本語翻訳ファイル
+- `apps/web/src/lib/i18n/translations/en.ts` - 英語翻訳ファイル
+- `apps/web/src/lib/i18n/index.ts` - i18nコアシステム（Provider, hooks, formatters）
+- `apps/web/src/components/ui/language-switcher.tsx` - 言語切り替えコンポーネント
+- `apps/web/src/lib/realtime-enhanced.ts` - 強化リアルタイム通知システム
+- `apps/web/src/app/notification-settings/page.tsx` - 通知設定ページ
+
+#### 更新
+- `apps/web/src/components/providers/app-providers.tsx` - I18nProvider追加
+- `apps/web/src/components/layout/header.tsx` - 言語切り替え・多言語化対応
+- `apps/web/src/components/layout/sidebar.tsx` - 通知設定リンク追加
+
 ### Phase 69-70
 #### 新規作成
 - `apps/api/src/routes/query-performance.ts` - クエリパフォーマンス監視API
@@ -620,31 +703,47 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 71-72候補
+### Phase 73-74候補
 
-1. **多言語対応強化**
-   - i18n完全実装
-   - 自動翻訳API連携
-   - 地域別コンテンツ最適化
-
-2. **リアルタイム通知強化**
-   - WebSocket実装
-   - プッシュ通知
-   - デスクトップ通知
-
-3. **ワークフロー自動化強化**
+1. **ワークフロー自動化強化**
    - 条件分岐ルール
    - スケジュールトリガー
    - イベントチェーン
 
-4. **AIチャットボット統合**
+2. **AIチャットボット統合**
    - 顧客対応自動化
    - 商品問い合わせ応答
    - 多言語サポート
 
+3. **モバイル最適化**
+   - レスポンシブUI改善
+   - PWA対応
+   - モバイル通知
+
+4. **高度な分析ダッシュボード**
+   - カスタムチャート
+   - ドリルダウン分析
+   - データエクスポート強化
+
 ## 技術的注意事項
 
-1. **データベースインデックス最適化**
+1. **多言語対応(i18n)**
+   - 対応言語: 日本語(ja), 英語(en)
+   - デフォルト: 日本語
+   - ロケール検出: ブラウザ設定 → localStorage → デフォルト
+   - 翻訳キー: ドット記法（例: 'nav.dashboard', 'products.searchPlaceholder'）
+   - 通貨フォーマット: JPY, USD, EUR対応
+   - 新しい翻訳追加: ja.ts, en.ts両方に同じキーを追加
+
+2. **リアルタイム通知**
+   - 接続タイプ: WebSocket（優先）, SSE, Polling（フォールバック）
+   - 自動再接続: 最大5回、指数バックオフ
+   - ブラウザ通知: Notification API使用、許可リクエスト必須
+   - サウンド通知: Web Audio API、重大度別周波数（success:880Hz, info:660Hz, warning:440Hz, error:330Hz）
+   - SWRキャッシュ: イベントタイプ別に自動無効化
+   - 設定永続化: localStorage（キー: rakuda_notification_settings）
+
+3. **データベースインデックス最適化**
    - 複合インデックス: 頻出クエリパターンに基づいて追加
    - キャッシュヒット率: 95%以上が目標（99%以上が理想）
    - 未使用インデックス: 定期的に確認・削除検討

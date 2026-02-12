@@ -7,6 +7,8 @@ import useSWR from 'swr';
 import { Button } from '../ui/button';
 import { fetcher } from '@/lib/api';
 import { RealtimeStatusIndicator } from '../realtime/realtime-status-indicator';
+import { LanguageSwitcherCompact } from '../ui/language-switcher';
+import { useTranslation } from '@/lib/i18n';
 
 interface UnreadCountResponse {
   success: boolean;
@@ -15,6 +17,7 @@ interface UnreadCountResponse {
 
 export function Header() {
   const [isDark, setIsDark] = useState(false);
+  const { t } = useTranslation();
 
   // 未読通知数を取得
   const { data: unreadData } = useSWR<UnreadCountResponse>(
@@ -67,7 +70,7 @@ export function Header() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
-            placeholder="商品を検索..."
+            placeholder={t('products.searchPlaceholder')}
             className="h-10 w-80 rounded-lg border border-zinc-200 bg-zinc-50 pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-amber-500 focus:bg-white dark:border-zinc-700 dark:bg-zinc-900 dark:focus:border-amber-500 dark:focus:bg-zinc-800"
           />
         </div>
@@ -77,6 +80,9 @@ export function Header() {
       <div className="flex items-center gap-2">
         {/* Realtime Status (Phase 27) */}
         <RealtimeStatusIndicator className="mr-2" />
+
+        {/* Language Switcher (Phase 71) */}
+        <LanguageSwitcherCompact />
 
         <Button variant="ghost" size="sm" onClick={toggleTheme}>
           {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
