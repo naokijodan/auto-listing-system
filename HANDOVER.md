@@ -3,10 +3,103 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 73-74完了
+**Phase**: 75-76完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 75-76: モバイル最適化(PWA) & 高度な分析ダッシュボード
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 75: PWA対応 & モバイル最適化**
+1. PWAマニフェスト (`apps/web/public/manifest.json`)
+   - アプリ名: RAKUDA - 越境EC自動出品システム
+   - アイコン: 192x192, 512x512
+   - ショートカット: ダッシュボード、商品管理、注文管理、発送管理
+   - スクリーンショット: デスクトップ・モバイル
+   - テーマカラー: #f59e0b (amber)
+
+2. Service Worker (`apps/web/public/sw.js`)
+   - キャッシュ戦略:
+     - Network First: API呼び出し（5秒タイムアウト）
+     - Cache First: 静的アセット（JS, CSS, 画像, フォント）
+   - プッシュ通知ハンドリング
+   - バックグラウンドシンク（orders-sync, shipments-sync）
+   - オフラインフォールバック（/offline）
+
+3. オフラインページ (`apps/web/src/app/offline/page.tsx`)
+   - オフライン時の案内表示
+   - 再試行ボタン
+   - オンライン復帰時に自動リダイレクト
+
+4. PWAフック (`apps/web/src/lib/pwa.ts`)
+   - `usePWA()` - インストール・更新管理
+     - isInstallable: インストール可能判定
+     - isInstalled: インストール済み判定
+     - isUpdateAvailable: 更新有無
+     - promptInstall(): インストールプロンプト表示
+     - applyUpdate(): 更新適用
+   - `useOnlineStatus()` - オンライン/オフライン検出
+   - `useIsMobile()`, `useIsTablet()`, `useIsDesktop()` - デバイス判定
+   - `subscribeToPushNotifications()` - プッシュ通知購読
+
+5. モバイルナビゲーション (`apps/web/src/components/layout/mobile-nav.tsx`)
+   - `BottomNav` - ボトムナビゲーション（5項目）
+     - ホーム、商品、注文、発送、通知
+   - `MobileHeader` - モバイルヘッダー
+     - メニュー（Sheet）、ページタイトル、通知ボタン
+     - カテゴリ別メニュー項目
+   - `InstallBanner` - インストール促進バナー
+   - `UpdateBanner` - 更新通知バナー
+   - オフラインモード表示
+
+6. レイアウト更新 (`apps/web/src/app/layout.tsx`)
+   - PWAメタデータ（manifest, appleWebApp, viewport）
+   - レスポンシブレイアウト分離
+     - デスクトップ: Sidebar + Header
+     - モバイル: MobileHeader + BottomNav
+   - userScalable: false（ダブルタップズーム無効）
+
+**Phase 76: 高度な分析ダッシュボード**
+1. 高度分析API (`apps/api/src/routes/advanced-analytics.ts`)
+   - GET /api/advanced-analytics/sales-trend - 売上トレンド
+     - groupBy: day, week, month
+     - 日付範囲指定
+   - GET /api/advanced-analytics/by-category - カテゴリ別分析
+     - 売上、注文数、収益割合、前期比較
+   - GET /api/advanced-analytics/marketplace-comparison - マーケットプレイス比較
+     - 収益、注文数、平均注文額、利益率
+     - 前期比成長率
+   - GET /api/advanced-analytics/product-performance - 商品パフォーマンス
+     - ソート: revenue, orders, profit_rate
+     - 個別商品詳細
+   - GET /api/advanced-analytics/summary - サマリー
+     - 総収益、総注文数、平均利益率、アクティブリスティング数
+     - 前期比変化率
+   - GET /api/advanced-analytics/export - データエクスポート
+     - 形式: csv, json
+     - データタイプ: sales, orders, products
+
+2. 分析ダッシュボードページ (`apps/web/src/app/analytics/page.tsx`)
+   - サマリーカード（4つ）
+     - 総収益、総注文数、平均利益率、アクティブ出品数
+     - 前期比変化表示（上昇/下降アイコン）
+   - タブ構成
+     - 売上トレンド（日/週/月切り替え、時系列テーブル）
+     - カテゴリ分析（収益割合、前期比）
+     - マーケットプレイス比較（Joom/eBay比較）
+     - 商品パフォーマンス（ソート切り替え）
+   - 日付範囲選択（過去7日/30日/90日/年初から）
+   - エクスポート機能（CSV/JSON）
+   - ローディング・エラー表示
+
+3. サイドバー更新
+   - 分析リンク追加（LineChartアイコン）
+
+---
 
 ### Phase 73-74: ワークフロー自動化 & AIチャットボット
 
@@ -632,6 +725,21 @@
 
 ## ファイル変更一覧
 
+### Phase 75-76
+#### 新規作成
+- `apps/web/public/manifest.json` - PWAマニフェスト
+- `apps/web/public/sw.js` - Service Worker
+- `apps/web/src/app/offline/page.tsx` - オフラインページ
+- `apps/web/src/lib/pwa.ts` - PWAフック（インストール・更新・通知）
+- `apps/web/src/components/layout/mobile-nav.tsx` - モバイルナビゲーション
+- `apps/api/src/routes/advanced-analytics.ts` - 高度分析API
+- `apps/web/src/app/analytics/page.tsx` - 分析ダッシュボードページ
+
+#### 更新
+- `apps/web/src/app/layout.tsx` - PWAメタデータ、レスポンシブレイアウト
+- `apps/api/src/index.ts` - advanced-analyticsルート登録
+- `apps/web/src/components/layout/sidebar.tsx` - 分析リンク追加
+
 ### Phase 73-74
 #### 新規作成
 - `apps/api/src/lib/workflow-engine.ts` - ワークフロー自動化エンジン
@@ -797,31 +905,56 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 75-76候補
+### Phase 77-78候補
 
-1. **モバイル最適化**
-   - レスポンシブUI改善
-   - PWA対応
-   - モバイル通知
-
-2. **高度な分析ダッシュボード**
-   - カスタムチャート
-   - ドリルダウン分析
-   - データエクスポート強化
-
-3. **A/Bテスト機能**
+1. **A/Bテスト機能**
    - 価格テスト
    - タイトル/説明文テスト
    - 統計的有意性判定
+   - 実験結果レポート
 
-4. **サプライヤー管理**
+2. **サプライヤー管理**
    - 仕入れ先マスタ
    - 自動発注
    - コスト分析
+   - 納期管理
+
+3. **マルチテナント対応**
+   - 組織・ユーザー管理
+   - 権限設定
+   - チーム機能
+
+4. **外部連携強化**
+   - Shopify連携
+   - Amazon連携
+   - 会計ソフト連携
 
 ## 技術的注意事項
 
-1. **ワークフロー自動化**
+1. **PWA対応**
+   - Service Worker: キャッシュ名 `rakuda-v1`
+   - キャッシュ対象: /_next/, /icons/, /images/, manifest.json
+   - API呼び出し: Network First（5秒タイムアウト）
+   - 静的アセット: Cache First
+   - オフライン時: /offline にリダイレクト
+   - バックグラウンドシンク: orders-sync, shipments-sync
+   - プッシュ通知: /api/notifications/subscribe でサブスクリプション登録
+
+2. **モバイルレイアウト**
+   - ブレークポイント: md (768px) でデスクトップ/モバイル切り替え
+   - ボトムナビ: 5項目（ホーム、商品、注文、発送、通知）
+   - メニュー: Sheet使用（左スライド）
+   - インストールバナー: bottom-20 (ボトムナビの上)
+   - 更新バナー: top-14 (ヘッダーの下)
+
+3. **高度分析API**
+   - 日付範囲: startDate, endDate パラメータ
+   - グルーピング: day, week, month
+   - ソート: revenue, orders, profit_rate
+   - エクスポート形式: csv, json
+   - 前期比較: 同じ期間分だけ過去と比較
+
+4. **ワークフロー自動化**
    - トリガータイプ: 14種類（ORDER_*, LISTING_*, INVENTORY_*, JOB_*, SCHEDULE, MANUAL）
    - 条件演算子: equals, not_equals, contains, greater_than, less_than, in, is_null 等
    - アクションタイプ: SEND_NOTIFICATION, SEND_SLACK, UPDATE_STATUS, CREATE_TASK, TRIGGER_JOB, WEBHOOK, LOG

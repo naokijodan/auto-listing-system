@@ -25,6 +25,7 @@ import {
   LayoutGrid,
   GitBranch,
   MessageCircle,
+  LineChart,
 } from 'lucide-react';
 
 const navigation = [
@@ -43,6 +44,7 @@ const navigation = [
   { name: 'レポート', href: '/reports', icon: BarChart3 },
   { name: 'レポート生成', href: '/report-generator', icon: FileText },
   { name: '売上予測', href: '/sales-forecast', icon: TrendingUp },
+  { name: '分析', href: '/analytics', icon: LineChart },
   { name: '通知', href: '/notifications', icon: Bell },
   { name: '通知設定', href: '/notification-settings', icon: Bell },
   { name: '設定', href: '/settings', icon: Settings },

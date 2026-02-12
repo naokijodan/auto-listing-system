@@ -83,6 +83,7 @@ import { queryPerformanceRouter } from './routes/query-performance';
 import { dashboardWidgetsRouter } from './routes/dashboard-widgets';
 import workflowRulesRouter from './routes/workflow-rules';
 import chatbotRouter from './routes/chatbot';
+import advancedAnalyticsRouter from './routes/advanced-analytics';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -215,6 +216,7 @@ app.use('/api/query-performance', queryPerformanceRouter);
 app.use('/api/dashboard-widgets', dashboardWidgetsRouter);
 app.use('/api/workflow-rules', workflowRulesRouter);
 app.use('/api/chatbot', chatbotRouter);
+app.use('/api/advanced-analytics', advancedAnalyticsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
