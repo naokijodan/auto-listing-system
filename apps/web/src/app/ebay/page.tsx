@@ -26,6 +26,11 @@ import {
   Eye,
   AlertTriangle,
   FileText,
+  Percent,
+  StopCircle,
+  RotateCcw,
+  Settings,
+  ChevronDown,
 } from 'lucide-react';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
@@ -118,6 +123,13 @@ export default function EbayPage() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isPriceSyncing, setIsPriceSyncing] = useState(false);
   const [showPriceSyncStatus, setShowPriceSyncStatus] = useState(false);
+
+  // Bulk operations state
+  const [showBulkMenu, setShowBulkMenu] = useState(false);
+  const [showPriceUpdateModal, setShowPriceUpdateModal] = useState(false);
+  const [bulkPriceType, setBulkPriceType] = useState<'percent' | 'fixed'>('percent');
+  const [bulkPriceValue, setBulkPriceValue] = useState('');
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
   // プレビューを開く
   const handleOpenPreview = useCallback((id: string) => {
@@ -254,6 +266,90 @@ export default function EbayPage() {
     }
   }, [mutatePriceSyncStatus]);
 
+  // 一括価格変更
+  const handleBulkPriceUpdate = useCallback(async () => {
+    if (selectedIds.size === 0 || !bulkPriceValue) return;
+
+    const value = parseFloat(bulkPriceValue);
+    if (isNaN(value)) {
+      addToast({ type: 'error', message: '有効な数値を入力してください' });
+      return;
+    }
+
+    setIsBulkProcessing(true);
+    try {
+      const response = await postApi('/api/ebay-bulk/price-update', {
+        listingIds: Array.from(selectedIds),
+        adjustmentType: bulkPriceType,
+        adjustmentValue: value,
+      }) as { operationId: string; successCount: number; failureCount: number };
+
+      addToast({
+        type: 'success',
+        message: `${response.successCount}件の価格を更新しました`,
+      });
+      setSelectedIds(new Set());
+      setShowPriceUpdateModal(false);
+      setBulkPriceValue('');
+      mutate();
+    } catch {
+      addToast({ type: 'error', message: '価格更新に失敗しました' });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  }, [selectedIds, bulkPriceType, bulkPriceValue, mutate]);
+
+  // 一括出品終了
+  const handleBulkEnd = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`選択した${selectedIds.size}件の出品を終了しますか？`)) return;
+
+    setIsBulkProcessing(true);
+    try {
+      const response = await postApi('/api/ebay-bulk/end', {
+        listingIds: Array.from(selectedIds),
+      }) as { operationId: string; successCount: number; failureCount: number };
+
+      addToast({
+        type: 'success',
+        message: `${response.successCount}件の出品を終了しました`,
+      });
+      setSelectedIds(new Set());
+      mutate();
+      mutateStats();
+    } catch {
+      addToast({ type: 'error', message: '出品終了に失敗しました' });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  }, [selectedIds, mutate, mutateStats]);
+
+  // 一括再出品
+  const handleBulkRelist = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`選択した${selectedIds.size}件を再出品しますか？`)) return;
+
+    setIsBulkProcessing(true);
+    try {
+      const response = await postApi('/api/ebay-bulk/relist', {
+        listingIds: Array.from(selectedIds),
+        priceAdjustment: 0, // デフォルトは価格変更なし
+      }) as { operationId: string; successCount: number; failureCount: number };
+
+      addToast({
+        type: 'success',
+        message: `${response.successCount}件を再出品しました`,
+      });
+      setSelectedIds(new Set());
+      mutate();
+      mutateStats();
+    } catch {
+      addToast({ type: 'error', message: '再出品に失敗しました' });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  }, [selectedIds, mutate, mutateStats]);
+
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
       {/* Header */}
@@ -283,6 +379,50 @@ export default function EbayPage() {
             )}
             価格同期
           </Button>
+          {/* 一括操作メニュー */}
+          {selectedIds.size > 0 && (
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowBulkMenu(!showBulkMenu)}
+                disabled={isBulkProcessing}
+              >
+                {isBulkProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <Settings className="h-4 w-4 mr-1" />
+                )}
+                一括操作
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </Button>
+              {showBulkMenu && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-zinc-200 dark:bg-zinc-800 dark:border-zinc-700 z-50">
+                  <button
+                    onClick={() => { setShowPriceUpdateModal(true); setShowBulkMenu(false); }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-zinc-50 dark:hover:bg-zinc-700"
+                  >
+                    <Percent className="h-4 w-4" />
+                    一括価格変更
+                  </button>
+                  <button
+                    onClick={() => { handleBulkEnd(); setShowBulkMenu(false); }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-zinc-50 dark:hover:bg-zinc-700 text-amber-600"
+                  >
+                    <StopCircle className="h-4 w-4" />
+                    一括出品終了
+                  </button>
+                  <button
+                    onClick={() => { handleBulkRelist(); setShowBulkMenu(false); }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-zinc-50 dark:hover:bg-zinc-700 text-emerald-600"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    一括再出品
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <Button
             variant="primary"
             size="sm"
@@ -660,6 +800,98 @@ export default function EbayPage() {
           await handlePublish(id);
         }}
       />
+
+      {/* 一括価格変更モーダル */}
+      {showPriceUpdateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-zinc-800">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+              一括価格変更
+            </h3>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+              選択した{selectedIds.size}件の出品価格を変更します
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                変更タイプ
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setBulkPriceType('percent')}
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    bulkPriceType === 'percent'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300'
+                  )}
+                >
+                  パーセント (%)
+                </button>
+                <button
+                  onClick={() => setBulkPriceType('fixed')}
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                    bulkPriceType === 'fixed'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-700 dark:text-zinc-300'
+                  )}
+                >
+                  固定金額 ($)
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                {bulkPriceType === 'percent' ? '変更率 (%)' : '変更額 ($)'}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={bulkPriceValue}
+                  onChange={(e) => setBulkPriceValue(e.target.value)}
+                  placeholder={bulkPriceType === 'percent' ? '例: 10 (10%増加) or -5 (5%減少)' : '例: 5 ($5増加) or -3 ($3減少)'}
+                  className="w-full px-3 py-2 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">
+                  {bulkPriceType === 'percent' ? '%' : '$'}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                正の値で増加、負の値で減少
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => { setShowPriceUpdateModal(false); setBulkPriceValue(''); }}
+              >
+                キャンセル
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleBulkPriceUpdate}
+                disabled={isBulkProcessing || !bulkPriceValue}
+              >
+                {isBulkProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : null}
+                価格を変更
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* クリックアウトサイドでメニューを閉じる */}
+      {showBulkMenu && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowBulkMenu(false)}
+        />
+      )}
     </div>
   );
 }
