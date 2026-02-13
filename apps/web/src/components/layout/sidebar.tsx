@@ -38,6 +38,8 @@ import {
   Server,
   Coins,
   Scale,
+  Search,
+  ArrowUpDown,
 } from 'lucide-react';
 
 const navigation = [
@@ -74,6 +76,8 @@ const adminNavigation = [
   { name: 'システム性能', href: '/system-performance', icon: Server },
   { name: '多通貨管理', href: '/multi-currency', icon: Coins },
   { name: 'コンプライアンス', href: '/compliance', icon: Scale },
+  { name: '高度な検索', href: '/advanced-search', icon: Search },
+  { name: 'データ転送', href: '/data-transfer', icon: ArrowUpDown },
   { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
   { name: 'A/Bテスト', href: '/ab-tests', icon: FlaskConical },
   { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch },

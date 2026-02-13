@@ -3,10 +3,77 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 87-88完了
+**Phase**: 89-90完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 89-90: 高度な検索・フィルタリング & データエクスポート・インポート強化
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 89: 高度な検索・フィルタリング**
+1. Prismaスキーマ追加
+   - SavedSearch: 保存済み検索（フィルター・ソート・カラム設定）
+   - SearchHistory: 検索履歴（クエリ・結果数・実行時間）
+   - SearchSuggestion: 検索サジェスト（頻度ベース）
+   - AdvancedFilter: 高度なフィルター定義（フィールド・演算子・値）
+   - SearchEntityType: PRODUCT, ORDER, LISTING, CUSTOMER, SHIPMENT, SUPPLIER, INVENTORY
+   - FilterFieldType: TEXT, NUMBER, DATE, DATETIME, BOOLEAN, ENUM, ARRAY, JSON
+   - FilterOperator: EQUALS, NOT_EQUALS, CONTAINS, BETWEEN, IN, REGEX等
+
+2. 高度な検索API (`apps/api/src/routes/advanced-search.ts`)
+   - GET /api/advanced-search/stats - 検索統計
+   - POST /api/advanced-search/search - 検索実行（履歴・サジェスト自動更新）
+   - GET /api/advanced-search/saved - 保存済み検索一覧
+   - POST /api/advanced-search/saved - 検索保存
+   - GET /api/advanced-search/history - 検索履歴
+   - GET /api/advanced-search/suggestions - サジェスト
+   - GET /api/advanced-search/filters - フィルター設定
+   - GET /api/advanced-search/fields/:entityType - フィールド定義
+
+3. 高度な検索ページ (`apps/web/src/app/advanced-search/page.tsx`)
+   - エンティティタイプ選択（商品・注文・出品・発送・サプライヤー・顧客・在庫）
+   - キーワード検索＋複合フィルター
+   - 保存済み検索の管理
+   - 検索履歴からの再検索
+   - ページネーション
+
+**Phase 90: データエクスポート・インポート強化**
+1. Prismaスキーマ追加
+   - DataExport: エクスポートジョブ（フィルター・フォーマット・ステータス・ファイル情報）
+   - DataImport: インポートジョブ（マッピング・バリデーション・処理状況）
+   - ImportLog: インポート行ログ（成功・エラー・スキップ）
+   - ImportTemplate: インポートテンプレート（マッピング・変換ルール）
+   - ExportSchedule: 定期エクスポートスケジュール（Cron・配信方法）
+   - ExportFormat: CSV, XLSX, JSON, XML, PDF
+   - ExportDeliveryMethod: EMAIL, SFTP, S3, WEBHOOK, SLACK
+
+2. データ転送API (`apps/api/src/routes/data-export-import.ts`)
+   - GET /api/data-export-import/stats - 統計
+   - GET/POST /api/data-export-import/exports - エクスポート管理
+   - GET /api/data-export-import/exports/:id/download - ダウンロード
+   - GET/POST /api/data-export-import/imports - インポート管理
+   - POST /api/data-export-import/imports/:id/validate - バリデーション
+   - POST /api/data-export-import/imports/:id/process - 処理実行
+   - GET/POST /api/data-export-import/templates - テンプレート管理
+   - GET/POST /api/data-export-import/schedules - スケジュール管理
+   - POST /api/data-export-import/schedules/:id/run-now - 即時実行
+
+3. データ転送ページ (`apps/web/src/app/data-transfer/page.tsx`)
+   - エクスポート一覧・作成・ダウンロード
+   - インポート一覧・バリデーション・処理実行
+   - 進捗表示（プログレスバー・成功/エラー/スキップ件数）
+   - 定期エクスポートスケジュール管理
+   - インポートテンプレート管理
+
+4. サイドバー・モバイルナビ更新
+   - 高度な検索リンク追加（Searchアイコン）
+   - データ転送リンク追加（ArrowUpDownアイコン）
+
+---
 
 ### Phase 87-88: 多通貨対応強化 & 監査・コンプライアンス
 

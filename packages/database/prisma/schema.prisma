@@ -9354,3 +9354,375 @@ enum ConsentStatus {
   WITHDRAWN
   EXPIRED
 }
+
+// ========================================
+// Phase 89: 高度な検索・フィルタリング
+// ========================================
+
+model SavedSearch {
+  id          String   @id @default(cuid())
+
+  organizationId String
+  userId      String
+
+  name        String
+  description String?
+
+  entityType  SearchEntityType
+  filters     Json     @default("{}")
+  sortBy      String?
+  sortOrder   String?  @default("desc")
+  columns     Json     @default("[]")
+
+  isDefault   Boolean  @default(false)
+  isShared    Boolean  @default(false)
+  shareWith   Json     @default("[]")
+
+  usageCount  Int      @default(0)
+  lastUsedAt  DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([organizationId, userId])
+  @@index([entityType])
+  @@map("saved_searches")
+}
+
+enum SearchEntityType {
+  PRODUCT
+  ORDER
+  LISTING
+  CUSTOMER
+  SHIPMENT
+  SUPPLIER
+  INVENTORY
+}
+
+model SearchHistory {
+  id          String   @id @default(cuid())
+
+  organizationId String
+  userId      String
+
+  entityType  SearchEntityType
+  query       String
+  filters     Json     @default("{}")
+  resultCount Int      @default(0)
+  executionTimeMs Int  @default(0)
+
+  createdAt   DateTime @default(now())
+
+  @@index([organizationId, userId])
+  @@index([entityType, createdAt])
+  @@map("search_history")
+}
+
+model SearchSuggestion {
+  id          String   @id @default(cuid())
+
+  organizationId String
+
+  entityType  SearchEntityType
+  fieldName   String
+  value       String
+  frequency   Int      @default(1)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([organizationId, entityType, fieldName, value])
+  @@index([entityType, fieldName])
+  @@map("search_suggestions")
+}
+
+model AdvancedFilter {
+  id          String   @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+  entityType  SearchEntityType
+
+  fieldName   String
+  fieldType   FilterFieldType
+  operator    FilterOperator
+  values      Json     @default("[]")
+
+  isActive    Boolean  @default(true)
+  priority    Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([organizationId, entityType])
+  @@map("advanced_filters")
+}
+
+enum FilterFieldType {
+  TEXT
+  NUMBER
+  DATE
+  DATETIME
+  BOOLEAN
+  ENUM
+  ARRAY
+  JSON
+}
+
+enum FilterOperator {
+  EQUALS
+  NOT_EQUALS
+  CONTAINS
+  NOT_CONTAINS
+  STARTS_WITH
+  ENDS_WITH
+  GREATER_THAN
+  LESS_THAN
+  GREATER_THAN_OR_EQUALS
+  LESS_THAN_OR_EQUALS
+  BETWEEN
+  IN
+  NOT_IN
+  IS_NULL
+  IS_NOT_NULL
+  REGEX
+}
+
+// ========================================
+// Phase 90: データエクスポート・インポート強化
+// ========================================
+
+model DataExport {
+  id          String   @id @default(cuid())
+
+  organizationId String
+  userId      String
+
+  name        String
+  description String?
+
+  entityType  ExportEntityType
+  format      ExportFormat
+  status      ExportStatus     @default(PENDING)
+
+  filters     Json     @default("{}")
+  columns     Json     @default("[]")
+  options     Json     @default("{}")
+
+  totalRecords Int?
+  processedRecords Int @default(0)
+
+  fileUrl     String?
+  fileSize    Int?
+  fileName    String?
+
+  errorMessage String?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  expiresAt   DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([organizationId, userId])
+  @@index([status, createdAt])
+  @@map("data_exports")
+}
+
+enum ExportEntityType {
+  PRODUCTS
+  ORDERS
+  LISTINGS
+  CUSTOMERS
+  SHIPMENTS
+  SUPPLIERS
+  INVENTORY
+  ANALYTICS
+  AUDIT_LOGS
+  ALL
+}
+
+enum ExportFormat {
+  CSV
+  XLSX
+  JSON
+  XML
+  PDF
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+model DataImport {
+  id          String   @id @default(cuid())
+
+  organizationId String
+  userId      String
+
+  name        String
+  description String?
+
+  entityType  ImportEntityType
+  format      ImportFormat
+  status      ImportStatus     @default(PENDING)
+
+  sourceUrl   String?
+  sourceFileName String?
+  sourceFileSize Int?
+
+  mappings    Json     @default("{}")
+  options     Json     @default("{}")
+
+  totalRecords Int?
+  processedRecords Int @default(0)
+  successCount Int     @default(0)
+  errorCount  Int      @default(0)
+  skipCount   Int      @default(0)
+
+  validationErrors Json @default("[]")
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  logs        ImportLog[]
+
+  @@index([organizationId, userId])
+  @@index([status, createdAt])
+  @@map("data_imports")
+}
+
+enum ImportEntityType {
+  PRODUCTS
+  ORDERS
+  LISTINGS
+  CUSTOMERS
+  SUPPLIERS
+  INVENTORY
+  PRICES
+}
+
+enum ImportFormat {
+  CSV
+  XLSX
+  JSON
+  XML
+}
+
+enum ImportStatus {
+  PENDING
+  VALIDATING
+  VALIDATED
+  PROCESSING
+  COMPLETED
+  PARTIALLY_COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model ImportLog {
+  id          String   @id @default(cuid())
+
+  importId    String
+  import      DataImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  rowNumber   Int
+  status      ImportRowStatus
+
+  originalData Json    @default("{}")
+  processedData Json?
+
+  errorMessage String?
+  errorDetails Json    @default("{}")
+
+  createdAt   DateTime @default(now())
+
+  @@index([importId, status])
+  @@index([importId, rowNumber])
+  @@map("import_logs")
+}
+
+enum ImportRowStatus {
+  PENDING
+  SUCCESS
+  ERROR
+  SKIPPED
+  DUPLICATE
+}
+
+model ImportTemplate {
+  id          String   @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+  entityType  ImportEntityType
+
+  mappings    Json     @default("{}")
+  validations Json     @default("[]")
+  transformations Json @default("[]")
+
+  isDefault   Boolean  @default(false)
+  usageCount  Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([organizationId, entityType])
+  @@map("import_templates")
+}
+
+model ExportSchedule {
+  id          String   @id @default(cuid())
+
+  organizationId String
+  userId      String
+
+  name        String
+  description String?
+
+  entityType  ExportEntityType
+  format      ExportFormat
+
+  filters     Json     @default("{}")
+  columns     Json     @default("[]")
+  options     Json     @default("{}")
+
+  schedule    String
+  timezone    String   @default("Asia/Tokyo")
+
+  recipients  Json     @default("[]")
+  deliveryMethod ExportDeliveryMethod @default(EMAIL)
+  deliveryConfig Json  @default("{}")
+
+  isActive    Boolean  @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([isActive, nextRunAt])
+  @@map("export_schedules")
+}
+
+enum ExportDeliveryMethod {
+  EMAIL
+  SFTP
+  S3
+  WEBHOOK
+  SLACK
+}

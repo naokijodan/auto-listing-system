@@ -67,6 +67,8 @@ const menuItems = [
     { name: 'システム性能', href: '/system-performance' },
     { name: '多通貨管理', href: '/multi-currency' },
     { name: 'コンプライアンス', href: '/compliance' },
+    { name: '高度な検索', href: '/advanced-search' },
+    { name: 'データ転送', href: '/data-transfer' },
     { name: '通知', href: '/notifications' },
     { name: '通知設定', href: '/notification-settings' },
     { name: '設定', href: '/settings' },
