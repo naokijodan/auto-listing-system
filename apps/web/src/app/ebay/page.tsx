@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { fetcher, postApi } from '@/lib/api';
 import { addToast } from '@/components/ui/toast';
+import { EbayPreviewModal } from '@/components/ebay-preview-modal';
 import {
   Store,
   Package,
@@ -91,6 +92,20 @@ export default function EbayPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
+  const [previewListingId, setPreviewListingId] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // プレビューを開く
+  const handleOpenPreview = useCallback((id: string) => {
+    setPreviewListingId(id);
+    setIsPreviewOpen(true);
+  }, []);
+
+  // プレビューを閉じる
+  const handleClosePreview = useCallback(() => {
+    setIsPreviewOpen(false);
+    setPreviewListingId(null);
+  }, []);
 
   // Fetch eBay listings from Phase 103 API
   const { data, error, isLoading, mutate } = useSWR<ListingsResponse>(
@@ -456,6 +471,7 @@ export default function EbayPage() {
                     variant="ghost"
                     size="sm"
                     title="プレビュー"
+                    onClick={() => handleOpenPreview(listing.id)}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
@@ -488,6 +504,16 @@ export default function EbayPage() {
           })}
         </div>
       </div>
+
+      {/* プレビューモーダル */}
+      <EbayPreviewModal
+        listingId={previewListingId}
+        isOpen={isPreviewOpen}
+        onClose={handleClosePreview}
+        onPublish={async (id) => {
+          await handlePublish(id);
+        }}
+      />
     </div>
   );
 }
