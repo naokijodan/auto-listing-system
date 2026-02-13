@@ -104,6 +104,8 @@ import { backupRecoveryRouter } from './routes/backup-recovery';
 import { monitoringAlertsRouter } from './routes/monitoring-alerts';
 import { listingPerformanceRouter } from './routes/listing-performance';
 import { listingImprovementRouter } from './routes/listing-improvement';
+import { automationRulesRouter } from './routes/automation-rules';
+import { profitCalculationRouter } from './routes/profit-calculation';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -257,6 +259,8 @@ app.use('/api/backup-recovery', backupRecoveryRouter);
 app.use('/api/monitoring-alerts', monitoringAlertsRouter);
 app.use('/api/listing-performance', listingPerformanceRouter);
 app.use('/api/listing-improvement', listingImprovementRouter);
+app.use('/api/automation-rules', automationRulesRouter);
+app.use('/api/profit-calculation', profitCalculationRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

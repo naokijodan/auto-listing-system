@@ -1,7 +1,7 @@
 # RAKUDA 引き継ぎドキュメント
 
 ## 最終更新
-2026-02-11
+2026-02-13
 
 ## 現在の状態
 
@@ -20,10 +20,113 @@
 | 35-36 | ワークフロー自動化・AI機能強化 | 2026-02-11 |
 | 37-38 | データ可視化・検索機能 | 2026-02-11 |
 | 39-40 | エンリッチメントエンジン・Joom出品ワークフロー | 2026-02-11 |
+| 41-50 | フロントエンドUI・テスト・BullMQ統合 | 2026-02-12 |
+| 51-60 | eBay出品・商品レビュー・バッチ処理 | 2026-02-12 |
+| 61-70 | サプライヤー管理・在庫予測・レポート生成 | 2026-02-12 |
+| 71-80 | 売上予測・分析・カスタマーサクセス | 2026-02-12 |
+| 81-90 | カスタムレポート・SSO・システム性能 | 2026-02-13 |
+| 91-92 | 多通貨管理・コンプライアンス | 2026-02-13 |
+| 93-94 | バックアップ/リカバリ・監視アラート | 2026-02-13 |
+| 95-96 | 出品パフォーマンス分析・改善提案エンジン | 2026-02-13 |
+| 97-98 | 自動アクション・利益計算 | 2026-02-13 |
 
 ### 最新コミット
-- ハッシュ: `5bd8317`
-- メッセージ: `feat: Phase 39-40 エンリッチメントエンジンとJoom出品ワークフローを実装`
+- ハッシュ: (コミット予定)
+- メッセージ: `feat: Phase 97-98 自動アクションルールと利益計算機能を実装`
+
+---
+
+## Phase 97-98 実装内容
+
+### Phase 97: 自動アクションルール
+**新規モデル:**
+- AutomationRule（自動化ルール）
+- AutomationExecution（実行履歴）
+- SafetySettings（安全設定）
+
+**新規ファイル:**
+- `apps/api/src/routes/automation-rules.ts` - 自動アクションAPI
+- `apps/web/src/app/automation-rules/page.tsx` - 自動アクション管理画面
+
+**機能:**
+- ルール管理（トリガー条件・アクション定義）
+- ドライラン（テスト実行）
+- 実行履歴・統計
+- 安全設定（緊急停止、実行上限、クールダウン）
+- トリガータイプ: low_performance, price_change, inventory_low, competitor_change, schedule
+- アクションタイプ: pause_listing, adjust_price, send_notification, create_task
+
+### Phase 98: 利益計算・コスト管理
+**新規モデル:**
+- ProductCost（商品コスト）
+- ProfitCalculation（利益計算結果）
+- FeeStructure（手数料構造）
+- ProfitTarget（利益目標）
+
+**新規ファイル:**
+- `apps/api/src/routes/profit-calculation.ts` - 利益計算API
+- `apps/web/src/app/profit-calculation/page.tsx` - 利益計算管理画面
+
+**機能:**
+- 利益計算（仕入原価・各種手数料・為替・送料を考慮）
+- シミュレーション（価格変更の影響分析）
+- コスト管理（eBay/Joom手数料、送料）
+- 利益目標設定・達成率追跡
+- 総合レポート生成
+
+---
+
+## Phase 95-96 実装内容
+
+### Phase 95: 出品パフォーマンス分析
+**新規モデル:**
+- ListingPerformance（パフォーマンス指標）
+- PerformanceSnapshot（履歴スナップショット）
+- PerformanceThreshold（閾値設定）
+- LowPerformanceFlag（低パフォーマンスフラグ）
+- CategoryBenchmark（カテゴリベンチマーク）
+
+**機能:**
+- パフォーマンス追跡（インプレッション、クリック、CTR、CV率、売上）
+- 低パフォーマンス商品の自動検出
+- カテゴリ別ベンチマーク比較
+- スコア算出（重み付けスコアリング）
+
+### Phase 96: 改善提案エンジン
+**新規モデル:**
+- ImprovementSuggestion（改善提案）
+- BulkAction（一括アクション）
+- ActionHistory（アクション履歴）
+
+**機能:**
+- AI改善提案（タイトル、説明文、価格、画像）
+- 一括適用機能
+- 提案効果の追跡
+- リスク評価・低パフォーマンス商品管理
+
+---
+
+## Phase 93-94 実装内容
+
+### Phase 93: バックアップ/リカバリ
+**新規モデル:**
+- BackupJob, BackupSchedule, RecoveryPoint, RestoreJob
+
+**機能:**
+- データベースバックアップ（フル/増分）
+- スケジュールバックアップ
+- リカバリポイント管理
+- リストアジョブ実行
+
+### Phase 94: 監視アラート
+**新規モデル:**
+- AlertRule, AlertIncident, AlertEscalation, AlertNotificationChannel, AlertNotification
+
+**機能:**
+- アラートルール設定（メトリクス・閾値・条件）
+- インシデント管理
+- エスカレーション
+- 通知チャンネル（Slack/Email/Webhook/PagerDuty）
 
 ---
 

@@ -46,6 +46,8 @@ import {
   AlertTriangle,
   TrendingDown,
   Lightbulb,
+  Zap,
+  DollarSign,
 } from 'lucide-react';
 
 const navigation = [
@@ -58,6 +60,8 @@ const navigation = [
   { name: 'eBay管理', href: '/ebay', icon: Store },
   { name: '出品パフォーマンス', href: '/listing-performance', icon: TrendingDown },
   { name: '改善提案', href: '/listing-improvement', icon: Lightbulb },
+  { name: '自動アクション', href: '/automation-rules', icon: Zap },
+  { name: '利益計算', href: '/profit-calculation', icon: DollarSign },
   { name: '出品管理', href: '/listings', icon: ShoppingCart },
   { name: '注文管理', href: '/orders', icon: Truck },
   { name: '仕入れ管理', href: '/sourcing', icon: ShoppingBag },

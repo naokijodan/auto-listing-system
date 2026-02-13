@@ -58,9 +58,13 @@ const menuItems = [
   ]},
   { category: '自動化', items: [
     { name: 'ワークフロー', href: '/workflow-rules' },
+    { name: '自動アクション', href: '/automation-rules' },
     { name: 'チャットボット', href: '/chatbot' },
     { name: 'A/Bテスト', href: '/ab-tests' },
     { name: '外部連携', href: '/integrations' },
+  ]},
+  { category: '収益管理', items: [
+    { name: '利益計算', href: '/profit-calculation' },
   ]},
   { category: '設定', items: [
     { name: '組織管理', href: '/organizations' },

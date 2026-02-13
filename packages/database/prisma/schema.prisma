@@ -10841,3 +10841,372 @@ enum ActionSource {
   AUTOMATION
   API
 }
+
+// ========================================
+// Phase 97: 自動アクション設定
+// ========================================
+
+model AutomationRule {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  name           String
+  description    String?
+
+  trigger        AutomationTrigger
+  triggerConfig  Json     @default("{}")
+
+  conditions     Json     @default("[]")
+  conditionLogic String   @default("AND")
+
+  action         AutomationAction
+  actionConfig   Json     @default("{}")
+
+  scheduleType   ScheduleType @default(MANUAL)
+  cronExpression String?
+  timezone       String   @default("Asia/Tokyo")
+
+  isActive       Boolean  @default(false)
+  priority       Int      @default(0)
+
+  requiresConfirmation Boolean @default(true)
+  dryRunOnly     Boolean  @default(false)
+
+  maxExecutionsPerDay Int? @default(100)
+  cooldownMinutes Int     @default(60)
+
+  lastExecutedAt DateTime?
+  nextExecutionAt DateTime?
+
+  executionCount Int      @default(0)
+  successCount   Int      @default(0)
+  failureCount   Int      @default(0)
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  executions     AutomationExecution[]
+
+  @@index([organizationId, isActive])
+  @@index([trigger])
+  @@map("automation_rules")
+}
+
+enum AutomationTrigger {
+  SCHEDULE
+  LOW_PERFORMANCE
+  DAYS_LISTED
+  NO_VIEWS
+  NO_WATCHERS
+  PRICE_CHANGE
+  STOCK_LOW
+  COMPETITOR_PRICE
+  MANUAL
+}
+
+enum AutomationAction {
+  END_LISTING
+  DELIST
+  RELIST
+  PRICE_REDUCE
+  PRICE_INCREASE
+  APPLY_SUGGESTION
+  NOTIFY
+  TAG
+  MOVE_CATEGORY
+  UPDATE_QUANTITY
+}
+
+enum ScheduleType {
+  MANUAL
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  CRON
+}
+
+model AutomationExecution {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  ruleId         String
+  rule           AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  status         ExecutionStatus @default(PENDING)
+
+  triggeredBy    String   @default("SYSTEM")
+  triggerReason  String?
+
+  targetListings Json     @default("[]")
+  targetCount    Int      @default(0)
+
+  processedCount Int      @default(0)
+  successCount   Int      @default(0)
+  failedCount    Int      @default(0)
+  skippedCount   Int      @default(0)
+
+  results        Json     @default("[]")
+  errors         Json     @default("[]")
+
+  isDryRun       Boolean  @default(false)
+
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  durationMs     Int?
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, status])
+  @@index([ruleId, createdAt])
+  @@map("automation_executions")
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  PARTIAL
+  DRY_RUN_COMPLETED
+}
+
+model SafetySettings {
+  id             String   @id @default(cuid())
+
+  organizationId String   @unique
+
+  maxDailyEndListings Int @default(50)
+  maxDailyPriceChanges Int @default(100)
+  maxDailyRelists Int    @default(50)
+
+  requireConfirmationAbove Int? @default(10)
+
+  excludedCategories Json  @default("[]")
+  excludedListings   Json  @default("[]")
+  excludedPriceRanges Json @default("[]")
+
+  minListingAge     Int    @default(7)
+  protectHighValue  Boolean @default(true)
+  highValueThreshold Float @default(500)
+
+  allowWeekendExecution Boolean @default(false)
+  allowedHoursStart Int    @default(9)
+  allowedHoursEnd   Int    @default(21)
+
+  notifyOnExecution Boolean @default(true)
+  notifyOnFailure   Boolean @default(true)
+
+  emergencyStopEnabled Boolean @default(false)
+  emergencyStopAt DateTime?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("safety_settings")
+}
+
+// ========================================
+// Phase 98: 利益計算・原価管理
+// ========================================
+
+model ProductCost {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  listingId      String?
+  productId      String?
+  sku            String?
+
+  purchasePrice  Float
+  purchaseCurrency String @default("JPY")
+
+  domesticShipping Float  @default(0)
+  internationalShipping Float @default(0)
+
+  platformFee    Float    @default(0)
+  platformFeeType FeeType @default(PERCENTAGE)
+
+  paymentFee     Float    @default(0)
+  paymentFeeType FeeType @default(PERCENTAGE)
+
+  otherCosts     Json     @default("[]")
+  totalCost      Float?
+
+  exchangeRate   Float?
+  exchangeRateDate DateTime?
+
+  supplierName   String?
+  purchaseDate   DateTime?
+  purchaseUrl    String?
+
+  notes          String?
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  profitCalculations ProfitCalculation[]
+
+  @@index([organizationId])
+  @@index([listingId])
+  @@index([sku])
+  @@map("product_costs")
+}
+
+enum FeeType {
+  FIXED
+  PERCENTAGE
+}
+
+model ProfitCalculation {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  listingId      String
+  ebayItemId     String?
+
+  costId         String?
+  cost           ProductCost? @relation(fields: [costId], references: [id], onDelete: SetNull)
+
+  salePrice      Float
+  saleCurrency   String   @default("USD")
+
+  totalCost      Float
+  costCurrency   String   @default("JPY")
+
+  ebayFinalValueFee Float @default(0)
+  ebayFixedFee   Float    @default(0)
+  paypalFee      Float    @default(0)
+  shippingCost   Float    @default(0)
+  otherFees      Float    @default(0)
+
+  totalFees      Float
+  totalCostUsd   Float
+
+  grossProfit    Float
+  netProfit      Float
+  profitMargin   Float
+
+  exchangeRate   Float
+  exchangeRateDate DateTime?
+
+  profitStatus   ProfitStatus @default(PROFITABLE)
+
+  calculatedAt   DateTime @default(now())
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, profitStatus])
+  @@index([listingId])
+  @@map("profit_calculations")
+}
+
+enum ProfitStatus {
+  HIGHLY_PROFITABLE
+  PROFITABLE
+  MARGINAL
+  BREAK_EVEN
+  LOSS
+}
+
+model FeeStructure {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  name           String
+  description    String?
+
+  platform       FeePlatform
+  category       String?
+
+  finalValueFeePercent Float @default(12.9)
+  fixedFeeAmount Float    @default(0.30)
+  fixedFeeCurrency String @default("USD")
+
+  paymentFeePercent Float @default(2.9)
+  paymentFixedFee Float   @default(0.30)
+
+  promotedListingFeePercent Float?
+  internationalFeePercent Float?
+
+  isDefault      Boolean  @default(false)
+  isActive       Boolean  @default(true)
+
+  effectiveFrom  DateTime?
+  effectiveTo    DateTime?
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, platform])
+  @@map("fee_structures")
+}
+
+enum FeePlatform {
+  EBAY_US
+  EBAY_UK
+  EBAY_DE
+  EBAY_AU
+  EBAY_JP
+  JOOM
+  AMAZON
+  OTHER
+}
+
+model ProfitTarget {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  name           String
+  description    String?
+
+  targetType     TargetType
+  category       String?
+
+  minProfitMargin Float   @default(15)
+  targetProfitMargin Float @default(25)
+  maxProfitMargin Float?
+
+  minProfitAmount Float?
+  targetProfitAmount Float?
+
+  isDefault      Boolean  @default(false)
+  isActive       Boolean  @default(true)
+
+  alertOnBelow   Boolean  @default(true)
+  alertThreshold Float    @default(10)
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, isActive])
+  @@map("profit_targets")
+}
+
+enum TargetType {
+  GLOBAL
+  CATEGORY
+  SUPPLIER
+  BRAND
+  CUSTOM
+}
