@@ -9,6 +9,12 @@ build/
 .next/
 out/
 
+# TypeScript build artifacts in source directories
+apps/*/src/**/*.js
+apps/*/src/**/*.d.ts
+apps/*/src/**/*.js.map
+!apps/*/src/**/*.config.js
+
 # Environment
 .env
 .env.local
