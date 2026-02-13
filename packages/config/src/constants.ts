@@ -79,6 +79,8 @@ export const QUEUE_NAMES = {
   // Phase 51-52: 注文・発送処理
   ORDER: 'order-queue',
   SHIPMENT: 'shipment-queue',
+  // Phase 103: eBay出品
+  EBAY_PUBLISH: 'ebay-publish-queue',
 } as const;
 
 // キュー設定
@@ -169,6 +171,14 @@ export const QUEUE_CONFIG = {
     concurrency: 3,
     attempts: 5,
     backoff: { type: 'exponential', delay: 10000 },
+  },
+  // Phase 103: eBay出品キュー
+  [QUEUE_NAMES.EBAY_PUBLISH]: {
+    priority: 1,
+    rateLimit: { max: 5, duration: 60000 }, // 5件/分（eBay APIレート制限考慮）
+    concurrency: 2,
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 60000 },
   },
 } as const;
 

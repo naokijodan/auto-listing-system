@@ -31,6 +31,14 @@ export type JoomPublishJobType =
   | 'dry-run'
   | 'sync-status';
 
+export type EbayPublishJobType =
+  | 'create-inventory-item'
+  | 'create-offer'
+  | 'publish-offer'
+  | 'batch-publish'
+  | 'end-listing'
+  | 'sync-status';
+
 export interface EnrichmentJobData {
   type: EnrichmentJobType;
   productId?: string;
@@ -45,6 +53,17 @@ export interface JoomPublishJobData {
   joomListingId?: string;
   batchId?: string;
   productIds?: string[];
+  options?: {
+    dryRun?: boolean;
+    concurrency?: number;
+  };
+}
+
+export interface EbayPublishJobData {
+  type: EbayPublishJobType;
+  listingId?: string;
+  batchId?: string;
+  listingIds?: string[];
   options?: {
     dryRun?: boolean;
     concurrency?: number;
@@ -294,6 +313,79 @@ export async function addAutoJoomPublishJob(limit: number = 10): Promise<string>
   });
 
   return job.id!;
+}
+
+// ========================================
+// eBay出品ジョブ（Phase 103）
+// ========================================
+
+/**
+ * eBay出品ジョブを追加
+ */
+export async function addEbayPublishJob(
+  type: EbayPublishJobType,
+  data: Omit<EbayPublishJobData, 'type'>,
+  options?: Partial<JobsOptions>
+): Promise<string> {
+  const queue = getQueue(QUEUE_NAMES.EBAY_PUBLISH);
+  const jobData: EbayPublishJobData = { type, ...data };
+
+  const job = await queue.add(type, jobData, {
+    ...getDefaultJobOptions(QUEUE_NAMES.EBAY_PUBLISH),
+    ...options,
+  });
+
+  log.info({
+    type: 'job_added',
+    queue: QUEUE_NAMES.EBAY_PUBLISH,
+    jobId: job.id,
+    jobType: type,
+    listingId: data.listingId,
+  });
+
+  return job.id!;
+}
+
+/**
+ * eBayインベントリアイテム作成ジョブを追加
+ */
+export async function addEbayCreateInventoryItemJob(listingId: string): Promise<string> {
+  return addEbayPublishJob('create-inventory-item', { listingId });
+}
+
+/**
+ * eBayオファー作成ジョブを追加
+ */
+export async function addEbayCreateOfferJob(listingId: string): Promise<string> {
+  return addEbayPublishJob('create-offer', { listingId });
+}
+
+/**
+ * eBayオファー公開ジョブを追加
+ */
+export async function addEbayPublishOfferJob(listingId: string): Promise<string> {
+  return addEbayPublishJob('publish-offer', { listingId });
+}
+
+/**
+ * eBayバッチ出品ジョブを追加
+ */
+export async function addEbayBatchPublishJob(batchId: string, listingIds: string[]): Promise<string> {
+  return addEbayPublishJob('batch-publish', { batchId, listingIds });
+}
+
+/**
+ * eBay出品終了ジョブを追加
+ */
+export async function addEbayEndListingJob(listingId: string): Promise<string> {
+  return addEbayPublishJob('end-listing', { listingId });
+}
+
+/**
+ * eBay出品キュー統計
+ */
+export async function getEbayPublishQueueStats(): Promise<any> {
+  return getQueueStats(QUEUE_NAMES.EBAY_PUBLISH);
 }
 
 // ========================================

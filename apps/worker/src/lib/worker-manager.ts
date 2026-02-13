@@ -17,6 +17,8 @@ import { processInventorySyncJob } from '../processors/inventory-sync';
 // Phase 41: エンリッチメント・Joom出品
 import { processEnrichmentJob, processFullWorkflow } from '../processors/enrichment';
 import { processJoomPublishJob, processFullJoomWorkflow, processAutoJoomPublish } from '../processors/joom-publish';
+// Phase 103: eBay出品
+import { processEbayPublishJob, processFullEbayWorkflow } from '../processors/ebay-publish';
 // Phase 51: 注文処理
 import { processOrderJob, processDeadlineCheckJob } from '../processors/order';
 // Phase 52: 発送処理
@@ -223,6 +225,22 @@ export async function startWorkers(connection: IORedis): Promise<void> {
     QUEUE_CONFIG[QUEUE_NAMES.JOOM_PUBLISH]
   );
   workers.push(joomPublishWorker);
+
+  // eBay出品ワーカー（Phase 103）
+  const ebayPublishWorker = createWorker(
+    QUEUE_NAMES.EBAY_PUBLISH,
+    async (job) => {
+      // 完全ワークフロー（インベントリ→オファー→公開）
+      if (job.name === 'full-ebay-workflow') {
+        return processFullEbayWorkflow(job as any);
+      }
+      // 通常のeBay出品ジョブ
+      return processEbayPublishJob(job as any);
+    },
+    connection,
+    QUEUE_CONFIG[QUEUE_NAMES.EBAY_PUBLISH]
+  );
+  workers.push(ebayPublishWorker);
 
   // 注文処理ワーカー（Phase 51）
   const orderWorker = createWorker(
