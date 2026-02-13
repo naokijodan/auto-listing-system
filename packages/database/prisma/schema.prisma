@@ -8460,3 +8460,410 @@ model ReportTemplate {
   @@index([isSystem])
   @@map("report_templates")
 }
+
+// ========================================
+// Phase 85: SSO/SAML対応
+// ========================================
+model SSOProvider {
+  id          String   @id @default(cuid())
+
+  name        String
+  displayName String
+  type        SSOProviderType
+  status      SSOProviderStatus @default(INACTIVE)
+
+  // OAuth/OIDC設定
+  clientId     String?
+  clientSecret String?
+  issuerUrl    String?
+  authorizationUrl String?
+  tokenUrl     String?
+  userInfoUrl  String?
+  jwksUrl      String?
+
+  // SAML設定
+  entityId     String?
+  ssoUrl       String?
+  sloUrl       String?
+  certificate  String?  @db.Text
+  signatureAlgorithm String @default("SHA256")
+  nameIdFormat String   @default("emailAddress")
+
+  // スコープ・属性マッピング
+  scopes       String[] @default(["openid", "email", "profile"])
+  attributeMapping Json @default("{}")
+
+  // セキュリティ設定
+  allowedDomains  String[] @default([])
+  defaultRole     String   @default("MEMBER")
+  autoProvision   Boolean  @default(true)
+  autoSync        Boolean  @default(true)
+  syncInterval    Int      @default(3600)
+
+  // 組織紐付け
+  organizationId String?
+
+  // メタデータ
+  metadata     Json     @default("{}")
+  lastSyncAt   DateTime?
+  lastErrorAt  DateTime?
+  lastError    String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions     SSOSession[]
+  auditLogs    SSOAuditLog[]
+
+  @@unique([organizationId, type])
+  @@index([status])
+  @@index([type])
+  @@map("sso_providers")
+}
+
+enum SSOProviderType {
+  GOOGLE
+  MICROSOFT
+  OKTA
+  AUTH0
+  SAML
+  OIDC
+  LDAP
+}
+
+enum SSOProviderStatus {
+  INACTIVE
+  CONFIGURING
+  TESTING
+  ACTIVE
+  ERROR
+  SUSPENDED
+}
+
+model SSOSession {
+  id          String   @id @default(cuid())
+
+  providerId  String
+  provider    SSOProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  userId      String
+  externalUserId String
+
+  // セッション情報
+  accessToken    String?  @db.Text
+  refreshToken   String?  @db.Text
+  idToken        String?  @db.Text
+  tokenExpiresAt DateTime?
+
+  // SAML用
+  sessionIndex   String?
+  nameId         String?
+
+  // メタデータ
+  claims      Json     @default("{}")
+  ipAddress   String?
+  userAgent   String?
+  deviceInfo  Json     @default("{}")
+
+  // 状態
+  status      SSOSessionStatus @default(ACTIVE)
+  lastActivityAt DateTime @default(now())
+
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([providerId, userId])
+  @@index([externalUserId])
+  @@index([status, expiresAt])
+  @@map("sso_sessions")
+}
+
+enum SSOSessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  LOGGED_OUT
+}
+
+model SSOAuditLog {
+  id          String   @id @default(cuid())
+
+  providerId  String
+  provider    SSOProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  userId      String?
+  externalUserId String?
+
+  action      SSOAuditAction
+  status      SSOAuditStatus
+  category    String
+
+  details     Json     @default("{}")
+  errorMessage String?
+
+  ipAddress   String?
+  userAgent   String?
+  country     String?
+  city        String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([providerId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action, status])
+  @@map("sso_audit_logs")
+}
+
+enum SSOAuditAction {
+  LOGIN_INITIATED
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  TOKEN_REFRESH
+  TOKEN_REVOKE
+  USER_PROVISIONED
+  USER_SYNCED
+  USER_DEPROVISIONED
+  PROVIDER_CONFIGURED
+  PROVIDER_ACTIVATED
+  PROVIDER_DEACTIVATED
+  PROVIDER_ERROR
+  SESSION_CREATED
+  SESSION_EXPIRED
+  SESSION_REVOKED
+}
+
+enum SSOAuditStatus {
+  SUCCESS
+  FAILURE
+  WARNING
+}
+
+// ========================================
+// Phase 86: パフォーマンス最適化
+// ========================================
+model PerformanceMetric {
+  id          String   @id @default(cuid())
+
+  metricType  PerformanceMetricType
+  name        String
+  value       Float
+  unit        String
+
+  // コンテキスト
+  endpoint    String?
+  method      String?
+  statusCode  Int?
+  userId      String?
+
+  // 詳細メトリクス
+  responseTimeMs Int?
+  dbQueryTimeMs  Int?
+  cacheHitRate   Float?
+  memoryUsageMb  Float?
+  cpuUsagePercent Float?
+
+  // タグ
+  tags        Json     @default("{}")
+  metadata    Json     @default("{}")
+
+  // 集計期間
+  periodStart DateTime
+  periodEnd   DateTime
+  sampleCount Int      @default(1)
+
+  createdAt   DateTime @default(now())
+
+  @@index([metricType, periodStart])
+  @@index([endpoint, periodStart])
+  @@index([name, periodStart])
+  @@map("performance_metrics")
+}
+
+enum PerformanceMetricType {
+  API_LATENCY
+  DB_QUERY_TIME
+  CACHE_HIT_RATE
+  MEMORY_USAGE
+  CPU_USAGE
+  THROUGHPUT
+  ERROR_RATE
+  QUEUE_DEPTH
+  ACTIVE_CONNECTIONS
+  CUSTOM
+}
+
+model ApiUsageLog {
+  id          String   @id @default(cuid())
+
+  // リクエスト情報
+  endpoint    String
+  method      String
+  statusCode  Int
+  userId      String?
+  apiKeyId    String?
+
+  // タイミング
+  requestedAt    DateTime
+  responseTimeMs Int
+
+  // サイズ
+  requestSize    Int?
+  responseSize   Int?
+
+  // キャッシュ
+  cacheStatus CacheStatus @default(MISS)
+  cacheTtl    Int?
+
+  // 追跡
+  requestId   String?
+  traceId     String?
+  spanId      String?
+
+  // クライアント情報
+  ipAddress   String?
+  userAgent   String?
+  country     String?
+
+  // エラー
+  errorType   String?
+  errorMessage String?
+
+  // メタデータ
+  tags        Json     @default("{}")
+
+  @@index([endpoint, requestedAt])
+  @@index([userId, requestedAt])
+  @@index([statusCode, requestedAt])
+  @@index([cacheStatus])
+  @@map("api_usage_logs")
+}
+
+enum CacheStatus {
+  HIT
+  MISS
+  STALE
+  BYPASS
+  ERROR
+}
+
+model CdnConfig {
+  id          String   @id @default(cuid())
+
+  name        String
+  provider    CdnProvider
+  status      CdnConfigStatus @default(INACTIVE)
+
+  // エンドポイント
+  originUrl   String
+  cdnUrl      String?
+  customDomain String?
+
+  // 認証
+  accessKeyId String?
+  secretAccessKey String?
+  apiToken    String?
+
+  // キャッシュ設定
+  defaultTtl  Int      @default(86400)
+  maxTtl      Int      @default(604800)
+  cacheRules  Json     @default("[]")
+
+  // セキュリティ
+  enableHttps Boolean  @default(true)
+  enableCompression Boolean @default(true)
+  enableWebp  Boolean  @default(true)
+  allowedOrigins String[] @default(["*"])
+
+  // 画像最適化
+  imageOptimization Boolean @default(true)
+  imageQuality Int     @default(85)
+  imageSizes  Int[]    @default([320, 640, 960, 1280, 1920])
+
+  // 統計
+  totalRequests    BigInt   @default(0)
+  totalBandwidth   BigInt   @default(0)
+  cacheHitRatio    Float    @default(0)
+  lastStatsUpdate  DateTime?
+
+  // メタデータ
+  metadata    Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([provider, status])
+  @@map("cdn_configs")
+}
+
+enum CdnProvider {
+  CLOUDFLARE
+  AWS_CLOUDFRONT
+  FASTLY
+  BUNNY_CDN
+  IMGIX
+  CLOUDINARY
+  CUSTOM
+}
+
+enum CdnConfigStatus {
+  INACTIVE
+  CONFIGURING
+  ACTIVE
+  ERROR
+  SUSPENDED
+}
+
+model QueryOptimizationRule {
+  id          String   @id @default(cuid())
+
+  name        String
+  description String?
+  isEnabled   Boolean  @default(true)
+  priority    Int      @default(100)
+
+  // マッチング条件
+  targetTable String?
+  targetEndpoint String?
+  queryPattern String?
+  minExecutionTimeMs Int @default(100)
+
+  // 最適化アクション
+  optimizationType OptimizationType
+  optimizationConfig Json @default("{}")
+
+  // インデックス推奨
+  suggestedIndex String?
+  indexCreated   Boolean @default(false)
+
+  // キャッシュ設定
+  enableCache    Boolean @default(false)
+  cacheTtl       Int     @default(60)
+  cacheKey       String?
+
+  // 統計
+  matchCount     Int      @default(0)
+  avgSavedTimeMs Float    @default(0)
+  lastMatchedAt  DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isEnabled, priority])
+  @@index([targetTable])
+  @@index([targetEndpoint])
+  @@map("query_optimization_rules")
+}
+
+enum OptimizationType {
+  ADD_INDEX
+  QUERY_REWRITE
+  ENABLE_CACHE
+  PAGINATION
+  BATCH_LOADING
+  LAZY_LOADING
+  PRECOMPUTE
+  DENORMALIZE
+  CUSTOM
+}

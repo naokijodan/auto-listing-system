@@ -34,6 +34,8 @@ import {
   Lock,
   HeartHandshake,
   FileBarChart,
+  KeyRound,
+  Server,
 } from 'lucide-react';
 
 const navigation = [
@@ -66,6 +68,8 @@ const adminNavigation = [
   { name: '組織管理', href: '/organizations', icon: Users },
   { name: '外部連携', href: '/integrations', icon: Link2 },
   { name: 'セキュリティ', href: '/security', icon: Lock },
+  { name: 'SSO設定', href: '/sso', icon: KeyRound },
+  { name: 'システム性能', href: '/system-performance', icon: Server },
   { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
   { name: 'A/Bテスト', href: '/ab-tests', icon: FlaskConical },
   { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch },

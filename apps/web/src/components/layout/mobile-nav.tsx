@@ -63,6 +63,8 @@ const menuItems = [
   { category: '設定', items: [
     { name: '組織管理', href: '/organizations' },
     { name: 'セキュリティ', href: '/security' },
+    { name: 'SSO設定', href: '/sso' },
+    { name: 'システム性能', href: '/system-performance' },
     { name: '通知', href: '/notifications' },
     { name: '通知設定', href: '/notification-settings' },
     { name: '設定', href: '/settings' },

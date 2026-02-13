@@ -3,10 +3,89 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 83-84完了
+**Phase**: 85-86完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 85-86: SSO/SAML対応 & パフォーマンス最適化
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 85: SSO/SAML対応**
+1. Prismaスキーマ追加
+   - SSOProvider: SSOプロバイダー設定（OAuth/OIDC/SAML設定・スコープ・属性マッピング）
+   - SSOSession: SSOセッション管理（トークン・有効期限・デバイス情報）
+   - SSOAuditLog: SSO監査ログ（認証イベント・エラー追跡）
+   - SSOProviderType: GOOGLE, MICROSOFT, OKTA, AUTH0, SAML, OIDC, LDAP
+   - SSOProviderStatus: INACTIVE, CONFIGURING, TESTING, ACTIVE, ERROR, SUSPENDED
+   - SSOAuditAction: LOGIN_INITIATED, LOGIN_SUCCESS, LOGIN_FAILED, LOGOUT, TOKEN_REFRESH等
+
+2. SSO API (`apps/api/src/routes/sso.ts`)
+   - GET /api/sso/stats - SSO統計
+   - GET /api/sso/provider-types - プロバイダータイプ一覧
+   - GET /api/sso/providers - プロバイダー一覧
+   - POST /api/sso/providers - プロバイダー作成
+   - GET /api/sso/providers/:id - プロバイダー詳細
+   - PATCH /api/sso/providers/:id - プロバイダー更新
+   - DELETE /api/sso/providers/:id - プロバイダー削除
+   - POST /api/sso/providers/:id/activate - アクティベート
+   - POST /api/sso/providers/:id/deactivate - デアクティベート
+   - GET /api/sso/providers/:id/authorize - OAuth認証開始
+   - GET /api/sso/sessions - セッション一覧
+   - POST /api/sso/sessions/:id/revoke - セッション無効化
+   - GET /api/sso/audit-logs - 監査ログ
+   - POST /api/sso/verify-domain - ドメイン検証
+
+3. SSOページ (`apps/web/src/app/sso/page.tsx`)
+   - SSO統計ダッシュボード（プロバイダー数・セッション・ログイン数）
+   - プロバイダー一覧・作成・設定
+   - Google/Microsoft/Okta/Auth0/SAML/OIDC/LDAP対応
+   - アクティブセッション管理
+   - 監査ログ表示
+
+**Phase 86: パフォーマンス最適化**
+1. Prismaスキーマ追加
+   - PerformanceMetric: パフォーマンスメトリクス（API/DB/キャッシュ/メモリ/CPU）
+   - ApiUsageLog: API使用ログ（エンドポイント・レスポンス時間・キャッシュ状態）
+   - CdnConfig: CDN設定（プロバイダー・キャッシュ・画像最適化）
+   - QueryOptimizationRule: クエリ最適化ルール（インデックス・キャッシュ・バッチ処理）
+   - PerformanceMetricType: API_LATENCY, DB_QUERY_TIME, CACHE_HIT_RATE等
+   - CdnProvider: CLOUDFLARE, AWS_CLOUDFRONT, FASTLY, BUNNY_CDN, IMGIX, CLOUDINARY
+   - OptimizationType: ADD_INDEX, QUERY_REWRITE, ENABLE_CACHE, PAGINATION等
+
+2. システムパフォーマンスAPI (`apps/api/src/routes/system-performance.ts`)
+   - GET /api/system-performance/stats - パフォーマンス統計
+   - GET /api/system-performance/api-logs - API使用ログ
+   - POST /api/system-performance/metrics - メトリクス記録
+   - GET /api/system-performance/metrics - メトリクス取得
+   - GET /api/system-performance/cdn-configs - CDN設定一覧
+   - POST /api/system-performance/cdn-configs - CDN設定作成
+   - PATCH /api/system-performance/cdn-configs/:id - CDN設定更新
+   - POST /api/system-performance/cdn-configs/:id/activate - CDNアクティベート
+   - GET /api/system-performance/optimization-rules - 最適化ルール一覧
+   - POST /api/system-performance/optimization-rules - ルール作成
+   - PATCH /api/system-performance/optimization-rules/:id/toggle - ルール有効/無効
+   - DELETE /api/system-performance/optimization-rules/:id - ルール削除
+   - GET /api/system-performance/realtime - リアルタイムメトリクス
+   - GET /api/system-performance/db-health - DBヘルスチェック
+   - GET /api/system-performance/cache-stats - キャッシュ統計
+
+3. システムパフォーマンスページ (`apps/web/src/app/system-performance/page.tsx`)
+   - リアルタイムメトリクス（リクエスト/分・レイテンシ・エラー数）
+   - エンドポイント別分析（トップ・遅い）
+   - キャッシュパフォーマンス（ヒット率・エンドポイント別）
+   - CDN設定管理
+   - クエリ最適化ルール管理
+   - データベースヘルス（テーブル統計・インデックス使用状況）
+
+4. サイドバー・モバイルナビ更新
+   - SSO設定リンク追加（KeyRoundアイコン）
+   - システム性能リンク追加（Serverアイコン）
+
+---
 
 ### Phase 83-84: カスタマーサクセス機能 & 高度なレポーティング
 
@@ -1059,6 +1138,19 @@
 
 ## ファイル変更一覧
 
+### Phase 85-86
+#### 新規作成
+- `apps/api/src/routes/sso.ts` - SSO API
+- `apps/api/src/routes/system-performance.ts` - システムパフォーマンスAPI
+- `apps/web/src/app/sso/page.tsx` - SSOページ
+- `apps/web/src/app/system-performance/page.tsx` - システムパフォーマンスページ
+
+#### 更新
+- `packages/database/prisma/schema.prisma` - SSOProvider/SSOSession/SSOAuditLog/PerformanceMetric/ApiUsageLog/CdnConfig/QueryOptimizationRuleモデル追加
+- `apps/api/src/index.ts` - sso, system-performanceルート登録
+- `apps/web/src/components/layout/sidebar.tsx` - SSO・システム性能リンク追加
+- `apps/web/src/components/layout/mobile-nav.tsx` - モバイルナビにリンク追加
+
 ### Phase 83-84
 #### 新規作成
 - `apps/api/src/routes/customer-success.ts` - カスタマーサクセスAPI
@@ -1293,23 +1385,52 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 85-86候補
+### Phase 87-88候補
 
-1. **SSO/SAML対応**
-   - Google Workspace連携
-   - Microsoft Azure AD連携
-   - SAML 2.0対応
-   - OIDC対応
+1. **多通貨対応強化**
+   - リアルタイム為替レート
+   - 通貨別価格表示
+   - 自動価格調整
+   - 通貨変換履歴
 
-4. **パフォーマンス最適化**
-   - 画像CDN統合
-   - データベースシャーディング
-   - APIレート制限強化
-   - キャッシュ層最適化
+2. **監査・コンプライアンス**
+   - GDPR対応
+   - データ保持ポリシー
+   - アクセスログ強化
+   - 個人情報マスキング
+
+3. **AI機能強化**
+   - 商品説明自動生成改善
+   - 需要予測精度向上
+   - 価格最適化AI強化
+   - チャットボット学習
+
+4. **モバイルアプリ（React Native）**
+   - iOS/Androidアプリ
+   - プッシュ通知
+   - オフライン対応
+   - バーコードスキャン
 
 ## 技術的注意事項
 
-1. **カスタマーサクセス**
+1. **SSO/SAML**
+   - プロバイダータイプ: GOOGLE, MICROSOFT, OKTA, AUTH0, SAML, OIDC, LDAP
+   - ステータス: INACTIVE → CONFIGURING → TESTING → ACTIVE
+   - PKCEサポート（code_challenge/code_verifier）
+   - 属性マッピング: attributeMapping JSON
+   - 許可ドメイン: allowedDomains配列
+   - 自動プロビジョニング: 初回ログイン時にユーザー自動作成
+   - セッション有効期限: expiresAtで管理
+
+2. **システムパフォーマンス**
+   - メトリクスタイプ: API_LATENCY, DB_QUERY_TIME, CACHE_HIT_RATE, MEMORY_USAGE, CPU_USAGE, THROUGHPUT, ERROR_RATE
+   - 集計間隔: 1分（periodStart/periodEnd）
+   - サンプル数カウント: sampleCount
+   - CDNプロバイダー: CLOUDFLARE, AWS_CLOUDFRONT, FASTLY, BUNNY_CDN, IMGIX, CLOUDINARY
+   - 画像最適化: WebP変換、複数サイズ生成（320/640/960/1280/1920px）
+   - 最適化ルール: ADD_INDEX, QUERY_REWRITE, ENABLE_CACHE, PAGINATION, BATCH_LOADING
+
+3. **カスタマーサクセス**
    - セグメント: NEW(30日以内初回), ACTIVE(30日以内注文), AT_RISK(60日超), DORMANT(90日超), CHURNED(180日超), VIP(上位10%), LOYAL(5回以上注文)
    - ティア: STANDARD(デフォルト), SILVER($500+), GOLD($1000+), PLATINUM($2500+), DIAMOND($5000+)
    - RFMスコア: 各1-5の3桁コード（例: 555=最優良顧客）
