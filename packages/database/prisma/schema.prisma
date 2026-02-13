@@ -9726,3 +9726,326 @@ enum ExportDeliveryMethod {
   WEBHOOK
   SLACK
 }
+
+// ========================================
+// Phase 91: Webhook配信システム強化
+// ========================================
+
+model WebhookEndpoint {
+  id          String   @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+  url         String
+
+  events      Json     @default("[]")
+  headers     Json     @default("{}")
+  secret      String?
+
+  isActive    Boolean  @default(true)
+  version     String   @default("v1")
+
+  retryPolicy WebhookRetryPolicy @default(EXPONENTIAL)
+  maxRetries  Int      @default(5)
+  timeoutMs   Int      @default(30000)
+
+  lastDeliveryAt DateTime?
+  lastDeliveryStatus WebhookDeliveryStatus?
+
+  successCount Int     @default(0)
+  failureCount Int     @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deliveries  WebhookDelivery[]
+
+  @@index([organizationId, isActive])
+  @@index([organizationId])
+  @@map("webhook_endpoints")
+}
+
+enum WebhookRetryPolicy {
+  NONE
+  LINEAR
+  EXPONENTIAL
+  FIXED
+}
+
+model WebhookDelivery {
+  id          String   @id @default(cuid())
+
+  endpointId  String
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  event       String
+  payload     Json
+
+  status      WebhookDeliveryStatus @default(PENDING)
+
+  requestHeaders Json  @default("{}")
+  requestBody String?  @db.Text
+
+  responseStatus Int?
+  responseHeaders Json @default("{}")
+  responseBody String? @db.Text
+
+  attempts    Int      @default(0)
+  nextRetryAt DateTime?
+
+  latencyMs   Int?
+  errorMessage String?
+
+  deliveredAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([endpointId, status])
+  @@index([status, nextRetryAt])
+  @@index([event, createdAt])
+  @@map("webhook_deliveries")
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  FAILED
+  RETRYING
+  EXHAUSTED
+  CANCELLED
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+  category    String
+
+  payloadSchema Json   @default("{}")
+  samplePayload Json   @default("{}")
+
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([organizationId, name])
+  @@index([organizationId, category])
+  @@map("webhook_events")
+}
+
+model WebhookLog {
+  id          String   @id @default(cuid())
+
+  organizationId String
+
+  endpointId  String?
+  deliveryId  String?
+
+  action      String
+  level       WebhookLogLevel @default(INFO)
+  message     String
+  details     Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([endpointId, createdAt])
+  @@map("webhook_logs")
+}
+
+enum WebhookLogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+// ========================================
+// Phase 92: API利用統計＆レート制限強化
+// ========================================
+
+model ApiKey {
+  id          String   @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+
+  keyHash     String   @unique
+  keyPrefix   String
+
+  permissions Json     @default("[]")
+  scopes      Json     @default("[]")
+
+  rateLimit   Int      @default(1000)
+  rateLimitWindow Int  @default(3600)
+
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+
+  isActive    Boolean  @default(true)
+
+  usageCount  Int      @default(0)
+
+  ipWhitelist Json     @default("[]")
+
+  metadata    Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  usageLogs   ApiKeyUsageLog[]
+
+  @@index([organizationId, isActive])
+  @@index([keyPrefix])
+  @@map("api_keys_v2")
+}
+
+model ApiKeyUsageLog {
+  id          String   @id @default(cuid())
+
+  apiKeyId    String
+  apiKey      ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  endpoint    String
+  method      String
+
+  statusCode  Int
+  latencyMs   Int
+
+  requestSize Int?
+  responseSize Int?
+
+  ipAddress   String?
+  userAgent   String?
+
+  errorMessage String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([apiKeyId, createdAt])
+  @@index([endpoint, createdAt])
+  @@map("api_key_usage_logs")
+}
+
+model RateLimitRule {
+  id          String   @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+
+  target      RateLimitTarget
+  targetValue String?
+
+  limit       Int
+  windowSeconds Int
+
+  action      RateLimitAction @default(REJECT)
+
+  isActive    Boolean  @default(true)
+  priority    Int      @default(0)
+
+  currentCount Int     @default(0)
+  windowStart DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([organizationId, isActive])
+  @@index([target, targetValue])
+  @@map("rate_limit_rules")
+}
+
+enum RateLimitTarget {
+  GLOBAL
+  ORGANIZATION
+  API_KEY
+  IP_ADDRESS
+  ENDPOINT
+  USER
+}
+
+enum RateLimitAction {
+  REJECT
+  THROTTLE
+  QUEUE
+  LOG_ONLY
+}
+
+model ApiUsageSummary {
+  id          String   @id @default(cuid())
+
+  organizationId String
+
+  date        DateTime @db.Date
+  hour        Int?
+
+  endpoint    String?
+  method      String?
+
+  totalRequests Int    @default(0)
+  successCount Int     @default(0)
+  errorCount  Int      @default(0)
+
+  avgLatencyMs Float   @default(0)
+  p50LatencyMs Float   @default(0)
+  p95LatencyMs Float   @default(0)
+  p99LatencyMs Float   @default(0)
+
+  totalRequestSize BigInt @default(0)
+  totalResponseSize BigInt @default(0)
+
+  uniqueApiKeys Int    @default(0)
+  uniqueIps    Int     @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([organizationId, date, hour, endpoint, method])
+  @@index([organizationId, date])
+  @@map("api_usage_summaries")
+}
+
+model ApiQuota {
+  id          String   @id @default(cuid())
+
+  organizationId String
+
+  quotaType   ApiQuotaType
+
+  limit       Int
+  used        Int      @default(0)
+
+  periodStart DateTime
+  periodEnd   DateTime
+
+  alertThreshold Float @default(0.8)
+  alertSent   Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([organizationId, quotaType, periodStart])
+  @@index([organizationId])
+  @@map("api_quotas")
+}
+
+enum ApiQuotaType {
+  REQUESTS_DAILY
+  REQUESTS_MONTHLY
+  BANDWIDTH_DAILY
+  BANDWIDTH_MONTHLY
+  STORAGE
+  EXPORTS
+  IMPORTS
+}

@@ -98,6 +98,8 @@ import { multiCurrencyRouter } from './routes/multi-currency';
 import { complianceRouter } from './routes/compliance';
 import { advancedSearchRouter } from './routes/advanced-search';
 import { dataExportImportRouter } from './routes/data-export-import';
+import { webhookDeliveryRouter } from './routes/webhook-delivery';
+import { apiUsageRouter } from './routes/api-usage';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -245,6 +247,8 @@ app.use('/api/multi-currency', multiCurrencyRouter);
 app.use('/api/compliance', complianceRouter);
 app.use('/api/advanced-search', advancedSearchRouter);
 app.use('/api/data-export-import', dataExportImportRouter);
+app.use('/api/webhook-delivery', webhookDeliveryRouter);
+app.use('/api/api-usage', apiUsageRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

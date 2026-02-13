@@ -3,10 +3,89 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 89-90完了
+**Phase**: 91-92完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 91-92: Webhook配信システム強化 & API利用統計＆レート制限強化
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 91: Webhook配信システム強化**
+1. Prismaスキーマ追加
+   - WebhookEndpoint: Webhookエンドポイント（URL・シークレット・イベントタイプ・ステータス）
+   - WebhookDelivery: 配信記録（レスポンスコード・レイテンシ・リトライ情報）
+   - WebhookEvent: イベント定義（ペイロード・メタデータ）
+   - WebhookLog: ログ（リクエスト/レスポンス詳細・エラー情報）
+   - WebhookRetryPolicy: NONE, LINEAR, EXPONENTIAL, FIXED
+   - WebhookDeliveryStatus: PENDING, SENDING, SUCCESS, FAILED, CANCELLED
+
+2. Webhook配信API (`apps/api/src/routes/webhook-delivery.ts`)
+   - GET /api/webhook-delivery/stats - 配信統計
+   - GET /api/webhook-delivery/endpoints - エンドポイント一覧
+   - POST /api/webhook-delivery/endpoints - エンドポイント作成
+   - PUT /api/webhook-delivery/endpoints/:id - エンドポイント更新
+   - DELETE /api/webhook-delivery/endpoints/:id - エンドポイント削除
+   - PATCH /api/webhook-delivery/endpoints/:id/toggle - 有効/無効切り替え
+   - POST /api/webhook-delivery/endpoints/:id/test - テスト送信
+   - POST /api/webhook-delivery/endpoints/:id/rotate-secret - シークレットローテーション
+   - GET /api/webhook-delivery/deliveries - 配信一覧
+   - POST /api/webhook-delivery/deliveries/:id/retry - 再送信
+   - GET /api/webhook-delivery/events - イベント一覧
+   - POST /api/webhook-delivery/trigger - イベントトリガー
+   - GET /api/webhook-delivery/logs - ログ一覧
+
+3. Webhookページ (`apps/web/src/app/webhooks/page.tsx`)
+   - エンドポイント一覧・作成・編集・削除
+   - 有効/無効切り替え
+   - テスト送信機能
+   - シークレットローテーション
+   - 配信一覧・再送信
+   - イベントトリガー
+
+**Phase 92: API利用統計＆レート制限強化**
+1. Prismaスキーマ追加
+   - ApiKey: APIキー（名前・ハッシュ・プレフィックス・権限・有効期限）
+   - ApiKeyUsageLog: APIキー使用ログ（エンドポイント・メソッド・レスポンス）
+   - RateLimitRule: レート制限ルール（ターゲット・上限・ウィンドウ・アクション）
+   - ApiUsageSummary: 使用サマリー（期間・リクエスト数・成功/エラー率）
+   - ApiQuota: クォータ（タイプ・上限・使用量・リセット日時）
+   - RateLimitTarget: GLOBAL, ORGANIZATION, API_KEY, IP_ADDRESS, ENDPOINT, USER
+   - RateLimitAction: REJECT, DELAY, LOG_ONLY, THROTTLE
+   - ApiQuotaType: DAILY_REQUESTS, MONTHLY_REQUESTS, BANDWIDTH等
+
+2. API利用統計API (`apps/api/src/routes/api-usage.ts`)
+   - GET /api/api-usage/stats - 使用統計
+   - GET /api/api-usage/keys - APIキー一覧
+   - POST /api/api-usage/keys - APIキー作成
+   - PUT /api/api-usage/keys/:id - APIキー更新
+   - DELETE /api/api-usage/keys/:id - APIキー削除
+   - PATCH /api/api-usage/keys/:id/toggle - 有効/無効切り替え
+   - POST /api/api-usage/keys/:id/regenerate - キー再生成
+   - GET /api/api-usage/rate-limits - レート制限一覧
+   - POST /api/api-usage/rate-limits - ルール作成
+   - PUT /api/api-usage/rate-limits/:id - ルール更新
+   - DELETE /api/api-usage/rate-limits/:id - ルール削除
+   - GET /api/api-usage/usage - 使用履歴
+   - GET /api/api-usage/quotas - クォータ一覧
+   - POST /api/api-usage/check-rate-limit - レート制限チェック
+
+3. API利用統計ページ (`apps/web/src/app/api-usage/page.tsx`)
+   - 使用統計ダッシュボード（リクエスト数・エラー率・キー数）
+   - APIキー一覧・作成・削除
+   - キー再生成・有効/無効切り替え
+   - レート制限ルール管理
+   - クォータ可視化（進捗バー表示）
+   - 使用履歴（時間/日/週/月単位）
+
+4. サイドバー・モバイルナビ更新
+   - Webhookリンク追加（Webhookアイコン）
+   - API利用統計リンク追加（Keyアイコン）
+
+---
 
 ### Phase 89-90: 高度な検索・フィルタリング & データエクスポート・インポート強化
 

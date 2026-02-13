@@ -40,6 +40,8 @@ import {
   Scale,
   Search,
   ArrowUpDown,
+  Webhook,
+  Key,
 } from 'lucide-react';
 
 const navigation = [
@@ -78,6 +80,8 @@ const adminNavigation = [
   { name: 'コンプライアンス', href: '/compliance', icon: Scale },
   { name: '高度な検索', href: '/advanced-search', icon: Search },
   { name: 'データ転送', href: '/data-transfer', icon: ArrowUpDown },
+  { name: 'Webhook', href: '/webhooks', icon: Webhook },
+  { name: 'API利用統計', href: '/api-usage', icon: Key },
   { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
   { name: 'A/Bテスト', href: '/ab-tests', icon: FlaskConical },
   { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch },
