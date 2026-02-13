@@ -88,6 +88,8 @@ import { abTestsRouter } from './routes/ab-tests';
 import { suppliersRouter } from './routes/suppliers';
 import { organizationsRouter } from './routes/organizations';
 import { inventoryForecastRouter } from './routes/inventory-forecast';
+import { externalIntegrationsRouter } from './routes/external-integrations';
+import { securityManagementRouter } from './routes/security-management';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -225,6 +227,8 @@ app.use('/api/ab-tests', abTestsRouter);
 app.use('/api/suppliers', suppliersRouter);
 app.use('/api/organizations', organizationsRouter);
 app.use('/api/inventory-forecast', inventoryForecastRouter);
+app.use('/api/external-integrations', externalIntegrationsRouter);
+app.use('/api/security', securityManagementRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

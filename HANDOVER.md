@@ -3,10 +3,95 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 79-80完了
+**Phase**: 81-82完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 81-82: 外部連携強化 & セキュリティ強化
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 81: 外部連携強化**
+1. Prismaスキーマ追加
+   - ExternalIntegration: 外部連携設定（認証情報・同期設定）
+   - IntegrationSyncLog: 同期ログ
+   - IntegrationWebhookLog: Webhookログ
+   - FreeeTransaction: freee取引データ
+   - ShopifyProduct: Shopify商品連携
+   - IntegrationType: SHOPIFY, AMAZON, FREEE, MFCLOUD, YAMATO, SAGAWA, JAPAN_POST, CUSTOM_API
+   - IntegrationStatus: INACTIVE, CONNECTING, ACTIVE, ERROR, SUSPENDED
+
+2. 外部連携API (`apps/api/src/routes/external-integrations.ts`)
+   - GET /api/external-integrations/stats - 連携統計
+   - GET /api/external-integrations/types - 連携タイプ一覧
+   - GET /api/external-integrations - 連携一覧
+   - POST /api/external-integrations - 連携作成
+   - GET /api/external-integrations/:id - 連携詳細
+   - PATCH /api/external-integrations/:id - 連携更新
+   - DELETE /api/external-integrations/:id - 連携削除
+   - POST /api/external-integrations/:id/connect - 接続
+   - POST /api/external-integrations/:id/disconnect - 切断
+   - POST /api/external-integrations/:id/sync - 手動同期
+   - GET /api/external-integrations/:id/sync-logs - 同期ログ
+   - POST /api/external-integrations/:id/webhook - Webhook受信
+   - GET /api/external-integrations/freee/transactions - freee取引
+   - GET /api/external-integrations/shopify/products - Shopify商品
+
+3. 外部連携ページ (`apps/web/src/app/integrations/page.tsx`)
+   - 連携統計ダッシュボード
+   - 連携タイプ選択・作成
+   - 連携一覧（ステータス・タイプフィルター）
+   - 接続・切断・同期操作
+   - 同期ログ表示
+
+**Phase 82: セキュリティ強化**
+1. Prismaスキーマ追加
+   - TwoFactorAuth: 2FA設定（シークレット・バックアップコード）
+   - SecurityAuditLog: 監査ログ（アクション・重要度・詳細）
+   - IpWhitelist: IPホワイトリスト
+   - UserSession: セッション管理
+   - SecuritySetting: セキュリティ設定
+   - TwoFactorMethod: TOTP, SMS, EMAIL, HARDWARE_KEY
+   - SecurityAction: 20種類以上のセキュリティアクション
+
+2. セキュリティ管理API (`apps/api/src/routes/security-management.ts`)
+   - POST /api/security/2fa/setup - 2FA設定開始
+   - POST /api/security/2fa/verify - 2FA検証・有効化
+   - POST /api/security/2fa/validate - 2FAログイン検証
+   - POST /api/security/2fa/disable - 2FA無効化
+   - GET /api/security/2fa/status/:userId - 2FAステータス
+   - GET /api/security/audit-logs - 監査ログ一覧
+   - GET /api/security/audit-logs/stats - 監査ログ統計
+   - GET /api/security/ip-whitelist - IPホワイトリスト
+   - POST /api/security/ip-whitelist - IP追加
+   - DELETE /api/security/ip-whitelist/:id - IP削除
+   - POST /api/security/ip-whitelist/check - IP確認
+   - GET /api/security/sessions - セッション一覧
+   - POST /api/security/sessions/:id/revoke - セッション無効化
+   - POST /api/security/sessions/revoke-all - 全セッション無効化
+   - GET /api/security/settings - セキュリティ設定
+   - PATCH /api/security/settings - 設定更新
+   - GET /api/security/stats - セキュリティ統計
+
+3. セキュリティページ (`apps/web/src/app/security/page.tsx`)
+   - セキュリティ統計ダッシュボード
+   - 2FA設定・有効化・無効化
+   - バックアップコード管理
+   - アクティブセッション一覧・無効化
+   - IPホワイトリスト管理
+   - 監査ログ（フィルター・重要度別）
+
+4. サイドバー更新
+   - 外部連携リンク追加（管理者セクション）
+   - セキュリティリンク追加
+
+5. パッケージ更新
+   - otplib追加（TOTP生成・検証）
+
+---
 
 ### Phase 79-80: マルチテナント対応 & 在庫予測・自動発注
 
@@ -891,6 +976,20 @@
 
 ## ファイル変更一覧
 
+### Phase 81-82
+#### 新規作成
+- `apps/api/src/routes/external-integrations.ts` - 外部連携API
+- `apps/api/src/routes/security-management.ts` - セキュリティ管理API
+- `apps/web/src/app/integrations/page.tsx` - 外部連携ページ
+- `apps/web/src/app/security/page.tsx` - セキュリティページ
+
+#### 更新
+- `packages/database/prisma/schema.prisma` - ExternalIntegration/IntegrationSyncLog/IntegrationWebhookLog/FreeeTransaction/ShopifyProduct/TwoFactorAuth/SecurityAuditLog/IpWhitelist/UserSession/SecuritySettingモデル追加
+- `apps/api/src/index.ts` - external-integrations, security-managementルート登録
+- `apps/api/package.json` - otplib追加
+- `apps/web/src/components/layout/sidebar.tsx` - 外部連携・セキュリティリンク追加
+- `apps/web/src/components/layout/mobile-nav.tsx` - モバイルナビにリンク追加
+
 ### Phase 79-80
 #### 新規作成
 - `apps/api/src/routes/organizations.ts` - 組織管理API
@@ -1098,35 +1197,68 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 81-82候補
+### Phase 83-84候補
 
-1. **外部連携強化**
-   - Shopify連携
-   - Amazon連携
-   - 会計ソフト連携（freee, MFクラウド）
-   - 物流システム連携
-
-2. **カスタマーサクセス機能**
+1. **カスタマーサクセス機能**
    - 顧客セグメンテーション
    - LTV分析
    - チャーン予測
    - パーソナライズ推奨
 
-3. **高度なレポーティング**
+2. **高度なレポーティング**
    - カスタムレポートビルダー
    - ドラッグ＆ドロップ分析
    - ダッシュボード共有
    - 定期配信スケジュール
 
-4. **セキュリティ強化**
-   - 2要素認証
-   - 監査ログ強化
-   - IPホワイトリスト
-   - SSO対応
+3. **SSO/SAML対応**
+   - Google Workspace連携
+   - Microsoft Azure AD連携
+   - SAML 2.0対応
+   - OIDC対応
+
+4. **パフォーマンス最適化**
+   - 画像CDN統合
+   - データベースシャーディング
+   - APIレート制限強化
+   - キャッシュ層最適化
 
 ## 技術的注意事項
 
-1. **マルチテナント（組織管理）**
+1. **外部連携**
+   - 連携タイプ: SHOPIFY, AMAZON, FREEE, MFCLOUD, YAMATO, SAGAWA, JAPAN_POST, CUSTOM_API
+   - 認証方式: OAuth（Shopify/Amazon/freee）、APIキー（物流系）、カスタム
+   - Webhookシークレット: crypto.randomBytes(32).toString('hex')
+   - 署名検証: HMAC-SHA256
+   - 同期タイプ: FULL(全件)、INCREMENTAL(差分)、MANUAL(手動)、WEBHOOK(Webhook起因)
+   - 同期方向: IMPORT、EXPORT、BIDIRECTIONAL
+
+2. **セキュリティ（2FA）**
+   - 認証方式: TOTP（デフォルト）、SMS、EMAIL、HARDWARE_KEY
+   - OTPライブラリ: otplib
+   - バックアップコード: 10個生成、使用済みは自動削除
+   - ロックアウト: 5回失敗で30分ロック
+   - シークレット: authenticator.generateSecret()
+   - OTPAuth URL: authenticator.keyuri(userId, 'RAKUDA', secret)
+
+3. **監査ログ**
+   - アクション: LOGIN, LOGOUT, LOGIN_FAILED, PASSWORD_CHANGE, TWO_FACTOR_*, SESSION_*, API_KEY_*, DATA_*, SETTINGS_*, MEMBER_*, IP_*, RATE_LIMITED, SUSPICIOUS_ACTIVITY
+   - カテゴリ: AUTHENTICATION, AUTHORIZATION, DATA_ACCESS, CONFIGURATION, SECURITY, ORGANIZATION, API
+   - 重要度: DEBUG, INFO, WARNING, ERROR, CRITICAL
+   - 保持期間: 無期限（手動削除のみ）
+
+4. **IPホワイトリスト**
+   - タイプ: SINGLE(単一IP)、RANGE(CIDR)
+   - スコープ: GLOBAL、ORGANIZATION、USER
+   - 有効期限: 任意設定可能
+   - 使用統計: useCount, lastUsedAt
+
+5. **セッション管理**
+   - デバイス情報: deviceName, deviceType, browser, os
+   - 位置情報: ipAddress, country, city
+   - 無効化: 個別revoke、全セッションrevoke-all
+
+6. **マルチテナント（組織管理）**
    - プラン: FREE(3ユーザー/100商品), STARTER(10/1000), PROFESSIONAL(50/10000), ENTERPRISE(無制限)
    - ロール: OWNER(全権限), ADMIN(設定変更可), MEMBER(基本操作), VIEWER(読み取り専用)
    - スラグ: URL用（自動生成、重複時はタイムスタンプ付加）

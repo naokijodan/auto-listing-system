@@ -7501,3 +7501,585 @@ enum AutoReorderStatus {
   ORDERED     // 発注済み
   CANCELLED   // キャンセル
 }
+
+// ========================================
+// Phase 81: 外部連携
+// ========================================
+
+model ExternalIntegration {
+  id          String   @id @default(cuid())
+
+  // 連携タイプ
+  type        IntegrationType
+  name        String   // 表示名
+  description String?
+
+  // 認証情報（暗号化して保存）
+  credentials Json     @default("{}")
+
+  // OAuth情報
+  accessToken    String?  @db.Text
+  refreshToken   String?  @db.Text
+  tokenExpiresAt DateTime?
+
+  // 接続設定
+  apiEndpoint    String?
+  webhookUrl     String?
+  webhookSecret  String?
+
+  // 同期設定
+  syncEnabled    Boolean  @default(true)
+  syncInterval   Int      @default(60) // 分
+  lastSyncAt     DateTime?
+  lastSyncStatus SyncStatus?
+  lastSyncError  String?  @db.Text
+
+  // マッピング設定
+  fieldMappings  Json     @default("{}") // フィールドマッピング
+  categoryMappings Json   @default("{}") // カテゴリマッピング
+
+  // ステータス
+  status      IntegrationStatus @default(INACTIVE)
+  isActive    Boolean  @default(true)
+
+  // 統計
+  totalSynced     Int   @default(0)
+  totalErrors     Int   @default(0)
+  successRate     Float @default(0)
+
+  // 組織（マルチテナント対応）
+  organizationId  String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  syncLogs    IntegrationSyncLog[]
+  webhookLogs IntegrationWebhookLog[]
+
+  @@index([type, status])
+  @@index([organizationId])
+  @@map("external_integrations")
+}
+
+enum IntegrationType {
+  SHOPIFY       // Shopify
+  AMAZON        // Amazon
+  FREEE         // freee会計
+  MFCLOUD       // MFクラウド
+  YAMATO        // ヤマト運輸
+  SAGAWA        // 佐川急便
+  JAPAN_POST    // 日本郵便
+  CUSTOM_API    // カスタムAPI
+}
+
+enum IntegrationStatus {
+  INACTIVE      // 未接続
+  CONNECTING    // 接続中
+  ACTIVE        // 接続済み
+  ERROR         // エラー
+  SUSPENDED     // 一時停止
+}
+
+enum SyncStatus {
+  SUCCESS       // 成功
+  PARTIAL       // 部分成功
+  FAILED        // 失敗
+  RUNNING       // 実行中
+}
+
+model IntegrationSyncLog {
+  id            String   @id @default(cuid())
+
+  // 連携参照
+  integrationId String
+  integration   ExternalIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  // 同期タイプ
+  syncType      SyncType
+  direction     SyncDirection
+
+  // 結果
+  status        SyncStatus
+  recordsTotal  Int      @default(0)
+  recordsSuccess Int     @default(0)
+  recordsFailed Int      @default(0)
+
+  // 詳細
+  details       Json     @default("{}")
+  errors        Json     @default("[]")
+
+  // 時間
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  duration      Int?     // 秒
+
+  @@index([integrationId, startedAt])
+  @@index([status])
+  @@map("integration_sync_logs")
+}
+
+enum SyncType {
+  FULL          // 全件同期
+  INCREMENTAL   // 差分同期
+  MANUAL        // 手動同期
+  WEBHOOK       // Webhook起因
+}
+
+enum SyncDirection {
+  IMPORT        // インポート（外部→RAKUDA）
+  EXPORT        // エクスポート（RAKUDA→外部）
+  BIDIRECTIONAL // 双方向
+}
+
+model IntegrationWebhookLog {
+  id            String   @id @default(cuid())
+
+  // 連携参照
+  integrationId String
+  integration   ExternalIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  // リクエスト情報
+  eventType     String
+  payload       Json
+  headers       Json     @default("{}")
+
+  // 処理結果
+  status        WebhookStatus @default(PENDING)
+  responseCode  Int?
+  responseBody  String?  @db.Text
+  errorMessage  String?  @db.Text
+
+  // 処理時間
+  receivedAt    DateTime @default(now())
+  processedAt   DateTime?
+  retryCount    Int      @default(0)
+
+  @@index([integrationId, receivedAt])
+  @@index([status])
+  @@map("integration_webhook_logs")
+}
+
+enum WebhookStatus {
+  PENDING       // 未処理
+  PROCESSING    // 処理中
+  SUCCESS       // 成功
+  FAILED        // 失敗
+  IGNORED       // 無視
+}
+
+// freee連携用モデル
+model FreeeTransaction {
+  id            String   @id @default(cuid())
+
+  // 連携参照
+  integrationId String
+
+  // 取引情報
+  freeeTransactionId String?  @unique // freee側のID
+  orderId       String?      // RAKUDA側の注文ID
+  transactionType FreeeTransactionType
+
+  // 金額
+  amount        Int          // 取引金額
+  taxAmount     Int          @default(0) // 消費税額
+  currency      String       @default("JPY")
+
+  // 勘定科目
+  accountItemId String?      // 勘定科目ID（freee）
+  accountItemName String?    // 勘定科目名
+
+  // 日付
+  issueDate     DateTime
+  dueDate       DateTime?
+
+  // ステータス
+  status        FreeeTransactionStatus @default(PENDING)
+  syncedAt      DateTime?
+  errorMessage  String?
+
+  // タイムスタンプ
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([integrationId])
+  @@index([orderId])
+  @@index([status])
+  @@map("freee_transactions")
+}
+
+enum FreeeTransactionType {
+  SALES         // 売上
+  PURCHASE      // 仕入
+  EXPENSE       // 経費
+  REFUND        // 返金
+}
+
+enum FreeeTransactionStatus {
+  PENDING       // 同期待ち
+  SYNCED        // 同期済み
+  FAILED        // 同期失敗
+  SKIPPED       // スキップ
+}
+
+// Shopify連携用モデル
+model ShopifyProduct {
+  id            String   @id @default(cuid())
+
+  // 連携参照
+  integrationId String
+
+  // Shopify情報
+  shopifyProductId  String   @unique
+  shopifyVariantId  String?
+  handle        String?
+
+  // RAKUDA情報
+  productId     String?      // RAKUDA側の商品ID
+  listingId     String?      // RAKUDA側の出品ID
+
+  // 同期設定
+  syncEnabled   Boolean  @default(true)
+  syncPrice     Boolean  @default(true)
+  syncInventory Boolean  @default(true)
+
+  // ステータス
+  status        ShopifyProductStatus @default(PENDING)
+  lastSyncAt    DateTime?
+  lastSyncError String?
+
+  // タイムスタンプ
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([integrationId])
+  @@index([productId])
+  @@index([shopifyProductId])
+  @@map("shopify_products")
+}
+
+enum ShopifyProductStatus {
+  PENDING       // 同期待ち
+  ACTIVE        // 同期中
+  PAUSED        // 一時停止
+  ERROR         // エラー
+  DELETED       // 削除済み
+}
+
+// ========================================
+// Phase 82: セキュリティ強化
+// ========================================
+
+model TwoFactorAuth {
+  id          String   @id @default(cuid())
+
+  // ユーザー参照
+  userId      String   @unique
+
+  // 2FA設定
+  method      TwoFactorMethod @default(TOTP)
+  secret      String          // 暗号化して保存
+
+  // バックアップコード
+  backupCodes String[]        // 暗号化して保存
+  usedBackupCodes String[]    @default([])
+
+  // 検証済み
+  isVerified  Boolean  @default(false)
+  verifiedAt  DateTime?
+
+  // ステータス
+  isEnabled   Boolean  @default(false)
+  enabledAt   DateTime?
+  disabledAt  DateTime?
+
+  // 統計
+  lastUsedAt  DateTime?
+  failedAttempts Int   @default(0)
+  lockedUntil DateTime?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("two_factor_auth")
+}
+
+enum TwoFactorMethod {
+  TOTP          // Time-based OTP (Google Authenticator等)
+  SMS           // SMS認証
+  EMAIL         // メール認証
+  HARDWARE_KEY  // ハードウェアキー（YubiKey等）
+}
+
+model SecurityAuditLog {
+  id          String   @id @default(cuid())
+
+  // アクション情報
+  action      SecurityAction
+  category    SecurityCategory
+  severity    AuditSeverity @default(INFO)
+
+  // ユーザー情報
+  userId      String?
+  userEmail   String?
+  userRole    String?
+
+  // リソース情報
+  resourceType String?
+  resourceId  String?
+  resourceName String?
+
+  // リクエスト情報
+  ipAddress   String?
+  userAgent   String?
+  requestMethod String?
+  requestPath String?
+  requestBody Json?
+
+  // 結果
+  status      AuditStatus @default(SUCCESS)
+  errorMessage String?
+
+  // 詳細
+  details     Json     @default("{}")
+  changes     Json?    // 変更前後の値
+
+  // 地理情報
+  country     String?
+  city        String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+
+  // 組織（マルチテナント対応）
+  organizationId String?
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([category, createdAt])
+  @@index([severity, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("security_audit_logs")
+}
+
+enum SecurityAction {
+  // 認証関連
+  LOGIN
+  LOGOUT
+  LOGIN_FAILED
+  PASSWORD_CHANGE
+  PASSWORD_RESET
+  TWO_FACTOR_ENABLE
+  TWO_FACTOR_DISABLE
+  TWO_FACTOR_VERIFY
+
+  // セッション関連
+  SESSION_CREATE
+  SESSION_REVOKE
+  SESSION_REVOKE_ALL
+
+  // API関連
+  API_KEY_CREATE
+  API_KEY_REVOKE
+  API_KEY_USE
+
+  // データアクセス
+  DATA_EXPORT
+  DATA_DELETE
+  BULK_OPERATION
+
+  // 設定変更
+  SETTINGS_CHANGE
+  PERMISSION_CHANGE
+  ROLE_CHANGE
+
+  // 組織関連
+  MEMBER_INVITE
+  MEMBER_REMOVE
+  MEMBER_ROLE_CHANGE
+
+  // セキュリティ
+  IP_BLOCKED
+  RATE_LIMITED
+  SUSPICIOUS_ACTIVITY
+}
+
+enum SecurityCategory {
+  AUTHENTICATION
+  AUTHORIZATION
+  DATA_ACCESS
+  CONFIGURATION
+  SECURITY
+  ORGANIZATION
+  API
+}
+
+enum AuditSeverity {
+  DEBUG
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+  BLOCKED
+  PENDING
+}
+
+model IpWhitelist {
+  id          String   @id @default(cuid())
+
+  // IP情報
+  ipAddress   String   // IPアドレスまたはCIDR
+  ipType      IpType   @default(SINGLE)
+
+  // 説明
+  name        String?
+  description String?
+
+  // 適用範囲
+  scope       IpScope  @default(GLOBAL)
+  userId      String?  // ユーザー固有の場合
+  organizationId String? // 組織固有の場合
+
+  // 有効期限
+  expiresAt   DateTime?
+
+  // ステータス
+  isActive    Boolean  @default(true)
+
+  // 統計
+  lastUsedAt  DateTime?
+  useCount    Int      @default(0)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  @@unique([ipAddress, scope, userId, organizationId])
+  @@index([isActive])
+  @@index([scope])
+  @@map("ip_whitelist")
+}
+
+enum IpType {
+  SINGLE        // 単一IP
+  RANGE         // IP範囲（CIDR）
+}
+
+enum IpScope {
+  GLOBAL        // グローバル（全ユーザー）
+  ORGANIZATION  // 組織
+  USER          // ユーザー
+}
+
+model UserSession {
+  id          String   @id @default(cuid())
+
+  // ユーザー参照
+  userId      String
+
+  // セッション情報
+  sessionToken String   @unique
+  refreshToken String?  @unique
+
+  // デバイス情報
+  deviceName  String?
+  deviceType  DeviceType?
+  browser     String?
+  os          String?
+
+  // ネットワーク情報
+  ipAddress   String?
+  country     String?
+  city        String?
+
+  // 有効期限
+  expiresAt   DateTime
+  refreshExpiresAt DateTime?
+
+  // ステータス
+  isActive    Boolean  @default(true)
+  revokedAt   DateTime?
+  revokedReason String?
+
+  // アクティビティ
+  lastActivityAt DateTime @default(now())
+  lastActivityPath String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, isActive])
+  @@index([expiresAt])
+  @@index([sessionToken])
+  @@map("user_sessions")
+}
+
+enum DeviceType {
+  DESKTOP
+  MOBILE
+  TABLET
+  API
+  UNKNOWN
+}
+
+model SecuritySetting {
+  id          String   @id @default(cuid())
+
+  // スコープ
+  scope       SecuritySettingScope @default(GLOBAL)
+  organizationId String?
+  userId      String?
+
+  // パスワードポリシー
+  passwordMinLength    Int     @default(8)
+  passwordRequireUpper Boolean @default(true)
+  passwordRequireLower Boolean @default(true)
+  passwordRequireNumber Boolean @default(true)
+  passwordRequireSpecial Boolean @default(false)
+  passwordExpiryDays   Int?    // null = 無期限
+
+  // セッションポリシー
+  sessionTimeoutMinutes Int    @default(60)
+  maxConcurrentSessions Int    @default(5)
+  enforceIpBinding     Boolean @default(false)
+
+  // 2FAポリシー
+  require2FA           Boolean @default(false)
+  allowed2FAMethods    TwoFactorMethod[] @default([TOTP])
+
+  // ログインポリシー
+  maxLoginAttempts     Int     @default(5)
+  lockoutDurationMinutes Int   @default(30)
+
+  // IPポリシー
+  enforceIpWhitelist   Boolean @default(false)
+  allowedCountries     String[] @default([])
+  blockedCountries     String[] @default([])
+
+  // 通知
+  notifyOnNewDevice    Boolean @default(true)
+  notifyOnSuspiciousActivity Boolean @default(true)
+  notifyOnPasswordChange Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([scope, organizationId, userId])
+  @@map("security_settings")
+}
+
+enum SecuritySettingScope {
+  GLOBAL        // システム全体
+  ORGANIZATION  // 組織
+  USER          // ユーザー
+}

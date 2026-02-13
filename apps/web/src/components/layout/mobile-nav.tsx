@@ -56,9 +56,11 @@ const menuItems = [
     { name: 'ワークフロー', href: '/workflow-rules' },
     { name: 'チャットボット', href: '/chatbot' },
     { name: 'A/Bテスト', href: '/ab-tests' },
+    { name: '外部連携', href: '/integrations' },
   ]},
   { category: '設定', items: [
     { name: '組織管理', href: '/organizations' },
+    { name: 'セキュリティ', href: '/security' },
     { name: '通知', href: '/notifications' },
     { name: '通知設定', href: '/notification-settings' },
     { name: '設定', href: '/settings' },

@@ -30,6 +30,8 @@ import {
   Building2,
   Calculator,
   Users,
+  Link2,
+  Lock,
 } from 'lucide-react';
 
 const navigation = [
@@ -58,6 +60,8 @@ const navigation = [
 
 const adminNavigation = [
   { name: '組織管理', href: '/organizations', icon: Users },
+  { name: '外部連携', href: '/integrations', icon: Link2 },
+  { name: 'セキュリティ', href: '/security', icon: Lock },
   { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
   { name: 'A/Bテスト', href: '/ab-tests', icon: FlaskConical },
   { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch },
