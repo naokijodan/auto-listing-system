@@ -144,6 +144,54 @@ export const mockPrisma = {
     upsert: vi.fn(),
     delete: vi.fn(),
   },
+  // Phase 97: Automation Rules
+  automationRule: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  automationExecution: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    count: vi.fn(),
+    aggregate: vi.fn(),
+  },
+  safetySettings: {
+    findFirst: vi.fn(),
+    upsert: vi.fn(),
+  },
+  // Phase 98: Profit Calculation
+  productCost: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+    aggregate: vi.fn(),
+  },
+  profitCalculation: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    count: vi.fn(),
+    aggregate: vi.fn(),
+  },
+  feeStructure: {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    upsert: vi.fn(),
+  },
+  profitTarget: {
+    findFirst: vi.fn(),
+    upsert: vi.fn(),
+  },
   $transaction: vi.fn().mockImplementation((operations: any[]) =>
     Promise.all(operations.map((op: any) => op))
   ),
