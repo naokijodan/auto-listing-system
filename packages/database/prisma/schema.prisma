@@ -8083,3 +8083,380 @@ enum SecuritySettingScope {
   ORGANIZATION  // 組織
   USER          // ユーザー
 }
+
+// ========================================
+// Phase 83: カスタマーサクセス
+// ========================================
+
+model Customer {
+  id          String   @id @default(cuid())
+
+  // 基本情報
+  email       String   @unique
+  name        String?
+  phone       String?
+  country     String?
+  language    String   @default("en")
+
+  // マーケットプレイス情報
+  marketplace String?
+  externalId  String?
+
+  // セグメント
+  segment     CustomerSegment @default(NEW)
+  tier        CustomerTier    @default(STANDARD)
+
+  // LTV関連
+  totalOrders     Int     @default(0)
+  totalSpent      Float   @default(0)
+  averageOrderValue Float @default(0)
+  lifetimeValue   Float   @default(0)
+
+  // エンゲージメント
+  firstOrderAt    DateTime?
+  lastOrderAt     DateTime?
+  lastActiveAt    DateTime?
+  daysSinceLastOrder Int?
+
+  // チャーン予測
+  churnRisk       ChurnRisk @default(LOW)
+  churnScore      Float     @default(0)
+  predictedChurnAt DateTime?
+
+  // 購買行動
+  preferredCategories String[] @default([])
+  preferredBrands    String[] @default([])
+  purchaseFrequency  Float    @default(0)
+
+  // レコメンド
+  recommendedProducts String[] @default([])
+  lastRecommendedAt  DateTime?
+
+  // タグ・メモ
+  tags        String[] @default([])
+  notes       String?  @db.Text
+
+  // ステータス
+  status      CustomerStatus @default(ACTIVE)
+  organizationId String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  analytics   CustomerAnalytics?
+  activities  CustomerActivity[]
+
+  @@index([segment])
+  @@index([tier])
+  @@index([churnRisk])
+  @@index([organizationId])
+  @@map("customers")
+}
+
+enum CustomerSegment {
+  NEW
+  ACTIVE
+  AT_RISK
+  DORMANT
+  CHURNED
+  VIP
+  LOYAL
+}
+
+enum CustomerTier {
+  STANDARD
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum ChurnRisk {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+model CustomerAnalytics {
+  id          String   @id @default(cuid())
+
+  customerId  String   @unique
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // RFM分析
+  recencyScore    Int   @default(0)
+  frequencyScore  Int   @default(0)
+  monetaryScore   Int   @default(0)
+  rfmScore        Int   @default(0)
+  rfmSegment      String?
+
+  // コホート分析
+  cohortMonth     String?
+  cohortWeek      String?
+
+  // 購買パターン
+  avgDaysBetweenOrders Float @default(0)
+  orderConsistency     Float @default(0)
+  seasonalPattern      Json?
+
+  // 価値予測
+  predictedNextOrderAt DateTime?
+  predictedNextOrderValue Float?
+  predicted12MonthValue Float @default(0)
+
+  engagementScore Float @default(0)
+  satisfactionScore Float?
+
+  lastAnalyzedAt DateTime @default(now())
+
+  @@map("customer_analytics")
+}
+
+model CustomerActivity {
+  id          String   @id @default(cuid())
+
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  type        CustomerActivityType
+  description String?
+  orderId     String?
+  listingId   String?
+  productId   String?
+  amount      Float?
+  metadata    Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([type])
+  @@map("customer_activities")
+}
+
+enum CustomerActivityType {
+  ORDER_PLACED
+  ORDER_CANCELLED
+  REFUND_REQUESTED
+  REVIEW_SUBMITTED
+  MESSAGE_SENT
+  PRODUCT_VIEWED
+  WISHLIST_ADDED
+  REPEAT_PURCHASE
+}
+
+// ========================================
+// Phase 84: 高度なレポーティング
+// ========================================
+
+model CustomReport {
+  id          String   @id @default(cuid())
+
+  name        String
+  description String?
+  slug        String   @unique
+
+  type        CustomReportType
+  dataSource  ReportDataSource
+  query       Json
+
+  columns     Json
+  filters     Json     @default("[]")
+  sorting     Json?
+  groupBy     String[] @default([])
+  aggregations Json    @default("[]")
+
+  chartType   ChartType?
+  chartConfig Json     @default("{}")
+
+  visibility  ReportVisibility @default(PRIVATE)
+  createdBy   String
+  sharedWith  String[] @default([])
+  sharedWithOrgs String[] @default([])
+
+  scheduleEnabled Boolean @default(false)
+  scheduleCron   String?
+  scheduleRecipients String[] @default([])
+  scheduleFormat ReportExportFormat @default(PDF)
+
+  viewCount   Int      @default(0)
+  lastViewedAt DateTime?
+  lastGeneratedAt DateTime?
+  isFavorite  Boolean  @default(false)
+  organizationId String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  executions  ReportExecution[]
+
+  @@index([createdBy])
+  @@index([visibility])
+  @@index([organizationId])
+  @@map("custom_reports")
+}
+
+enum CustomReportType {
+  TABLE
+  CHART
+  PIVOT
+  DASHBOARD
+  KPI
+}
+
+enum ReportDataSource {
+  ORDERS
+  PRODUCTS
+  LISTINGS
+  CUSTOMERS
+  INVENTORY
+  SALES
+  SHIPMENTS
+  CUSTOM_SQL
+}
+
+enum ChartType {
+  LINE
+  BAR
+  PIE
+  DOUGHNUT
+  AREA
+  SCATTER
+  HEATMAP
+  FUNNEL
+  GAUGE
+  TREEMAP
+}
+
+enum ReportVisibility {
+  PRIVATE
+  TEAM
+  ORGANIZATION
+  PUBLIC
+}
+
+enum ReportExportFormat {
+  PDF
+  EXCEL
+  CSV
+  JSON
+  PNG
+}
+
+model ReportExecution {
+  id          String   @id @default(cuid())
+
+  reportId    String
+  report      CustomReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  executedBy  String?
+  executionType ReportExecutionType
+
+  parameters  Json     @default("{}")
+  dateRange   Json?
+
+  status      ReportExecutionStatus @default(PENDING)
+  resultData  Json?
+  resultUrl   String?
+  rowCount    Int?
+  errorMessage String?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  durationMs  Int?
+
+  createdAt   DateTime @default(now())
+
+  @@index([reportId, createdAt])
+  @@index([status])
+  @@map("report_executions")
+}
+
+enum ReportExecutionType {
+  MANUAL
+  SCHEDULED
+  API
+}
+
+enum ReportExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model SharedDashboard {
+  id          String   @id @default(cuid())
+
+  name        String
+  description String?
+  slug        String   @unique
+
+  layout      Json
+  widgets     Json     @default("[]")
+
+  globalFilters Json   @default("[]")
+  defaultDateRange String @default("last_30_days")
+
+  autoRefresh     Boolean @default(true)
+  refreshInterval Int     @default(300)
+
+  visibility  ReportVisibility @default(PRIVATE)
+  createdBy   String
+  sharedWith  String[] @default([])
+  sharedWithOrgs String[] @default([])
+
+  embedEnabled Boolean @default(false)
+  embedToken  String?  @unique
+  embedDomains String[] @default([])
+
+  viewCount   Int      @default(0)
+  lastViewedAt DateTime?
+  organizationId String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([createdBy])
+  @@index([visibility])
+  @@index([organizationId])
+  @@map("shared_dashboards")
+}
+
+model ReportTemplate {
+  id          String   @id @default(cuid())
+
+  name        String
+  description String?
+  category    String?
+  icon        String?
+
+  type        CustomReportType
+  dataSource  ReportDataSource
+  defaultQuery Json
+  defaultColumns Json
+  defaultFilters Json @default("[]")
+  defaultChartConfig Json @default("{}")
+
+  variables   Json     @default("[]")
+  previewImage String?
+
+  useCount    Int      @default(0)
+  rating      Float?
+  ratingCount Int      @default(0)
+  isSystem    Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([isSystem])
+  @@map("report_templates")
+}

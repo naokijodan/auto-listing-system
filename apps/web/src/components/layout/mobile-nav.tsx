@@ -49,8 +49,10 @@ const menuItems = [
   ]},
   { category: '分析・レポート', items: [
     { name: 'レポート', href: '/reports' },
+    { name: 'カスタムレポート', href: '/custom-reports' },
     { name: '売上予測', href: '/sales-forecast' },
     { name: '分析', href: '/analytics' },
+    { name: 'カスタマーサクセス', href: '/customer-success' },
   ]},
   { category: '自動化', items: [
     { name: 'ワークフロー', href: '/workflow-rules' },

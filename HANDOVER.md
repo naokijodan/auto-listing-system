@@ -3,10 +3,93 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 81-82完了
+**Phase**: 83-84完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 83-84: カスタマーサクセス機能 & 高度なレポーティング
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 83: カスタマーサクセス機能**
+1. Prismaスキーマ追加
+   - Customer: 顧客マスタ（連絡先・統計・セグメント・ティア・チャーンリスク）
+   - CustomerAnalytics: 顧客分析（RFMスコア・LTV・AOV）
+   - CustomerActivity: 顧客アクティビティログ（注文・閲覧・問い合わせ等）
+   - CustomerSegment: NEW, ACTIVE, AT_RISK, DORMANT, CHURNED, VIP, LOYAL
+   - CustomerTier: STANDARD, SILVER, GOLD, PLATINUM, DIAMOND
+   - ChurnRisk: LOW, MEDIUM, HIGH, CRITICAL
+   - ActivityType: ORDER, VIEW, INQUIRY, REVIEW, RETURN, SUPPORT, LOGIN
+
+2. カスタマーサクセスAPI (`apps/api/src/routes/customer-success.ts`)
+   - GET /api/customer-success/stats - 顧客統計
+   - GET /api/customer-success/segments - セグメント別顧客数
+   - GET /api/customer-success/customers - 顧客一覧
+   - GET /api/customer-success/customers/:id - 顧客詳細
+   - POST /api/customer-success/customers/:id/analyze - RFM分析実行
+   - GET /api/customer-success/at-risk - 離脱リスク顧客一覧
+   - POST /api/customer-success/customers/:id/retention-action - リテンション施策実行
+   - GET /api/customer-success/trends - 顧客トレンド
+
+3. RFM分析アルゴリズム
+   - Recency: 最終注文からの日数でスコアリング（1-5）
+   - Frequency: 注文回数でスコアリング（1-5）
+   - Monetary: 総購入額でスコアリング（1-5）
+   - セグメント自動判定: RFMスコア組み合わせで決定
+   - ティア判定: 総購入額に基づく（$5000以上=DIAMOND等）
+
+4. チャーン予測
+   - 最終注文日数、注文回数、平均注文間隔から計算
+   - リスクスコア: 0-100
+   - リスクレベル: LOW(<25), MEDIUM(25-50), HIGH(50-75), CRITICAL(75+)
+
+5. カスタマーサクセスページ (`apps/web/src/app/customer-success/page.tsx`)
+   - 顧客統計ダッシュボード（総顧客数・新規・離脱リスク・VIP）
+   - セグメント分布表示
+   - 顧客一覧（検索・セグメント・ティアフィルター）
+   - 離脱リスク顧客タブ（RFMスコア・リスクレベル表示）
+   - RFM分析実行機能
+
+**Phase 84: 高度なレポーティング**
+1. Prismaスキーマ追加
+   - CustomReport: カスタムレポート定義（データソース・フィルター・列・集計・チャート）
+   - ReportExecution: レポート実行履歴（パラメータ・結果・所要時間）
+   - SharedDashboard: 共有ダッシュボード（レポート配置・権限）
+   - ReportTemplate: レポートテンプレート（プリセット設定）
+   - ReportDataSource: SALES, ORDERS, PRODUCTS, CUSTOMERS, INVENTORY, LISTINGS, ANALYTICS
+   - ReportChartType: TABLE, LINE, BAR, PIE, AREA, SCATTER, HEATMAP
+   - SharePermission: VIEW, EDIT, ADMIN
+
+2. カスタムレポートAPI (`apps/api/src/routes/custom-reports.ts`)
+   - GET /api/custom-reports/stats - レポート統計
+   - GET /api/custom-reports/types - データソース・チャートタイプ一覧
+   - GET /api/custom-reports - レポート一覧
+   - POST /api/custom-reports - レポート作成
+   - GET /api/custom-reports/:id - レポート詳細
+   - PATCH /api/custom-reports/:id - レポート更新
+   - DELETE /api/custom-reports/:id - レポート削除
+   - POST /api/custom-reports/:id/execute - レポート実行
+   - POST /api/custom-reports/:id/share - 共有設定
+   - GET /api/custom-reports/dashboards - ダッシュボード一覧
+   - POST /api/custom-reports/dashboards - ダッシュボード作成
+   - GET /api/custom-reports/templates - テンプレート一覧
+   - POST /api/custom-reports/templates/:id/use - テンプレート使用
+
+3. カスタムレポートページ (`apps/web/src/app/custom-reports/page.tsx`)
+   - レポート統計ダッシュボード
+   - レポート一覧タブ（作成・編集・削除・実行）
+   - ダッシュボードタブ（共有ダッシュボード管理）
+   - テンプレートタブ（プリセットテンプレート使用）
+   - レポート作成ダイアログ（データソース・列・フィルター・チャート選択）
+
+4. サイドバー・モバイルナビ更新
+   - カスタマーサクセスリンク追加（HeartHandshakeアイコン）
+   - カスタムレポートリンク追加（FileBarChartアイコン）
+
+---
 
 ### Phase 81-82: 外部連携強化 & セキュリティ強化
 
@@ -976,6 +1059,19 @@
 
 ## ファイル変更一覧
 
+### Phase 83-84
+#### 新規作成
+- `apps/api/src/routes/customer-success.ts` - カスタマーサクセスAPI
+- `apps/api/src/routes/custom-reports.ts` - カスタムレポートAPI
+- `apps/web/src/app/customer-success/page.tsx` - カスタマーサクセスページ
+- `apps/web/src/app/custom-reports/page.tsx` - カスタムレポートページ
+
+#### 更新
+- `packages/database/prisma/schema.prisma` - Customer/CustomerAnalytics/CustomerActivity/CustomReport/ReportExecution/SharedDashboard/ReportTemplateモデル追加
+- `apps/api/src/index.ts` - customer-success, custom-reportsルート登録
+- `apps/web/src/components/layout/sidebar.tsx` - カスタマーサクセス・カスタムレポートリンク追加
+- `apps/web/src/components/layout/mobile-nav.tsx` - モバイルナビにリンク追加
+
 ### Phase 81-82
 #### 新規作成
 - `apps/api/src/routes/external-integrations.ts` - 外部連携API
@@ -1197,21 +1293,9 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 83-84候補
+### Phase 85-86候補
 
-1. **カスタマーサクセス機能**
-   - 顧客セグメンテーション
-   - LTV分析
-   - チャーン予測
-   - パーソナライズ推奨
-
-2. **高度なレポーティング**
-   - カスタムレポートビルダー
-   - ドラッグ＆ドロップ分析
-   - ダッシュボード共有
-   - 定期配信スケジュール
-
-3. **SSO/SAML対応**
+1. **SSO/SAML対応**
    - Google Workspace連携
    - Microsoft Azure AD連携
    - SAML 2.0対応
@@ -1225,7 +1309,24 @@
 
 ## 技術的注意事項
 
-1. **外部連携**
+1. **カスタマーサクセス**
+   - セグメント: NEW(30日以内初回), ACTIVE(30日以内注文), AT_RISK(60日超), DORMANT(90日超), CHURNED(180日超), VIP(上位10%), LOYAL(5回以上注文)
+   - ティア: STANDARD(デフォルト), SILVER($500+), GOLD($1000+), PLATINUM($2500+), DIAMOND($5000+)
+   - RFMスコア: 各1-5の3桁コード（例: 555=最優良顧客）
+   - Recencyスコア: 7日以内=5, 30日以内=4, 60日以内=3, 90日以内=2, それ以外=1
+   - Frequencyスコア: 10回以上=5, 5回以上=4, 3回以上=3, 2回以上=2, 1回=1
+   - Monetaryスコア: $1000以上=5, $500以上=4, $200以上=3, $50以上=2, それ以外=1
+   - チャーンリスク計算: 日数スコア(40%) + 頻度スコア(30%) + 間隔スコア(30%)
+
+2. **カスタムレポート**
+   - データソース: SALES, ORDERS, PRODUCTS, CUSTOMERS, INVENTORY, LISTINGS, ANALYTICS
+   - チャートタイプ: TABLE, LINE, BAR, PIE, AREA, SCATTER, HEATMAP
+   - 共有権限: VIEW(閲覧), EDIT(編集), ADMIN(管理)
+   - 埋め込み: embedEnabled + embedTokenで外部埋め込み可能
+   - テンプレート: プリセットのレポート設定を保存・再利用
+   - 実行履歴: パラメータ・結果・所要時間を記録
+
+3. **外部連携**
    - 連携タイプ: SHOPIFY, AMAZON, FREEE, MFCLOUD, YAMATO, SAGAWA, JAPAN_POST, CUSTOM_API
    - 認証方式: OAuth（Shopify/Amazon/freee）、APIキー（物流系）、カスタム
    - Webhookシークレット: crypto.randomBytes(32).toString('hex')

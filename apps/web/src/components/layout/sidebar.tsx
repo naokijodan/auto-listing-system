@@ -32,6 +32,8 @@ import {
   Users,
   Link2,
   Lock,
+  HeartHandshake,
+  FileBarChart,
 } from 'lucide-react';
 
 const navigation = [
@@ -53,6 +55,8 @@ const navigation = [
   { name: 'レポート生成', href: '/report-generator', icon: FileText },
   { name: '売上予測', href: '/sales-forecast', icon: TrendingUp },
   { name: '分析', href: '/analytics', icon: LineChart },
+  { name: 'カスタマーサクセス', href: '/customer-success', icon: HeartHandshake },
+  { name: 'カスタムレポート', href: '/custom-reports', icon: FileBarChart },
   { name: '通知', href: '/notifications', icon: Bell },
   { name: '通知設定', href: '/notification-settings', icon: Bell },
   { name: '設定', href: '/settings', icon: Settings },
