@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useProducts, useExchangeRate } from '@/lib/hooks';
-import { Product, productApi } from '@/lib/api';
+import { Product, productApi, postApi } from '@/lib/api';
 import { addToast } from '@/components/ui/toast';
 import {
   Search,
@@ -26,6 +26,7 @@ import {
   Package,
   DollarSign,
   FileText,
+  ShoppingBag,
 } from 'lucide-react';
 
 const ROW_HEIGHT = 52; // Height of each row in pixels
@@ -265,6 +266,89 @@ export default function ProductsPage() {
         type: 'error',
         message: '出品登録に失敗しました',
       });
+    }
+  }, [selectedIds, mutate]);
+
+  // eBay出品作成（単一）
+  const [isCreatingEbayListing, setIsCreatingEbayListing] = useState(false);
+  const handleCreateEbayListing = useCallback(async (productId: string) => {
+    setIsCreatingEbayListing(true);
+    try {
+      const response = await postApi('/api/ebay-listings/listings', {
+        productId,
+      }) as { id: string };
+
+      addToast({
+        type: 'success',
+        message: 'eBay出品（下書き）を作成しました',
+      });
+      mutate();
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      if (err.message?.includes('already exists')) {
+        addToast({
+          type: 'error',
+          message: 'この商品は既にeBay出品が存在します',
+        });
+      } else {
+        addToast({
+          type: 'error',
+          message: 'eBay出品作成に失敗しました',
+        });
+      }
+    } finally {
+      setIsCreatingEbayListing(false);
+    }
+  }, [mutate]);
+
+  // eBay出品作成（一括）
+  const [isCreatingEbayListings, setIsCreatingEbayListings] = useState(false);
+  const handleBulkCreateEbayListings = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    setIsCreatingEbayListings(true);
+    let successCount = 0;
+    let skipCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const productId of Array.from(selectedIds)) {
+        try {
+          await postApi('/api/ebay-listings/listings', { productId });
+          successCount++;
+        } catch (error: unknown) {
+          const err = error as { message?: string };
+          if (err.message?.includes('already exists')) {
+            skipCount++;
+          } else {
+            errorCount++;
+          }
+        }
+      }
+
+      setSelectedIds(new Set());
+      mutate();
+
+      if (successCount > 0) {
+        addToast({
+          type: 'success',
+          message: `${successCount}件のeBay出品（下書き）を作成しました${skipCount > 0 ? `（${skipCount}件スキップ）` : ''}`,
+        });
+      } else if (skipCount > 0) {
+        addToast({
+          type: 'info',
+          message: `全ての商品が既にeBay出品済みです（${skipCount}件）`,
+        });
+      }
+
+      if (errorCount > 0) {
+        addToast({
+          type: 'error',
+          message: `${errorCount}件の作成に失敗しました`,
+        });
+      }
+    } finally {
+      setIsCreatingEbayListings(false);
     }
   }, [selectedIds, mutate]);
 
@@ -738,6 +822,22 @@ export default function ProductsPage() {
                     </a>
                   )}
                 </div>
+
+                {/* eBay出品作成 */}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => handleCreateEbayListing(selectedProduct.id)}
+                  disabled={isCreatingEbayListing}
+                >
+                  {isCreatingEbayListing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShoppingBag className="h-4 w-4" />
+                  )}
+                  eBay出品作成
+                </Button>
               </div>
             </div>
           ) : (
@@ -783,6 +883,19 @@ export default function ProductsPage() {
             onClick={handleBulkPublish}
           >
             一括出品
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={selectedIds.size === 0 || isCreatingEbayListings}
+            onClick={handleBulkCreateEbayListings}
+          >
+            {isCreatingEbayListings ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ShoppingBag className="h-4 w-4" />
+            )}
+            eBay一括出品
           </Button>
           <Button
             variant="outline"
