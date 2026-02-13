@@ -192,6 +192,115 @@ export const mockPrisma = {
     findFirst: vi.fn(),
     upsert: vi.fn(),
   },
+  // Phase 93: Backup Recovery
+  backupJob: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    count: vi.fn(),
+    aggregate: vi.fn(),
+  },
+  backupSchedule: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  recoveryPoint: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    count: vi.fn(),
+  },
+  restoreJob: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    count: vi.fn(),
+  },
+  // Phase 94: Monitoring Alerts
+  alertRule: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  alertIncident: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    count: vi.fn(),
+    aggregate: vi.fn(),
+  },
+  alertEscalation: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+  alertNotificationChannel: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
+  alertNotification: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+    count: vi.fn(),
+  },
+  // Phase 95: Listing Performance
+  listingPerformance: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    count: vi.fn(),
+    aggregate: vi.fn(),
+  },
+  performanceSnapshot: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+  },
+  performanceThreshold: {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    upsert: vi.fn(),
+  },
+  lowPerformanceFlag: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+    count: vi.fn(),
+  },
+  categoryBenchmark: {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+  },
+  // Phase 96: Listing Improvement
+  improvementSuggestion: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    count: vi.fn(),
+  },
+  bulkAction: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    count: vi.fn(),
+  },
+  actionHistory: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+    count: vi.fn(),
+  },
   $transaction: vi.fn().mockImplementation((operations: any[]) =>
     Promise.all(operations.map((op: any) => op))
   ),

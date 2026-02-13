@@ -9,6 +9,7 @@
 
 | Phase | 内容 | 状態 |
 |-------|------|------|
+| 101-102 | テストカバレッジ拡充 & Phase 93-96テスト追加 | ✅ 完了 |
 | 99-100 | テスト強化 & ドキュメント整備 | ✅ 完了 |
 | 97-98 | 自動アクションルール & 利益計算・原価管理 | ✅ 完了 |
 | 95-96 | eBay出品パフォーマンス分析 & 改善提案エンジン | ✅ 完了 |
@@ -23,7 +24,7 @@
 ### 最新コミット
 
 ```
-(コミット予定) feat: Phase 99-100 テスト強化とドキュメント整備
+(コミット予定) feat: Phase 101-102 テストカバレッジ拡充
 ```
 
 ---
@@ -57,6 +58,26 @@
    - 価格予測精度向上
    - 需要予測モデル改善
    - 自動翻訳品質向上
+
+---
+
+## Phase 101-102 実装内容（完了）
+
+### Phase 101: テストカバレッジ拡充
+**新規ユニットテスト:**
+- `apps/api/src/test/unit/listing-performance.test.ts` - 出品パフォーマンスAPIテスト
+- `apps/api/src/test/unit/listing-improvement.test.ts` - 改善提案APIテスト
+- `apps/api/src/test/unit/backup-recovery.test.ts` - バックアップ・リカバリAPIテスト
+- `apps/api/src/test/unit/monitoring-alerts.test.ts` - 監視アラートAPIテスト
+
+**新規E2Eテスト:**
+- `apps/web/e2e/listing-performance.spec.ts`
+- `apps/web/e2e/listing-improvement.spec.ts`
+- `apps/web/e2e/backup-recovery.spec.ts`
+- `apps/web/e2e/monitoring-alerts.spec.ts`
+
+### Phase 102: テストセットアップ強化
+- Phase 93-96モデルのモック追加（backupJob, alertRule, listingPerformance等）
 
 ---
 
