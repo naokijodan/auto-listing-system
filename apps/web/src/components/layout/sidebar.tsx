@@ -44,6 +44,8 @@ import {
   Key,
   HardDrive,
   AlertTriangle,
+  TrendingDown,
+  Lightbulb,
 } from 'lucide-react';
 
 const navigation = [
@@ -54,6 +56,8 @@ const navigation = [
   { name: 'バッチ処理', href: '/batch', icon: Layers },
   { name: 'Joom管理', href: '/joom', icon: Store },
   { name: 'eBay管理', href: '/ebay', icon: Store },
+  { name: '出品パフォーマンス', href: '/listing-performance', icon: TrendingDown },
+  { name: '改善提案', href: '/listing-improvement', icon: Lightbulb },
   { name: '出品管理', href: '/listings', icon: ShoppingCart },
   { name: '注文管理', href: '/orders', icon: Truck },
   { name: '仕入れ管理', href: '/sourcing', icon: ShoppingBag },

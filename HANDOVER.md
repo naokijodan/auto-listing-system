@@ -3,10 +3,86 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 93-94完了
+**Phase**: 95-96完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 95-96: eBay出品パフォーマンス分析 & 改善提案エンジン
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 95: eBay出品パフォーマンス分析**
+1. Prismaスキーマ追加
+   - ListingPerformance: 出品パフォーマンス（Views・Watch・Impression・CTR・スコア）
+   - PerformanceSnapshot: パフォーマンススナップショット（日次記録）
+   - PerformanceThreshold: パフォーマンス閾値設定（メトリクス・演算子・アクション）
+   - LowPerformanceFlag: 低パフォーマンスフラグ（スコア・理由・推奨アクション）
+   - CategoryBenchmark: カテゴリベンチマーク（平均値・パーセンタイル）
+   - PerformanceScoreType: ABSOLUTE, RELATIVE, COMBINED
+   - ThresholdMetric: VIEWS, WATCHERS, IMPRESSIONS, CLICKS, CTR, CONVERSION_RATE, DAYS_LISTED
+   - ThresholdOperator: LESS_THAN, GREATER_THAN, EQUALS, BETWEEN, PERCENTILE_BELOW
+   - ThresholdAction: FLAG, NOTIFY, SUGGEST_IMPROVEMENT, AUTO_DELIST, AUTO_PRICE_REDUCE
+   - FlagStatus: ACTIVE, DISMISSED, RESOLVED, EXPIRED
+
+2. パフォーマンス分析API (`apps/api/src/routes/listing-performance.ts`)
+   - GET /api/listing-performance/stats - パフォーマンス統計
+   - GET /api/listing-performance/listings - 出品一覧（スコア付き）
+   - GET /api/listing-performance/low-performers - 低パフォーマンス出品
+   - POST /api/listing-performance/sync - eBay APIから同期
+   - GET/POST/PUT/DELETE /api/listing-performance/thresholds - 閾値設定管理
+   - GET /api/listing-performance/trends - トレンド分析
+   - GET /api/listing-performance/category-benchmark - カテゴリベンチマーク
+   - POST /api/listing-performance/calculate-benchmarks - ベンチマーク計算
+   - GET /api/listing-performance/flags - フラグ一覧
+   - PATCH /api/listing-performance/flags/:id/dismiss - フラグ却下
+
+3. パフォーマンス分析ページ (`apps/web/src/app/listing-performance/page.tsx`)
+   - パフォーマンス統計ダッシュボード（総出品数・低パフォーマンス率・平均Views/Watch）
+   - 低パフォーマンス出品一覧（スコア・理由・改善提案リンク）
+   - 全出品一覧（スコア順）
+   - 閾値設定管理（CRUD）
+   - カテゴリベンチマーク表示
+   - eBay同期ボタン
+
+**Phase 96: 改善提案エンジン & 半自動アクション**
+1. Prismaスキーマ追加
+   - ImprovementSuggestion: 改善提案（タイプ・現在値・提案値・信頼度・効果予測）
+   - BulkAction: 一括アクション（タイプ・パラメータ・対象・進捗・結果）
+   - ActionHistory: アクション履歴（変更前後・効果測定）
+   - SuggestionType: TITLE, DESCRIPTION, ITEM_SPECIFICS, PRICE_REDUCE, PRICE_INCREASE, PHOTOS等
+   - SuggestionStatus: PENDING, APPROVED, APPLIED, REJECTED, EXPIRED, FAILED
+   - BulkActionType: PRICE_ADJUST_PERCENT, PRICE_ADJUST_FIXED, DELIST, RELIST, END_LISTING等
+   - BulkActionStatus: PENDING, APPROVED, RUNNING, COMPLETED, FAILED, CANCELLED
+   - ActionSource: MANUAL, SUGGESTION, BULK_ACTION, AUTOMATION, API
+
+2. 改善提案API (`apps/api/src/routes/listing-improvement.ts`)
+   - GET /api/listing-improvement/stats - 改善提案統計
+   - POST /api/listing-improvement/generate - AI改善提案生成（GPT-4o）
+   - GET /api/listing-improvement/suggestions - 提案一覧
+   - POST /api/listing-improvement/apply/:id - 提案適用（ワンクリック）
+   - POST /api/listing-improvement/reject/:id - 提案却下
+   - POST /api/listing-improvement/bulk-action - 一括アクション実行
+   - GET /api/listing-improvement/bulk-actions - 一括アクション一覧
+   - GET /api/listing-improvement/history - アクション履歴
+   - GET /api/listing-improvement/effectiveness - 効果測定レポート
+   - POST /api/listing-improvement/preview - 変更プレビュー
+   - POST /api/listing-improvement/generate-all - 低パフォーマンス出品に一括提案生成
+
+3. 改善提案ページ (`apps/web/src/app/listing-improvement/page.tsx`)
+   - 改善提案統計ダッシュボード（保留・適用・却下・適用率）
+   - 改善提案一覧（ワンクリック適用・却下）
+   - 一括操作（価格調整・非公開化・再出品）
+   - アクション履歴
+   - 効果測定レポート（タイプ別統計）
+
+4. サイドバー・モバイルナビ更新
+   - 出品パフォーマンスリンク追加（TrendingDownアイコン）
+   - 改善提案リンク追加（Lightbulbアイコン）
+
+---
 
 ### Phase 93-94: バックアップ・リカバリ強化 & 監視アラート強化
 

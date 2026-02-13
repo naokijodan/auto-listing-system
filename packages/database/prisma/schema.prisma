@@ -10462,3 +10462,382 @@ enum AlertNotificationStatus {
   FAILED
   CANCELLED
 }
+
+// ========================================
+// Phase 95: eBay出品パフォーマンス分析
+// ========================================
+
+model ListingPerformance {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  listingId      String   @unique
+  ebayItemId     String?
+
+  title          String
+  price          Float
+  currency       String   @default("USD")
+  category       String?
+  categoryId     String?
+
+  views          Int      @default(0)
+  watchers       Int      @default(0)
+  impressions    Int      @default(0)
+  clicks         Int      @default(0)
+  ctr            Float    @default(0)
+  conversionRate Float    @default(0)
+
+  daysListed     Int      @default(0)
+  listingDate    DateTime?
+
+  performanceScore Float?
+  scoreType      PerformanceScoreType @default(COMBINED)
+
+  categoryAvgViews Float?
+  categoryAvgWatchers Float?
+  categoryPercentile Float?
+
+  isLowPerformer Boolean  @default(false)
+  lowPerformerReason String?
+
+  lastSyncedAt   DateTime?
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  snapshots      PerformanceSnapshot[]
+  flags          LowPerformanceFlag[]
+  suggestions    ImprovementSuggestion[]
+
+  @@index([organizationId, isLowPerformer])
+  @@index([organizationId, performanceScore])
+  @@index([categoryId])
+  @@map("listing_performances")
+}
+
+enum PerformanceScoreType {
+  ABSOLUTE
+  RELATIVE
+  COMBINED
+}
+
+model PerformanceSnapshot {
+  id             String   @id @default(cuid())
+
+  listingId      String
+  listing        ListingPerformance @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  date           DateTime @db.Date
+
+  views          Int      @default(0)
+  watchers       Int      @default(0)
+  impressions    Int      @default(0)
+  clicks         Int      @default(0)
+
+  viewsChange    Int      @default(0)
+  watchersChange Int      @default(0)
+
+  createdAt      DateTime @default(now())
+
+  @@unique([listingId, date])
+  @@index([listingId, date])
+  @@map("performance_snapshots")
+}
+
+model PerformanceThreshold {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  name           String
+  description    String?
+
+  metric         ThresholdMetric
+  operator       ThresholdOperator @default(LESS_THAN)
+
+  absoluteValue  Float?
+  relativePercentile Float?
+
+  daysListedMin  Int?
+
+  isActive       Boolean  @default(true)
+  priority       Int      @default(0)
+
+  actionOnMatch  ThresholdAction @default(FLAG)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, isActive])
+  @@map("performance_thresholds")
+}
+
+enum ThresholdMetric {
+  VIEWS
+  WATCHERS
+  IMPRESSIONS
+  CLICKS
+  CTR
+  CONVERSION_RATE
+  DAYS_LISTED
+  PERFORMANCE_SCORE
+}
+
+enum ThresholdOperator {
+  LESS_THAN
+  GREATER_THAN
+  EQUALS
+  BETWEEN
+  PERCENTILE_BELOW
+}
+
+enum ThresholdAction {
+  FLAG
+  NOTIFY
+  SUGGEST_IMPROVEMENT
+  AUTO_DELIST
+  AUTO_PRICE_REDUCE
+}
+
+model LowPerformanceFlag {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  listingId      String
+  listing        ListingPerformance @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  thresholdId    String?
+
+  reason         String
+  details        Json     @default("{}")
+
+  score          Float?
+  metrics        Json     @default("{}")
+
+  suggestedActions Json   @default("[]")
+
+  status         FlagStatus @default(ACTIVE)
+  dismissedAt    DateTime?
+  dismissedBy    String?
+  dismissReason  String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, status])
+  @@index([listingId])
+  @@map("low_performance_flags")
+}
+
+enum FlagStatus {
+  ACTIVE
+  DISMISSED
+  RESOLVED
+  EXPIRED
+}
+
+model CategoryBenchmark {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  categoryId     String
+  categoryName   String
+
+  avgViews       Float    @default(0)
+  avgWatchers    Float    @default(0)
+  avgImpressions Float    @default(0)
+  avgCtr         Float    @default(0)
+  avgDaysToSell  Float    @default(0)
+
+  p10Views       Float    @default(0)
+  p25Views       Float    @default(0)
+  p50Views       Float    @default(0)
+  p75Views       Float    @default(0)
+  p90Views       Float    @default(0)
+
+  sampleSize     Int      @default(0)
+  calculatedAt   DateTime @default(now())
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, categoryId])
+  @@index([organizationId])
+  @@map("category_benchmarks")
+}
+
+// ========================================
+// Phase 96: 改善提案エンジン & 半自動アクション
+// ========================================
+
+model ImprovementSuggestion {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  listingId      String
+  listing        ListingPerformance @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  suggestionType SuggestionType
+  priority       Int      @default(0)
+
+  currentValue   String?
+  suggestedValue String?
+  explanation    String?
+
+  confidenceScore Float   @default(0)
+  expectedImpact String?
+  expectedImpactScore Float?
+
+  status         SuggestionStatus @default(PENDING)
+
+  appliedAt      DateTime?
+  appliedBy      String?
+  rejectedAt     DateTime?
+  rejectedBy     String?
+  rejectionReason String?
+
+  beforeMetrics  Json     @default("{}")
+  afterMetrics   Json     @default("{}")
+
+  generatedBy    String   @default("GPT-4o")
+  generatedAt    DateTime @default(now())
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, status])
+  @@index([listingId])
+  @@map("improvement_suggestions")
+}
+
+enum SuggestionType {
+  TITLE
+  DESCRIPTION
+  ITEM_SPECIFICS
+  PRICE_REDUCE
+  PRICE_INCREASE
+  CATEGORY_CHANGE
+  PHOTOS
+  SHIPPING
+  RELIST
+  PROMOTE
+}
+
+enum SuggestionStatus {
+  PENDING
+  APPROVED
+  APPLIED
+  REJECTED
+  EXPIRED
+  FAILED
+}
+
+model BulkAction {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  name           String
+  description    String?
+
+  actionType     BulkActionType
+  parameters     Json     @default("{}")
+
+  targetListings Json     @default("[]")
+  targetCount    Int      @default(0)
+
+  status         BulkActionStatus @default(PENDING)
+
+  processedCount Int      @default(0)
+  successCount   Int      @default(0)
+  failedCount    Int      @default(0)
+
+  startedAt      DateTime?
+  completedAt    DateTime?
+  errorMessage   String?
+
+  createdBy      String?
+  approvedBy     String?
+  approvedAt     DateTime?
+
+  results        Json     @default("[]")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, status])
+  @@map("bulk_actions")
+}
+
+enum BulkActionType {
+  PRICE_ADJUST_PERCENT
+  PRICE_ADJUST_FIXED
+  DELIST
+  RELIST
+  END_LISTING
+  APPLY_SUGGESTIONS
+  UPDATE_TITLE
+  UPDATE_DESCRIPTION
+  PROMOTE
+}
+
+enum BulkActionStatus {
+  PENDING
+  APPROVED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model ActionHistory {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  listingId      String
+  ebayItemId     String?
+
+  actionType     String
+  actionSource   ActionSource
+
+  beforeState    Json     @default("{}")
+  afterState     Json     @default("{}")
+
+  beforeMetrics  Json     @default("{}")
+  afterMetrics   Json     @default("{}")
+
+  metricsChange  Json     @default("{}")
+
+  effectivenessScore Float?
+  effectivenessNotes String?
+
+  performedAt    DateTime @default(now())
+  performedBy    String?
+
+  relatedSuggestionId String?
+  relatedBulkActionId String?
+
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, actionType])
+  @@index([listingId])
+  @@index([performedAt])
+  @@map("action_histories")
+}
+
+enum ActionSource {
+  MANUAL
+  SUGGESTION
+  BULK_ACTION
+  AUTOMATION
+  API
+}

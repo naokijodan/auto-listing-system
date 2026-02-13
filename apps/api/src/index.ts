@@ -102,6 +102,8 @@ import { webhookDeliveryRouter } from './routes/webhook-delivery';
 import { apiUsageRouter } from './routes/api-usage';
 import { backupRecoveryRouter } from './routes/backup-recovery';
 import { monitoringAlertsRouter } from './routes/monitoring-alerts';
+import { listingPerformanceRouter } from './routes/listing-performance';
+import { listingImprovementRouter } from './routes/listing-improvement';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -253,6 +255,8 @@ app.use('/api/webhook-delivery', webhookDeliveryRouter);
 app.use('/api/api-usage', apiUsageRouter);
 app.use('/api/backup-recovery', backupRecoveryRouter);
 app.use('/api/monitoring-alerts', monitoringAlertsRouter);
+app.use('/api/listing-performance', listingPerformanceRouter);
+app.use('/api/listing-improvement', listingImprovementRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

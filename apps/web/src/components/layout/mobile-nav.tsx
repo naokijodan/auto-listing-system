@@ -46,6 +46,8 @@ const menuItems = [
   { category: 'マーケットプレイス', items: [
     { name: 'Joom管理', href: '/joom' },
     { name: 'eBay管理', href: '/ebay' },
+    { name: '出品パフォーマンス', href: '/listing-performance' },
+    { name: '改善提案', href: '/listing-improvement' },
   ]},
   { category: '分析・レポート', items: [
     { name: 'レポート', href: '/reports' },
