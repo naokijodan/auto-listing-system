@@ -42,6 +42,8 @@ import {
   ArrowUpDown,
   Webhook,
   Key,
+  HardDrive,
+  AlertTriangle,
 } from 'lucide-react';
 
 const navigation = [
@@ -82,6 +84,8 @@ const adminNavigation = [
   { name: 'データ転送', href: '/data-transfer', icon: ArrowUpDown },
   { name: 'Webhook', href: '/webhooks', icon: Webhook },
   { name: 'API利用統計', href: '/api-usage', icon: Key },
+  { name: 'バックアップ', href: '/backup-recovery', icon: HardDrive },
+  { name: '監視アラート', href: '/monitoring-alerts', icon: AlertTriangle },
   { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
   { name: 'A/Bテスト', href: '/ab-tests', icon: FlaskConical },
   { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch },

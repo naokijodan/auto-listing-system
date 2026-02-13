@@ -10049,3 +10049,416 @@ enum ApiQuotaType {
   EXPORTS
   IMPORTS
 }
+
+// ========================================
+// Phase 93: バックアップ・リカバリ強化
+// ========================================
+
+model BackupJob {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  name           String
+  description    String?
+
+  backupType     BackupType
+  target         BackupTarget
+  storage        BackupStorage
+
+  status         BackupJobStatus @default(PENDING)
+
+  sizeBytes      BigInt?
+  compressedSize BigInt?
+
+  storageUrl     String?
+  storagePath    String?
+
+  encryptionKey  String?
+  checksum       String?
+
+  startedAt      DateTime?
+  completedAt    DateTime?
+  errorMessage   String?
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  scheduleId     String?
+  schedule       BackupSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+
+  recoveryPoints RecoveryPoint[]
+
+  @@index([organizationId, status])
+  @@index([scheduleId])
+  @@index([createdAt])
+  @@map("backup_jobs")
+}
+
+enum BackupType {
+  FULL
+  INCREMENTAL
+  DIFFERENTIAL
+}
+
+enum BackupTarget {
+  DATABASE
+  FILES
+  REDIS
+  FULL_SYSTEM
+  CUSTOM
+}
+
+enum BackupStorage {
+  LOCAL
+  S3
+  GCS
+  AZURE_BLOB
+  SFTP
+}
+
+enum BackupJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  VERIFYING
+}
+
+model BackupSchedule {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  name           String
+  description    String?
+
+  backupType     BackupType
+  target         BackupTarget
+  storage        BackupStorage
+
+  cronExpression String
+
+  retentionDays  Int      @default(30)
+  maxBackups     Int      @default(10)
+
+  encryptionEnabled Boolean @default(true)
+  compressionEnabled Boolean @default(true)
+  compressionLevel Int     @default(6)
+
+  notifyOnSuccess Boolean @default(false)
+  notifyOnFailure Boolean @default(true)
+  notificationChannels Json @default("[]")
+
+  isActive       Boolean  @default(true)
+
+  lastRunAt      DateTime?
+  nextRunAt      DateTime?
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  jobs           BackupJob[]
+
+  @@index([organizationId, isActive])
+  @@index([nextRunAt])
+  @@map("backup_schedules")
+}
+
+model RecoveryPoint {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  backupJobId    String
+  backupJob      BackupJob @relation(fields: [backupJobId], references: [id], onDelete: Cascade)
+
+  name           String
+  description    String?
+
+  pointInTime    DateTime
+
+  sizeBytes      BigInt
+  checksum       String
+
+  isVerified     Boolean  @default(false)
+  verifiedAt     DateTime?
+  verificationStatus RecoveryVerificationStatus?
+
+  restorable     Boolean  @default(true)
+  expiresAt      DateTime?
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, pointInTime])
+  @@index([backupJobId])
+  @@map("recovery_points")
+}
+
+enum RecoveryVerificationStatus {
+  PENDING
+  VERIFIED
+  CORRUPTED
+  PARTIAL
+}
+
+model RestoreJob {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  recoveryPointId String
+
+  status         RestoreJobStatus @default(PENDING)
+
+  targetEnvironment String?
+
+  startedAt      DateTime?
+  completedAt    DateTime?
+  errorMessage   String?
+
+  restoredItems  Int      @default(0)
+  totalItems     Int      @default(0)
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, status])
+  @@map("restore_jobs")
+}
+
+enum RestoreJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  ROLLBACK
+}
+
+// ========================================
+// Phase 94: 監視アラート強化
+// ========================================
+
+model AlertRule {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  name           String
+  description    String?
+
+  metricName     String
+  condition      AlertCondition
+  threshold      Float
+  thresholdUnit  String?
+
+  windowMinutes  Int      @default(5)
+  evaluationPeriods Int   @default(1)
+
+  severity       AlertSeverity @default(WARNING)
+
+  isActive       Boolean  @default(true)
+
+  cooldownMinutes Int     @default(30)
+  lastTriggeredAt DateTime?
+
+  notificationChannels Json @default("[]")
+
+  tags           Json     @default("[]")
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  incidents      AlertIncident[]
+  escalations    AlertEscalation[]
+
+  @@index([organizationId, isActive])
+  @@index([metricName])
+  @@map("alert_rules")
+}
+
+enum AlertCondition {
+  GREATER_THAN
+  LESS_THAN
+  EQUALS
+  NOT_EQUALS
+  THRESHOLD
+  ANOMALY
+  PATTERN
+  ABSENCE
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+model AlertIncident {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  ruleId         String
+  rule           AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  title          String
+  description    String?
+
+  severity       AlertSeverity
+  status         AlertIncidentStatus @default(OPEN)
+
+  triggeredAt    DateTime @default(now())
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  resolvedAt     DateTime?
+  resolvedBy     String?
+
+  metricValue    Float?
+  threshold      Float?
+
+  affectedResources Json @default("[]")
+  impactScope    String?
+
+  rootCause      String?
+  resolution     String?
+
+  notificationsSent Int @default(0)
+  lastNotifiedAt DateTime?
+
+  metadata       Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  notifications  AlertNotification[]
+
+  @@index([organizationId, status])
+  @@index([ruleId, triggeredAt])
+  @@index([severity, status])
+  @@map("alert_incidents")
+}
+
+enum AlertIncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  SUPPRESSED
+}
+
+model AlertEscalation {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  ruleId         String
+  rule           AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  level          Int      @default(1)
+  delayMinutes   Int      @default(15)
+
+  notificationChannels Json @default("[]")
+  assignees      Json     @default("[]")
+
+  isActive       Boolean  @default(true)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([ruleId, level])
+  @@map("alert_escalations")
+}
+
+model AlertNotificationChannel {
+  id             String   @id @default(cuid())
+
+  organizationId String
+
+  name           String
+  description    String?
+
+  channelType    AlertChannelType
+  configuration  Json     @default("{}")
+
+  isActive       Boolean  @default(true)
+  isDefault      Boolean  @default(false)
+
+  testStatus     AlertChannelTestStatus?
+  lastTestedAt   DateTime?
+  lastErrorMessage String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, isActive])
+  @@map("alert_notification_channels")
+}
+
+enum AlertChannelType {
+  EMAIL
+  SLACK
+  DISCORD
+  WEBHOOK
+  SMS
+  PAGERDUTY
+  OPSGENIE
+  TEAMS
+}
+
+enum AlertChannelTestStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+model AlertNotification {
+  id             String   @id @default(cuid())
+
+  incidentId     String
+  incident       AlertIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  channelType    AlertChannelType
+  channelId      String?
+
+  status         AlertNotificationStatus @default(PENDING)
+
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  failedAt       DateTime?
+  errorMessage   String?
+
+  retryCount     Int      @default(0)
+  maxRetries     Int      @default(3)
+
+  payload        Json     @default("{}")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([incidentId, status])
+  @@map("alert_notifications")
+}
+
+enum AlertNotificationStatus {
+  PENDING
+  SENDING
+  SENT
+  DELIVERED
+  FAILED
+  CANCELLED
+}

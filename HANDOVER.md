@@ -3,10 +3,92 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 91-92完了
+**Phase**: 93-94完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 93-94: バックアップ・リカバリ強化 & 監視アラート強化
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 93: バックアップ・リカバリ強化**
+1. Prismaスキーマ追加
+   - BackupJob: バックアップジョブ（タイプ・ステータス・サイズ・保存先・チェックサム）
+   - BackupSchedule: バックアップスケジュール（Cron・保持期間・暗号化・圧縮設定）
+   - RecoveryPoint: リカバリポイント（メタデータ・整合性チェック・検証状態）
+   - RestoreJob: リストアジョブ（ステータス・進捗・ターゲット環境）
+   - BackupType: FULL, INCREMENTAL, DIFFERENTIAL
+   - BackupTarget: DATABASE, FILES, REDIS, FULL_SYSTEM, CUSTOM
+   - BackupStorage: LOCAL, S3, GCS, AZURE_BLOB, SFTP
+   - BackupJobStatus: PENDING, RUNNING, COMPLETED, FAILED, CANCELLED, VERIFYING
+   - RecoveryVerificationStatus: PENDING, VERIFIED, CORRUPTED, PARTIAL
+
+2. バックアップAPI (`apps/api/src/routes/backup-recovery.ts`)
+   - GET /api/backup-recovery/stats - バックアップ統計
+   - GET /api/backup-recovery/jobs - ジョブ一覧
+   - POST /api/backup-recovery/jobs - バックアップ開始
+   - GET /api/backup-recovery/schedules - スケジュール一覧
+   - POST /api/backup-recovery/schedules - スケジュール作成
+   - PUT /api/backup-recovery/schedules/:id - スケジュール更新
+   - DELETE /api/backup-recovery/schedules/:id - スケジュール削除
+   - PATCH /api/backup-recovery/schedules/:id/toggle - 有効/無効切り替え
+   - GET /api/backup-recovery/recovery-points - リカバリポイント一覧
+   - POST /api/backup-recovery/restore - リストア開始
+   - POST /api/backup-recovery/verify/:id - 整合性検証
+   - GET /api/backup-recovery/restore-jobs - リストアジョブ一覧
+
+3. バックアップページ (`apps/web/src/app/backup-recovery/page.tsx`)
+   - バックアップ統計ダッシュボード（総ジョブ数・成功率・ストレージ使用量）
+   - バックアップジョブ一覧・即時実行
+   - スケジュール管理（作成・有効/無効・削除）
+   - リカバリポイント一覧・検証・リストア
+   - リストア確認ダイアログ（警告表示付き）
+
+**Phase 94: 監視アラート強化**
+1. Prismaスキーマ追加
+   - AlertRule: アラートルール（メトリクス・条件・閾値・重要度・クールダウン）
+   - AlertIncident: インシデント（発生時刻・確認・解決・根本原因・解決策）
+   - AlertEscalation: エスカレーション設定（レベル・遅延・通知先）
+   - AlertNotificationChannel: 通知チャンネル設定（タイプ・設定・テスト状態）
+   - AlertNotification: 通知履歴（送信状態・リトライ）
+   - AlertSeverity: INFO, WARNING, ERROR, CRITICAL
+   - AlertCondition: GREATER_THAN, LESS_THAN, EQUALS, NOT_EQUALS, THRESHOLD, ANOMALY, PATTERN, ABSENCE
+   - AlertIncidentStatus: OPEN, ACKNOWLEDGED, IN_PROGRESS, RESOLVED, CLOSED, SUPPRESSED
+   - AlertChannelType: EMAIL, SLACK, DISCORD, WEBHOOK, SMS, PAGERDUTY, OPSGENIE, TEAMS
+
+2. 監視アラートAPI (`apps/api/src/routes/monitoring-alerts.ts`)
+   - GET /api/monitoring-alerts/stats - アラート統計
+   - GET /api/monitoring-alerts/rules - ルール一覧
+   - POST /api/monitoring-alerts/rules - ルール作成
+   - PUT /api/monitoring-alerts/rules/:id - ルール更新
+   - DELETE /api/monitoring-alerts/rules/:id - ルール削除
+   - PATCH /api/monitoring-alerts/rules/:id/toggle - 有効/無効切り替え
+   - GET /api/monitoring-alerts/incidents - インシデント一覧
+   - PATCH /api/monitoring-alerts/incidents/:id/acknowledge - インシデント確認
+   - PATCH /api/monitoring-alerts/incidents/:id/resolve - インシデント解決
+   - GET /api/monitoring-alerts/escalations - エスカレーション設定
+   - POST /api/monitoring-alerts/escalations - エスカレーション作成
+   - GET /api/monitoring-alerts/channels - 通知チャンネル一覧
+   - POST /api/monitoring-alerts/channels - チャンネル作成
+   - POST /api/monitoring-alerts/channels/:id/test - チャンネルテスト
+   - POST /api/monitoring-alerts/test - テストアラート送信
+   - POST /api/monitoring-alerts/trigger - アラートトリガー（内部用）
+
+3. 監視アラートページ (`apps/web/src/app/monitoring-alerts/page.tsx`)
+   - アラート統計ダッシュボード（ルール数・オープン・クリティカル・24時間インシデント）
+   - インシデント一覧・確認・解決（根本原因・解決方法記録）
+   - ルール管理（メトリクス・条件・閾値・重要度設定）
+   - 通知チャンネル管理（Email/Slack/Discord/Webhook等）
+   - テストアラート送信機能
+
+4. サイドバー・モバイルナビ更新
+   - バックアップリンク追加（HardDriveアイコン）
+   - 監視アラートリンク追加（AlertTriangleアイコン）
+
+---
 
 ### Phase 91-92: Webhook配信システム強化 & API利用統計＆レート制限強化
 

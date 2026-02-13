@@ -71,6 +71,8 @@ const menuItems = [
     { name: 'データ転送', href: '/data-transfer' },
     { name: 'Webhook', href: '/webhooks' },
     { name: 'API利用統計', href: '/api-usage' },
+    { name: 'バックアップ', href: '/backup-recovery' },
+    { name: '監視アラート', href: '/monitoring-alerts' },
     { name: '通知', href: '/notifications' },
     { name: '通知設定', href: '/notification-settings' },
     { name: '設定', href: '/settings' },

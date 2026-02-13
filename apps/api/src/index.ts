@@ -100,6 +100,8 @@ import { advancedSearchRouter } from './routes/advanced-search';
 import { dataExportImportRouter } from './routes/data-export-import';
 import { webhookDeliveryRouter } from './routes/webhook-delivery';
 import { apiUsageRouter } from './routes/api-usage';
+import { backupRecoveryRouter } from './routes/backup-recovery';
+import { monitoringAlertsRouter } from './routes/monitoring-alerts';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -249,6 +251,8 @@ app.use('/api/advanced-search', advancedSearchRouter);
 app.use('/api/data-export-import', dataExportImportRouter);
 app.use('/api/webhook-delivery', webhookDeliveryRouter);
 app.use('/api/api-usage', apiUsageRouter);
+app.use('/api/backup-recovery', backupRecoveryRouter);
+app.use('/api/monitoring-alerts', monitoringAlertsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

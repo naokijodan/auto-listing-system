@@ -1,191 +1,203 @@
 # RAKUDA 次セッション指示書
 
-## 概要
+## 更新日
+2026-02-13
 
-このドキュメントは、RAKUDAプロジェクトの次セッションで実行すべき作業と、並列エージェント実行の指示を記載しています。
+## 現在の状態
 
----
+### 完了済みPhase（直近）
 
-## 1. 作業開始前の確認
+| Phase | 内容 | 状態 |
+|-------|------|------|
+| 91-92 | Webhook配信システム強化 & API利用統計＆レート制限強化 | ✅ 完了 |
+| 89-90 | 高度な検索・フィルタリング & データエクスポート・インポート強化 | ✅ 完了 |
+| 87-88 | 多通貨対応強化 & 監査・コンプライアンス | ✅ 完了 |
+| 85-86 | SSO/SAML対応 & パフォーマンス最適化 | ✅ 完了 |
+| 83-84 | カスタマーサクセス機能 & 高度なレポーティング | ✅ 完了 |
+| 81-82 | 外部連携強化 & セキュリティ強化 | ✅ 完了 |
 
-```bash
-# プロジェクトディレクトリに移動
-cd /Users/naokijodan/Desktop/rakuda
+### 最新コミット
 
-# Git状態確認
-git status
-git log --oneline -5
-
-# 引き継ぎ書を確認
-cat docs/HANDOVER_20260208.md
+```
+91ef166 feat: Phase 91-92 Webhook配信システム強化 & API利用統計＆レート制限強化
 ```
 
 ---
 
-## 2. 並列エージェント実行指示
+## 次に実装すべきPhase
 
-### 推奨構成: 3エージェント並列
+### Phase 93-94: バックアップ・リカバリ強化 & 監視アラート強化
 
-次のセッションでは、以下の3つのエージェントを**同時に**起動して作業を分担してください。
+**Phase 93: バックアップ・リカバリ強化**
+1. Prismaスキーマ追加
+   - BackupJob: バックアップジョブ（タイプ・ステータス・サイズ・保存先）
+   - BackupSchedule: バックアップスケジュール（Cron・保持期間・暗号化設定）
+   - RecoveryPoint: リカバリポイント（メタデータ・整合性チェック）
+   - BackupType: FULL, INCREMENTAL, DIFFERENTIAL
+   - BackupTarget: DATABASE, FILES, REDIS, FULL_SYSTEM
+   - BackupStorage: LOCAL, S3, GCS, AZURE_BLOB
 
-```
-ユーザー: 「3つのエージェントを並列で起動して、以下のタスクを実行してください」
-```
+2. バックアップAPI (`apps/api/src/routes/backup-recovery.ts`)
+   - GET /api/backup-recovery/stats - バックアップ統計
+   - GET /api/backup-recovery/jobs - ジョブ一覧
+   - POST /api/backup-recovery/jobs - バックアップ開始
+   - GET /api/backup-recovery/schedules - スケジュール一覧
+   - POST /api/backup-recovery/schedules - スケジュール作成
+   - GET /api/backup-recovery/recovery-points - リカバリポイント一覧
+   - POST /api/backup-recovery/restore - リストア開始
+   - POST /api/backup-recovery/verify/:id - 整合性検証
 
-### エージェント1: テスト担当（tdd-guide）
-```
-タスク: Phase 44-A 統合テスト追加
+3. バックアップページ (`apps/web/src/app/backup-recovery/page.tsx`)
+   - バックアップ統計ダッシュボード
+   - バックアップ一覧・即時実行
+   - スケジュール管理
+   - リストア機能
+   - 整合性検証
 
-対象:
-- apps/worker/src/processors/inventory-sync.ts
-- apps/worker/src/processors/order-sync.ts
-- apps/worker/src/processors/price-sync.ts
-- apps/api/src/routes/marketplaces.ts
+**Phase 94: 監視アラート強化**
+1. Prismaスキーマ追加
+   - AlertRule: アラートルール（条件・閾値・アクション）
+   - AlertIncident: インシデント（発生時刻・解決時刻・影響範囲）
+   - AlertEscalation: エスカレーション設定
+   - AlertNotificationChannel: 通知チャンネル設定
+   - AlertSeverity: INFO, WARNING, ERROR, CRITICAL
+   - AlertCondition: THRESHOLD, ANOMALY, PATTERN, ABSENCE
 
-テスト項目:
-1. Joom在庫同期の正常系・異常系テスト
-2. eBay在庫同期の正常系・異常系テスト
-3. 注文同期のステータスマッピングテスト
-4. 価格同期の閾値判定テスト
-5. 接続テストエンドポイントのテスト
+2. 監視アラートAPI (`apps/api/src/routes/monitoring-alerts.ts`)
+   - GET /api/monitoring-alerts/stats - アラート統計
+   - GET /api/monitoring-alerts/rules - ルール一覧
+   - POST /api/monitoring-alerts/rules - ルール作成
+   - GET /api/monitoring-alerts/incidents - インシデント一覧
+   - PATCH /api/monitoring-alerts/incidents/:id/acknowledge - 確認
+   - PATCH /api/monitoring-alerts/incidents/:id/resolve - 解決
+   - GET /api/monitoring-alerts/escalations - エスカレーション設定
+   - POST /api/monitoring-alerts/test - テストアラート送信
 
-出力先: apps/api/src/test/integration/marketplace-sync.test.ts
-```
-
-### エージェント2: バックエンド担当（general-purpose）
-```
-タスク: Phase 44-B 同期スケジュール動的設定
-
-実装内容:
-1. MarketplaceSyncSettingテーブルをPrismaスキーマに追加
-2. 設定CRUD APIエンドポイント作成
-  - GET /api/settings/sync-schedule
-  - PUT /api/settings/sync-schedule
-3. スケジューラーが設定を読み込むように改修
-4. デフォルト設定のシード追加
-
-対象ファイル:
-- packages/database/prisma/schema.prisma
-- apps/api/src/routes/settings.ts（新規）
-- apps/worker/src/lib/scheduler.ts
-```
-
-### エージェント3: フロントエンド担当（general-purpose）
-```
-タスク: Phase 44-C 同期スケジュール設定UI
-
-実装内容:
-1. 設定ページに同期スケジュール編集セクション追加
-2. Joom/eBay別の同期間隔設定フォーム
-3. cron式のバリデーション
-4. 設定保存・即時反映機能
-
-対象ファイル:
-- apps/web/src/app/settings/page.tsx
-- apps/web/src/lib/hooks.ts
-- apps/web/src/lib/api.ts
-```
+3. 監視アラートページ (`apps/web/src/app/monitoring-alerts/page.tsx`)
+   - アラート統計ダッシュボード
+   - ルール管理（CRUD）
+   - インシデント一覧（確認・解決）
+   - エスカレーション設定
+   - テストアラート
 
 ---
 
-## 3. エージェント起動コマンド例
+### Phase 95-96: eBay出品パフォーマンス分析 & 改善提案エンジン
 
-```
-ユーザー指示例:
+**背景**: 3者協議（Claude/GPT-5/Gemini）の結果、Beeツールにない差別化機能として実装価値が高いと判断。
 
-「3つのエージェントを並列で起動してください:
+**Phase 95: eBay出品パフォーマンス分析**
+1. Prismaスキーマ追加
+   - ListingPerformance: 出品パフォーマンス（Views・Watch・Impression・CTR）
+   - PerformanceSnapshot: パフォーマンススナップショット（日次記録）
+   - PerformanceThreshold: パフォーマンス閾値設定（絶対値・相対値）
+   - LowPerformanceFlag: 低パフォーマンスフラグ（スコア・理由・推奨アクション）
+   - PerformanceScoreType: ABSOLUTE, RELATIVE, COMBINED
+   - ThresholdMetric: VIEWS, WATCHERS, IMPRESSIONS, CTR, DAYS_LISTED
 
-1. テスト担当: Phase 44-Aとして、marketplace-sync.test.tsを作成。inventory-sync.ts、order-sync.ts、price-sync.tsの統合テストを書いてください。
+2. パフォーマンス分析API (`apps/api/src/routes/listing-performance.ts`)
+   - GET /api/listing-performance/stats - パフォーマンス統計
+   - GET /api/listing-performance/listings - 出品一覧（スコア付き）
+   - GET /api/listing-performance/low-performers - 低パフォーマンス出品
+   - POST /api/listing-performance/sync - eBay APIから同期
+   - GET /api/listing-performance/thresholds - 閾値設定
+   - PUT /api/listing-performance/thresholds - 閾値更新
+   - GET /api/listing-performance/trends - トレンド分析
+   - GET /api/listing-performance/category-benchmark - カテゴリベンチマーク
 
-2. バックエンド担当: Phase 44-Bとして、同期スケジュールの動的設定機能を実装。Prismaスキーマ追加、settings.ts API作成、scheduler.ts改修。
+3. パフォーマンス分析ページ (`apps/web/src/app/listing-performance/page.tsx`)
+   - パフォーマンス統計ダッシュボード
+   - 低パフォーマンス出品一覧（スコア・理由表示）
+   - 閾値設定（絶対値・相対値カスタマイズ）
+   - トレンドグラフ
+   - カテゴリ別ベンチマーク比較
 
-3. フロントエンド担当: Phase 44-Cとして、設定ページに同期スケジュール編集UIを追加。Joom/eBay別の設定フォームを作成。
+**Phase 96: 改善提案エンジン & 半自動アクション**
+1. Prismaスキーマ追加
+   - ImprovementSuggestion: 改善提案（タイプ・提案内容・信頼度・適用状態）
+   - BulkAction: 一括アクション（タイプ・対象出品・実行状態）
+   - ActionHistory: アクション履歴（変更前後・効果測定）
+   - SuggestionType: TITLE, DESCRIPTION, ITEM_SPECIFICS, PRICE, CATEGORY, PHOTOS
+   - BulkActionType: PRICE_ADJUST, DELIST, RELIST, APPLY_SUGGESTION, END_LISTING
 
-並列で進めて、完了したら各自コミットしてください。」
-```
+2. 改善提案API (`apps/api/src/routes/listing-improvement.ts`)
+   - POST /api/listing-improvement/generate - AI改善提案生成（GPT-4o）
+   - GET /api/listing-improvement/suggestions - 提案一覧
+   - POST /api/listing-improvement/apply/:id - 提案適用（ワンクリック）
+   - POST /api/listing-improvement/bulk-action - 一括アクション実行
+   - GET /api/listing-improvement/history - アクション履歴
+   - GET /api/listing-improvement/effectiveness - 効果測定レポート
+   - POST /api/listing-improvement/preview - 変更プレビュー
 
----
+3. 改善提案ページ (`apps/web/src/app/listing-improvement/page.tsx`)
+   - 改善提案一覧（タイトル・説明文・価格等）
+   - ワンクリック適用ボタン
+   - 一括アクション（価格調整・非公開化・再出品）
+   - 変更プレビュー
+   - 効果測定ダッシュボード（適用前後比較）
 
-## 4. 各エージェントの完了条件
-
-### エージェント1（テスト）
-- [ ] テストファイル作成
-- [ ] `npm run test:integration` パス
-- [ ] カバレッジ80%以上
-- [ ] コミット・プッシュ
-
-### エージェント2（バックエンド）
-- [ ] Prismaマイグレーション成功
-- [ ] APIエンドポイント動作確認
-- [ ] TypeScriptコンパイル成功
-- [ ] コミット・プッシュ
-
-### エージェント3（フロントエンド）
-- [ ] UIコンポーネント実装
-- [ ] TypeScriptコンパイル成功
-- [ ] API連携動作確認
-- [ ] コミット・プッシュ
-
----
-
-## 5. コンフリクト回避ルール
-
-並列作業時のコンフリクトを避けるため:
-
-1. **担当ファイルを明確に分離**
-   - テスト: `apps/*/test/` 配下のみ
-   - バックエンド: `apps/api/`, `apps/worker/`, `packages/`
-   - フロントエンド: `apps/web/`
-
-2. **共通ファイルの変更は最後に統合**
-   - `package.json`
-   - `tsconfig.json`
-
-3. **コミットメッセージにフェーズ番号を含める**
-   ```
-   feat: Phase 44-A 統合テスト追加
-   feat: Phase 44-B 同期スケジュールAPI
-   feat: Phase 44-C 同期スケジュールUI
-   ```
-
----
-
-## 6. 緊急時の対応
-
-### ビルドエラー
-```bash
-npm run build
-npx tsc --noEmit
-```
-
-### テスト失敗
-```bash
-npm run test:unit
-npm run test:integration
-```
-
-### Prismaエラー
-```bash
-npx prisma generate --schema=packages/database/prisma/schema.prisma
-npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
-```
+**注意事項**:
+- 「自動削除」はPhase 97以降でオプション機能として提供（デフォルトOFF・二重確認必須）
+- eBay Trading API / Inventory API / Seller Hub Reports API を使用
+- 誤削除防止のため、削除前に必ず確認ダイアログ表示
 
 ---
 
-## 7. 完了後の報告
+## 技術スタック
 
-全エージェント完了後、以下を報告:
-
-1. 各フェーズの実装サマリー
-2. テストカバレッジ
-3. コミットハッシュ一覧
-4. 開発ログ作成（`/Users/naokijodan/開発ログ/rakuda_Phase44_*.md`）
+| レイヤー | 技術 |
+|---------|------|
+| Frontend | Next.js 16 (App Router), Tailwind CSS, shadcn/ui |
+| Backend | Express.js (Hono), TypeScript |
+| Database | PostgreSQL (Prisma ORM) |
+| Queue | BullMQ (Redis) |
+| Storage | MinIO/S3 |
+| AI | OpenAI GPT-4o |
 
 ---
 
-## 8. 参考ドキュメント
+## 実装パターン
 
-- プロジェクトルール: `/Users/naokijodan/Desktop/rakuda/CLAUDE.md`
-- グローバルルール: `/Users/naokijodan/.claude/CLAUDE.md`
-- 引き継ぎ書: `/Users/naokijodan/Desktop/rakuda/docs/HANDOVER_20260208.md`
-- Phase 40設計書: `/Users/naokijodan/Desktop/rakuda/docs/PHASE40_JOOM_WORKFLOW_DESIGN.md`
+### APIルート作成手順
+1. `apps/api/src/routes/xxx.ts` でHono APIを実装
+2. `apps/api/src/index.ts` にimport・use追加
+3. RESTful CRUD + 統計エンドポイント
+
+### フロントエンドページ作成手順
+1. `apps/web/src/app/xxx/page.tsx` でページ実装
+2. shadcn/ui コンポーネント使用
+3. タブ構成（一覧・詳細・設定）
+4. ダイアログで作成・編集
+
+### Prismaスキーマ追加手順
+1. `packages/database/prisma/schema.prisma` にモデル追加
+2. enum定義（必要に応じて）
+3. リレーション設定
+
+### ナビゲーション更新
+1. `apps/web/src/components/layout/sidebar.tsx` にリンク追加
+2. `apps/web/src/components/layout/mobile-nav.tsx` にリンク追加
+3. lucide-reactアイコン使用
+
+---
+
+## 完了条件
+
+各Phaseで以下を必ず実施：
+1. Prismaスキーマ追加
+2. APIルート実装
+3. フロントエンドページ実装
+4. サイドバー・モバイルナビ更新
+5. HANDOVER.md更新
+6. Git commit & push
+7. Obsidianノート作成（`/Users/naokijodan/開発ログ/rakuda_phaseXX_YYYYMMDD.md`）
+
+---
+
+## 参照ファイル
+
+- `HANDOVER.md` - 引き継ぎ書（最新状態）
+- `CLAUDE.md` - プロジェクトルール
+- `packages/database/prisma/schema.prisma` - DBスキーマ
+- `apps/api/src/index.ts` - APIルート登録
+- `apps/web/src/components/layout/sidebar.tsx` - サイドバー
