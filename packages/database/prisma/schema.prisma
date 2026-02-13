@@ -2021,6 +2021,9 @@ model User {
   // Phase 40: Joom出品
   joomPublishBatches JoomPublishBatch[]
 
+  // Phase 79: マルチテナント
+  organizationMemberships OrganizationMember[]
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -7002,6 +7005,7 @@ model Supplier {
   // リレーション
   products     SupplierProduct[]
   orders       PurchaseOrder[]
+  autoReorderRules AutoReorderRule[]
 
   @@index([status])
   @@index([code])
@@ -7158,4 +7162,342 @@ model PurchaseOrderItem {
   @@index([orderId])
   @@index([supplierProductId])
   @@map("purchase_order_items")
+}
+
+// ========================================
+// Phase 79: マルチテナント対応
+// ========================================
+
+model Organization {
+  id          String   @id @default(cuid())
+
+  // 基本情報
+  name        String
+  slug        String   @unique // URL用（例: my-company）
+  description String?
+
+  // ロゴ・ブランディング
+  logo        String?
+  primaryColor String? // ブランドカラー
+
+  // 連絡先
+  email       String?
+  phone       String?
+  website     String?
+
+  // 住所
+  address     String?
+  city        String?
+  country     String   @default("JP")
+
+  // プラン・制限
+  plan        OrganizationPlan @default(FREE)
+  maxUsers    Int      @default(3)
+  maxProducts Int      @default(100)
+  maxListings Int      @default(100)
+
+  // 設定
+  settings    Json     @default("{}")
+  features    String[] @default([]) // 有効な機能フラグ
+
+  // ステータス
+  status      OrganizationStatus @default(ACTIVE)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  members     OrganizationMember[]
+  invitations OrganizationInvitation[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("organizations")
+}
+
+enum OrganizationPlan {
+  FREE        // 無料プラン
+  STARTER     // スタータープラン
+  PROFESSIONAL // プロフェッショナルプラン
+  ENTERPRISE  // エンタープライズプラン
+}
+
+enum OrganizationStatus {
+  ACTIVE      // アクティブ
+  SUSPENDED   // 一時停止
+  CANCELLED   // 解約済み
+}
+
+model OrganizationMember {
+  id          String   @id @default(cuid())
+
+  // 組織参照
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // ユーザー参照
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ロール
+  role        OrganizationRole @default(MEMBER)
+
+  // 招待情報
+  invitedBy   String?
+  invitedAt   DateTime @default(now())
+  joinedAt    DateTime @default(now())
+
+  // ステータス
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("organization_members")
+}
+
+enum OrganizationRole {
+  OWNER       // オーナー（全権限）
+  ADMIN       // 管理者（設定変更可能）
+  MEMBER      // メンバー（基本操作）
+  VIEWER      // 閲覧者（読み取り専用）
+}
+
+model OrganizationInvitation {
+  id          String   @id @default(cuid())
+
+  // 組織参照
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // 招待情報
+  email       String
+  role        OrganizationRole @default(MEMBER)
+  token       String   @unique // 招待トークン
+  message     String?  // 招待メッセージ
+
+  // 招待者
+  invitedBy   String
+  invitedAt   DateTime @default(now())
+
+  // 有効期限
+  expiresAt   DateTime
+
+  // ステータス
+  status      InvitationStatus @default(PENDING)
+  acceptedAt  DateTime?
+  declinedAt  DateTime?
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@map("organization_invitations")
+}
+
+enum InvitationStatus {
+  PENDING     // 保留中
+  ACCEPTED    // 承諾済み
+  DECLINED    // 辞退
+  EXPIRED     // 期限切れ
+  CANCELLED   // キャンセル
+}
+
+// ========================================
+// Phase 80: 在庫予測・自動発注
+// ========================================
+
+model InventoryForecast {
+  id          String   @id @default(cuid())
+
+  // 商品参照
+  productId   String
+  listingId   String?
+
+  // 予測期間
+  forecastDate DateTime // 予測対象日
+  forecastPeriod Int    @default(30) // 予測期間（日）
+
+  // 現在の在庫状況
+  currentStock Int      @default(0)
+  reservedStock Int     @default(0) // 予約済み
+  availableStock Int    @default(0) // 利用可能
+
+  // 需要予測
+  predictedDemand Float  // 予測需要数
+  demandConfidence Float @default(0.5) // 信頼度 (0-1)
+
+  // 安全在庫
+  safetyStock Int       @default(0) // 安全在庫数
+  reorderPoint Int      @default(0) // 発注点
+
+  // 予測結果
+  daysUntilStockout Int? // 在庫切れまでの日数
+  stockoutRisk      StockoutRisk @default(LOW)
+  recommendedAction ReorderAction?
+
+  // 予測モデル情報
+  modelType   String   @default("moving_average")
+  modelParams Json     @default("{}") // モデルパラメータ
+
+  // タイムスタンプ
+  calculatedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([productId, forecastDate])
+  @@index([listingId, forecastDate])
+  @@index([stockoutRisk])
+  @@map("inventory_forecasts")
+}
+
+enum StockoutRisk {
+  CRITICAL    // 緊急（7日以内）
+  HIGH        // 高（14日以内）
+  MEDIUM      // 中（30日以内）
+  LOW         // 低（30日以上）
+}
+
+enum ReorderAction {
+  ORDER_NOW   // 今すぐ発注
+  ORDER_SOON  // 近日中に発注
+  MONITOR     // 監視継続
+  REDUCE      // 在庫削減検討
+}
+
+model AutoReorderRule {
+  id          String   @id @default(cuid())
+
+  // ルール識別
+  name        String
+  description String?
+
+  // 対象条件
+  targetType  AutoReorderTargetType
+  targetId    String?  // 特定商品/カテゴリ/サプライヤー
+  filters     Json     @default("{}") // フィルター条件
+
+  // 発注条件
+  triggerType AutoReorderTriggerType
+  reorderPoint Int?    // 発注点（在庫数）
+  daysBeforeStockout Int? // 在庫切れ前日数
+  safetyStockDays Int  @default(7) // 安全在庫日数
+
+  // 発注量設定
+  orderQuantityType OrderQuantityType @default(FIXED)
+  fixedQuantity Int?   // 固定数量
+  daysOfStock Int?     // 在庫日数分
+  minOrderQuantity Int @default(1)
+  maxOrderQuantity Int?
+
+  // サプライヤー設定
+  preferredSupplierId String?
+  supplier    Supplier? @relation(fields: [preferredSupplierId], references: [id])
+
+  // 承認設定
+  requiresApproval Boolean @default(true)
+  autoApproveLimit Float?  // 自動承認上限額
+
+  // 通知設定
+  notifyOnTrigger Boolean @default(true)
+  notifyChannels String[] @default([])
+
+  // ステータス
+  isActive    Boolean  @default(true)
+  priority    Int      @default(50) // 優先度（低い方が高優先）
+
+  // 統計
+  timesTriggered Int   @default(0)
+  lastTriggeredAt DateTime?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  orders      AutoReorderOrder[]
+
+  @@index([isActive, priority])
+  @@index([targetType, targetId])
+  @@map("auto_reorder_rules")
+}
+
+enum AutoReorderTargetType {
+  ALL         // 全商品
+  PRODUCT     // 特定商品
+  CATEGORY    // カテゴリ
+  SUPPLIER    // サプライヤー
+  LISTING     // 特定出品
+}
+
+enum AutoReorderTriggerType {
+  REORDER_POINT    // 発注点到達
+  STOCKOUT_FORECAST // 在庫切れ予測
+  SCHEDULE         // スケジュール
+  MANUAL           // 手動
+}
+
+enum OrderQuantityType {
+  FIXED       // 固定数量
+  DAYS_STOCK  // 在庫日数分
+  EOQ         // 経済的発注量
+  MIN_ORDER   // 最小発注数量
+}
+
+model AutoReorderOrder {
+  id          String   @id @default(cuid())
+
+  // ルール参照
+  ruleId      String
+  rule        AutoReorderRule @relation(fields: [ruleId], references: [id])
+
+  // 商品情報
+  productId   String
+  listingId   String?
+
+  // 発注情報
+  quantity    Int
+  unitPrice   Float?
+  estimatedTotal Float?
+  currency    String   @default("JPY")
+
+  // サプライヤー
+  supplierId  String?
+  supplierProductId String?
+
+  // トリガー情報
+  triggerReason String   // トリガー理由
+  stockAtTrigger Int     // トリガー時の在庫数
+  forecastAtTrigger Json? // トリガー時の予測情報
+
+  // ステータス
+  status      AutoReorderStatus @default(PENDING)
+
+  // 承認
+  approvedBy  String?
+  approvedAt  DateTime?
+  rejectedReason String?
+
+  // 発注連携
+  purchaseOrderId String?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ruleId])
+  @@index([productId])
+  @@index([status])
+  @@map("auto_reorder_orders")
+}
+
+enum AutoReorderStatus {
+  PENDING     // 承認待ち
+  APPROVED    // 承認済み
+  REJECTED    // 却下
+  ORDERED     // 発注済み
+  CANCELLED   // キャンセル
 }

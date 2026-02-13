@@ -3,10 +3,93 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 77-78完了
+**Phase**: 79-80完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 79-80: マルチテナント対応 & 在庫予測・自動発注
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 79: マルチテナント対応**
+1. Prismaスキーマ追加
+   - Organization: 組織（名前・スラグ・プラン・ステータス・設定）
+   - OrganizationMember: 組織メンバー（ユーザー・ロール・参加日）
+   - OrganizationInvitation: 招待（メール・ロール・トークン・有効期限）
+   - OrganizationPlan: FREE, STARTER, PROFESSIONAL, ENTERPRISE
+   - OrganizationStatus: ACTIVE, SUSPENDED, DELETED
+   - OrganizationRole: OWNER, ADMIN, MEMBER, VIEWER
+
+2. 組織管理API (`apps/api/src/routes/organizations.ts`)
+   - GET /api/organizations/stats - 組織統計
+   - GET /api/organizations/plans - プラン一覧
+   - GET /api/organizations - 組織一覧
+   - POST /api/organizations - 組織作成
+   - GET /api/organizations/:id - 組織詳細
+   - PATCH /api/organizations/:id - 組織更新
+   - DELETE /api/organizations/:id - 組織削除
+   - GET /api/organizations/:id/members - メンバー一覧
+   - PATCH /api/organizations/:id/members/:memberId/role - ロール変更
+   - DELETE /api/organizations/:id/members/:memberId - メンバー削除
+   - POST /api/organizations/:id/invitations - 招待送信
+   - POST /api/organizations/invitations/:token/accept - 招待承諾
+   - DELETE /api/organizations/:id/invitations/:invitationId - 招待キャンセル
+   - GET /api/organizations/user/:userId/organizations - ユーザー所属組織
+
+3. 組織管理ページ (`apps/web/src/app/organizations/page.tsx`)
+   - 組織統計ダッシュボード
+   - 組織一覧（検索・ステータス・プランフィルター）
+   - 組織作成ダイアログ
+   - メンバー一覧・ロール変更・削除
+   - 招待送信・キャンセル
+   - プラン表示
+
+**Phase 80: 在庫予測・自動発注**
+1. Prismaスキーマ追加
+   - InventoryForecast: 在庫予測（需要予測・安全在庫・リードタイム・リスク）
+   - AutoReorderRule: 自動発注ルール（トリガー・しきい値・数量・承認フロー）
+   - AutoReorderOrder: 自動発注オーダー（ステータス・推奨数量・承認）
+   - StockoutRisk: LOW, MEDIUM, HIGH, CRITICAL
+   - ReorderAction: REORDER_NOW, REORDER_SOON, MONITOR, NO_ACTION
+   - ReorderTriggerType: STOCK_LEVEL, DAYS_OF_STOCK, DEMAND_SPIKE, SCHEDULED
+   - ReorderApprovalType: NONE, MANAGER, OWNER, BOTH
+
+2. 在庫予測API (`apps/api/src/routes/inventory-forecast.ts`)
+   - GET /api/inventory-forecast/stats - 予測統計
+   - GET /api/inventory-forecast/forecasts - 予測一覧
+   - POST /api/inventory-forecast/generate - 予測生成
+   - GET /api/inventory-forecast/rules - 自動発注ルール一覧
+   - POST /api/inventory-forecast/rules - ルール作成
+   - PATCH /api/inventory-forecast/rules/:id - ルール更新
+   - DELETE /api/inventory-forecast/rules/:id - ルール削除
+   - PATCH /api/inventory-forecast/rules/:id/toggle - 有効/無効切り替え
+   - GET /api/inventory-forecast/pending-orders - 承認待ち発注一覧
+   - POST /api/inventory-forecast/orders/:id/approve - 発注承認
+   - POST /api/inventory-forecast/orders/:id/reject - 発注却下
+   - POST /api/inventory-forecast/check-triggers - トリガーチェック
+
+3. 予測アルゴリズム
+   - 需要予測: 7日移動平均
+   - 安全在庫: avgDailySales × √leadTime × zScore
+   - サービスレベル別Z値: 99%=2.33, 95%=1.65, 90%=1.28
+   - 在庫切れリスク評価: 在庫日数に基づく4段階評価
+
+4. 在庫予測ページ (`apps/web/src/app/inventory-forecast/page.tsx`)
+   - 予測統計ダッシュボード
+   - 在庫予測一覧（リスク別表示）
+   - 自動発注ルール管理（CRUD）
+   - 承認待ち発注一覧
+   - 発注承認・却下機能
+   - 予測生成ボタン
+
+5. サイドバー更新
+   - 組織管理リンク追加（管理者セクション）
+   - 在庫予測リンク追加
+
+---
 
 ### Phase 77-78: A/Bテスト機能 & サプライヤー管理
 
@@ -808,6 +891,19 @@
 
 ## ファイル変更一覧
 
+### Phase 79-80
+#### 新規作成
+- `apps/api/src/routes/organizations.ts` - 組織管理API
+- `apps/web/src/app/organizations/page.tsx` - 組織管理ページ
+- `apps/api/src/routes/inventory-forecast.ts` - 在庫予測API
+- `apps/web/src/app/inventory-forecast/page.tsx` - 在庫予測ページ
+
+#### 更新
+- `packages/database/prisma/schema.prisma` - Organization/OrganizationMember/OrganizationInvitation/InventoryForecast/AutoReorderRule/AutoReorderOrderモデル追加
+- `apps/api/src/index.ts` - organizations, inventory-forecastルート登録
+- `apps/web/src/components/layout/sidebar.tsx` - 組織管理・在庫予測リンク追加
+- `apps/web/src/components/layout/mobile-nav.tsx` - モバイルナビにリンク追加
+
 ### Phase 77-78
 #### 新規作成
 - `apps/api/src/lib/ab-test-engine.ts` - A/Bテストエンジン
@@ -1002,35 +1098,52 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 79-80候補
+### Phase 81-82候補
 
-1. **マルチテナント対応**
-   - 組織・ユーザー管理
-   - 権限設定
-   - チーム機能
-   - 組織別データ分離
-
-2. **外部連携強化**
+1. **外部連携強化**
    - Shopify連携
    - Amazon連携
    - 会計ソフト連携（freee, MFクラウド）
    - 物流システム連携
 
-3. **在庫予測・自動発注**
-   - 需要予測AIの強化
-   - 自動発注ルール
-   - 安全在庫計算
-   - リードタイム考慮
-
-4. **カスタマーサクセス機能**
+2. **カスタマーサクセス機能**
    - 顧客セグメンテーション
    - LTV分析
    - チャーン予測
    - パーソナライズ推奨
 
+3. **高度なレポーティング**
+   - カスタムレポートビルダー
+   - ドラッグ＆ドロップ分析
+   - ダッシュボード共有
+   - 定期配信スケジュール
+
+4. **セキュリティ強化**
+   - 2要素認証
+   - 監査ログ強化
+   - IPホワイトリスト
+   - SSO対応
+
 ## 技術的注意事項
 
-1. **A/Bテスト**
+1. **マルチテナント（組織管理）**
+   - プラン: FREE(3ユーザー/100商品), STARTER(10/1000), PROFESSIONAL(50/10000), ENTERPRISE(無制限)
+   - ロール: OWNER(全権限), ADMIN(設定変更可), MEMBER(基本操作), VIEWER(読み取り専用)
+   - スラグ: URL用（自動生成、重複時はタイムスタンプ付加）
+   - 招待トークン: crypto.randomBytes(32).toString('hex')
+   - 招待有効期限: 7日間
+   - オーナー削除不可
+
+2. **在庫予測・自動発注**
+   - 需要予測: 7日移動平均（過去30日の販売データから計算）
+   - 安全在庫計算: avgDailySales × √leadTime × zScore
+   - サービスレベル: 99%(z=2.33), 95%(z=1.65), 90%(z=1.28)
+   - 在庫日数: currentStock / avgDailySales
+   - リスク判定: CRITICAL(<7日), HIGH(<14日), MEDIUM(<30日), LOW(30日以上)
+   - トリガータイプ: STOCK_LEVEL(在庫数), DAYS_OF_STOCK(在庫日数), DEMAND_SPIKE(需要急増), SCHEDULED(定期)
+   - 承認タイプ: NONE(自動実行), MANAGER, OWNER, BOTH
+
+3. **A/Bテスト**
    - テストタイプ: TITLE, DESCRIPTION, PRICE, IMAGE, MULTI
    - 成功指標: CONVERSION_RATE, CLICK_RATE, REVENUE, AVG_ORDER_VALUE
    - 統計的有意性: Z検定、デフォルト信頼水準95%

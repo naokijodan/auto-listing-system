@@ -28,6 +28,8 @@ import {
   LineChart,
   FlaskConical,
   Building2,
+  Calculator,
+  Users,
 } from 'lucide-react';
 
 const navigation = [
@@ -42,6 +44,7 @@ const navigation = [
   { name: '注文管理', href: '/orders', icon: Truck },
   { name: '仕入れ管理', href: '/sourcing', icon: ShoppingBag },
   { name: 'サプライヤー', href: '/suppliers', icon: Building2 },
+  { name: '在庫予測', href: '/inventory-forecast', icon: Calculator },
   { name: '発送管理', href: '/shipments', icon: PackageCheck },
   { name: 'ジョブ監視', href: '/jobs', icon: Activity },
   { name: 'レポート', href: '/reports', icon: BarChart3 },
@@ -54,6 +57,7 @@ const navigation = [
 ];
 
 const adminNavigation = [
+  { name: '組織管理', href: '/organizations', icon: Users },
   { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
   { name: 'A/Bテスト', href: '/ab-tests', icon: FlaskConical },
   { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch },

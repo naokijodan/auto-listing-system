@@ -40,6 +40,7 @@ const menuItems = [
     { name: '発送管理', href: '/shipments' },
     { name: '仕入れ管理', href: '/sourcing' },
     { name: 'サプライヤー', href: '/suppliers' },
+    { name: '在庫予測', href: '/inventory-forecast' },
     { name: 'ジョブ監視', href: '/jobs' },
   ]},
   { category: 'マーケットプレイス', items: [
@@ -57,6 +58,7 @@ const menuItems = [
     { name: 'A/Bテスト', href: '/ab-tests' },
   ]},
   { category: '設定', items: [
+    { name: '組織管理', href: '/organizations' },
     { name: '通知', href: '/notifications' },
     { name: '通知設定', href: '/notification-settings' },
     { name: '設定', href: '/settings' },
