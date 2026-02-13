@@ -36,6 +36,8 @@ import {
   FileBarChart,
   KeyRound,
   Server,
+  Coins,
+  Scale,
 } from 'lucide-react';
 
 const navigation = [
@@ -70,6 +72,8 @@ const adminNavigation = [
   { name: 'セキュリティ', href: '/security', icon: Lock },
   { name: 'SSO設定', href: '/sso', icon: KeyRound },
   { name: 'システム性能', href: '/system-performance', icon: Server },
+  { name: '多通貨管理', href: '/multi-currency', icon: Coins },
+  { name: 'コンプライアンス', href: '/compliance', icon: Scale },
   { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
   { name: 'A/Bテスト', href: '/ab-tests', icon: FlaskConical },
   { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch },

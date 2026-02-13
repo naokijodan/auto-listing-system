@@ -3,10 +3,98 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 85-86完了
+**Phase**: 87-88完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 87-88: 多通貨対応強化 & 監査・コンプライアンス
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 87: 多通貨対応強化**
+1. Prismaスキーマ追加
+   - Currency: 通貨マスタ（コード・名前・記号・小数桁数）
+   - ExchangeRate: 為替レート（通貨ペア・レート・有効期間・ソース）
+   - PriceConversion: 価格換算履歴（換算前後金額・使用レート・目的）
+   - CurrencySetting: 通貨設定（デフォルト通貨・表示形式・丸め方式）
+   - ExchangeRateSource: MANUAL, OPEN_EXCHANGE_RATES, FIXER_IO, CURRENCY_LAYER, BANK, ECB, CUSTOM_API
+
+2. 多通貨管理API (`apps/api/src/routes/multi-currency.ts`)
+   - GET /api/multi-currency/stats - 通貨統計
+   - GET /api/multi-currency/currencies - 通貨一覧
+   - POST /api/multi-currency/currencies - 通貨追加
+   - PUT /api/multi-currency/currencies/:id - 通貨更新
+   - DELETE /api/multi-currency/currencies/:id - 通貨削除
+   - GET /api/multi-currency/rates - 為替レート一覧
+   - GET /api/multi-currency/rates/latest - 最新レート
+   - POST /api/multi-currency/rates - レート更新
+   - POST /api/multi-currency/convert - 価格換算
+   - GET /api/multi-currency/conversions - 換算履歴
+   - GET /api/multi-currency/settings - 通貨設定
+   - PUT /api/multi-currency/settings - 設定更新
+   - POST /api/multi-currency/setup-defaults - デフォルト通貨セットアップ（JPY, USD, EUR, GBP, CNY, KRW, AUD, CAD）
+
+3. 多通貨管理ページ (`apps/web/src/app/multi-currency/page.tsx`)
+   - 通貨統計ダッシュボード（登録通貨数・為替レート数・換算履歴数）
+   - 通貨一覧タブ（追加・有効/無効切り替え）
+   - 為替レートタブ（レート追加・変動表示）
+   - 換算履歴タブ
+   - 換算ツールタブ（リアルタイム通貨換算）
+
+**Phase 88: 監査・コンプライアンス**
+1. Prismaスキーマ追加
+   - DataRetentionPolicy: データ保持ポリシー（データタイプ・保持日数・アクション）
+   - RetentionExecution: ポリシー実行履歴（処理件数・ステータス）
+   - GdprRequest: GDPRリクエスト（タイプ・ユーザー・ステータス・期限）
+   - GdprActivity: GDPRリクエストアクティビティ
+   - DataMaskingRule: データマスキングルール（フィールドパターン・マスキングタイプ）
+   - ComplianceAuditLog: コンプライアンス監査ログ
+   - ConsentRecord: 同意記録（同意タイプ・目的・有効期限）
+   - GdprRequestType: ACCESS, ERASURE, PORTABILITY, RECTIFICATION, RESTRICTION, OBJECTION
+   - GdprRequestStatus: PENDING, IN_PROGRESS, COMPLETED, REJECTED, CANCELLED
+   - RetentionAction: DELETE, ARCHIVE, ANONYMIZE
+   - MaskingType: FULL, PARTIAL, HASH, TOKENIZE, REDACT
+   - ConsentStatus: ACTIVE, WITHDRAWN, EXPIRED, SUPERSEDED
+
+2. コンプライアンスAPI (`apps/api/src/routes/compliance.ts`)
+   - GET /api/compliance/stats - コンプライアンス統計（スコア計算含む）
+   - GET /api/compliance/retention-policies - データ保持ポリシー一覧
+   - POST /api/compliance/retention-policies - ポリシー作成
+   - PUT /api/compliance/retention-policies/:id - ポリシー更新
+   - DELETE /api/compliance/retention-policies/:id - ポリシー削除
+   - POST /api/compliance/retention-policies/:id/execute - ポリシー実行
+   - GET /api/compliance/gdpr-requests - GDPRリクエスト一覧
+   - POST /api/compliance/gdpr-requests - リクエスト作成
+   - PUT /api/compliance/gdpr-requests/:id - リクエスト更新
+   - POST /api/compliance/gdpr-requests/:id/process - リクエスト処理
+   - GET /api/compliance/masking-rules - マスキングルール一覧
+   - POST /api/compliance/masking-rules - ルール作成
+   - POST /api/compliance/masking-rules/:id/test - マスキングテスト
+   - GET /api/compliance/consents - 同意記録一覧
+   - POST /api/compliance/consents - 同意記録
+   - PUT /api/compliance/consents/:id/withdraw - 同意撤回
+   - GET /api/compliance/consents/user/:userId - ユーザー別同意状況
+   - GET /api/compliance/audit-logs - 監査ログ
+   - GET /api/compliance/audit-logs/export - ログエクスポート（CSV/JSON）
+   - GET /api/compliance/reports/summary - コンプライアンスレポート
+   - POST /api/compliance/setup-defaults - デフォルト設定セットアップ
+
+3. コンプライアンスページ (`apps/web/src/app/compliance/page.tsx`)
+   - コンプライアンススコア表示（0-100、自動計算）
+   - データ保持ポリシータブ（CRUD・実行）
+   - GDPRリクエストタブ（ACCESS/ERASURE/PORTABILITY等対応）
+   - データマスキングタブ（ルール管理・テスト）
+   - 同意管理タブ（ユーザー同意状況）
+   - 監査ログタブ（アクティビティ監視・エクスポート）
+
+4. サイドバー・モバイルナビ更新
+   - 多通貨管理リンク追加（Coinsアイコン）
+   - コンプライアンスリンク追加（Scaleアイコン）
+
+---
 
 ### Phase 85-86: SSO/SAML対応 & パフォーマンス最適化
 

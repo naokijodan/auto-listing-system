@@ -8867,3 +8867,490 @@ enum OptimizationType {
   DENORMALIZE
   CUSTOM
 }
+
+// ========================================
+// Phase 87: 多通貨対応強化
+// ========================================
+model Currency {
+  id          String   @id @default(cuid())
+
+  code        String   @unique
+  name        String
+  nameJa      String?
+  symbol      String
+  decimals    Int      @default(2)
+
+  isBaseCurrency Boolean @default(false)
+  isEnabled   Boolean  @default(true)
+  sortOrder   Int      @default(100)
+
+  currentRate Float    @default(1)
+  lastRateUpdate DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  exchangeRatesFrom ExchangeRate[] @relation("FromCurrency")
+  exchangeRatesTo   ExchangeRate[] @relation("ToCurrency")
+  priceConversions  PriceConversion[]
+  currencySettings  CurrencySetting[]
+
+  @@index([isEnabled, sortOrder])
+  @@map("currencies")
+}
+
+model ExchangeRate {
+  id          String   @id @default(cuid())
+
+  fromCurrencyId String
+  fromCurrency   Currency @relation("FromCurrency", fields: [fromCurrencyId], references: [id])
+
+  toCurrencyId   String
+  toCurrency     Currency @relation("ToCurrency", fields: [toCurrencyId], references: [id])
+
+  rate        Float
+  inverseRate Float
+
+  source      ExchangeRateSource @default(MANUAL)
+  sourceId    String?
+
+  validFrom   DateTime @default(now())
+  validUntil  DateTime?
+
+  change24h   Float?
+  change7d    Float?
+  high24h     Float?
+  low24h      Float?
+
+  createdAt   DateTime @default(now())
+
+  @@unique([fromCurrencyId, toCurrencyId, validFrom])
+  @@index([fromCurrencyId, toCurrencyId])
+  @@index([validFrom])
+  @@map("exchange_rates")
+}
+
+enum ExchangeRateSource {
+  MANUAL
+  OPENEXCHANGERATES
+  CURRENCYLAYER
+  FIXER
+  ECB
+  YAHOO_FINANCE
+  CUSTOM_API
+}
+
+model PriceConversion {
+  id          String   @id @default(cuid())
+
+  entityType  PriceEntityType
+  entityId    String
+
+  originalCurrencyId String
+  originalCurrency   Currency @relation(fields: [originalCurrencyId], references: [id])
+  originalAmount Float
+
+  convertedCurrency String
+  convertedAmount Float
+
+  exchangeRate Float
+  rateTimestamp DateTime
+
+  conversionType ConversionType @default(DISPLAY)
+  metadata    Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([originalCurrencyId])
+  @@map("price_conversions")
+}
+
+enum PriceEntityType {
+  PRODUCT
+  LISTING
+  ORDER
+  SHIPMENT
+  INVOICE
+  REFUND
+}
+
+enum ConversionType {
+  DISPLAY
+  TRANSACTION
+  REPORT
+  SETTLEMENT
+}
+
+model CurrencySetting {
+  id          String   @id @default(cuid())
+
+  scope       CurrencySettingScope @default(GLOBAL)
+  scopeId     String?
+
+  baseCurrencyId String
+  baseCurrency   Currency @relation(fields: [baseCurrencyId], references: [id])
+
+  displayCurrencies String[] @default([])
+  autoConvert    Boolean  @default(true)
+  showOriginal   Boolean  @default(true)
+
+  roundingMode   RoundingMode @default(HALF_UP)
+  roundingScale  Int      @default(2)
+
+  rateUpdateInterval Int  @default(3600)
+  lastRateSync   DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([scope, scopeId])
+  @@map("currency_settings")
+}
+
+enum CurrencySettingScope {
+  GLOBAL
+  ORGANIZATION
+  USER
+  MARKETPLACE
+}
+
+enum RoundingMode {
+  HALF_UP
+  HALF_DOWN
+  CEILING
+  FLOOR
+  HALF_EVEN
+}
+
+// ========================================
+// Phase 88: 監査・コンプライアンス
+// ========================================
+model DataRetentionPolicy {
+  id          String   @id @default(cuid())
+
+  name        String
+  description String?
+  isEnabled   Boolean  @default(true)
+
+  entityType  RetentionEntityType
+  conditions  Json     @default("{}")
+
+  retentionDays Int
+  retentionAction RetentionAction @default(ARCHIVE)
+
+  schedule    String?
+  lastExecutedAt DateTime?
+  nextExecuteAt  DateTime?
+
+  totalProcessed Int     @default(0)
+  lastProcessedCount Int @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  executions  RetentionExecution[]
+
+  @@index([isEnabled, entityType])
+  @@map("data_retention_policies")
+}
+
+enum RetentionEntityType {
+  ORDER
+  CUSTOMER
+  AUDIT_LOG
+  API_LOG
+  SESSION
+  NOTIFICATION
+  MESSAGE
+  REPORT
+  EXPORT
+  BACKUP
+}
+
+enum RetentionAction {
+  ARCHIVE
+  ANONYMIZE
+  DELETE
+  EXPORT_AND_DELETE
+}
+
+model RetentionExecution {
+  id          String   @id @default(cuid())
+
+  policyId    String
+  policy      DataRetentionPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  status      RetentionExecutionStatus @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  recordsScanned Int    @default(0)
+  recordsProcessed Int  @default(0)
+  recordsFailed Int     @default(0)
+  errorMessage String?
+
+  archiveLocation String?
+  archiveSize    BigInt?
+
+  createdAt   DateTime @default(now())
+
+  @@index([policyId, createdAt])
+  @@index([status])
+  @@map("retention_executions")
+}
+
+enum RetentionExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model GdprRequest {
+  id          String   @id @default(cuid())
+
+  requestType GdprRequestType
+  status      GdprRequestStatus @default(PENDING)
+  priority    GdprRequestPriority @default(NORMAL)
+
+  subjectType GdprSubjectType
+  subjectId   String
+  subjectEmail String
+  subjectName String?
+
+  verificationMethod String?
+  verifiedAt  DateTime?
+  verifiedBy  String?
+
+  assignedTo  String?
+  dueDate     DateTime
+  processedAt DateTime?
+  processedBy String?
+
+  description String?
+  notes       String?  @db.Text
+  attachments Json     @default("[]")
+
+  resultSummary String? @db.Text
+  dataExportUrl String?
+  dataExportExpiresAt DateTime?
+
+  notificationSent Boolean @default(false)
+  notificationSentAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activities  GdprActivity[]
+
+  @@index([status, dueDate])
+  @@index([subjectEmail])
+  @@index([requestType, status])
+  @@map("gdpr_requests")
+}
+
+enum GdprRequestType {
+  ACCESS
+  RECTIFICATION
+  ERASURE
+  RESTRICTION
+  PORTABILITY
+  OBJECTION
+  WITHDRAW_CONSENT
+}
+
+enum GdprRequestStatus {
+  PENDING
+  VERIFIED
+  IN_PROGRESS
+  AWAITING_INFO
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum GdprRequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum GdprSubjectType {
+  CUSTOMER
+  USER
+  EMPLOYEE
+  VENDOR
+  OTHER
+}
+
+model GdprActivity {
+  id          String   @id @default(cuid())
+
+  requestId   String
+  request     GdprRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  action      String
+  description String?
+  performedBy String
+  metadata    Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+
+  @@index([requestId, createdAt])
+  @@map("gdpr_activities")
+}
+
+model DataMaskingRule {
+  id          String   @id @default(cuid())
+
+  name        String
+  description String?
+  isEnabled   Boolean  @default(true)
+  priority    Int      @default(100)
+
+  entityType  String
+  fieldPath   String
+
+  maskingType MaskingType
+  maskingConfig Json   @default("{}")
+
+  conditions  Json     @default("{}")
+
+  appliedCount Int     @default(0)
+  lastAppliedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isEnabled, priority])
+  @@index([entityType, fieldPath])
+  @@map("data_masking_rules")
+}
+
+enum MaskingType {
+  FULL
+  PARTIAL
+  HASH
+  ENCRYPT
+  TOKENIZE
+  REDACT
+  PSEUDONYMIZE
+  TRUNCATE
+  GENERALIZE
+  NOISE
+}
+
+model ComplianceAuditLog {
+  id          String   @id @default(cuid())
+
+  category    ComplianceCategory
+  action      String
+  description String?
+
+  entityType  String?
+  entityId    String?
+
+  performedBy String?
+  performedByType String?
+
+  oldValue    Json?
+  newValue    Json?
+  metadata    Json     @default("{}")
+
+  ipAddress   String?
+  userAgent   String?
+  sessionId   String?
+
+  isCompliant Boolean  @default(true)
+  riskLevel   RiskLevel @default(LOW)
+  findings    String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([category, createdAt])
+  @@index([entityType, entityId])
+  @@index([performedBy, createdAt])
+  @@index([riskLevel, isCompliant])
+  @@map("compliance_audit_logs")
+}
+
+enum ComplianceCategory {
+  DATA_ACCESS
+  DATA_MODIFICATION
+  DATA_DELETION
+  DATA_EXPORT
+  USER_MANAGEMENT
+  PERMISSION_CHANGE
+  CONFIGURATION
+  AUTHENTICATION
+  GDPR
+  SECURITY
+  FINANCIAL
+  SYSTEM
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model ConsentRecord {
+  id          String   @id @default(cuid())
+
+  subjectType String
+  subjectId   String
+  subjectEmail String?
+
+  consentType ConsentType
+  purpose     String
+  description String?
+
+  status      ConsentStatus @default(PENDING)
+  consentedAt DateTime?
+  withdrawnAt DateTime?
+  expiresAt   DateTime?
+
+  consentMethod String?
+  consentSource String?
+  ipAddress   String?
+  userAgent   String?
+
+  policyVersion String?
+  termsVersion String?
+
+  metadata    Json     @default("{}")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subjectType, subjectId])
+  @@index([consentType, status])
+  @@index([expiresAt])
+  @@map("consent_records")
+}
+
+enum ConsentType {
+  MARKETING
+  ANALYTICS
+  THIRD_PARTY_SHARING
+  PROFILING
+  AUTOMATED_DECISION
+  DATA_RETENTION
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+  COOKIES
+  NEWSLETTER
+}
+
+enum ConsentStatus {
+  PENDING
+  GRANTED
+  DENIED
+  WITHDRAWN
+  EXPIRED
+}

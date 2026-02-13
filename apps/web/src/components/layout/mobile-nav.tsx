@@ -65,6 +65,8 @@ const menuItems = [
     { name: 'セキュリティ', href: '/security' },
     { name: 'SSO設定', href: '/sso' },
     { name: 'システム性能', href: '/system-performance' },
+    { name: '多通貨管理', href: '/multi-currency' },
+    { name: 'コンプライアンス', href: '/compliance' },
     { name: '通知', href: '/notifications' },
     { name: '通知設定', href: '/notification-settings' },
     { name: '設定', href: '/settings' },

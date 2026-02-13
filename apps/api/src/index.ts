@@ -94,6 +94,8 @@ import { customerSuccessRouter } from './routes/customer-success';
 import { customReportsRouter } from './routes/custom-reports';
 import { ssoRouter } from './routes/sso';
 import { systemPerformanceRouter } from './routes/system-performance';
+import { multiCurrencyRouter } from './routes/multi-currency';
+import { complianceRouter } from './routes/compliance';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
 import { apiKeyAuth } from './middleware/auth';
@@ -237,6 +239,8 @@ app.use('/api/customer-success', customerSuccessRouter);
 app.use('/api/custom-reports', customReportsRouter);
 app.use('/api/sso', ssoRouter);
 app.use('/api/system-performance', systemPerformanceRouter);
+app.use('/api/multi-currency', multiCurrencyRouter);
+app.use('/api/compliance', complianceRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
