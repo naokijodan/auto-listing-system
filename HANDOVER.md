@@ -3,10 +3,93 @@
 ## 最終更新
 
 **日付**: 2026-02-13
-**Phase**: 75-76完了
+**Phase**: 77-78完了
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 77-78: A/Bテスト機能 & サプライヤー管理
+
+**ステータス**: 完了 ✅
+
+#### 実装内容
+
+**Phase 77: A/Bテスト機能**
+1. Prismaスキーマ追加
+   - ABTest: テスト定義（タイプ・対象・指標・期間）
+   - ABTestVariant: バリアント定義（変更内容・重み・統計）
+   - ABTestAssignment: 割り当て追跡（エンティティ→バリアント）
+   - ABTestType: TITLE, DESCRIPTION, PRICE, IMAGE, MULTI
+   - ABTestMetric: CONVERSION_RATE, CLICK_RATE, REVENUE, AVG_ORDER_VALUE
+   - ABTestStatus: DRAFT, SCHEDULED, RUNNING, PAUSED, COMPLETED, CANCELLED
+
+2. A/Bテストエンジン (`apps/api/src/lib/ab-test-engine.ts`)
+   - テスト作成・開始・停止・完了
+   - バリアント割り当て（重み付きランダム）
+   - イベント記録（インプレッション・クリック・閲覧・コンバージョン）
+   - 統計的有意性計算（Z検定）
+   - 信頼区間・リフト計算
+   - 勝者バリアント決定
+
+3. A/BテストAPI (`apps/api/src/routes/ab-tests.ts`)
+   - GET /api/ab-tests/stats - 統計
+   - GET /api/ab-tests/types - テストタイプ一覧
+   - GET /api/ab-tests - テスト一覧
+   - POST /api/ab-tests - テスト作成
+   - GET /api/ab-tests/:id - テスト詳細
+   - POST /api/ab-tests/:id/start - テスト開始
+   - POST /api/ab-tests/:id/stop - テスト停止
+   - POST /api/ab-tests/:id/complete - テスト完了
+   - GET /api/ab-tests/:id/results - 結果取得
+   - POST /api/ab-tests/:id/assign - バリアント割り当て
+   - POST /api/ab-tests/:id/event - イベント記録
+   - POST /api/ab-tests/:id/apply-winner - 勝者適用
+
+4. A/Bテスト管理ページ (`apps/web/src/app/ab-tests/page.tsx`)
+   - テスト統計ダッシュボード
+   - テスト作成ダイアログ
+   - テスト一覧（ステータスフィルター）
+   - バリアント比較表示
+   - 開始・停止・完了操作
+   - 結論・有意性表示
+
+**Phase 78: サプライヤー管理**
+1. Prismaスキーマ追加
+   - Supplier: サプライヤー情報（連絡先・住所・評価）
+   - SupplierProduct: サプライヤー商品（SKU・価格・在庫）
+   - PurchaseOrder: 発注（明細・ステータス・金額）
+   - PurchaseOrderItem: 発注明細（数量・入荷追跡）
+   - SupplierStatus: ACTIVE, INACTIVE, SUSPENDED, BLACKLISTED
+   - PurchaseOrderStatus: DRAFT, PENDING, APPROVED, ORDERED, SHIPPED, DELIVERED, CANCELLED
+
+2. サプライヤーAPI (`apps/api/src/routes/suppliers.ts`)
+   - GET /api/suppliers/stats - 統計
+   - GET /api/suppliers - サプライヤー一覧
+   - POST /api/suppliers - サプライヤー作成
+   - GET /api/suppliers/:id - サプライヤー詳細
+   - PATCH /api/suppliers/:id - サプライヤー更新
+   - GET /api/suppliers/:id/products - 商品一覧
+   - POST /api/suppliers/:id/products - 商品追加
+   - GET /api/suppliers/orders/list - 発注一覧
+   - POST /api/suppliers/orders - 発注作成
+   - GET /api/suppliers/orders/:id - 発注詳細
+   - PATCH /api/suppliers/orders/:id/status - ステータス更新
+   - POST /api/suppliers/orders/:id/receive - 入荷処理
+   - GET /api/suppliers/recommendations - 発注推奨
+
+3. サプライヤー管理ページ (`apps/web/src/app/suppliers/page.tsx`)
+   - サプライヤー統計ダッシュボード
+   - サプライヤー作成ダイアログ
+   - サプライヤー一覧（検索・ステータスフィルター）
+   - サプライヤー詳細ダイアログ
+   - 発注管理タブ
+   - 発注ステータス更新
+
+4. サイドバー更新
+   - A/Bテストリンク追加（管理者セクション）
+   - サプライヤーリンク追加
+
+---
 
 ### Phase 75-76: モバイル最適化(PWA) & 高度な分析ダッシュボード
 
@@ -725,6 +808,20 @@
 
 ## ファイル変更一覧
 
+### Phase 77-78
+#### 新規作成
+- `apps/api/src/lib/ab-test-engine.ts` - A/Bテストエンジン
+- `apps/api/src/routes/ab-tests.ts` - A/BテストAPI
+- `apps/web/src/app/ab-tests/page.tsx` - A/Bテスト管理ページ
+- `apps/api/src/routes/suppliers.ts` - サプライヤー管理API
+- `apps/web/src/app/suppliers/page.tsx` - サプライヤー管理ページ
+
+#### 更新
+- `packages/database/prisma/schema.prisma` - ABTest/ABTestVariant/ABTestAssignment/Supplier/SupplierProduct/PurchaseOrder/PurchaseOrderItemモデル追加
+- `apps/api/src/index.ts` - ab-tests, suppliersルート登録
+- `apps/web/src/components/layout/sidebar.tsx` - A/Bテスト・サプライヤーリンク追加
+- `apps/web/src/components/layout/mobile-nav.tsx` - モバイルナビにリンク追加
+
 ### Phase 75-76
 #### 新規作成
 - `apps/web/public/manifest.json` - PWAマニフェスト
@@ -905,33 +1002,51 @@
 
 ## 次のPhaseへの推奨事項
 
-### Phase 77-78候補
+### Phase 79-80候補
 
-1. **A/Bテスト機能**
-   - 価格テスト
-   - タイトル/説明文テスト
-   - 統計的有意性判定
-   - 実験結果レポート
-
-2. **サプライヤー管理**
-   - 仕入れ先マスタ
-   - 自動発注
-   - コスト分析
-   - 納期管理
-
-3. **マルチテナント対応**
+1. **マルチテナント対応**
    - 組織・ユーザー管理
    - 権限設定
    - チーム機能
+   - 組織別データ分離
 
-4. **外部連携強化**
+2. **外部連携強化**
    - Shopify連携
    - Amazon連携
-   - 会計ソフト連携
+   - 会計ソフト連携（freee, MFクラウド）
+   - 物流システム連携
+
+3. **在庫予測・自動発注**
+   - 需要予測AIの強化
+   - 自動発注ルール
+   - 安全在庫計算
+   - リードタイム考慮
+
+4. **カスタマーサクセス機能**
+   - 顧客セグメンテーション
+   - LTV分析
+   - チャーン予測
+   - パーソナライズ推奨
 
 ## 技術的注意事項
 
-1. **PWA対応**
+1. **A/Bテスト**
+   - テストタイプ: TITLE, DESCRIPTION, PRICE, IMAGE, MULTI
+   - 成功指標: CONVERSION_RATE, CLICK_RATE, REVENUE, AVG_ORDER_VALUE
+   - 統計的有意性: Z検定、デフォルト信頼水準95%
+   - バリアント割り当て: 重み付きランダム
+   - 最小サンプルサイズ: デフォルト100
+   - イベント追跡: impression, click, view, conversion
+
+2. **サプライヤー管理**
+   - サプライヤーコード: ユニーク（例: SUP001）
+   - 発注番号形式: PO-{年}-{ランダム4桁}
+   - 発注ステータスフロー: DRAFT → PENDING → APPROVED → ORDERED → SHIPPED → DELIVERED
+   - 価格割引: priceBreaks配列 [{ qty: 10, price: 900 }]
+   - 入荷追跡: receivedQty で部分入荷対応
+   - 自動発注推奨: 在庫状況と最小発注数量を考慮
+
+3. **PWA対応**
    - Service Worker: キャッシュ名 `rakuda-v1`
    - キャッシュ対象: /_next/, /icons/, /images/, manifest.json
    - API呼び出し: Network First（5秒タイムアウト）

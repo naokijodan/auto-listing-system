@@ -39,6 +39,7 @@ const menuItems = [
   { category: '運営', items: [
     { name: '発送管理', href: '/shipments' },
     { name: '仕入れ管理', href: '/sourcing' },
+    { name: 'サプライヤー', href: '/suppliers' },
     { name: 'ジョブ監視', href: '/jobs' },
   ]},
   { category: 'マーケットプレイス', items: [
@@ -53,6 +54,7 @@ const menuItems = [
   { category: '自動化', items: [
     { name: 'ワークフロー', href: '/workflow-rules' },
     { name: 'チャットボット', href: '/chatbot' },
+    { name: 'A/Bテスト', href: '/ab-tests' },
   ]},
   { category: '設定', items: [
     { name: '通知', href: '/notifications' },

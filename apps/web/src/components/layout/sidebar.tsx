@@ -26,6 +26,8 @@ import {
   GitBranch,
   MessageCircle,
   LineChart,
+  FlaskConical,
+  Building2,
 } from 'lucide-react';
 
 const navigation = [
@@ -39,6 +41,7 @@ const navigation = [
   { name: '出品管理', href: '/listings', icon: ShoppingCart },
   { name: '注文管理', href: '/orders', icon: Truck },
   { name: '仕入れ管理', href: '/sourcing', icon: ShoppingBag },
+  { name: 'サプライヤー', href: '/suppliers', icon: Building2 },
   { name: '発送管理', href: '/shipments', icon: PackageCheck },
   { name: 'ジョブ監視', href: '/jobs', icon: Activity },
   { name: 'レポート', href: '/reports', icon: BarChart3 },
@@ -52,6 +55,7 @@ const navigation = [
 
 const adminNavigation = [
   { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
+  { name: 'A/Bテスト', href: '/ab-tests', icon: FlaskConical },
   { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch },
   { name: 'チャットボット', href: '/chatbot', icon: MessageCircle },
   { name: 'パフォーマンス', href: '/admin/performance', icon: Gauge },

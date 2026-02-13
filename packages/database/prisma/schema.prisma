@@ -6790,3 +6790,372 @@ model ChatbotConfig {
 
   @@map("chatbot_configs")
 }
+
+// ========================================
+// Phase 77: A/Bテスト機能
+// ========================================
+
+model ABTest {
+  id          String   @id @default(cuid())
+
+  // テスト識別
+  name        String
+  description String?  @db.Text
+
+  // テスト設定
+  testType    ABTestType
+  targetEntity String  // 'listing', 'product', 'pricing'
+  targetField String   // 'title', 'description', 'price', 'images'
+
+  // フィルター条件（対象リスティング/商品）
+  filters     Json     @default("{}") // { marketplace: 'joom', category: 'watches' }
+
+  // トラフィック配分
+  trafficPercent Int   @default(100) // 対象の何%をテストに含めるか
+
+  // 期間
+  startAt     DateTime
+  endAt       DateTime?
+
+  // 成功指標
+  primaryMetric   ABTestMetric @default(CONVERSION_RATE)
+  secondaryMetrics String[]    @default([])
+
+  // 最小サンプルサイズ
+  minSampleSize Int      @default(100)
+
+  // 統計設定
+  confidenceLevel Float  @default(0.95) // 95% confidence
+
+  // ステータス
+  status      ABTestStatus @default(DRAFT)
+
+  // 結果サマリー
+  winningVariantId String?
+  conclusion  String?  @db.Text
+  isSignificant Boolean @default(false)
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+
+  // リレーション
+  variants    ABTestVariant[]
+  assignments ABTestAssignment[]
+
+  @@index([status, startAt])
+  @@index([testType])
+  @@map("ab_tests")
+}
+
+enum ABTestType {
+  TITLE       // タイトルテスト
+  DESCRIPTION // 説明文テスト
+  PRICE       // 価格テスト
+  IMAGE       // 画像テスト
+  MULTI       // 複合テスト
+}
+
+enum ABTestMetric {
+  CONVERSION_RATE   // コンバージョン率
+  CLICK_RATE        // クリック率（インプレッション→クリック）
+  VIEW_TO_SALE      // 閲覧→購入率
+  REVENUE           // 収益
+  PROFIT            // 利益
+  AVG_ORDER_VALUE   // 平均注文額
+}
+
+enum ABTestStatus {
+  DRAFT       // 下書き
+  SCHEDULED   // スケジュール済み
+  RUNNING     // 実行中
+  PAUSED      // 一時停止
+  COMPLETED   // 完了
+  CANCELLED   // キャンセル
+}
+
+model ABTestVariant {
+  id          String   @id @default(cuid())
+
+  // テスト参照
+  testId      String
+  test        ABTest   @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  // バリアント情報
+  name        String   // 'Control', 'Variant A', 'Variant B'
+  isControl   Boolean  @default(false) // コントロールグループか
+  description String?
+
+  // 変更内容
+  changes     Json     // { title: '...', price: 100 }
+
+  // トラフィック配分（テスト内での割合）
+  weight      Int      @default(50) // 50 = 50%
+
+  // 結果統計
+  impressions Int      @default(0)  // インプレッション数
+  clicks      Int      @default(0)  // クリック数
+  views       Int      @default(0)  // 閲覧数
+  sales       Int      @default(0)  // 販売数
+  revenue     Float    @default(0)  // 収益
+  profit      Float    @default(0)  // 利益
+
+  // 計算指標
+  conversionRate Float? // 計算済みコンバージョン率
+  clickRate     Float?  // 計算済みクリック率
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  assignments ABTestAssignment[]
+
+  @@index([testId])
+  @@map("ab_test_variants")
+}
+
+model ABTestAssignment {
+  id          String   @id @default(cuid())
+
+  // テスト参照
+  testId      String
+  test        ABTest   @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  // バリアント参照
+  variantId   String
+  variant     ABTestVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  // 割り当て対象
+  listingId   String?
+  productId   String?
+
+  // 元の値（復元用）
+  originalValue Json   @default("{}")
+
+  // イベント追跡
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  views       Int      @default(0)
+  conversions Int      @default(0)
+  revenue     Float    @default(0)
+
+  // タイムスタンプ
+  assignedAt  DateTime @default(now())
+  lastEventAt DateTime?
+
+  @@unique([testId, listingId])
+  @@unique([testId, productId])
+  @@index([testId, variantId])
+  @@index([listingId])
+  @@index([productId])
+  @@map("ab_test_assignments")
+}
+
+// ========================================
+// Phase 78: サプライヤー管理
+// ========================================
+
+model Supplier {
+  id          String   @id @default(cuid())
+
+  // 基本情報
+  name        String
+  code        String   @unique // 仕入先コード（例: SUP001）
+  description String?
+
+  // 連絡先
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  website      String?
+
+  // 住所
+  address      String?
+  city         String?
+  prefecture   String?  // 都道府県/州
+  postalCode   String?
+  country      String   @default("JP")
+
+  // 支払い条件
+  paymentTerms String?  // '月末締め翌月払い', 'COD', etc.
+  currency     String   @default("JPY")
+
+  // 評価
+  rating       Float?   // 1-5
+  reliability  Float?   // 信頼性スコア 0-1
+  avgLeadTime  Int?     // 平均納期（日）
+  onTimeRate   Float?   // 納期遵守率 0-1
+
+  // ステータス
+  status       SupplierStatus @default(ACTIVE)
+
+  // メタデータ
+  notes        String?  @db.Text
+  metadata     Json     @default("{}")
+
+  // タイムスタンプ
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // リレーション
+  products     SupplierProduct[]
+  orders       PurchaseOrder[]
+
+  @@index([status])
+  @@index([code])
+  @@map("suppliers")
+}
+
+enum SupplierStatus {
+  ACTIVE      // アクティブ
+  INACTIVE    // 非アクティブ
+  SUSPENDED   // 一時停止
+  BLACKLISTED // ブラックリスト
+}
+
+model SupplierProduct {
+  id          String   @id @default(cuid())
+
+  // サプライヤー参照
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+
+  // 商品情報
+  productId   String?  // 内部商品との紐付け（あれば）
+  sku         String   // サプライヤーSKU
+  name        String
+  description String?
+
+  // 価格
+  unitPrice   Float    // 単価
+  currency    String   @default("JPY")
+  minOrderQty Int      @default(1) // 最小発注数量
+  priceBreaks Json     @default("[]") // 数量割引 [{ qty: 10, price: 900 }]
+
+  // 在庫・納期
+  stockLevel  Int?     // サプライヤー在庫（わかる場合）
+  leadTime    Int?     // 納期（日）
+  isAvailable Boolean  @default(true)
+
+  // カテゴリ
+  category    String?
+  brand       String?
+
+  // URL
+  sourceUrl   String?  // 仕入れ元URL
+
+  // メタデータ
+  metadata    Json     @default("{}")
+
+  // タイムスタンプ
+  lastPriceUpdate DateTime?
+  lastStockCheck  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  orderItems  PurchaseOrderItem[]
+
+  @@unique([supplierId, sku])
+  @@index([supplierId])
+  @@index([productId])
+  @@index([isAvailable])
+  @@map("supplier_products")
+}
+
+model PurchaseOrder {
+  id          String   @id @default(cuid())
+
+  // サプライヤー参照
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+
+  // 発注番号
+  orderNumber String   @unique // PO-2024-0001
+
+  // 関連注文（顧客注文に紐付く場合）
+  relatedOrderId String?
+
+  // 金額
+  subtotal    Float    @default(0)
+  tax         Float    @default(0)
+  shipping    Float    @default(0)
+  total       Float    @default(0)
+  currency    String   @default("JPY")
+
+  // ステータス
+  status      PurchaseOrderStatus @default(DRAFT)
+
+  // 日付
+  orderedAt   DateTime?
+  expectedAt  DateTime?  // 予定納期
+  deliveredAt DateTime?  // 実際の納品日
+
+  // 配送先
+  shipTo      String?    // 配送先住所
+  trackingNumber String?
+
+  // 備考
+  notes       String?  @db.Text
+
+  // 承認
+  approvedBy  String?
+  approvedAt  DateTime?
+
+  // タイムスタンプ
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  items       PurchaseOrderItem[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderNumber])
+  @@index([relatedOrderId])
+  @@map("purchase_orders")
+}
+
+enum PurchaseOrderStatus {
+  DRAFT       // 下書き
+  PENDING     // 承認待ち
+  APPROVED    // 承認済み
+  ORDERED     // 発注済み
+  SHIPPED     // 出荷済み
+  DELIVERED   // 納品完了
+  CANCELLED   // キャンセル
+  RETURNED    // 返品
+}
+
+model PurchaseOrderItem {
+  id          String   @id @default(cuid())
+
+  // 発注参照
+  orderId     String
+  order       PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // 商品参照
+  supplierProductId String
+  supplierProduct   SupplierProduct @relation(fields: [supplierProductId], references: [id])
+
+  // 数量・価格
+  quantity    Int
+  unitPrice   Float
+  lineTotal   Float
+
+  // 入荷追跡
+  receivedQty Int      @default(0)
+  receivedAt  DateTime?
+
+  // 備考
+  notes       String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([supplierProductId])
+  @@map("purchase_order_items")
+}
