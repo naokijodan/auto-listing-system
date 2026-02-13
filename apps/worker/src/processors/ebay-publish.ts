@@ -47,6 +47,9 @@ export async function processEbayPublishJob(job: Job<EbayPublishJobData>): Promi
       case 'sync-status':
         return await processSyncStatus(listingId!);
 
+      case 'price-sync':
+        return await processPriceSync(options || {});
+
       default:
         throw new Error(`Unknown job type: ${type}`);
     }
@@ -564,5 +567,211 @@ export async function processFullEbayWorkflow(
       error: error.message,
     });
     throw error;
+  }
+}
+
+/**
+ * 価格同期処理
+ * アクティブなeBay出品の価格を再計算し、必要に応じてeBayにも反映
+ */
+async function processPriceSync(options: {
+  priceChangeThreshold?: number;
+  maxListings?: number;
+  syncToMarketplace?: boolean;
+}): Promise<any> {
+  const {
+    priceChangeThreshold = 2, // 2%以上の変動で更新
+    maxListings = 100,
+    syncToMarketplace = false,
+  } = options;
+
+  log.info({
+    type: 'price_sync_start',
+    options: { priceChangeThreshold, maxListings, syncToMarketplace },
+  });
+
+  // アクティブなeBay出品を取得
+  const listings = await prisma.listing.findMany({
+    where: {
+      marketplace: 'EBAY',
+      status: 'ACTIVE',
+    },
+    include: {
+      product: true,
+    },
+    take: maxListings,
+    orderBy: { updatedAt: 'asc' }, // 古いものから処理
+  });
+
+  const results: Array<{
+    listingId: string;
+    oldPrice: number;
+    newPrice: number;
+    changePercent: number;
+    updated: boolean;
+    syncedToEbay: boolean;
+    error?: string;
+  }> = [];
+
+  // 為替レート取得
+  const exchangeRate = await getExchangeRate();
+
+  for (const listing of listings) {
+    try {
+      const product = listing.product;
+      if (!product) continue;
+
+      // 新しい価格を計算
+      const costJpy = product.price;
+      const costUsd = costJpy / exchangeRate;
+
+      // 利益率30%を目標として価格計算
+      const targetMargin = 0.30;
+      const shippingCost = listing.shippingCost || 0;
+      const ebayFeeRate = 0.1625; // 掲載料+落札手数料+決済手数料の合計約16.25%
+
+      // 価格 = (仕入れ + 送料) / (1 - 手数料率 - 目標利益率)
+      const newPrice = Math.ceil((costUsd + shippingCost) / (1 - ebayFeeRate - targetMargin) * 100) / 100;
+
+      const oldPrice = listing.listingPrice;
+      const changePercent = Math.abs((newPrice - oldPrice) / oldPrice) * 100;
+
+      // 変動が閾値以下ならスキップ
+      if (changePercent < priceChangeThreshold) {
+        results.push({
+          listingId: listing.id,
+          oldPrice,
+          newPrice,
+          changePercent,
+          updated: false,
+          syncedToEbay: false,
+        });
+        continue;
+      }
+
+      // DBを更新
+      await prisma.listing.update({
+        where: { id: listing.id },
+        data: {
+          listingPrice: newPrice,
+          marketplaceData: {
+            ...(listing.marketplaceData as any || {}),
+            priceUpdatedAt: new Date().toISOString(),
+            previousPrice: oldPrice,
+          },
+        },
+      });
+
+      // 価格変更履歴を記録
+      await prisma.priceHistory.create({
+        data: {
+          listingId: listing.id,
+          oldPrice,
+          newPrice,
+          reason: 'auto_sync',
+          metadata: {
+            exchangeRate,
+            costJpy,
+            costUsd,
+            targetMargin,
+          },
+        },
+      });
+
+      let syncedToEbay = false;
+
+      // eBayに同期
+      if (syncToMarketplace) {
+        const marketplaceData = (listing.marketplaceData as any) || {};
+        const offerId = marketplaceData.offerId;
+
+        if (offerId) {
+          try {
+            const updateResult = await ebayApi.updateOfferPrice(offerId, newPrice);
+            syncedToEbay = updateResult.success;
+
+            if (!updateResult.success) {
+              log.warn({
+                type: 'price_sync_ebay_update_failed',
+                listingId: listing.id,
+                error: updateResult.error?.message,
+              });
+            }
+          } catch (ebayErr) {
+            log.error({
+              type: 'price_sync_ebay_error',
+              listingId: listing.id,
+              error: (ebayErr as Error).message,
+            });
+          }
+        }
+      }
+
+      results.push({
+        listingId: listing.id,
+        oldPrice,
+        newPrice,
+        changePercent,
+        updated: true,
+        syncedToEbay,
+      });
+
+      log.info({
+        type: 'price_sync_listing_updated',
+        listingId: listing.id,
+        oldPrice,
+        newPrice,
+        changePercent: changePercent.toFixed(2),
+        syncedToEbay,
+      });
+    } catch (error: any) {
+      results.push({
+        listingId: listing.id,
+        oldPrice: listing.listingPrice,
+        newPrice: listing.listingPrice,
+        changePercent: 0,
+        updated: false,
+        syncedToEbay: false,
+        error: error.message,
+      });
+    }
+  }
+
+  const updatedCount = results.filter(r => r.updated).length;
+  const syncedCount = results.filter(r => r.syncedToEbay).length;
+  const errorCount = results.filter(r => r.error).length;
+
+  log.info({
+    type: 'price_sync_complete',
+    total: listings.length,
+    updated: updatedCount,
+    synced: syncedCount,
+    errors: errorCount,
+  });
+
+  return {
+    total: listings.length,
+    updated: updatedCount,
+    synced: syncedCount,
+    errors: errorCount,
+    results,
+  };
+}
+
+/**
+ * 為替レート取得（USD/JPY）
+ */
+async function getExchangeRate(): Promise<number> {
+  try {
+    const rate = await prisma.exchangeRate.findFirst({
+      where: {
+        fromCurrency: 'USD',
+        toCurrency: 'JPY',
+      },
+      orderBy: { fetchedAt: 'desc' },
+    });
+    return rate?.rate || 150; // デフォルト値
+  } catch {
+    return 150;
   }
 }

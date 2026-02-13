@@ -463,6 +463,17 @@ export class EbayApiClient {
   }
 
   /**
+   * オファー価格を更新（updatePriceのエイリアス）
+   */
+  async updateOfferPrice(
+    offerId: string,
+    price: number,
+    currency: string = 'USD'
+  ): Promise<EbayApiResponse<void>> {
+    return this.updatePrice(offerId, price, currency);
+  }
+
+  /**
    * カテゴリをキーワードで検索（Taxonomy API）
    */
   async searchCategories(

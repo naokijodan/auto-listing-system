@@ -10,7 +10,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient, ListingStatus, Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
-import { addEbayBatchPublishJob, QUEUE_NAMES } from '@rakuda/queue';
+import { addEbayBatchPublishJob, addEbayPriceSyncJob, getEbayPublishQueueStats, QUEUE_NAMES } from '@rakuda/queue';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -697,6 +697,109 @@ router.get('/categories/search', async (req: Request, res: Response) => {
   } catch (error) {
     log.error({ type: 'search_categories_error', error });
     res.status(500).json({ error: 'Failed to search categories' });
+  }
+});
+
+// ========================================
+// eBay価格同期
+// ========================================
+
+/**
+ * 価格同期ジョブを開始
+ */
+router.post('/pricing/sync', async (req: Request, res: Response) => {
+  try {
+    const {
+      priceChangeThreshold = 2,
+      maxListings = 100,
+      syncToMarketplace = false,
+    } = req.body;
+
+    const jobId = await addEbayPriceSyncJob({
+      priceChangeThreshold,
+      maxListings,
+      syncToMarketplace,
+    });
+
+    log.info({
+      type: 'ebay_price_sync_job_created',
+      jobId,
+      options: { priceChangeThreshold, maxListings, syncToMarketplace },
+    });
+
+    res.json({
+      success: true,
+      message: 'Price sync job started',
+      jobId,
+    });
+  } catch (error) {
+    log.error({ type: 'start_price_sync_error', error });
+    res.status(500).json({ error: 'Failed to start price sync' });
+  }
+});
+
+/**
+ * 価格同期ステータスを取得
+ */
+router.get('/pricing/sync/status', async (req: Request, res: Response) => {
+  try {
+    const queueStats = await getEbayPublishQueueStats();
+
+    // 最近の価格変更を取得
+    const recentChanges = await prisma.priceHistory.findMany({
+      where: {
+        reason: 'auto_sync',
+        listing: { marketplace: 'EBAY' },
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+      include: {
+        listing: {
+          include: { product: { select: { title: true, titleEn: true } } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    // 24時間の統計
+    const stats24h = await prisma.priceHistory.aggregate({
+      where: {
+        reason: 'auto_sync',
+        listing: { marketplace: 'EBAY' },
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+      _count: true,
+      _avg: {
+        newPrice: true,
+        oldPrice: true,
+      },
+    });
+
+    const avgChangePercent = stats24h._avg.oldPrice && stats24h._avg.newPrice
+      ? Math.abs((stats24h._avg.newPrice - stats24h._avg.oldPrice) / stats24h._avg.oldPrice * 100)
+      : 0;
+
+    res.json({
+      success: true,
+      queue: queueStats,
+      recentChanges: recentChanges.map(change => ({
+        listingId: change.listingId,
+        productTitle: change.listing.product?.titleEn || change.listing.product?.title || 'Unknown',
+        oldPrice: change.oldPrice,
+        newPrice: change.newPrice,
+        changePercent: change.oldPrice > 0
+          ? ((change.newPrice - change.oldPrice) / change.oldPrice * 100).toFixed(1)
+          : '0',
+        createdAt: change.createdAt,
+      })),
+      stats24h: {
+        totalChanges: stats24h._count,
+        averageChangePercent: avgChangePercent.toFixed(2),
+      },
+    });
+  } catch (error) {
+    log.error({ type: 'get_price_sync_status_error', error });
+    res.status(500).json({ error: 'Failed to get price sync status' });
   }
 });
 

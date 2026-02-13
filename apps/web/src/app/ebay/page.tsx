@@ -87,6 +87,28 @@ interface ListingsResponse {
   total: number;
 }
 
+interface PriceSyncStatus {
+  success: boolean;
+  queue: {
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+  };
+  recentChanges: Array<{
+    listingId: string;
+    productTitle: string;
+    oldPrice: number;
+    newPrice: number;
+    changePercent: string;
+    createdAt: string;
+  }>;
+  stats24h: {
+    totalChanges: number;
+    averageChangePercent: string;
+  };
+}
+
 export default function EbayPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState('');
@@ -94,6 +116,8 @@ export default function EbayPage() {
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
   const [previewListingId, setPreviewListingId] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isPriceSyncing, setIsPriceSyncing] = useState(false);
+  const [showPriceSyncStatus, setShowPriceSyncStatus] = useState(false);
 
   // プレビューを開く
   const handleOpenPreview = useCallback((id: string) => {
@@ -117,6 +141,13 @@ export default function EbayPage() {
   const { data: statsData, mutate: mutateStats } = useSWR<EbayStats>(
     '/api/ebay-listings/stats',
     fetcher
+  );
+
+  // Fetch price sync status
+  const { data: priceSyncStatus, mutate: mutatePriceSyncStatus } = useSWR<PriceSyncStatus>(
+    showPriceSyncStatus ? '/api/ebay-listings/pricing/sync/status' : null,
+    fetcher,
+    { refreshInterval: showPriceSyncStatus ? 5000 : 0 }
   );
 
   const listings = data?.listings ?? [];
@@ -203,6 +234,26 @@ export default function EbayPage() {
     }
   }, [mutate, mutateStats]);
 
+  // 価格同期
+  const handlePriceSync = useCallback(async () => {
+    setIsPriceSyncing(true);
+    setShowPriceSyncStatus(true);
+    try {
+      const response = await postApi('/api/ebay-listings/pricing/sync', {
+        priceChangeThreshold: 0.03, // 3%以上の価格変動で同期
+        maxListings: 100,
+        syncToMarketplace: false, // まずはDB更新のみ
+      }) as { message: string; jobId: string };
+
+      addToast({ type: 'success', message: response.message });
+      mutatePriceSyncStatus();
+    } catch {
+      addToast({ type: 'error', message: '価格同期の開始に失敗しました' });
+    } finally {
+      setIsPriceSyncing(false);
+    }
+  }, [mutatePriceSyncStatus]);
+
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
       {/* Header */}
@@ -219,6 +270,19 @@ export default function EbayPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePriceSync}
+            disabled={isPriceSyncing}
+          >
+            {isPriceSyncing ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <DollarSign className="h-4 w-4 mr-1" />
+            )}
+            価格同期
+          </Button>
           <Button
             variant="primary"
             size="sm"
@@ -311,6 +375,88 @@ export default function EbayPage() {
           </div>
         </Card>
       </div>
+
+      {/* Price Sync Status Panel */}
+      {showPriceSyncStatus && priceSyncStatus && (
+        <Card className="mb-4 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-blue-600" />
+              <h3 className="font-medium text-zinc-900 dark:text-white">価格同期ステータス</h3>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPriceSyncStatus(false)}
+            >
+              <XCircle className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Queue Status */}
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-amber-600">{priceSyncStatus.queue.waiting}</p>
+              <p className="text-xs text-zinc-500">待機中</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-600">{priceSyncStatus.queue.active}</p>
+              <p className="text-xs text-zinc-500">処理中</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-emerald-600">{priceSyncStatus.queue.completed}</p>
+              <p className="text-xs text-zinc-500">完了</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-red-600">{priceSyncStatus.queue.failed}</p>
+              <p className="text-xs text-zinc-500">失敗</p>
+            </div>
+          </div>
+
+          {/* 24h Stats */}
+          <div className="mb-4 p-3 bg-zinc-50 rounded-lg dark:bg-zinc-800/50">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              過去24時間: <span className="font-medium">{priceSyncStatus.stats24h.totalChanges}件</span>の価格変更
+              {priceSyncStatus.stats24h.totalChanges > 0 && (
+                <span className="ml-2">
+                  (平均変動: <span className="font-medium">{priceSyncStatus.stats24h.averageChangePercent}%</span>)
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Recent Changes */}
+          {priceSyncStatus.recentChanges.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">最近の価格変更</p>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {priceSyncStatus.recentChanges.slice(0, 5).map((change) => (
+                  <div
+                    key={change.listingId}
+                    className="flex items-center justify-between text-sm p-2 bg-zinc-50 rounded dark:bg-zinc-800/50"
+                  >
+                    <span className="truncate flex-1 text-zinc-700 dark:text-zinc-300">
+                      {change.productTitle}
+                    </span>
+                    <div className="flex items-center gap-2 ml-2">
+                      <span className="text-zinc-500 line-through">${change.oldPrice.toFixed(2)}</span>
+                      <span className="text-zinc-900 font-medium dark:text-white">${change.newPrice.toFixed(2)}</span>
+                      <span className={cn(
+                        'text-xs px-1.5 py-0.5 rounded',
+                        parseFloat(change.changePercent) > 0
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      )}>
+                        {parseFloat(change.changePercent) > 0 ? '+' : ''}{change.changePercent}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Filters */}
       <div className="mb-4 flex items-center gap-3">

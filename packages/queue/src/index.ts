@@ -37,7 +37,8 @@ export type EbayPublishJobType =
   | 'publish-offer'
   | 'batch-publish'
   | 'end-listing'
-  | 'sync-status';
+  | 'sync-status'
+  | 'price-sync';
 
 export interface EnrichmentJobData {
   type: EnrichmentJobType;
@@ -67,6 +68,9 @@ export interface EbayPublishJobData {
   options?: {
     dryRun?: boolean;
     concurrency?: number;
+    priceChangeThreshold?: number;
+    maxListings?: number;
+    syncToMarketplace?: boolean;
   };
 }
 
@@ -379,6 +383,19 @@ export async function addEbayBatchPublishJob(batchId: string, listingIds: string
  */
 export async function addEbayEndListingJob(listingId: string): Promise<string> {
   return addEbayPublishJob('end-listing', { listingId });
+}
+
+/**
+ * eBay価格同期ジョブを追加
+ */
+export async function addEbayPriceSyncJob(
+  options: {
+    priceChangeThreshold?: number;
+    maxListings?: number;
+    syncToMarketplace?: boolean;
+  } = {}
+): Promise<string> {
+  return addEbayPublishJob('price-sync', { options });
 }
 
 /**
