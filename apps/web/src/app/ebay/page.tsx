@@ -51,6 +51,7 @@ import {
   Globe,
   Sparkles,
   UserCircle,
+  LineChart,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -529,6 +530,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <UserCircle className="h-4 w-4 mr-1" />
               顧客分析
+            </Button>
+          </Link>
+          <Link href="/ebay/sales-forecast">
+            <Button variant="outline" size="sm">
+              <LineChart className="h-4 w-4 mr-1" />
+              売上予測
             </Button>
           </Link>
           <Button
