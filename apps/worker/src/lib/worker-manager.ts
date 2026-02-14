@@ -19,6 +19,8 @@ import { processEnrichmentJob, processFullWorkflow } from '../processors/enrichm
 import { processJoomPublishJob, processFullJoomWorkflow, processAutoJoomPublish } from '../processors/joom-publish';
 // Phase 103: eBay出品
 import { processEbayPublishJob, processFullEbayWorkflow } from '../processors/ebay-publish';
+// Phase 105-C: eBay自動再出品
+import { processEbayAutoRelistJob } from '../processors/ebay-auto-relist';
 // Phase 51: 注文処理
 import { processOrderJob, processDeadlineCheckJob } from '../processors/order';
 // Phase 52: 発送処理
@@ -143,6 +145,10 @@ export async function startWorkers(connection: IORedis): Promise<void> {
       // Active商品の高頻度在庫監視（Phase 52）
       if (job.name === 'active-inventory-check') {
         return handleActiveInventoryCheck(job);
+      }
+      // eBay自動再出品（Phase 105-C）
+      if (job.name === 'ebay-auto-relist' || job.name === 'auto-relist') {
+        return processEbayAutoRelistJob(job);
       }
       // スケジュールされた在庫チェック
       if (job.name === 'scheduled-inventory-check' || job.name === 'manual-inventory-check') {

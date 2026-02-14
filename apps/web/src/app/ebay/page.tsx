@@ -31,7 +31,9 @@ import {
   RotateCcw,
   Settings,
   ChevronDown,
+  FileStack,
 } from 'lucide-react';
+import Link from 'next/link';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
   DRAFT: { label: '下書き', color: 'bg-zinc-50 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400', icon: FileText },
@@ -366,6 +368,12 @@ export default function EbayPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/ebay/templates">
+            <Button variant="outline" size="sm">
+              <FileStack className="h-4 w-4 mr-1" />
+              テンプレート管理
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"

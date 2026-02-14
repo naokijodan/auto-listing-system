@@ -161,6 +161,12 @@ export interface SchedulerConfig {
     cronExpression: string;   // チェック間隔（デフォルト: 6時間ごと）
     urgentHours: number;      // 緊急アラートの閾値（時間）
   };
+  // eBay自動再出品（Phase 105-C）
+  ebayAutoRelist: {
+    enabled: boolean;
+    cronExpression: string;   // 実行間隔（デフォルト: 毎日9時）
+    limit: number;            // 1回の実行で処理する最大数
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -274,6 +280,11 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     enabled: true,
     cronExpression: '0 */6 * * *',     // 6時間ごとに発送期限チェック
     urgentHours: 24,                    // 24時間以内が緊急
+  },
+  ebayAutoRelist: {
+    enabled: true,
+    cronExpression: '0 9 * * 1-5',     // 平日9時にeBay自動再出品
+    limit: 50,                          // 1回の実行で最大50件
   },
 };
 
@@ -805,6 +816,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     inventoryAlertProcessing: { ...DEFAULT_CONFIG.inventoryAlertProcessing, ...config.inventoryAlertProcessing },
     salesSummaryCalculation: { ...DEFAULT_CONFIG.salesSummaryCalculation, ...config.salesSummaryCalculation },
     shipmentDeadlineCheck: { ...DEFAULT_CONFIG.shipmentDeadlineCheck, ...config.shipmentDeadlineCheck },
+    ebayAutoRelist: { ...DEFAULT_CONFIG.ebayAutoRelist, ...config.ebayAutoRelist },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -830,6 +842,7 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleInventoryAlertProcessing(finalConfig.inventoryAlertProcessing);
   await scheduleSalesSummaryCalculation(finalConfig.salesSummaryCalculation);
   await scheduleShipmentDeadlineCheck(finalConfig.shipmentDeadlineCheck);
+  await scheduleEbayAutoRelist(finalConfig.ebayAutoRelist);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -2873,6 +2886,77 @@ async function scheduleShipmentDeadlineCheck(config: SchedulerConfig['shipmentDe
     cronExpression: config.cronExpression,
     urgentHours: config.urgentHours,
   });
+}
+
+/**
+ * eBay自動再出品をスケジュール（Phase 105-C）
+ */
+async function scheduleEbayAutoRelist(config: SchedulerConfig['ebayAutoRelist']) {
+  if (!config.enabled) {
+    log.info({ type: 'ebay_auto_relist_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await inventoryQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'ebay-auto-relist') {
+      await inventoryQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  // eBay自動再出品ジョブ
+  await inventoryQueue.add(
+    'ebay-auto-relist',
+    {
+      type: 'ebay-auto-relist',
+      limit: config.limit,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'ebay-auto-relist-scheduled',
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  log.info({
+    type: 'ebay_auto_relist_scheduled',
+    cronExpression: config.cronExpression,
+    limit: config.limit,
+  });
+}
+
+/**
+ * 手動でeBay自動再出品をトリガー（Phase 105-C）
+ */
+export async function triggerEbayAutoRelist(options?: {
+  limit?: number;
+  forceRun?: boolean;
+}): Promise<string> {
+  const job = await inventoryQueue.add(
+    'ebay-auto-relist',
+    {
+      type: 'ebay-auto-relist',
+      triggeredAt: new Date().toISOString(),
+      limit: options?.limit || 50,
+      forceRun: options?.forceRun || false,
+    },
+    {
+      priority: 1, // 高優先度
+    }
+  );
+
+  log.info({
+    type: 'manual_ebay_auto_relist_triggered',
+    jobId: job.id,
+    limit: options?.limit || 50,
+  });
+
+  return job.id as string;
 }
 
 /**
