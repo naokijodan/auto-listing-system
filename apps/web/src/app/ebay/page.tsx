@@ -46,6 +46,7 @@ import {
   Beaker,
   Languages,
   Tag,
+  Megaphone,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -482,6 +483,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Tag className="h-4 w-4 mr-1" />
               プロモーション
+            </Button>
+          </Link>
+          <Link href="/ebay/reports">
+            <Button variant="outline" size="sm">
+              <FileText className="h-4 w-4 mr-1" />
+              レポート
+            </Button>
+          </Link>
+          <Link href="/ebay/ads">
+            <Button variant="outline" size="sm">
+              <Megaphone className="h-4 w-4 mr-1" />
+              広告
             </Button>
           </Link>
           <Button
