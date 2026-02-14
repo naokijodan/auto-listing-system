@@ -380,6 +380,12 @@ export default function EbayPage() {
               在庫監視
             </Button>
           </Link>
+          <Link href="/ebay/sales">
+            <Button variant="outline" size="sm">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              売上レポート
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
