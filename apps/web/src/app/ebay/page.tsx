@@ -38,6 +38,7 @@ import {
   Star,
   BarChart3,
   Edit3,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -426,6 +427,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Edit3 className="h-4 w-4 mr-1" />
               一括編集
+            </Button>
+          </Link>
+          <Link href="/ebay/competitors">
+            <Button variant="outline" size="sm">
+              <Users className="h-4 w-4 mr-1" />
+              競合分析
             </Button>
           </Link>
           <Button
