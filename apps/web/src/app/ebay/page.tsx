@@ -504,6 +504,12 @@ export default function EbayPage() {
               自動応答
             </Button>
           </Link>
+          <Link href="/ebay/feedback-analysis">
+            <Button variant="outline" size="sm">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              評価分析
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
