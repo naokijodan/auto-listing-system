@@ -36,6 +36,7 @@ import {
   ShoppingCart,
   RotateCcw,
   Star,
+  BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -412,6 +413,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Star className="h-4 w-4 mr-1" />
               フィードバック
+            </Button>
+          </Link>
+          <Link href="/ebay/analytics">
+            <Button variant="outline" size="sm">
+              <BarChart3 className="h-4 w-4 mr-1" />
+              分析
             </Button>
           </Link>
           <Button
