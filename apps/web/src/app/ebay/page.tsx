@@ -34,6 +34,8 @@ import {
   FileStack,
   MessageSquare,
   ShoppingCart,
+  RotateCcw,
+  Star,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -398,6 +400,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <ShoppingCart className="h-4 w-4 mr-1" />
               注文管理
+            </Button>
+          </Link>
+          <Link href="/ebay/returns">
+            <Button variant="outline" size="sm">
+              <RotateCcw className="h-4 w-4 mr-1" />
+              返品・返金
+            </Button>
+          </Link>
+          <Link href="/ebay/feedback">
+            <Button variant="outline" size="sm">
+              <Star className="h-4 w-4 mr-1" />
+              フィードバック
             </Button>
           </Link>
           <Button
