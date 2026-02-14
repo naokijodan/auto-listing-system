@@ -56,6 +56,7 @@ import {
   Heart,
   LayoutDashboard,
   Building2,
+  Activity,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -564,6 +565,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Building2 className="h-4 w-4 mr-1" />
               マルチストア
+            </Button>
+          </Link>
+          <Link href="/ebay/api-monitor">
+            <Button variant="outline" size="sm">
+              <Activity className="h-4 w-4 mr-1" />
+              API監視
             </Button>
           </Link>
           <Button
