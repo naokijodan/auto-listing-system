@@ -44,6 +44,8 @@ import {
   PackagePlus,
   Sparkles,
   Beaker,
+  Languages,
+  Tag,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -468,6 +470,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Beaker className="h-4 w-4 mr-1" />
               A/Bテスト
+            </Button>
+          </Link>
+          <Link href="/ebay/multilingual">
+            <Button variant="outline" size="sm">
+              <Languages className="h-4 w-4 mr-1" />
+              多言語
+            </Button>
+          </Link>
+          <Link href="/ebay/promotions">
+            <Button variant="outline" size="sm">
+              <Tag className="h-4 w-4 mr-1" />
+              プロモーション
             </Button>
           </Link>
           <Button
