@@ -32,6 +32,7 @@ import {
   Settings,
   ChevronDown,
   FileStack,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -384,6 +385,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <TrendingUp className="h-4 w-4 mr-1" />
               売上レポート
+            </Button>
+          </Link>
+          <Link href="/ebay/messages">
+            <Button variant="outline" size="sm">
+              <MessageSquare className="h-4 w-4 mr-1" />
+              メッセージ
             </Button>
           </Link>
           <Button

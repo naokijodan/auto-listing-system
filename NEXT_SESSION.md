@@ -1,4 +1,4 @@
-# 次回セッション: Phase 108
+# 次回セッション: Phase 109
 
 ## 完了済み
 - Phase 105-A: テンプレートAPI
@@ -6,32 +6,34 @@
 - Phase 105-C: テンプレート管理UI + 自動再出品機能
 - Phase 106: eBay在庫監視強化
 - Phase 107: eBay売上レポート
+- Phase 108: eBayメッセージ管理
 
-### Phase 107 実装内容
-1. **売上レポートAPI** (`apps/api/src/routes/ebay-sales.ts`)
-   - `GET /dashboard` - 売上ダッシュボード（統計、トップ商品、日別推移）
-   - `GET /summary` - 期間別サマリー（前期間比較付き）
-   - `GET /by-category` - カテゴリ別売上
-   - `GET /top-products` - 商品別売上ランキング
-   - `GET /trends` - 売上トレンド
-   - `GET /profit` - 利益分析
+### Phase 108 実装内容
+1. **メッセージ管理API** (`apps/api/src/routes/ebay-messages.ts`)
+   - `GET /dashboard` - メッセージダッシュボード（統計、最近のメッセージ）
+   - `GET /` - メッセージ一覧（フィルタ対応）
+   - `GET /:id` - メッセージ詳細
+   - `POST /send` - メッセージ送信（テンプレート対応）
+   - `POST /:id/retry` - 失敗メッセージ再送信
+   - `GET /templates/list` - テンプレート一覧
+   - `POST /templates/:id/preview` - テンプレートプレビュー
+   - `GET /stats/summary` - 送信統計
 
-2. **売上レポートUI** (`apps/web/src/app/ebay/sales/page.tsx`)
-   - 売上サマリーカード（総売上、注文数、販売点数、平均注文額）
-   - 前期間比較（増減率、トレンド表示）
-   - トップ売上商品リスト
-   - 最近の注文リスト
-   - 日別売上チャート
-   - カテゴリ別売上（タブ）
-   - 利益分析（タブ）
+2. **メッセージ管理UI** (`apps/web/src/app/ebay/messages/page.tsx`)
+   - ダッシュボードタブ（サマリーカード、最近のメッセージ）
+   - メッセージ一覧タブ（検索、ステータスフィルタ）
+   - テンプレートタブ（カテゴリ別表示、使用ボタン）
+   - 統計タブ（送信数、成功率、日別チャート）
+   - 新規メッセージ作成モーダル
+   - メッセージ詳細モーダル（再送信機能）
 
 3. **eBayページ更新**
-   - 売上レポートへのリンク追加
+   - メッセージ管理へのリンク追加
 
 ## 次のステップ候補
-- Phase 108: eBayメッセージ管理
 - Phase 109: eBay注文管理強化
 - Phase 110: eBay返品・返金管理
+- Phase 111: eBayフィードバック管理
 
 ## 参考ファイル
 - Prismaスキーマ: `packages/database/prisma/schema.prisma`
