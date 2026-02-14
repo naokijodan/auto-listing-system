@@ -47,6 +47,7 @@ import {
   Languages,
   Tag,
   Megaphone,
+  Bot,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -495,6 +496,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Megaphone className="h-4 w-4 mr-1" />
               広告
+            </Button>
+          </Link>
+          <Link href="/ebay/auto-messages">
+            <Button variant="outline" size="sm">
+              <Bot className="h-4 w-4 mr-1" />
+              自動応答
             </Button>
           </Link>
           <Button
