@@ -371,7 +371,13 @@ export default function EbayPage() {
           <Link href="/ebay/templates">
             <Button variant="outline" size="sm">
               <FileStack className="h-4 w-4 mr-1" />
-              テンプレート管理
+              テンプレート
+            </Button>
+          </Link>
+          <Link href="/ebay/inventory">
+            <Button variant="outline" size="sm">
+              <Package className="h-4 w-4 mr-1" />
+              在庫監視
             </Button>
           </Link>
           <Button
