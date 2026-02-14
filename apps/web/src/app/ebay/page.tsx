@@ -53,6 +53,7 @@ import {
   UserCircle,
   LineChart,
   Warehouse,
+  Heart,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -543,6 +544,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Warehouse className="h-4 w-4 mr-1" />
               在庫最適化
+            </Button>
+          </Link>
+          <Link href="/ebay/customer-lifecycle">
+            <Button variant="outline" size="sm">
+              <Heart className="h-4 w-4 mr-1" />
+              顧客ライフサイクル
             </Button>
           </Link>
           <Button
