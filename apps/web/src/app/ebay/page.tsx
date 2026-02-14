@@ -49,6 +49,7 @@ import {
   Megaphone,
   Bot,
   Globe,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -515,6 +516,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Globe className="h-4 w-4 mr-1" />
               物流
+            </Button>
+          </Link>
+          <Link href="/ebay/recommendations">
+            <Button variant="outline" size="sm">
+              <Sparkles className="h-4 w-4 mr-1" />
+              推奨
             </Button>
           </Link>
           <Button
