@@ -52,6 +52,7 @@ import {
   Sparkles,
   UserCircle,
   LineChart,
+  Warehouse,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -536,6 +537,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <LineChart className="h-4 w-4 mr-1" />
               売上予測
+            </Button>
+          </Link>
+          <Link href="/ebay/inventory-optimization">
+            <Button variant="outline" size="sm">
+              <Warehouse className="h-4 w-4 mr-1" />
+              在庫最適化
             </Button>
           </Link>
           <Button
