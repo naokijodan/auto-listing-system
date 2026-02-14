@@ -169,8 +169,10 @@ model Listing {
   updatedAt DateTime  @updatedAt
 
   // リレーション
-  inventoryAlerts InventoryAlert[]
-  sales           Sale[]
+  inventoryAlerts    InventoryAlert[]
+  sales              Sale[]
+  scheduledListings  ScheduledListing[]
+  optimizations      ListingOptimization[]
 
   @@unique([productId, marketplace])
   @@index([marketplace, status])
@@ -198,6 +200,141 @@ enum ListingStatus {
   SOLD
   ENDED
   ERROR
+}
+
+// ========================================
+// スケジュール出品（Phase 116）
+// ========================================
+model ScheduledListing {
+  id        String @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  scheduledAt DateTime // 出品予定日時
+  status      ScheduledListingStatus @default(PENDING)
+  executedAt  DateTime? // 実行日時
+  error       String? // エラーメッセージ
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([listingId])
+  @@map("scheduled_listings")
+}
+
+enum ScheduledListingStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+// ========================================
+// 在庫補充ルール（Phase 117）
+// ========================================
+model RestockRule {
+  id                String  @id @default(cuid())
+  name              String
+  lowStockThreshold Int // この在庫数以下でアラート
+  restockQuantity   Int // 補充数
+  supplierId        String?
+
+  autoOrder   Boolean @default(false) // 自動発注
+  notifyEmail Boolean @default(true) // メール通知
+  isActive    Boolean @default(true)
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs RestockLog[]
+
+  @@map("restock_rules")
+}
+
+// 在庫補充ログ（Phase 117）
+model RestockLog {
+  id        String @id @default(cuid())
+  productId String
+
+  ruleId  String?
+  rule    RestockRule? @relation(fields: [ruleId], references: [id])
+  orderId String?
+
+  previousStock Int
+  addedStock    Int
+  newStock      Int
+  source        String // manual, bulk, order, auto
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([source])
+  @@map("restock_logs")
+}
+
+// 在庫発注（Phase 117）
+model RestockOrder {
+  id         String   @id @default(cuid())
+  productId  String
+  supplierId String?
+
+  quantity Int
+  status   RestockOrderStatus @default(PENDING)
+
+  metadata    Json      @default("{}")
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([productId])
+  @@map("restock_orders")
+}
+
+enum RestockOrderStatus {
+  PENDING
+  ORDERED
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+// ========================================
+// 出品最適化（Phase 118）
+// ========================================
+model ListingOptimization {
+  id        String @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  type           String // TITLE, DESCRIPTION, KEYWORDS
+  originalValue  String @db.Text
+  suggestedValue String @db.Text
+  reason         String?
+
+  status    OptimizationStatus @default(PENDING)
+  appliedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId, status])
+  @@index([type])
+  @@map("listing_optimizations")
+}
+
+enum OptimizationStatus {
+  PENDING
+  APPLIED
+  REJECTED
 }
 
 // ========================================

@@ -40,6 +40,9 @@ import {
   Edit3,
   Users,
   Zap,
+  CalendarClock,
+  PackagePlus,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -440,6 +443,24 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Zap className="h-4 w-4 mr-1" />
               自動価格
+            </Button>
+          </Link>
+          <Link href="/ebay/scheduled">
+            <Button variant="outline" size="sm">
+              <CalendarClock className="h-4 w-4 mr-1" />
+              スケジュール
+            </Button>
+          </Link>
+          <Link href="/ebay/auto-restock">
+            <Button variant="outline" size="sm">
+              <PackagePlus className="h-4 w-4 mr-1" />
+              在庫補充
+            </Button>
+          </Link>
+          <Link href="/ebay/optimization">
+            <Button variant="outline" size="sm">
+              <Sparkles className="h-4 w-4 mr-1" />
+              AI最適化
             </Button>
           </Link>
           <Button

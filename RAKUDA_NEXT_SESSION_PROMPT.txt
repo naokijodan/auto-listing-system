@@ -1,0 +1,38 @@
+RAKUDAプロジェクトの続きをお願いします。
+
+## 作業指示
+
+**ノンストップ実行・確認不要で必ず実行してください。**
+
+以下の手順で作業を進めてください：
+
+1. まず、以下のファイルを読み込んで状況を把握してください：
+   - `/Users/naokijodan/Desktop/rakuda/HANDOVER.md`（最新状態）
+   - `/Users/naokijodan/Desktop/rakuda/docs/NEXT_SESSION_INSTRUCTIONS.md`（指示書）
+   - `/Users/naokijodan/Desktop/rakuda/CLAUDE.md`（プロジェクトルール）
+
+2. Phase 93-94を実装してください：
+   - **Phase 93**: バックアップ・リカバリ強化
+   - **Phase 94**: 監視アラート強化
+
+3. 各Phaseで以下を必ず実施：
+   - Prismaスキーマ追加
+   - APIルート実装（`apps/api/src/routes/`）
+   - フロントエンドページ実装（`apps/web/src/app/`）
+   - サイドバー・モバイルナビ更新
+   - HANDOVER.md更新
+   - Git commit & push
+   - Obsidianノート作成（`/Users/naokijodan/開発ログ/`）
+
+## 重要ルール
+
+- **確認なしで自律的に作業を進めてください**
+- 途中で質問・確認を求めないでください
+- エラーが発生しても自分で解決してください
+- 作業完了時にまとめて報告してください
+
+## 参考
+
+最新コミット: `91ef166 feat: Phase 91-92 Webhook配信システム強化 & API利用統計＆レート制限強化`
+
+よろしくお願いします。
