@@ -48,6 +48,7 @@ import {
   Tag,
   Megaphone,
   Bot,
+  Globe,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -508,6 +509,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <TrendingUp className="h-4 w-4 mr-1" />
               評価分析
+            </Button>
+          </Link>
+          <Link href="/ebay/logistics">
+            <Button variant="outline" size="sm">
+              <Globe className="h-4 w-4 mr-1" />
+              物流
             </Button>
           </Link>
           <Button
