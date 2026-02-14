@@ -54,6 +54,7 @@ import {
   LineChart,
   Warehouse,
   Heart,
+  LayoutDashboard,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -390,6 +391,12 @@ export default function EbayPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/ebay/dashboard">
+            <Button variant="outline" size="sm">
+              <LayoutDashboard className="h-4 w-4 mr-1" />
+              ダッシュボード
+            </Button>
+          </Link>
           <Link href="/ebay/templates">
             <Button variant="outline" size="sm">
               <FileStack className="h-4 w-4 mr-1" />
