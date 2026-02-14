@@ -37,6 +37,7 @@ import {
   RotateCcw,
   Star,
   BarChart3,
+  Edit3,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -419,6 +420,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <BarChart3 className="h-4 w-4 mr-1" />
               分析
+            </Button>
+          </Link>
+          <Link href="/ebay/bulk-editor">
+            <Button variant="outline" size="sm">
+              <Edit3 className="h-4 w-4 mr-1" />
+              一括編集
             </Button>
           </Link>
           <Button
