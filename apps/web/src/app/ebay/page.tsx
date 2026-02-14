@@ -57,6 +57,7 @@ import {
   LayoutDashboard,
   Building2,
   Activity,
+  Calculator,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -571,6 +572,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Activity className="h-4 w-4 mr-1" />
               API監視
+            </Button>
+          </Link>
+          <Link href="/ebay/profit-calculator">
+            <Button variant="outline" size="sm">
+              <Calculator className="h-4 w-4 mr-1" />
+              利益計算
             </Button>
           </Link>
           <Button
