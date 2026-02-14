@@ -43,6 +43,7 @@ import {
   CalendarClock,
   PackagePlus,
   Sparkles,
+  Beaker,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -461,6 +462,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Sparkles className="h-4 w-4 mr-1" />
               AI最適化
+            </Button>
+          </Link>
+          <Link href="/ebay/ab-tests">
+            <Button variant="outline" size="sm">
+              <Beaker className="h-4 w-4 mr-1" />
+              A/Bテスト
             </Button>
           </Link>
           <Button
