@@ -50,6 +50,7 @@ import {
   Bot,
   Globe,
   Sparkles,
+  UserCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -522,6 +523,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Sparkles className="h-4 w-4 mr-1" />
               推奨
+            </Button>
+          </Link>
+          <Link href="/ebay/buyer-segments">
+            <Button variant="outline" size="sm">
+              <UserCircle className="h-4 w-4 mr-1" />
+              顧客分析
             </Button>
           </Link>
           <Button
