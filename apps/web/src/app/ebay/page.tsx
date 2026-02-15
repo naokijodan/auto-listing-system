@@ -59,6 +59,7 @@ import {
   Activity,
   Calculator,
   GitFork,
+  Layers,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -585,6 +586,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <GitFork className="h-4 w-4 mr-1" />
               ワークフロー
+            </Button>
+          </Link>
+          <Link href="/ebay/variations">
+            <Button variant="outline" size="sm">
+              <Layers className="h-4 w-4 mr-1" />
+              バリエーション
             </Button>
           </Link>
           <Button
