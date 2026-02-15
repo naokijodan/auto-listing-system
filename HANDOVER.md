@@ -3,12 +3,53 @@
 ## 最終更新
 
 **日付**: 2026-02-15
-**Phase**: 114-155完了（136, 142含む）
+**Phase**: 114-160完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
 
-### Phase 148-150, 136, 142: eBay機能強化（最新）
+### Phase 156-160: eBay機能強化（最新）
+
+**ステータス**: 完了 ✅
+
+#### Phase 156: Activity Log（アクティビティログ）
+- **API**: `ebay-activity-log.ts`（22エンドポイント）
+- **UI**: `ebay/activity-log/page.tsx`（5タブ）
+- アクティビティ履歴、監査トレイル
+- セッションログ、エラーログ
+- リテンション設定、アラート設定
+
+#### Phase 157: Data Backup（データバックアップ）
+- **API**: `ebay-data-backup.ts`（25エンドポイント）
+- **UI**: `ebay/data-backup/page.tsx`（4タブ）
+- バックアップ作成・復元・検証
+- スケジュール管理、ストレージ設定
+- リストアジョブ、クイックエクスポート
+
+#### Phase 158: Performance Monitor（パフォーマンスモニター）
+- **API**: `ebay-performance-monitor.ts`（22エンドポイント）
+- **UI**: `ebay/performance-monitor/page.tsx`（5タブ）
+- サービスヘルス、APIメトリクス
+- システムリソース（CPU/メモリ/ディスク/ネットワーク）
+- アラート設定・管理
+
+#### Phase 159: User Preferences（ユーザー設定）
+- **API**: `ebay-user-preferences.ts`（30エンドポイント）
+- **UI**: `ebay/user-preferences/page.tsx`（6タブ）
+- UI設定（テーマ/言語/タイムゾーン）
+- 通知設定、デフォルト値設定
+- ショートカット、プリセット管理
+
+#### Phase 160: Help Center（ヘルプセンター）
+- **API**: `ebay-help-center.ts`（22エンドポイント）
+- **UI**: `ebay/help-center/page.tsx`（5タブ）
+- ガイド・FAQ・チュートリアル
+- サポートチケット管理
+- 検索、お知らせ、リリースノート
+
+---
+
+### Phase 148-150, 136, 142: eBay機能強化
 
 **ステータス**: 完了 ✅
 
