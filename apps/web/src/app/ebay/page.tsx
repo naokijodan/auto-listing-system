@@ -627,6 +627,12 @@ export default function EbayPage() {
               商品調査
             </Button>
           </Link>
+          <Link href="/ebay/customer-communication">
+            <Button variant="outline" size="sm">
+              <MessageSquare className="h-4 w-4 mr-1" />
+              コミュニケーション
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
