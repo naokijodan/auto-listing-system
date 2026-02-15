@@ -64,6 +64,8 @@ import {
   Plane,
   FolderTree,
   Bell,
+  Search,
+  Target,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -662,6 +664,24 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <FileText className="h-4 w-4 mr-1" />
               テンプレートv2
+            </Button>
+          </Link>
+          <Link href="/ebay/seo-optimizer">
+            <Button variant="outline" size="sm">
+              <Search className="h-4 w-4 mr-1" />
+              SEO最適化
+            </Button>
+          </Link>
+          <Link href="/ebay/listing-quality">
+            <Button variant="outline" size="sm">
+              <Target className="h-4 w-4 mr-1" />
+              品質スコア
+            </Button>
+          </Link>
+          <Link href="/ebay/tax-duty">
+            <Button variant="outline" size="sm">
+              <Globe className="h-4 w-4 mr-1" />
+              税金・関税
             </Button>
           </Link>
           <Button
