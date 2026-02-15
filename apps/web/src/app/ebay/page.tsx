@@ -873,6 +873,18 @@ export default function EbayPage() {
               同期
             </Button>
           </Link>
+          <Link href="/ebay/inventory-hub">
+            <Button variant="outline" size="sm">
+              <Warehouse className="h-4 w-4 mr-1" />
+              在庫ハブ
+            </Button>
+          </Link>
+          <Link href="/ebay/order-fulfillment">
+            <Button variant="outline" size="sm">
+              <Package className="h-4 w-4 mr-1" />
+              フルフィルメント
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
