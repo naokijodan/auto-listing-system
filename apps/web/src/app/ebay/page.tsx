@@ -77,6 +77,8 @@ import {
   ShieldCheck,
   UserCog,
   FileBarChart,
+  PieChart,
+  BrainCircuit,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -765,6 +767,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <FileBarChart className="h-4 w-4 mr-1" />
               レポート
+            </Button>
+          </Link>
+          <Link href="/ebay/data-visualization">
+            <Button variant="outline" size="sm">
+              <PieChart className="h-4 w-4 mr-1" />
+              可視化
+            </Button>
+          </Link>
+          <Link href="/ebay/ml-insights">
+            <Button variant="outline" size="sm">
+              <BrainCircuit className="h-4 w-4 mr-1" />
+              ML分析
             </Button>
           </Link>
           <Button
