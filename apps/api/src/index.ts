@@ -94,6 +94,7 @@ import { ebayTemplatesV2Router } from './routes/ebay-templates-v2';
 import { ebaySeoOptimizerRouter } from './routes/ebay-seo-optimizer';
 import { ebayListingQualityRouter } from './routes/ebay-listing-quality';
 import { ebayTaxDutyRouter } from './routes/ebay-tax-duty';
+import { ebayBulkExportImportRouter } from './routes/ebay-bulk-export-import';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -361,6 +362,7 @@ app.use('/api/ebay-templates-v2', ebayTemplatesV2Router);
 app.use('/api/ebay-seo-optimizer', ebaySeoOptimizerRouter);
 app.use('/api/ebay-listing-quality', ebayListingQualityRouter);
 app.use('/api/ebay-tax-duty', ebayTaxDutyRouter);
+app.use('/api/ebay-bulk-export-import', ebayBulkExportImportRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

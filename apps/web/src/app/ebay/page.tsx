@@ -66,6 +66,7 @@ import {
   Bell,
   Search,
   Target,
+  Download,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -682,6 +683,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Globe className="h-4 w-4 mr-1" />
               税金・関税
+            </Button>
+          </Link>
+          <Link href="/ebay/bulk-export-import">
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-1" />
+              一括入出力
             </Button>
           </Link>
           <Button
