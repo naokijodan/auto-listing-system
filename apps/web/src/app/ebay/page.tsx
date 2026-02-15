@@ -646,6 +646,12 @@ export default function EbayPage() {
               レビュー管理
             </Button>
           </Link>
+          <Link href="/ebay/shipment-tracking">
+            <Button variant="outline" size="sm">
+              <Package className="h-4 w-4 mr-1" />
+              出荷追跡
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"

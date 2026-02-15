@@ -88,6 +88,7 @@ import { ebayProductResearchRouter } from './routes/ebay-product-research';
 import { ebayCustomerCommunicationRouter } from './routes/ebay-customer-communication';
 import { ebayInventoryAlertsRouter } from './routes/ebay-inventory-alerts';
 import { ebayReviewManagementRouter } from './routes/ebay-review-management';
+import { ebayShipmentTrackingRouter } from './routes/ebay-shipment-tracking';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -349,6 +350,7 @@ app.use('/api/ebay-product-research', ebayProductResearchRouter);
 app.use('/api/ebay-customer-communication', ebayCustomerCommunicationRouter);
 app.use('/api/ebay-inventory-alerts', ebayInventoryAlertsRouter);
 app.use('/api/ebay-review-management', ebayReviewManagementRouter);
+app.use('/api/ebay-shipment-tracking', ebayShipmentTrackingRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
