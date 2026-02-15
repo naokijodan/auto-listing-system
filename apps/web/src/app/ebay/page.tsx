@@ -608,6 +608,12 @@ export default function EbayPage() {
               国際送料
             </Button>
           </Link>
+          <Link href="/ebay/seller-hub">
+            <Button variant="outline" size="sm">
+              <BarChart3 className="h-4 w-4 mr-1" />
+              セラーハブ
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
