@@ -640,6 +640,12 @@ export default function EbayPage() {
               在庫アラート
             </Button>
           </Link>
+          <Link href="/ebay/review-management">
+            <Button variant="outline" size="sm">
+              <Star className="h-4 w-4 mr-1" />
+              レビュー管理
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
