@@ -96,6 +96,11 @@ import { ebayListingQualityRouter } from './routes/ebay-listing-quality';
 import { ebayTaxDutyRouter } from './routes/ebay-tax-duty';
 import { ebayBulkExportImportRouter } from './routes/ebay-bulk-export-import';
 import { ebayNotificationCenterRouter } from './routes/ebay-notification-center';
+import { ebayActivityLogRouter } from './routes/ebay-activity-log';
+import { ebayDataBackupRouter } from './routes/ebay-data-backup';
+import { ebayPerformanceMonitorRouter } from './routes/ebay-performance-monitor';
+import { ebayUserPreferencesRouter } from './routes/ebay-user-preferences';
+import { ebayHelpCenterRouter } from './routes/ebay-help-center';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -365,6 +370,11 @@ app.use('/api/ebay-listing-quality', ebayListingQualityRouter);
 app.use('/api/ebay-tax-duty', ebayTaxDutyRouter);
 app.use('/api/ebay-bulk-export-import', ebayBulkExportImportRouter);
 app.use('/api/ebay-notification-center', ebayNotificationCenterRouter);
+app.use('/api/ebay-activity-log', ebayActivityLogRouter);
+app.use('/api/ebay-data-backup', ebayDataBackupRouter);
+app.use('/api/ebay-performance-monitor', ebayPerformanceMonitorRouter);
+app.use('/api/ebay-user-preferences', ebayUserPreferencesRouter);
+app.use('/api/ebay-help-center', ebayHelpCenterRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

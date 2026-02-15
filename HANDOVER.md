@@ -3,7 +3,7 @@
 ## 最終更新
 
 **日付**: 2026-02-15
-**Phase**: 114-150完了（136, 142含む）
+**Phase**: 114-155完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
@@ -41,6 +41,36 @@
 - **UI**: `ebay/templates-v2/page.tsx`（6タブ）
 - バリエーション・バンドル・A/Bテスト対応
 - プリセット機能、ダイナミックセクション
+
+#### Phase 151: SEO Optimizer（SEO最適化）
+- **API**: `ebay-seo-optimizer.ts`（25エンドポイント）
+- **UI**: `ebay/seo-optimizer/page.tsx`（6タブ）
+- SEOスコア分析、キーワードリサーチ
+- タイトルテンプレート、最適化提案
+
+#### Phase 152: Listing Quality（品質スコア）
+- **API**: `ebay-listing-quality.ts`（22エンドポイント）
+- **UI**: `ebay/listing-quality/page.tsx`（6タブ）
+- 品質スコア評価、ベンチマーク比較
+- 自動修正機能、トレンド分析
+
+#### Phase 153: Tax & Duty Manager（税金・関税）
+- **API**: `ebay-tax-duty.ts`（25エンドポイント）
+- **UI**: `ebay/tax-duty/page.tsx`（7タブ）
+- 税金・関税計算、HSコードマッピング
+- コンプライアンス管理、免税ルール
+
+#### Phase 154: Bulk Export/Import（一括エクスポート・インポート）
+- **API**: `ebay-bulk-export-import.ts`（28エンドポイント）
+- **UI**: `ebay/bulk-export-import/page.tsx`（7タブ）
+- エクスポート/インポートジョブ管理
+- テンプレート、スケジュール、ストレージ管理
+
+#### Phase 155: Notification Center（通知センター）
+- **API**: `ebay-notification-center.ts`（30エンドポイント）
+- **UI**: `ebay/notification-center/page.tsx`（5タブ）
+- 通知一覧・既読管理、配信チャンネル
+- 通知テンプレート、配信レポート
 
 ---
 

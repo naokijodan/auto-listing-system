@@ -67,6 +67,11 @@ import {
   Search,
   Target,
   Download,
+  History,
+  HardDrive,
+  Gauge,
+  Sliders,
+  CircleHelp,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -695,6 +700,36 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Bell className="h-4 w-4 mr-1" />
               通知センター
+            </Button>
+          </Link>
+          <Link href="/ebay/activity-log">
+            <Button variant="outline" size="sm">
+              <History className="h-4 w-4 mr-1" />
+              アクティビティ
+            </Button>
+          </Link>
+          <Link href="/ebay/data-backup">
+            <Button variant="outline" size="sm">
+              <HardDrive className="h-4 w-4 mr-1" />
+              バックアップ
+            </Button>
+          </Link>
+          <Link href="/ebay/performance-monitor">
+            <Button variant="outline" size="sm">
+              <Gauge className="h-4 w-4 mr-1" />
+              パフォーマンス
+            </Button>
+          </Link>
+          <Link href="/ebay/user-preferences">
+            <Button variant="outline" size="sm">
+              <Sliders className="h-4 w-4 mr-1" />
+              設定
+            </Button>
+          </Link>
+          <Link href="/ebay/help-center">
+            <Button variant="outline" size="sm">
+              <CircleHelp className="h-4 w-4 mr-1" />
+              ヘルプ
             </Button>
           </Link>
           <Button
