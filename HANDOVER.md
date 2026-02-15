@@ -3,12 +3,38 @@
 ## 最終更新
 
 **日付**: 2026-02-16
-**Phase**: 114-209完了（136, 142含む）
+**Phase**: 114-211完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
 
-### Phase 208-209: eBay機能強化（最新）
+### Phase 210-211: eBay機能強化（最新）
+
+**ステータス**: 完了 ✅
+
+#### Phase 210: Integration Marketplace（連携マーケットプレイス）
+- **API**: `ebay-integration-marketplace.ts`（28エンドポイント）
+- **UI**: `ebay/integration-marketplace/page.tsx`（6タブ）
+- ダッシュボード（概要、接続済み、人気の連携）
+- 連携管理（一覧、詳細、接続、切断、再接続、同期）
+- カテゴリ（E-commerce、Accounting、Automation等）
+- APIログ（一覧、詳細、統計）
+- ウェブフック（一覧、詳細、テスト）
+- 設定（一般、通知）
+
+#### Phase 211: Smart Scheduler（スマートスケジューラー）
+- **API**: `ebay-smart-scheduler.ts`（28エンドポイント）
+- **UI**: `ebay/smart-scheduler/page.tsx`（6タブ）
+- ダッシュボード（概要、今後のスケジュール、最近の実行）
+- ジョブ管理（CRUD、実行、一時停止、再開）
+- カレンダービュー（月、週、日）
+- リソース（使用状況、予測）
+- レポート（一覧、生成）
+- 設定（一般、リソース制限、通知）
+
+---
+
+### Phase 208-209: eBay機能強化
 
 **ステータス**: 完了 ✅
 
