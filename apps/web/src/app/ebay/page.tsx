@@ -86,6 +86,7 @@ import {
   BellRing,
   HeadphonesIcon,
   Code2,
+  ArrowRightLeft,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -858,6 +859,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <BarChart3 className="h-4 w-4 mr-1" />
               分析v2
+            </Button>
+          </Link>
+          <Link href="/ebay/multi-language-v2">
+            <Button variant="outline" size="sm">
+              <Languages className="h-4 w-4 mr-1" />
+              多言語v2
+            </Button>
+          </Link>
+          <Link href="/ebay/marketplace-sync">
+            <Button variant="outline" size="sm">
+              <ArrowRightLeft className="h-4 w-4 mr-1" />
+              同期
             </Button>
           </Link>
           <Button
