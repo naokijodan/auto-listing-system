@@ -79,6 +79,8 @@ import {
   FileBarChart,
   PieChart,
   BrainCircuit,
+  Plug2,
+  Smartphone,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -779,6 +781,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <BrainCircuit className="h-4 w-4 mr-1" />
               ML分析
+            </Button>
+          </Link>
+          <Link href="/ebay/integration-hub">
+            <Button variant="outline" size="sm">
+              <Plug2 className="h-4 w-4 mr-1" />
+              統合
+            </Button>
+          </Link>
+          <Link href="/ebay/mobile-api">
+            <Button variant="outline" size="sm">
+              <Smartphone className="h-4 w-4 mr-1" />
+              モバイル
             </Button>
           </Link>
           <Button
