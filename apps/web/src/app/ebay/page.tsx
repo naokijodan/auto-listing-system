@@ -691,6 +691,12 @@ export default function EbayPage() {
               一括入出力
             </Button>
           </Link>
+          <Link href="/ebay/notification-center">
+            <Button variant="outline" size="sm">
+              <Bell className="h-4 w-4 mr-1" />
+              通知センター
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
