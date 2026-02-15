@@ -85,6 +85,8 @@ import {
   Workflow,
   Bot,
   FileSpreadsheet,
+  BellRing,
+  HeadphonesIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -821,6 +823,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <FileSpreadsheet className="h-4 w-4 mr-1" />
               一括処理
+            </Button>
+          </Link>
+          <Link href="/ebay/notification-center-v2">
+            <Button variant="outline" size="sm">
+              <BellRing className="h-4 w-4 mr-1" />
+              通知v2
+            </Button>
+          </Link>
+          <Link href="/ebay/customer-support-hub">
+            <Button variant="outline" size="sm">
+              <HeadphonesIcon className="h-4 w-4 mr-1" />
+              サポート
             </Button>
           </Link>
           <Button
