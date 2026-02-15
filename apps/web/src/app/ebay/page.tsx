@@ -909,6 +909,18 @@ export default function EbayPage() {
               送料計算
             </Button>
           </Link>
+          <Link href="/ebay/tax-management">
+            <Button variant="outline" size="sm">
+              <FileBarChart className="h-4 w-4 mr-1" />
+              税管理
+            </Button>
+          </Link>
+          <Link href="/ebay/supplier-management">
+            <Button variant="outline" size="sm">
+              <Building2 className="h-4 w-4 mr-1" />
+              サプライヤー
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
