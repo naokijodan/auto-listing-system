@@ -885,6 +885,18 @@ export default function EbayPage() {
               フルフィルメント
             </Button>
           </Link>
+          <Link href="/ebay/pricing-intelligence">
+            <Button variant="outline" size="sm">
+              <DollarSign className="h-4 w-4 mr-1" />
+              価格分析
+            </Button>
+          </Link>
+          <Link href="/ebay/seller-performance">
+            <Button variant="outline" size="sm">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              パフォーマンス
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
