@@ -60,6 +60,7 @@ import {
   Calculator,
   GitFork,
   Layers,
+  Gift,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -592,6 +593,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Layers className="h-4 w-4 mr-1" />
               バリエーション
+            </Button>
+          </Link>
+          <Link href="/ebay/bundles">
+            <Button variant="outline" size="sm">
+              <Gift className="h-4 w-4 mr-1" />
+              バンドル
             </Button>
           </Link>
           <Button

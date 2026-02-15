@@ -80,6 +80,7 @@ import { ebayApiMonitorRouter } from './routes/ebay-api-monitor';
 import { ebayProfitCalculatorRouter } from './routes/ebay-profit-calculator';
 import { ebayWorkflowsRouter } from './routes/ebay-workflows';
 import { ebayVariationsRouter } from './routes/ebay-variations';
+import { ebayBundlesRouter } from './routes/ebay-bundles';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -333,6 +334,7 @@ app.use('/api/ebay-api-monitor', ebayApiMonitorRouter);
 app.use('/api/ebay-profit-calculator', ebayProfitCalculatorRouter);
 app.use('/api/ebay-workflows', ebayWorkflowsRouter);
 app.use('/api/ebay-variations', ebayVariationsRouter);
+app.use('/api/ebay-bundles', ebayBundlesRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
