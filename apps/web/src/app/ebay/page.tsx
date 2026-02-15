@@ -921,6 +921,18 @@ export default function EbayPage() {
               サプライヤー
             </Button>
           </Link>
+          <Link href="/ebay/return-center">
+            <Button variant="outline" size="sm">
+              <RotateCcw className="h-4 w-4 mr-1" />
+              返品センター
+            </Button>
+          </Link>
+          <Link href="/ebay/marketing-hub">
+            <Button variant="outline" size="sm">
+              <Megaphone className="h-4 w-4 mr-1" />
+              マーケティング
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
