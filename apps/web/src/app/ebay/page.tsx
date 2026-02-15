@@ -652,6 +652,18 @@ export default function EbayPage() {
               出荷追跡
             </Button>
           </Link>
+          <Link href="/ebay/alert-hub">
+            <Button variant="outline" size="sm">
+              <AlertTriangle className="h-4 w-4 mr-1" />
+              アラートハブ
+            </Button>
+          </Link>
+          <Link href="/ebay/templates-v2">
+            <Button variant="outline" size="sm">
+              <FileText className="h-4 w-4 mr-1" />
+              テンプレートv2
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"

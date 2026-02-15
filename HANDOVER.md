@@ -2,11 +2,47 @@
 
 ## 最終更新
 
-**日付**: 2026-02-13
-**Phase**: 95-96完了
+**日付**: 2026-02-15
+**Phase**: 114-150完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 148-150, 136, 142: eBay機能強化（最新）
+
+**ステータス**: 完了 ✅
+
+#### Phase 148: Inventory Alerts（在庫アラート）
+- **API**: `ebay-inventory-alerts.ts`（21エンドポイント）
+- **UI**: `ebay/inventory-alerts/page.tsx`
+- 8種類のアラートタイプ、4段階の重要度
+- 5つの通知チャンネル（email/slack/sms/line/webhook）
+
+#### Phase 149: Review Management（レビュー管理）
+- **API**: `ebay-review-management.ts`（22エンドポイント）
+- **UI**: `ebay/review-management/page.tsx`（6タブ）
+- AI返信生成、センチメント分析
+- 自動返信ルール
+
+#### Phase 150: Shipment Tracking（発送追跡）
+- **API**: `ebay-shipment-tracking.ts`（18エンドポイント）
+- **UI**: `ebay/shipment-tracking/page.tsx`（5タブ）
+- 9キャリア対応、8種類の発送ステータス
+- ラベル印刷、例外管理
+
+#### Phase 136: Alert Hub（統合アラートハブ）
+- **API**: `ebay-alert-hub.ts`（18エンドポイント）
+- **UI**: `ebay/alert-hub/page.tsx`（5タブ）
+- 8カテゴリのアラート統合管理
+- アラートルール・通知チャンネル設定
+
+#### Phase 142: Templates V2（テンプレートシステム強化版）
+- **API**: `ebay-templates-v2.ts`（22エンドポイント）
+- **UI**: `ebay/templates-v2/page.tsx`（6タブ）
+- バリエーション・バンドル・A/Bテスト対応
+- プリセット機能、ダイナミックセクション
+
+---
 
 ### Phase 95-96: eBay出品パフォーマンス分析 & 改善提案エンジン
 
