@@ -63,6 +63,7 @@ import {
   Gift,
   Plane,
   FolderTree,
+  Bell,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -631,6 +632,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <MessageSquare className="h-4 w-4 mr-1" />
               コミュニケーション
+            </Button>
+          </Link>
+          <Link href="/ebay/inventory-alerts">
+            <Button variant="outline" size="sm">
+              <Bell className="h-4 w-4 mr-1" />
+              在庫アラート
             </Button>
           </Link>
           <Button
