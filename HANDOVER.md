@@ -3,12 +3,34 @@
 ## 最終更新
 
 **日付**: 2026-02-15
-**Phase**: 114-173完了（136, 142含む）
+**Phase**: 114-175完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
 
-### Phase 172-173: eBay機能強化（最新）
+### Phase 174-175: eBay機能強化（最新）
+
+**ステータス**: 完了 ✅
+
+#### Phase 174: Notification Center v2（通知センターv2）
+- **API**: `ebay-notification-center-v2.ts`（25エンドポイント）
+- **UI**: `ebay/notification-center-v2/page.tsx`（4タブ）
+- 通知管理（既読/未読、一括操作）
+- チャンネル設定（アプリ内/メール/プッシュ/Slack/SMS）
+- カスタムルール、テンプレート
+- 履歴・統計・デバイス管理
+
+#### Phase 175: Customer Support Hub（カスタマーサポートハブ）
+- **API**: `ebay-customer-support-hub.ts`（28エンドポイント）
+- **UI**: `ebay/customer-support-hub/page.tsx`（5タブ）
+- チケット管理（ステータス・優先度・担当者）
+- エージェント管理・パフォーマンス
+- 返信テンプレート、ナレッジベース
+- 統計・SLAレポート、自動化ルール
+
+---
+
+### Phase 172-173: eBay機能強化
 
 **ステータス**: 完了 ✅
 
