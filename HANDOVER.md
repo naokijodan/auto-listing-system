@@ -3,12 +3,48 @@
 ## 最終更新
 
 **日付**: 2026-02-15
-**Phase**: 114-160完了（136, 142含む）
+**Phase**: 114-165完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
 
-### Phase 156-160: eBay機能強化（最新）
+### Phase 161-165: eBay機能強化（最新）
+
+**ステータス**: 完了 ✅
+
+#### Phase 161: Webhook Manager（Webhook管理）
+- **API**: `ebay-webhook-manager.ts`（20エンドポイント）
+- **UI**: `ebay/webhook-manager/page.tsx`（4タブ）
+- Webhook CRUD、配信ログ管理
+- イベントタイプ設定、署名・セキュリティ設定
+
+#### Phase 162: API Key Management（APIキー管理）
+- **API**: `ebay-api-keys.ts`（20エンドポイント）
+- **UI**: `ebay/api-keys/page.tsx`（4タブ）
+- APIキーCRUD、使用状況ログ
+- スコープ管理、レート制限設定
+
+#### Phase 163: Audit Compliance（監査コンプライアンス）
+- **API**: `ebay-audit-compliance.ts`（25エンドポイント）
+- **UI**: `ebay/audit-compliance/page.tsx`（5タブ）
+- コンプライアンスルール、違反管理
+- 監査レポート、規制フレームワーク、証跡管理
+
+#### Phase 164: Multi-User Management（マルチユーザー管理）
+- **API**: `ebay-multi-user.ts`（25エンドポイント）
+- **UI**: `ebay/multi-user/page.tsx`（5タブ）
+- ユーザーCRUD、ロール・権限管理
+- チーム管理、アクティビティログ
+
+#### Phase 165: Advanced Reporting（高度なレポート）
+- **API**: `ebay-advanced-reporting.ts`（22エンドポイント）
+- **UI**: `ebay/advanced-reporting/page.tsx`（4タブ）
+- レポートテンプレート、スケジュール実行
+- メトリクス・ディメンション定義、ビルダー
+
+---
+
+### Phase 156-160: eBay機能強化
 
 **ステータス**: 完了 ✅
 
