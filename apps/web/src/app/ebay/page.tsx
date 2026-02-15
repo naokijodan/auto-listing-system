@@ -897,6 +897,18 @@ export default function EbayPage() {
               パフォーマンス
             </Button>
           </Link>
+          <Link href="/ebay/product-catalog">
+            <Button variant="outline" size="sm">
+              <Package className="h-4 w-4 mr-1" />
+              カタログ
+            </Button>
+          </Link>
+          <Link href="/ebay/shipping-calculator">
+            <Button variant="outline" size="sm">
+              <Calculator className="h-4 w-4 mr-1" />
+              送料計算
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
