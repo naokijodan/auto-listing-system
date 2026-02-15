@@ -81,6 +81,8 @@ import {
   BrainCircuit,
   Plug2,
   Smartphone,
+  UsersRound,
+  Workflow,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -793,6 +795,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Smartphone className="h-4 w-4 mr-1" />
               モバイル
+            </Button>
+          </Link>
+          <Link href="/ebay/realtime-collab">
+            <Button variant="outline" size="sm">
+              <UsersRound className="h-4 w-4 mr-1" />
+              コラボ
+            </Button>
+          </Link>
+          <Link href="/ebay/custom-workflows">
+            <Button variant="outline" size="sm">
+              <Workflow className="h-4 w-4 mr-1" />
+              ワークフロー
             </Button>
           </Link>
           <Button

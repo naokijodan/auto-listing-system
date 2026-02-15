@@ -110,6 +110,8 @@ import { ebayDataVisualizationRouter } from './routes/ebay-data-visualization';
 import { ebayMlInsightsRouter } from './routes/ebay-ml-insights';
 import { ebayIntegrationHubRouter } from './routes/ebay-integration-hub';
 import { ebayMobileApiRouter } from './routes/ebay-mobile-api';
+import { ebayRealtimeCollabRouter } from './routes/ebay-realtime-collab';
+import { ebayCustomWorkflowsRouter } from './routes/ebay-custom-workflows';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -393,6 +395,8 @@ app.use('/api/ebay-data-visualization', ebayDataVisualizationRouter);
 app.use('/api/ebay-ml-insights', ebayMlInsightsRouter);
 app.use('/api/ebay-integration-hub', ebayIntegrationHubRouter);
 app.use('/api/ebay-mobile-api', ebayMobileApiRouter);
+app.use('/api/ebay-realtime-collab', ebayRealtimeCollabRouter);
+app.use('/api/ebay-custom-workflows', ebayCustomWorkflowsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

@@ -3,12 +3,34 @@
 ## 最終更新
 
 **日付**: 2026-02-15
-**Phase**: 114-167完了（136, 142含む）
+**Phase**: 114-169完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
 
-### Phase 166-167: eBay機能強化（最新）
+### Phase 168-169: eBay機能強化（最新）
+
+**ステータス**: 完了 ✅
+
+#### Phase 168: Integration Hub（統合ハブ）
+- **API**: `ebay-integration-hub.ts`（22エンドポイント）
+- **UI**: `ebay/integration-hub/page.tsx`（5タブ）
+- 外部サービス統合（Slack/Google Sheets/Shopify/QuickBooks/Shippo/Zapier）
+- OAuth接続・切断、手動同期、接続テスト
+- Webhook管理、API接続モニタリング
+- マーケットプレイス有効化
+
+#### Phase 169: Mobile API Support（モバイルAPI対応）
+- **API**: `ebay-mobile-api.ts`（25エンドポイント）
+- **UI**: `ebay/mobile-api/page.tsx`（4タブ）
+- モバイルダッシュボード、出品・注文管理
+- プッシュ通知設定、クイックアクション
+- バーコードスキャン、オフライン同期
+- アプリ設定・ヘルスチェック
+
+---
+
+### Phase 166-167: eBay機能強化
 
 **ステータス**: 完了 ✅
 
