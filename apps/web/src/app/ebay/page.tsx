@@ -83,6 +83,8 @@ import {
   Smartphone,
   UsersRound,
   Workflow,
+  Bot,
+  FileSpreadsheet,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -807,6 +809,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Workflow className="h-4 w-4 mr-1" />
               ワークフロー
+            </Button>
+          </Link>
+          <Link href="/ebay/ai-assistant">
+            <Button variant="outline" size="sm">
+              <Bot className="h-4 w-4 mr-1" />
+              AI
+            </Button>
+          </Link>
+          <Link href="/ebay/bulk-import-export">
+            <Button variant="outline" size="sm">
+              <FileSpreadsheet className="h-4 w-4 mr-1" />
+              一括処理
             </Button>
           </Link>
           <Button
