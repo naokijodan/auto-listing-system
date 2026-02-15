@@ -61,6 +61,7 @@ import {
   GitFork,
   Layers,
   Gift,
+  Plane,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -599,6 +600,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Gift className="h-4 w-4 mr-1" />
               バンドル
+            </Button>
+          </Link>
+          <Link href="/ebay/shipping-international">
+            <Button variant="outline" size="sm">
+              <Plane className="h-4 w-4 mr-1" />
+              国際送料
             </Button>
           </Link>
           <Button
