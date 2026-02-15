@@ -72,6 +72,11 @@ import {
   Gauge,
   Sliders,
   CircleHelp,
+  Webhook,
+  Key,
+  ShieldCheck,
+  UserCog,
+  FileBarChart,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -730,6 +735,36 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <CircleHelp className="h-4 w-4 mr-1" />
               ヘルプ
+            </Button>
+          </Link>
+          <Link href="/ebay/webhook-manager">
+            <Button variant="outline" size="sm">
+              <Webhook className="h-4 w-4 mr-1" />
+              Webhook
+            </Button>
+          </Link>
+          <Link href="/ebay/api-keys">
+            <Button variant="outline" size="sm">
+              <Key className="h-4 w-4 mr-1" />
+              APIキー
+            </Button>
+          </Link>
+          <Link href="/ebay/audit-compliance">
+            <Button variant="outline" size="sm">
+              <ShieldCheck className="h-4 w-4 mr-1" />
+              コンプライアンス
+            </Button>
+          </Link>
+          <Link href="/ebay/multi-user">
+            <Button variant="outline" size="sm">
+              <UserCog className="h-4 w-4 mr-1" />
+              ユーザー管理
+            </Button>
+          </Link>
+          <Link href="/ebay/advanced-reporting">
+            <Button variant="outline" size="sm">
+              <FileBarChart className="h-4 w-4 mr-1" />
+              レポート
             </Button>
           </Link>
           <Button
