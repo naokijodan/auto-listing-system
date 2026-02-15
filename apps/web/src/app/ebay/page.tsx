@@ -85,6 +85,7 @@ import {
   FileSpreadsheet,
   BellRing,
   HeadphonesIcon,
+  Code2,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -845,6 +846,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <Shield className="h-4 w-4 mr-1" />
               セキュリティ
+            </Button>
+          </Link>
+          <Link href="/ebay/developer-portal">
+            <Button variant="outline" size="sm">
+              <Code2 className="h-4 w-4 mr-1" />
+              開発者
+            </Button>
+          </Link>
+          <Link href="/ebay/analytics-dashboard-v2">
+            <Button variant="outline" size="sm">
+              <BarChart3 className="h-4 w-4 mr-1" />
+              分析v2
             </Button>
           </Link>
           <Button
