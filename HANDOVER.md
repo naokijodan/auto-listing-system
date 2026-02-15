@@ -3,12 +3,33 @@
 ## 最終更新
 
 **日付**: 2026-02-15
-**Phase**: 114-165完了（136, 142含む）
+**Phase**: 114-167完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
 
-### Phase 161-165: eBay機能強化（最新）
+### Phase 166-167: eBay機能強化（最新）
+
+**ステータス**: 完了 ✅
+
+#### Phase 166: Data Visualization Dashboard（データ可視化ダッシュボード）
+- **API**: `ebay-data-visualization.ts`（22エンドポイント）
+- **UI**: `ebay/data-visualization/page.tsx`（4タブ）
+- ダッシュボードCRUD、ウィジェット管理
+- 8種類のチャートタイプ（LINE/BAR/PIE/AREA/SCATTER/HEATMAP/FUNNEL/GAUGE）
+- リアルタイム更新、スナップショット、エクスポート
+
+#### Phase 167: Machine Learning Insights（機械学習インサイト）
+- **API**: `ebay-ml-insights.ts`（25エンドポイント）
+- **UI**: `ebay/ml-insights/page.tsx`（5タブ）
+- 売上予測（Prophet）、需要予測、価格最適化（XGBoost）
+- 顧客セグメンテーション（K-Means + RFM）
+- 異常検知（Isolation Forest）、トレンド分析
+- モデル管理・再トレーニング
+
+---
+
+### Phase 161-165: eBay機能強化
 
 **ステータス**: 完了 ✅
 
