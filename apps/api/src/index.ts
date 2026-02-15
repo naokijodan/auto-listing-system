@@ -116,6 +116,8 @@ import { ebayAiAssistantRouter } from './routes/ebay-ai-assistant';
 import { ebayBulkImportExportRouter } from './routes/ebay-bulk-import-export';
 import { ebayNotificationCenterV2Router } from './routes/ebay-notification-center-v2';
 import { ebayCustomerSupportHubRouter } from './routes/ebay-customer-support-hub';
+import { ebayAdvancedSearchV2Router } from './routes/ebay-advanced-search-v2';
+import { ebaySecurityCenterRouter } from './routes/ebay-security-center';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -405,6 +407,8 @@ app.use('/api/ebay-ai-assistant', ebayAiAssistantRouter);
 app.use('/api/ebay-bulk-import-export', ebayBulkImportExportRouter);
 app.use('/api/ebay-notification-center-v2', ebayNotificationCenterV2Router);
 app.use('/api/ebay-customer-support-hub', ebayCustomerSupportHubRouter);
+app.use('/api/ebay-advanced-search-v2', ebayAdvancedSearchV2Router);
+app.use('/api/ebay-security-center', ebaySecurityCenterRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

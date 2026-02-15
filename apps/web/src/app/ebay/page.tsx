@@ -34,7 +34,6 @@ import {
   FileStack,
   MessageSquare,
   ShoppingCart,
-  RotateCcw,
   Star,
   BarChart3,
   Edit3,
@@ -49,7 +48,6 @@ import {
   Megaphone,
   Bot,
   Globe,
-  Sparkles,
   UserCircle,
   LineChart,
   Warehouse,
@@ -75,6 +73,7 @@ import {
   Webhook,
   Key,
   ShieldCheck,
+  Shield,
   UserCog,
   FileBarChart,
   PieChart,
@@ -83,7 +82,6 @@ import {
   Smartphone,
   UsersRound,
   Workflow,
-  Bot,
   FileSpreadsheet,
   BellRing,
   HeadphonesIcon,
@@ -835,6 +833,18 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <HeadphonesIcon className="h-4 w-4 mr-1" />
               サポート
+            </Button>
+          </Link>
+          <Link href="/ebay/advanced-search-v2">
+            <Button variant="outline" size="sm">
+              <Search className="h-4 w-4 mr-1" />
+              検索v2
+            </Button>
+          </Link>
+          <Link href="/ebay/security-center">
+            <Button variant="outline" size="sm">
+              <Shield className="h-4 w-4 mr-1" />
+              セキュリティ
             </Button>
           </Link>
           <Button
