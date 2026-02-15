@@ -945,6 +945,18 @@ export default function EbayPage() {
               顧客分析
             </Button>
           </Link>
+          <Link href="/ebay/order-automation">
+            <Button variant="outline" size="sm">
+              <Zap className="h-4 w-4 mr-1" />
+              注文自動化
+            </Button>
+          </Link>
+          <Link href="/ebay/competitive-intelligence">
+            <Button variant="outline" size="sm">
+              <Target className="h-4 w-4 mr-1" />
+              競合分析
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
