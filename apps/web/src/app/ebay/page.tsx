@@ -621,6 +621,12 @@ export default function EbayPage() {
               カテゴリ
             </Button>
           </Link>
+          <Link href="/ebay/product-research">
+            <Button variant="outline" size="sm">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              商品調査
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"

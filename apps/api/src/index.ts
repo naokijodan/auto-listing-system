@@ -84,6 +84,7 @@ import { ebayBundlesRouter } from './routes/ebay-bundles';
 import { ebayShippingInternationalRouter } from './routes/ebay-shipping-international';
 import { ebaySellerHubRouter } from './routes/ebay-seller-hub';
 import { ebayCategoryMappingRouter } from './routes/ebay-category-mapping';
+import { ebayProductResearchRouter } from './routes/ebay-product-research';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -341,6 +342,7 @@ app.use('/api/ebay-bundles', ebayBundlesRouter);
 app.use('/api/ebay-shipping-international', ebayShippingInternationalRouter);
 app.use('/api/ebay-seller-hub', ebaySellerHubRouter);
 app.use('/api/ebay-category-mapping', ebayCategoryMappingRouter);
+app.use('/api/ebay-product-research', ebayProductResearchRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
