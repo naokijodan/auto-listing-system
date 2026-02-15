@@ -62,6 +62,7 @@ import {
   Layers,
   Gift,
   Plane,
+  FolderTree,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -612,6 +613,12 @@ export default function EbayPage() {
             <Button variant="outline" size="sm">
               <BarChart3 className="h-4 w-4 mr-1" />
               セラーハブ
+            </Button>
+          </Link>
+          <Link href="/ebay/category-mapping">
+            <Button variant="outline" size="sm">
+              <FolderTree className="h-4 w-4 mr-1" />
+              カテゴリ
             </Button>
           </Link>
           <Button
