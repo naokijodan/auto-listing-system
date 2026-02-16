@@ -3,12 +3,36 @@
 ## 最終更新
 
 **日付**: 2026-02-16
-**Phase**: 114-267完了（136, 142含む）
+**Phase**: 114-270完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
 
-### Phase 266-267: eBay機能強化（最新）
+### Phase 268-270: eBay機能強化（最新）
+
+**ステータス**: 完了 ✅
+
+#### Phase 268: Product Research Tool（商品リサーチツール）
+- **API**: `ebay-product-research.ts`（28エンドポイント）
+- **UI**: `ebay/product-research/page.tsx`（6タブ）
+- **テーマカラー**: fuchsia-600
+- ダッシュボード、検索、商品分析、カテゴリ、利益計算、分析
+
+#### Phase 269: Sales Forecast System（売上予測システム）
+- **API**: `ebay-sales-forecast.ts`（28エンドポイント）
+- **UI**: `ebay/sales-forecast/page.tsx`（6タブ）
+- **テーマカラー**: rose-600
+- ダッシュボード、予測、トレンド、シーズン分析、目標管理
+
+#### Phase 270: Message Template Manager（メッセージテンプレート管理）
+- **API**: `ebay-message-templates.ts`（28エンドポイント）
+- **UI**: `ebay/message-templates/page.tsx`（6タブ）
+- **テーマカラー**: cyan-600
+- ダッシュボード、テンプレート管理、カテゴリ、変数、多言語、分析
+
+---
+
+### Phase 266-267: eBay機能強化
 
 **ステータス**: 完了 ✅
 
