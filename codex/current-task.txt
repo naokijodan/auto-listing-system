@@ -11,45 +11,45 @@
 
 ---
 
-## Phase 307: Seller Metrics Dashboard（セラーメトリクス管理）
+## Phase 309: Category Insights（カテゴリインサイト）
 
-### API: ebay-seller-metrics.ts
-- テーマカラー: indigo-600
-- ダッシュボード (5): /dashboard - 評価スコア、出荷遅延率、キャンセル率
-  - /dashboard, /dashboard/summary, /dashboard/ratings, /dashboard/shipping, /dashboard/cancellations
-- メトリクス (6): /metrics (CRUD + refresh + export)
-  - GET/POST /metrics, GET/PUT /metrics/:id, POST /metrics/:id/refresh, POST /metrics/:id/export
-- 評価 (4): /ratings, /ratings/:id, /ratings/trends, /ratings/breakdown
-- 改善 (4): /improvements, /improvements/:id, /improvements/suggest, /improvements/track
-- 分析 (3): /analytics, /analytics/trends, /analytics/benchmarks
+### API: ebay-category-insights.ts
+- テーマカラー: cyan-600
+- ダッシュボード (5): /dashboard - カテゴリ別売上、トレンド、競合状況
+  - /dashboard, /dashboard/summary, /dashboard/sales, /dashboard/trends, /dashboard/competition
+- インサイト (6): /insights (CRUD + generate + share)
+  - GET/POST /insights, GET/PUT /insights/:id, POST /insights/:id/generate, POST /insights/:id/share
+- トレンド (4): /trends, /trends/:id, /trends/forecast, /trends/seasonal
+- ベンチマーク (4): /benchmarks, /benchmarks/:id, /benchmarks/compare, /benchmarks/industry
+- 分析 (3): /analytics, /analytics/opportunities, /analytics/risks
 - 設定 (2): /settings GET/PUT
 - ユーティリティ (4): /health, /export, /import, /reindex
 
-### UI: seller-metrics-page.tsx
-- h1: "セラーメトリクス管理" (text-indigo-600)
-- タブ: ダッシュボード、メトリクス、評価、改善、分析、設定
-- fetch先: /api/ebay-seller-metrics/...
+### UI: category-insights-page.tsx
+- h1: "カテゴリインサイト" (text-cyan-600)
+- タブ: ダッシュボード、インサイト、トレンド、ベンチマーク、分析、設定
+- fetch先: /api/ebay-category-insights/...
 
 ---
 
-## Phase 308: Product Condition Manager（商品コンディション管理）
+## Phase 310: Listing Audit（出品監査）
 
-### API: ebay-product-condition.ts
-- テーマカラー: rose-600
-- ダッシュボード (5): /dashboard - コンディション別統計、返品率、クレーム率
-  - /dashboard, /dashboard/summary, /dashboard/conditions, /dashboard/returns, /dashboard/claims
-- コンディション (6): /conditions (CRUD + validate + assign)
-  - GET/POST /conditions, GET/PUT /conditions/:id, POST /conditions/:id/validate, POST /conditions/:id/assign
-- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/update
-- マッピング (4): /mappings, /mappings/:id, /mappings/bulk, /mappings/sync
-- 分析 (3): /analytics, /analytics/performance, /analytics/issues
+### API: ebay-listing-audit.ts
+- テーマカラー: orange-600
+- ダッシュボード (5): /dashboard - 監査スコア、問題件数、改善率
+  - /dashboard, /dashboard/summary, /dashboard/scores, /dashboard/issues, /dashboard/improvements
+- 監査 (6): /audits (CRUD + run + schedule)
+  - GET/POST /audits, GET/PUT /audits/:id, POST /audits/:id/run, POST /audits/:id/schedule
+- 問題 (4): /issues, /issues/:id, /issues/resolve, /issues/bulk-fix
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/test
+- 分析 (3): /analytics, /analytics/compliance, /analytics/quality
 - 設定 (2): /settings GET/PUT
 - ユーティリティ (4): /health, /export, /import, /reindex
 
-### UI: product-condition-page.tsx
-- h1: "商品コンディション管理" (text-rose-600)
-- タブ: ダッシュボード、コンディション、テンプレート、マッピング、分析、設定
-- fetch先: /api/ebay-product-condition/...
+### UI: listing-audit-page.tsx
+- h1: "出品監査" (text-orange-600)
+- タブ: ダッシュボード、監査、問題、ルール、分析、設定
+- fetch先: /api/ebay-listing-audit/...
 
 ---
 
