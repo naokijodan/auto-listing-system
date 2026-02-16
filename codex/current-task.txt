@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 319: Seller Dashboard Pro（セラーダッシュボードPro）
+## Phase 321: Shipping Label Pro（送り状Pro）
 
-### API: ebay-seller-dashboard-pro.ts
-- テーマカラー: violet-600
-- ダッシュボード (5): /dashboard, /dashboard/overview, /dashboard/metrics, /dashboard/goals, /dashboard/alerts
-- ウィジェット (6): /widgets (CRUD + layout + refresh)
-- レポート (4): /reports, /reports/:id, /reports/generate, /reports/schedule
-- ベンチマーク (4): /benchmarks, /benchmarks/:id, /benchmarks/compare, /benchmarks/industry
-- 分析 (3): /analytics, /analytics/trends, /analytics/performance
+### API: ebay-shipping-label-pro.ts
+- テーマカラー: cyan-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/printed, /dashboard/stats
+- ラベル (6): /labels (CRUD + print + void)
+- キャリア (4): /carriers, /carriers/:id, /carriers/rates, /carriers/connect
+- バッチ (4): /batches, /batches/:id, /batches/create, /batches/print
+- 分析 (3): /analytics, /analytics/costs, /analytics/carriers
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /reset-layout
+- ユーティリティ (4): /health, /export, /validate-address, /track
 
-### UI: seller-dashboard-pro-page.tsx
-- h1: "セラーダッシュボードPro" (text-violet-600)
-- タブ: ダッシュボード、ウィジェット、レポート、ベンチマーク、分析、設定
-- fetch先: /api/ebay-seller-dashboard-pro/...
+### UI: shipping-label-pro-page.tsx
+- h1: "送り状Pro" (text-cyan-600)
+- タブ: ダッシュボード、ラベル、キャリア、バッチ、分析、設定
+- fetch先: /api/ebay-shipping-label-pro/...
 
 ---
 
-## Phase 320: Auto Responder（自動応答）
+## Phase 322: Category Manager（カテゴリマネージャー）
 
-### API: ebay-auto-responder.ts
-- テーマカラー: teal-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/stats, /dashboard/recent, /dashboard/performance
-- 応答 (6): /responses (CRUD + test + toggle)
-- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
-- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/variables
-- 分析 (3): /analytics, /analytics/effectiveness, /analytics/timing
+### API: ebay-category-manager.ts
+- テーマカラー: orange-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/tree, /dashboard/stats, /dashboard/changes
+- カテゴリ (6): /categories (list + detail + search + map + suggest + sync)
+- マッピング (4): /mappings, /mappings/:id, /mappings/create, /mappings/bulk
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/test
+- 分析 (3): /analytics, /analytics/distribution, /analytics/performance
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /train
+- ユーティリティ (4): /health, /export, /import, /refresh
 
-### UI: auto-responder-page.tsx
-- h1: "自動応答" (text-teal-600)
-- タブ: ダッシュボード、応答、ルール、テンプレート、分析、設定
-- fetch先: /api/ebay-auto-responder/...
+### UI: category-manager-page.tsx
+- h1: "カテゴリマネージャー" (text-orange-600)
+- タブ: ダッシュボード、カテゴリ、マッピング、ルール、分析、設定
+- fetch先: /api/ebay-category-manager/...
 
 ---
 
