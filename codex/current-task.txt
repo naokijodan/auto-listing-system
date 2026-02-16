@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 323: Listing Validator（リスティングバリデーター）
+## Phase 325: Return Analytics（返品分析）
 
-### API: ebay-listing-validator.ts
-- テーマカラー: fuchsia-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/errors, /dashboard/warnings, /dashboard/passed
-- バリデーション (6): /validations (CRUD + run + fix)
-- ルール (4): /rules, /rules/:id, /rules/create, /rules/toggle
-- レポート (4): /reports, /reports/:id, /reports/generate, /reports/schedule
-- 分析 (3): /analytics, /analytics/trends, /analytics/common-issues
-- 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /bulk-validate, /auto-fix
-
-### UI: listing-validator-page.tsx
-- h1: "リスティングバリデーター" (text-fuchsia-600)
-- タブ: ダッシュボード、バリデーション、ルール、レポート、分析、設定
-- fetch先: /api/ebay-listing-validator/...
-
----
-
-## Phase 324: Sales Report（セールスレポート）
-
-### API: ebay-sales-report.ts
-- テーマカラー: slate-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/revenue, /dashboard/orders, /dashboard/products
-- レポート (6): /reports (CRUD + generate + download)
-- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/preview
-- スケジュール (4): /schedules, /schedules/:id, /schedules/create, /schedules/toggle
-- 分析 (3): /analytics, /analytics/trends, /analytics/comparison
+### API: ebay-return-analytics.ts
+- テーマカラー: red-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/rate, /dashboard/reasons, /dashboard/trends
+- 返品 (6): /returns (list + detail + analyze + compare + export + refresh)
+- パターン (4): /patterns, /patterns/:id, /patterns/detect, /patterns/products
+- 予防 (4): /prevention, /prevention/:id, /prevention/recommendations, /prevention/apply
+- 分析 (3): /analytics, /analytics/costs, /analytics/buyers
 - 設定 (2): /settings GET/PUT
 - ユーティリティ (4): /health, /export, /import, /recalculate
 
-### UI: sales-report-page.tsx
-- h1: "セールスレポート" (text-slate-600)
-- タブ: ダッシュボード、レポート、テンプレート、スケジュール、分析、設定
-- fetch先: /api/ebay-sales-report/...
+### UI: return-analytics-page.tsx
+- h1: "返品分析" (text-red-600)
+- タブ: ダッシュボード、返品、パターン、予防、分析、設定
+- fetch先: /api/ebay-return-analytics/...
+
+---
+
+## Phase 326: Listing Optimizer Pro（出品最適化Pro）
+
+### API: ebay-listing-optimizer-pro.ts
+- テーマカラー: green-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/scores, /dashboard/opportunities, /dashboard/trends
+- 最適化 (6): /optimizations (CRUD + apply + preview)
+- 提案 (4): /suggestions, /suggestions/:id, /suggestions/generate, /suggestions/bulk-apply
+- A/Bテスト (4): /ab-tests, /ab-tests/:id, /ab-tests/create, /ab-tests/results
+- 分析 (3): /analytics, /analytics/impact, /analytics/comparison
+- 設定 (2): /settings GET/PUT
+- ユーティリティ (4): /health, /export, /scan, /benchmark
+
+### UI: listing-optimizer-pro-page.tsx
+- h1: "出品最適化Pro" (text-green-600)
+- タブ: ダッシュボード、最適化、提案、A/Bテスト、分析、設定
+- fetch先: /api/ebay-listing-optimizer-pro/...
 
 ---
 
