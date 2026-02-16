@@ -2,723 +2,216 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { fetcher } from '@/lib/api';
-import {
-  Truck,
-  Calculator,
-  MapPin,
-  Package,
-  RefreshCw,
-  Settings,
-  DollarSign,
-  Clock,
-  CheckCircle,
-  Globe,
-  Box,
-  FileText,
-  Plus,
-  Edit,
-  Trash2,
-  ArrowRight,
-  Zap,
-} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
 
-type TabType = 'dashboard' | 'calculator' | 'carriers' | 'zones' | 'rules' | 'settings';
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
-export default function ShippingCalculatorPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+// Phase 286: eBay Shipping Calculatorï¼ˆé€æ–™è¨ˆç®—ï¼‰
+// ãƒ†ãƒ¼ãƒã‚«ãƒ©ãƒ¼: emerald-600
 
-  const tabs = [
-    { id: 'dashboard' as const, label: 'ãƒ€ãƒƒã‚·ãƒ¥ãƒœãƒ¼ãƒ‰', icon: Truck },
-    { id: 'calculator' as const, label: 'è¨ˆç®—', icon: Calculator },
-    { id: 'carriers' as const, label: 'ã‚­ãƒ£ãƒªã‚¢', icon: Truck },
-    { id: 'zones' as const, label: 'ã‚¾ãƒ¼ãƒ³', icon: MapPin },
-    { id: 'rules' as const, label: 'ãƒ«ãƒ¼ãƒ«', icon: FileText },
-    { id: 'settings' as const, label: 'è¨­å®š', icon: Settings },
-  ];
+export default function EbayShippingCalculatorPage() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const { data: dashboardData } = useSWR('/api/ebay-shipping-calculator/dashboard', fetcher);
+  const { data: zonesData } = useSWR('/api/ebay-shipping-calculator/zones', fetcher);
+  const { data: carriersData } = useSWR('/api/ebay-shipping-calculator/carriers', fetcher);
+  const { data: settingsData } = useSWR('/api/ebay-shipping-calculator/settings', fetcher);
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] flex-col">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500">
-            <Calculator className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">é€æ–™è¨ˆç®—æ©Ÿ</h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">é€æ–™è¨ˆç®—ãƒ»ã‚­ãƒ£ãƒªã‚¢ãƒ»ã‚¾ãƒ¼ãƒ³ç®¡ç†</p>
-          </div>
-        </div>
+    <div className="container mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-emerald-600">é€æ–™è¨ˆç®—</h1>
+        <p className="text-gray-600">ã‚¼ãƒ¼ãƒ³ãƒ»ã‚­ãƒ£ãƒªã‚¢åˆ¥ã®é€æ–™è¨ˆç®—</p>
       </div>
 
-      <div className="mb-4 flex gap-2 border-b border-zinc-200 dark:border-zinc-800">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="dashboard">ãƒ€ãƒƒã‚·ãƒ¥ãƒœãƒ¼ãƒ‰</TabsTrigger>
+          <TabsTrigger value="zones">ã‚¾ãƒ¼ãƒ³</TabsTrigger>
+          <TabsTrigger value="carriers">ã‚­ãƒ£ãƒªã‚</TabsTrigger>
+          <TabsTrigger value="calculate">è¨ˆç®—</TabsTrigger>
+          <TabsTrigger value="analytics">åˆ†æ</TabsTrigger>
+          <TabsTrigger value="settings">è¨­å®š</TabsTrigger>
+        </TabsList>
 
-      <div className="flex-1 overflow-auto">
-        {activeTab === 'dashboard' && <DashboardTab />}
-        {activeTab === 'calculator' && <CalculatorTab />}
-        {activeTab === 'carriers' && <CarriersTab />}
-        {activeTab === 'zones' && <ZonesTab />}
-        {activeTab === 'rules' && <RulesTab />}
-        {activeTab === 'settings' && <SettingsTab />}
-      </div>
-    </div>
-  );
-}
-
-function DashboardTab() {
-  const { data, isLoading } = useSWR('/api/ebay-shipping-calculator/dashboard', fetcher);
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-cyan-500" /></div>;
-  }
-
-  const dashboard = data || {
-    overview: { totalCalculations: 0, avgShippingCost: 0, carriersActive: 0, zonesConfigured: 0 },
-    carrierUsage: [],
-    costTrends: [],
-    topDestinations: [],
-    alerts: [],
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-50 dark:bg-cyan-900/30">
-              <Calculator className="h-5 w-5 text-cyan-600" />
-            </div>
-            <div>
-              <p className="text-sm text-zinc-500">ç·è¨ˆç®—å›æ•°</p>
-              <p className="text-xl font-bold text-zinc-900 dark:text-white">{dashboard.overview.totalCalculations.toLocaleString()}</p>
-            </div>
+        <TabsContent value="dashboard">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">ç·å‡ºè·æ•°</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold text-emerald-600">{dashboardData?.totalShipments?.toLocaleString() || 0}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">å¹³å‡é€æ–™</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold">${dashboardData?.avgShippingCost || 0}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">é…é”ç‡</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold text-green-600">{dashboardData?.deliveryRate || 0}%</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">ã‚³ã‚¹ãƒˆå‰Šé™¤</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold text-blue-600">${dashboardData?.costSavings?.toLocaleString() || 0}</div></CardContent>
+            </Card>
           </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/30">
-              <DollarSign className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-zinc-500">å¹³å‡é€æ–™</p>
-              <p className="text-xl font-bold text-green-600">${dashboard.overview.avgShippingCost.toFixed(2)}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30">
-              <Truck className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-zinc-500">æœ‰åŠ¹ã‚­ãƒ£ãƒªã‚¢</p>
-              <p className="text-xl font-bold text-zinc-900 dark:text-white">{dashboard.overview.carriersActive}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/30">
-              <MapPin className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-zinc-500">ã‚¾ãƒ¼ãƒ³æ•°</p>
-              <p className="text-xl font-bold text-zinc-900 dark:text-white">{dashboard.overview.zonesConfigured}</p>
-            </div>
-          </div>
-        </Card>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="p-4">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">ã‚­ãƒ£ãƒªã‚¢åˆ©ç”¨çŠ¶æ³</h3>
-          <div className="space-y-3">
-            {dashboard.carrierUsage.map((carrier: { carrier: string; usage: number; avgCost: number }) => (
-              <div key={carrier.carrier} className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-zinc-600 dark:text-zinc-400">{carrier.carrier}</span>
-                  <span className="text-sm font-medium text-zinc-900 dark:text-white">{carrier.usage}% (${carrier.avgCost})</span>
-                </div>
-                <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full">
-                  <div className="h-full bg-cyan-500 rounded-full" style={{ width: `${carrier.usage}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">äººæ°—ã®é…é€å…ˆ</h3>
-          <div className="space-y-3">
-            {dashboard.topDestinations.map((dest: { country: string; state: string | null; shipments: number; avgCost: number }, i: number) => (
-              <div key={i} className="flex items-center justify-between p-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-blue-500" />
-                  <span className="text-zinc-700 dark:text-zinc-300">
-                    {dest.country}{dest.state ? `, ${dest.state}` : ''}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-zinc-900 dark:text-white">{dest.shipments.toLocaleString()}ä»¶</p>
-                  <p className="text-xs text-zinc-500">å¹³å‡${dest.avgCost}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <Card className="p-4">
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">é€æ–™ãƒˆãƒ¬ãƒ³ãƒ‰ (7æ—¥é–“)</h3>
-        <div className="h-48 flex items-end gap-2">
-          {dashboard.costTrends.map((trend: { date: string; avgCost: number; calculations: number }, i: number) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className="w-full bg-cyan-500 rounded-t"
-                style={{ height: `${(trend.avgCost / 15) * 100}px` }}
-                title={`$${trend.avgCost} (${trend.calculations}ä»¶)`}
-              />
-              <span className="text-xs text-zinc-500">{trend.date.slice(5)}</span>
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function CalculatorTab() {
-  const [origin, setOrigin] = useState({ postalCode: '90210', country: 'US' });
-  const [destination, setDestination] = useState({ postalCode: '', country: 'US' });
-  const [packageInfo, setPackageInfo] = useState({ weight: 16, length: 10, width: 8, height: 6 });
-  const [rates, setRates] = useState<{ carrier: string; service: string; rate: number; estimatedDays: { min: number; max: number } }[] | null>(null);
-
-  const handleCalculate = async () => {
-    const mockRates = [
-      { carrier: 'USPS', service: 'Priority Mail', rate: 8.95, estimatedDays: { min: 2, max: 3 } },
-      { carrier: 'USPS', service: 'Priority Mail Express', rate: 26.95, estimatedDays: { min: 1, max: 2 } },
-      { carrier: 'FedEx', service: 'Ground', rate: 12.45, estimatedDays: { min: 3, max: 5 } },
-      { carrier: 'UPS', service: 'Ground', rate: 11.95, estimatedDays: { min: 3, max: 5 } },
-    ];
-    setRates(mockRates);
-  };
-
-  return (
-    <div className="grid grid-cols-2 gap-6">
-      <div className="space-y-4">
-        <Card className="p-4">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">ç™ºé€å…ƒ</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">éƒµä¾¿ç•ªå·</label>
-              <input
-                type="text"
-                value={origin.postalCode}
-                onChange={(e) => setOrigin({ ...origin, postalCode: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">å›½</label>
-              <select
-                value={origin.country}
-                onChange={(e) => setOrigin({ ...origin, country: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              >
-                <option value="US">United States</option>
-                <option value="JP">Japan</option>
-              </select>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">é…é€å…ˆ</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">éƒµä¾¿ç•ªå·</label>
-              <input
-                type="text"
-                value={destination.postalCode}
-                onChange={(e) => setDestination({ ...destination, postalCode: e.target.value })}
-                placeholder="10001"
-                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">å›½</label>
-              <select
-                value={destination.country}
-                onChange={(e) => setDestination({ ...destination, country: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              >
-                <option value="US">United States</option>
-                <option value="UK">United Kingdom</option>
-                <option value="DE">Germany</option>
-                <option value="JP">Japan</option>
-                <option value="AU">Australia</option>
-              </select>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">ãƒ‘ãƒƒã‚±ãƒ¼ã‚¸æƒ…å ±</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">é‡é‡ (oz)</label>
-              <input
-                type="number"
-                value={packageInfo.weight}
-                onChange={(e) => setPackageInfo({ ...packageInfo, weight: Number(e.target.value) })}
-                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">é•·ã• (in)</label>
-                <input
-                  type="number"
-                  value={packageInfo.length}
-                  onChange={(e) => setPackageInfo({ ...packageInfo, length: Number(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">å¹… (in)</label>
-                <input
-                  type="number"
-                  value={packageInfo.width}
-                  onChange={(e) => setPackageInfo({ ...packageInfo, width: Number(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">é«˜ã• (in)</label>
-                <input
-                  type="number"
-                  value={packageInfo.height}
-                  onChange={(e) => setPackageInfo({ ...packageInfo, height: Number(e.target.value) })}
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-                />
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        <Button variant="primary" className="w-full" onClick={handleCalculate}>
-          <Calculator className="h-4 w-4 mr-2" />
-          é€æ–™ã‚’è¨ˆç®—
-        </Button>
-      </div>
-
-      <div>
-        <Card className="p-4 h-full">
-          <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">è¨ˆç®—çµæœ</h3>
-          {rates ? (
-            <div className="space-y-3">
-              {rates.map((rate, i) => (
-                <div
-                  key={i}
-                  className={`p-4 border rounded-lg ${i === 0 ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20' : 'border-zinc-200 dark:border-zinc-700'}`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Truck className="h-5 w-5 text-cyan-600" />
-                      <div>
-                        <p className="font-semibold text-zinc-900 dark:text-white">{rate.carrier}</p>
-                        <p className="text-sm text-zinc-500">{rate.service}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader><CardTitle>æœ€è¿‘ã®é…Œé€</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { orderId: 'ORD001', destination: 'US', carrier: 'FedEx', cost: 15, status: 'DELIVERED' },
+                    { orderId: 'ORD002', destination: 'UK', carrier: 'DHL', cost: 18.5, status: 'IN_TRANSIT' },
+                    { orderId: 'ORD003', destination: 'DE', carrier: 'UPS', cost: 22, status: 'SHIPPED' },
+                  ].map((shipment) => (
+                    <div key={shipment.orderId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div><div className="font-medium">{shipment.orderId}</div><div className="text-sm text-gray-500">{shipment.carrier} -> {shipment.destination}</div></div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold">${shipment.cost}</span>
+                        <Badge className={shipment.status === 'DELIVERED' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}>{shipment.status}</Badge>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-cyan-600">${rate.rate.toFixed(2)}</p>
-                      {i === 0 && <span className="text-xs text-cyan-600">æœ€å®‰å€¤</span>}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>ã‚­ãƒ£ãƒªã‚¢åˆ¥å®Ÿç¸¾</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[{ name: 'FedEx', shipments: 500, onTime: 97 },{ name: 'DHL', shipments: 450, onTime: 98 },{ name: 'UPS', shipments: 350, onTime: 96 }].map((carrier) => (
+                    <div key={carrier.name}>
+                      <div className="flex justify-between mb-1"><span>{carrier.name}</span><span>{carrier.shipments}ä»¶ ({carrier.onTime}%)</span></div>
+                      <Progress value={carrier.onTime} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="zones">
+          <Card>
+            <CardHeader><div className="flex justify-between"><CardTitle>é…é€ã‚¾ãƒ¼ãƒ³</CardTitle><Button className="bg-emerald-600 hover:bg-emerald-700">æ–°è¦ã‚¾ãƒ¼ãƒ³</Button></div></CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {zonesData?.zones?.map((zone: any) => (
+                  <div key={zone.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center font-bold text-emerald-600">{zone.countries.length}</div>
+                      <div><div className="font-medium">{zone.name}</div><div className="text-sm text-gray-500">åŸºæœ¬: ${zone.baseCost} / ${zone.perKgRate}/kg</div></div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-gray-500">{zone.deliveryDays.min}-{zone.deliveryDays.max}æ—¥</span>
+                      <Button variant="outline" size="sm">ç·¨é›†</Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 text-sm text-zinc-500">
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4" />
-                      {rate.estimatedDays.min}-{rate.estimatedDays.max}æ—¥
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className="h-4 w-4" />
-                      è¿½è·¡ã‚ã‚Š
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-zinc-400">
-              <Calculator className="h-12 w-12 mb-4" />
-              <p>é…é€æƒ…å ±ã‚’å…¥åŠ›ã—ã¦è¨ˆç®—ã—ã¦ãã ã•ã„</p>
-            </div>
-          )}
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-function CarriersTab() {
-  const { data, isLoading } = useSWR('/api/ebay-shipping-calculator/carriers', fetcher);
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-cyan-500" /></div>;
-  }
-
-  const carriers = data?.carriers || [];
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        {carriers.map((carrier: {
-          id: string;
-          name: string;
-          displayName: string;
-          enabled: boolean;
-          apiConnected: boolean;
-          services: { code: string; name: string; enabled: boolean }[];
-          lastSync: string;
-        }) => (
-          <Card key={carrier.id} className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                  <Truck className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-zinc-900 dark:text-white">{carrier.displayName}</h4>
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${carrier.apiConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <span className="text-xs text-zinc-500">{carrier.apiConnected ? 'æ¥ç¶šæ¸ˆã¿' : 'æœªæ¥ç¶š'}</span>
-                  </div>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" defaultChecked={carrier.enabled} className="sr-only peer" />
-                <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
-              </label>
-            </div>
-
-            <div className="space-y-2 mb-4">
-              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">ã‚µãƒ¼ãƒ“ã‚¹:</p>
-              <div className="flex flex-wrap gap-2">
-                {carrier.services.map((service) => (
-                  <span
-                    key={service.code}
-                    className={`px-2 py-1 rounded text-xs ${
-                      service.enabled
-                        ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400'
-                        : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800'
-                    }`}
-                  >
-                    {service.name}
-                  </span>
                 ))}
               </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-3 border-t border-zinc-100 dark:border-zinc-800">
-              <span className="text-xs text-zinc-500">æœ€çµ‚åŒæœŸ: {new Date(carrier.lastSync).toLocaleString('ja-JP')}</span>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm"><RefreshCw className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="sm"><Settings className="h-4 w-4" /></Button>
-              </div>
-            </div>
+            </CardContent>
           </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
+        </TabsContent>
 
-function ZonesTab() {
-  const { data, isLoading } = useSWR('/api/ebay-shipping-calculator/zones', fetcher);
+        <TabsContent value="carriers">
+          <Card>
+            <CardHeader><CardTitle>ã‚­ãƒ£ãƒªã‚¢ä¸€è¦§N/CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {carriersData?.carriers?.map((carrier: any) => (
+                  <Card key={carrier.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <CardTitle>{carrier.name}</CardTitle>
+                        <Badge className={carrier.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100'}>{c…½¥å‹•ä¸­' : 'ç„¡åŠ¹'}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between"><span className="text-gray-500">API ç­¦æ¥</span><Badge variant={carrier.apiConnected ? 'default' : 'secondary'}>{carrier.apiConnected ? 'æ¥ç¶š' : 'æœªæ¥ç¶š'}</Badge></div>
+                        <div className="flex justify-between"><span className="text-gray-500">å¹³å‡é…é”æ—¥çù</span><span>{carrier.avgTransitDays}æ—¥</span></div>
+                      </div>
+                      <Button variant="outline" className="w-full mt-3">æ–™é‡‘è¨­å®š</Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-cyan-500" /></div>;
-  }
+        <TabsContent value="calculate">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader><CardTitle>é€æ–™è¨ˆç®—</CardTitle><CardDescription>é…é€å…ˆã¨é‡ãé‹å…¥åŠ›</CardDescription></CardHeader>
+              <CardContent className="space-y-4">
+                <div><label className="text-sm font-medium">é…é€€å…ˆå›½</label>
+                  <Select><SelectTrigger><SelectValue placeholder="å›½ã‚’é¸æŠ" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="US">ã‚¢ãƒ¡ãƒªã‚«</SelectItem>
+                      <SelectItem value="UK">ã‚¤ã‚®ãƒªã‚¹</SelectItem>
+                      <SelectItem value="DE">ãƒ‰ã‚¤ãƒ‰</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="text-sm font-medium">é‡é‡ (kg)</label><Input type="number" placeholder="1.0" /></div>
+                  <div><label className="text-sm font-medium">ã‚µã‚¤ã‚º(å¹…)</label><Input type="number" placeholder="30" /></div>
+                </div>
+                <Button className="w-full bg-emerald-600 hover:bg-emerald-700">è¨ˆç®—ã™ã‚‹</Button>
+              </CardContent>
+            </Card>
 
-  const zones = data?.zones || [];
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-zinc-500">ã‚¾ãƒ¼ãƒ³: {zones.length}ä»¶</p>
-        <Button variant="primary" size="sm"><Plus className="h-4 w-4 mr-1" />ã‚¾ãƒ¼ãƒ³è¿½åŠ </Button>
-      </div>
-
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500">ã‚¾ãƒ¼ãƒ³å</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-zinc-500">ã‚¿ã‚¤ãƒ—</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-500">åœ°åŸŸ</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500">åŸºæœ¬æ–™é‡‘</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-zinc-500">1ãƒãƒ³ãƒ‰ã‚ãŸã‚Š</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-zinc-500">æ“ä½œ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {zones.map((zone: {
-                id: string;
-                name: string;
-                type: string;
-                countries: string[];
-                regions: string[];
-                baseRate: number;
-                perLbRate: number;
-              }) => (
-                <tr key={zone.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
-                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-white">{zone.name}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      zone.type === 'domestic'
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
-                    }`}>
-                      {zone.type === 'domestic' ? 'å›½å†…' : 'å›½éš›'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-zinc-600 dark:text-zinc-400">
-                    {zone.regions.length > 0 ? zone.regions.join(', ') : zone.countries.join(', ')}
-                  </td>
-                  <td className="px-4 py-3 text-right font-medium text-zinc-900 dark:text-white">${zone.baseRate.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right text-zinc-600 dark:text-zinc-400">${zone.perLbRate.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      <Button variant="ghost" size="sm"><Edit className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4" /></Button>
+            <Card>
+              <CardHeader><CardTitle>è¨ˆç®—çµæœ</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[{ carrier: 'FedEx', service: 'Express', cost: 25, days: '3-5' },{ carrier: 'FedEx', service: 'Standard', cost: 15, days: '5-8' },{ carrier: 'UPS', service: 'Ground', cost: 12, days: '7-10' }].map((quote, idx) => (
+                    <div key={idx} className={`flex items-center justify-between p-3 border rounded-lg ${idx === 1 ? 'border-emerald-500 bg-emerald-50' : ''}`}>
+                      <div><div className="font-medium">{quote.carrier} {quote.service}</div><div className="text-sm text-gray-500">{quote.days}æ—¥</div></div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-lg">${quote.cost}</span>
+                        {idx === 1 && <Badge className="bg-emerald-100 text-emerald-700">ãŠã™ã™ã‚</Badge>}
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function RulesTab() {
-  const { data, isLoading } = useSWR('/api/ebay-shipping-calculator/rules', fetcher);
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-cyan-500" /></div>;
-  }
-
-  const rules = data?.rules || [];
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-zinc-500">ãƒ«ãƒ¼ãƒ«: {rules.length}ä»¶</p>
-        <Button variant="primary" size="sm"><Plus className="h-4 w-4 mr-1" />ãƒ«ãƒ¼ãƒ«è¿½åŠ </Button>
-      </div>
-
-      <div className="space-y-3">
-        {rules.map((rule: {
-          id: string;
-          name: string;
-          type: string;
-          conditions: Record<string, unknown>;
-          action: { type: string; amount?: number; percent?: number };
-          priority: number;
-          enabled: boolean;
-        }) => (
-          <Card key={rule.id} className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className={`p-2 rounded-lg ${
-                  rule.type === 'free_shipping' ? 'bg-green-100 dark:bg-green-900/30' :
-                  rule.type === 'discount' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                  'bg-amber-100 dark:bg-amber-900/30'
-                }`}>
-                  {rule.type === 'free_shipping' ? <Zap className="h-5 w-5 text-green-600" /> :
-                   rule.type === 'discount' ? <DollarSign className="h-5 w-5 text-blue-600" /> :
-                   <Box className="h-5 w-5 text-amber-600" />}
+                  ))}
                 </div>
-                <div>
-                  <h4 className="font-semibold text-zinc-900 dark:text-white">{rule.name}</h4>
-                  <p className="text-sm text-zinc-500">å„ªå…ˆåº¦: {rule.priority}</p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader><CardTitle>é€æ–™ã‚³ã‚¹ãƒˆåˆ†æ</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-center mb-4">
+                  <div className="text-4xl font-bold">$18,750</div>
+                  <div className="text-gray-500">é30æ—¥é–“</div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  rule.enabled
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800'
-                }`}>
-                  {rule.enabled ? 'æœ‰åŠ¹' : 'ç„¡åŠ¹'}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm"><Edit className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="sm"><Trash2 className="h-4 w-4" /></Button>
+                <div className="space-y-2">
+                  {[{ carrier: 'FedEx', cost: 7250, percent: 39 },{ carrier: 'DHL', cost: 7200, percent: 38 },{ carrier: 'UPS', cost: 4300, percent: 23 }].map((item) => (
+                    <div key={item.carrier}>
+                      <div className="flex justify-between mb-1"><span>{item.carrier}</span><span>${item.cost.toLocaleString()} ({item.percent}%)</span></div>
+                      <Progress value={item.percent} className="h-2" />
+                    </div>
+                  ))}
                 </div>
-              </div>
-            </div>
-            <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center gap-2 text-sm text-zinc-500">
-              <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded">{JSON.stringify(rule.conditions)}</span>
-              <ArrowRight className="h-4 w-4" />
-              <span className="px-2 py-1 bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 rounded">
-                {rule.action.type === 'free' ? 'é€æ–™ç„¡æ–™' :
-                 rule.action.type === 'surcharge' ? `+$${rule.action.amount}` :
-                 rule.action.type === 'discount' ? `-${rule.action.percent}%` : rule.action.type}
-              </span>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SettingsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-shipping-calculator/settings', fetcher);
-
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-cyan-500" /></div>;
-  }
-
-  const settings = data || {
-    general: { defaultOrigin: { postalCode: '90210', country: 'US' }, weightUnit: 'oz', dimensionUnit: 'in' },
-    freeShipping: { enabled: true, threshold: 49.99 },
-    markups: { enabled: true, type: 'percent', value: 10 },
-  };
-
-  return (
-    <div className="space-y-6 max-w-3xl">
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">ç™ºé€å…ƒè¨­å®š</h3>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">éƒµä¾¿ç•ªå·</label>
-              <input
-                type="text"
-                defaultValue={settings.general.defaultOrigin.postalCode}
-                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">å›½</label>
-              <select
-                defaultValue={settings.general.defaultOrigin.country}
-                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              >
-                <option value="US">United States</option>
-                <option value="JP">Japan</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">é‡é‡å˜ä½</label>
-              <select
-                defaultValue={settings.general.weightUnit}
-                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              >
-                <option value="oz">ã‚ªãƒ³ã‚¹ (oz)</option>
-                <option value="lb">ãƒãƒ³ãƒ‰ (lb)</option>
-                <option value="g">ã‚°ãƒ©ãƒ  (g)</option>
-                <option value="kg">ã‚­ãƒ­ã‚°ãƒ©ãƒ  (kg)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">å¯¸æ³•å˜ä½</label>
-              <select
-                defaultValue={settings.general.dimensionUnit}
-                className="w-full px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              >
-                <option value="in">ã‚¤ãƒ³ãƒ (in)</option>
-                <option value="cm">ã‚»ãƒ³ãƒãƒ¡ãƒ¼ãƒˆãƒ« (cm)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">é€æ–™ç„¡æ–™è¨­å®š</h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-zinc-900 dark:text-white">é€æ–™ç„¡æ–™ã‚’æœ‰åŠ¹åŒ–</p>
-              <p className="text-sm text-zinc-500">ä¸€å®šé‡‘é¡ä»¥ä¸Šã§é€æ–™ç„¡æ–™ã«ã™ã‚‹</p>
-            </div>
-            <input type="checkbox" defaultChecked={settings.freeShipping.enabled} className="toggle" />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-zinc-900 dark:text-white">é€æ–™ç„¡æ–™é–¾å€¤</p>
-              <p className="text-sm text-zinc-500">ã“ã®é‡‘é¡ä»¥ä¸Šã§é€æ–™ç„¡æ–™</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-zinc-500">$</span>
-              <input
-                type="number"
-                defaultValue={settings.freeShipping.threshold}
-                className="w-24 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              />
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">ãƒãƒ¼ã‚¯ã‚¢ãƒƒãƒ—è¨­å®š</h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-zinc-900 dark:text-white">ãƒãƒ¼ã‚¯ã‚¢ãƒƒãƒ—ã‚’æœ‰åŠ¹åŒ–</p>
-              <p className="text-sm text-zinc-500">é€æ–™ã«ãƒãƒ¼ã‚¯ã‚¢ãƒƒãƒ—ã‚’è¿½åŠ </p>
-            </div>
-            <input type="checkbox" defaultChecked={settings.markups.enabled} className="toggle" />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-zinc-900 dark:text-white">ãƒãƒ¼ã‚¯ã‚¢ãƒƒãƒ—ç‡</p>
-              <p className="text-sm text-zinc-500">é€æ–™ã«è¿½åŠ ã™ã‚‹å‰²åˆ</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                defaultValue={settings.markups.value}
-                className="w-20 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700"
-              />
-              <span className="text-zinc-500">%</span>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      <div className="flex justify-end">
-        <Button variant="primary">è¨­å®šã‚’ä¿å­˜</Button>
-      </div>
-    </div>
-  );
-}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle>é…é€€ãƒ‘ãƒ•ã‚©ãƒ¼ãƒãƒ³ã‚¹</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center"><span>æ™‚é–“é€šã‚Šé…é”å„¢</span><span className="font-bold text-green-600">97.5%</span></div>
+                  <div className="flex justify-between items-center"><span>å¹³å‡é…é€€æ—¥æ•°</span><span className="font-bold">5.2æ—¥</span></div>
+                  <div className="flex justify-between items-center"><span>æŸå‚·ç‡ãÂò÷ããÇ7â6Æ74æÖSÒ&föçBÖ&öÆB#ãã"SÂ÷7ããÂöF—cà¢ÆF—b6Æ74æÖSÒ&fÆW‚§W7F–g’Ö&WGvVVâ—FV×2Ö6VçFW"#ãÇ7ãî{I¾ZKxèrOÇ7ããÇ7â6Æ74æÖSÒ&föçBÖ&öÆB#ããRSÂ÷7ããÂöF—cà¢ÂöF—cà¢Âô6&D6öçFVçCà¢Âô6&Cà¢ÂöF—cà¢ÂõF'46öçFVçCà ¢ÅF'46öçFVçBfÇVSÒ'6WGF–æw2#à¢ÆF—b6Æ74æÖSÒ&w&–Bw&–BÖ6öÇ2ÓÆs¦w&–BÖ6öÇ2Ó"vÓb#à¢Ä6&Cà¢Ä6&D†VFW#ãÄ6&EF—FÆSîYû®iÊÎŠŠŞZé£Âô6&EF—FÆSãÂô6&D†VFW#à¢Ä6&D6öçFVçB6Æ74æÖSÒ'76R×’ÓB#à¢ÆF—cãÆÆ&VÂ6Æ74æÖSÒ'FW‡B×6ÒföçBÖÖVF—VÒ#î88~89^8*8:¾888*Ş8:>8:®8*#ÂöÆ&VÃà¢Å6VÆV7BFVfVÇEfÇVS×·6WGF–æw4FFòæFVfVÇD6'&–W'Óà¢Å6VÆV7EG&–vvW#ãÅ6VÆV7EfÇVRóãÂõ6VÆV7EG&–vvW#à¢Å6VÆV7D6öçFVçCà¢Å6VÆV7D—FVÒfÇVSÒ$fVDW‚#äfVDWƒÂõ6VÆV7D—FVÓà¢Å6VÆV7D—FVÒfÇVSÒ$D„Â#äD„ÃÂõ6VÆV7D—FVÓà¢Å6VÆV7D—FVÒfÇVSÒ%U2#åU3Âõ6VÆV7D—FVÓà¢Âõ6VÆV7D6öçFVçCà¢Âõ6VÆV7Cà¢ÂöF—cà¢ÆF—cãÆÆ&VÂ6Æ74æÖSÒ'FW‡B×6ÒföçBÖÖVF—VÒ#î˜ii•Â^xZii8~8Ş8NX
+NûÈ‚NûÈ“ÂöÆ&VÃãÄ–çWBG—SÒ&çVÖ&W""FVfVÇEfÇVS×·6WGF–æw4FFòæg&VU6†—–æuF‡&W6†öÆGÒóãÂöF—cà¢Âô6&D6öçFVçCà¢Âô6&Cà¢Ä6&Cà¢Ä6&D†VFW#ãÄ6&EF—FÆSîKùŞ™›®ŠŠŞZé®Zé®ŠŠŞZë“Âô6&EF—FÆSãÂô6&D†VFW#à¢Ä6&D6öçFVçB6Æ74æÖSÒ'76R×’ÓB#à¢ÆF—b6Æ74æÖSÒ&fÆW‚—FV×2Ö6VçFW"§W7F–g’Ö&WGvVVâ#ãÆF—cãÆF—b6Æ74æÖSÒ&föçBÖÖVF—VÒ#îKùŞ™›®iÈX«“ÂöF—cãÆF—b6Æ74æÖSÒ'FW‡B×6ÒFW‡BÖw&’ÓS#îš¹šŞYXnY88¾KùŞ™›®8).K¹88(³ÂöF—cãÂöF—cãÄ&FvRf&–çC×·6WGF–æw4FFòæ–ç7W&æ6TVæ&ÆVBòvFVfVÇBr¢w6V6öæF'’wÓç·6WGF–æw4FFòæ–ç7W&æ6TVæ&ÆVBòtôâr¢tôdbwÓÂô&FvSãÂöF—cà¢ÆF—cãÆÆ&VÂ6Æ74æÖSÒ'FW‡B×6ÒföçBÖÖVF—VÒ#îKùŞ™›®˜yJ8~8Ş8NX
+NûÈ‚NûÈ“ÂöÆ&VÃãÄ–çWBG—SÒ&çVÖ&W""FVfVÇEfÇVS×·6WGF–æw4FFòæ–ç7W&æ6UF‡&W6†öÆGÒóãÂöF—cà¢ÆF—b6Æ74æÖSÒ&fÆW‚—FV×2Ö6VçFW"§W7F–g’Ö&WGvVVâ#ãÆF—cãÆF—b6Æ74æÖSÒ&föçBÖÖVF—VÒ#îiÈZè˜.˜h©ÓÂöF—cãÆF—b6Æ74æÖSÒ'FW‡B×6ÒFW‡BÖw&’ÓS#îˆz®X¹^8~iÈZè˜˜h©î8).hùjƒÂöF—cãÂöF—cãÄ&FvRf&–çC×·6WGF–æw4FFòæWFõ6VÆV7D6†VW7BòvFVfVÇBr¢w6V6öæF'’wÓç·6WGF–æw4FFòæWFõ6VÆV7D6†VW7Bòtôâr¢tôdbwÓÂô&FvSãÂöF—cà¢Âô6&D6öçFVçCà¢Âô6&Cà¢ÂöF—cà¢ÆF—b6Æ74æÖSÒ&×BÓbfÆW‚§W7F–g’ÖVæB#ãÄ'WGFöâ6Æ74æÖSÒ&&rÖVÖW&ÆBÓc†÷fW#¦&rÖVÖW&ÆBÓs#îŠŠŞZé®8).KùŞZÙƒÂô'WGFöããÂöF—cà¢ÂõF'46öçFVçCà¢ÂõF'3à¢ÂöF—cà¢“°§Ğ
