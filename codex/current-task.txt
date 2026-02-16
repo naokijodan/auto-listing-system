@@ -11,45 +11,45 @@
 
 ---
 
-## Phase 305: Shipping Options Manager（配送オプション管理）
+## Phase 307: Seller Metrics Dashboard（セラーメトリクス管理）
 
-### API: ebay-shipping-options.ts
-- テーマカラー: teal-600
-- ダッシュボード (5): /dashboard - 配送オプション数、配送業者数、平均配送日数
-  - /dashboard, /dashboard/summary, /dashboard/carriers, /dashboard/rates, /dashboard/performance
-- オプション (6): /options (CRUD + duplicate + apply)
-  - GET/POST /options, GET/PUT /options/:id, POST /options/:id/duplicate, POST /options/:id/apply
-- 配送業者 (4): /carriers, /carriers/:id, /carriers/create, /carriers/update
-- 料金 (4): /rates, /rates/:id, /rates/calculate, /rates/bulk-update
-- 分析 (3): /analytics, /analytics/costs, /analytics/delivery-times
+### API: ebay-seller-metrics.ts
+- テーマカラー: indigo-600
+- ダッシュボード (5): /dashboard - 評価スコア、出荷遅延率、キャンセル率
+  - /dashboard, /dashboard/summary, /dashboard/ratings, /dashboard/shipping, /dashboard/cancellations
+- メトリクス (6): /metrics (CRUD + refresh + export)
+  - GET/POST /metrics, GET/PUT /metrics/:id, POST /metrics/:id/refresh, POST /metrics/:id/export
+- 評価 (4): /ratings, /ratings/:id, /ratings/trends, /ratings/breakdown
+- 改善 (4): /improvements, /improvements/:id, /improvements/suggest, /improvements/track
+- 分析 (3): /analytics, /analytics/trends, /analytics/benchmarks
 - 設定 (2): /settings GET/PUT
 - ユーティリティ (4): /health, /export, /import, /reindex
 
-### UI: shipping-options-page.tsx
-- h1: "配送オプション管理" (text-teal-600)
-- タブ: ダッシュボード、オプション、配送業者、料金、分析、設定
-- fetch先: /api/ebay-shipping-options/...
+### UI: seller-metrics-page.tsx
+- h1: "セラーメトリクス管理" (text-indigo-600)
+- タブ: ダッシュボード、メトリクス、評価、改善、分析、設定
+- fetch先: /api/ebay-seller-metrics/...
 
 ---
 
-## Phase 306: Payment Methods Manager（支払い方法管理）
+## Phase 308: Product Condition Manager（商品コンディション管理）
 
-### API: ebay-payment-methods.ts
-- テーマカラー: amber-600
-- ダッシュボード (5): /dashboard - 支払い方法数、取引数、手数料合計
-  - /dashboard, /dashboard/summary, /dashboard/transactions, /dashboard/fees, /dashboard/disputes
-- 支払い方法 (6): /methods (CRUD + activate + deactivate)
-  - GET/POST /methods, GET/PUT /methods/:id, POST /methods/:id/activate, POST /methods/:id/deactivate
-- 取引 (4): /transactions, /transactions/:id, /transactions/refund, /transactions/void
-- 手数料 (4): /fees, /fees/:id, /fees/calculate, /fees/summary
-- 分析 (3): /analytics, /analytics/revenue, /analytics/disputes
+### API: ebay-product-condition.ts
+- テーマカラー: rose-600
+- ダッシュボード (5): /dashboard - コンディション別統計、返品率、クレーム率
+  - /dashboard, /dashboard/summary, /dashboard/conditions, /dashboard/returns, /dashboard/claims
+- コンディション (6): /conditions (CRUD + validate + assign)
+  - GET/POST /conditions, GET/PUT /conditions/:id, POST /conditions/:id/validate, POST /conditions/:id/assign
+- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/update
+- マッピング (4): /mappings, /mappings/:id, /mappings/bulk, /mappings/sync
+- 分析 (3): /analytics, /analytics/performance, /analytics/issues
 - 設定 (2): /settings GET/PUT
 - ユーティリティ (4): /health, /export, /import, /reindex
 
-### UI: payment-methods-page.tsx
-- h1: "支払い方法管理" (text-amber-600)
-- タブ: ダッシュボード、支払い方法、取引、手数料、分析、設定
-- fetch先: /api/ebay-payment-methods/...
+### UI: product-condition-page.tsx
+- h1: "商品コンディション管理" (text-rose-600)
+- タブ: ダッシュボード、コンディション、テンプレート、マッピング、分析、設定
+- fetch先: /api/ebay-product-condition/...
 
 ---
 

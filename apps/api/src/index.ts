@@ -245,6 +245,8 @@ import ebayReturnPolicyRouter from './routes/ebay-return-policy';
 import ebaySkuManagementRouter from './routes/ebay-sku-management';
 import ebayShippingOptionsRouter from './routes/ebay-shipping-options';
 import ebayPaymentMethodsRouter from './routes/ebay-payment-methods';
+import ebaySellerMetricsRouter from './routes/ebay-seller-metrics';
+import ebayProductConditionRouter from './routes/ebay-product-condition';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -663,6 +665,8 @@ app.use('/api/ebay-return-policy', ebayReturnPolicyRouter);
 app.use('/api/ebay-sku-management', ebaySkuManagementRouter);
 app.use('/api/ebay-shipping-options', ebayShippingOptionsRouter);
 app.use('/api/ebay-payment-methods', ebayPaymentMethodsRouter);
+app.use('/api/ebay-seller-metrics', ebaySellerMetricsRouter);
+app.use('/api/ebay-product-condition', ebayProductConditionRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
