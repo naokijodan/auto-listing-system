@@ -1,0 +1,52 @@
+以下の仕様でTypeScriptファイルを4つ生成してください。
+
+## 出力先
+/Users/naokijodan/Desktop/rakuda/codex/output/
+
+## 共通ルール
+- Express Router形式（import { Router } from 'express'）
+- 各API: 28エンドポイント
+- 各UI: 6タブ、shadcn/ui使用、SWRでfetch
+- UIファイル先頭に 'use client'; を必ず入れる
+
+---
+
+## Phase 303: Return Policy Manager（返品ポリシー管理）
+
+### API: ebay-return-policy.ts
+- テーマカラー: purple-600
+- ダッシュボード (5): /dashboard - 総ポリシー数、適用商品数、返品率
+- ポリシー (6): /policies (CRUD + duplicate + assign)
+- 条件 (4): /conditions, /conditions/:id, /conditions/create, /conditions/update
+- 適用 (4): /assignments, /assignments/:id, /assignments/bulk, /assignments/preview
+- 分析 (3): /analytics, /analytics/returns, /analytics/impact
+- 設定 (2): /settings GET/PUT
+- ユーティリティ (4): /health, /export, /import, /reindex
+
+### UI: return-policy-page.tsx
+- h1: "返品ポリシー管理" (text-purple-600)
+- タブ: ダッシュボード、ポリシー、条件、適用、分析、設定
+- fetch先: /api/ebay-return-policy/...
+
+---
+
+## Phase 304: SKU Management System（SKU管理システム）
+
+### API: ebay-sku-management.ts
+- テーマカラー: slate-600
+- ダッシュボード (5): /dashboard - 総SKU数、アクティブ、非アクティブ、重複
+- SKU管理 (6): /skus (CRUD + merge + split)
+- マッピング (4): /mappings, /mappings/:id, /mappings/create, /mappings/sync
+- バリデーション (4): /validation, /validation/run, /validation/issues, /validation/fix
+- 分析 (3): /analytics, /analytics/usage, /analytics/duplicates
+- 設定 (2): /settings GET/PUT
+- ユーティリティ (4): /health, /export, /import, /reindex
+
+### UI: sku-management-page.tsx
+- h1: "SKU管理システム" (text-slate-600)
+- タブ: ダッシュボード、SKU、マッピング、バリデーション、分析、設定
+- fetch先: /api/ebay-sku-management/...
+
+---
+
+完了したらファイルパスのみ報告してください。
