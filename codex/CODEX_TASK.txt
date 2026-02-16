@@ -1,0 +1,238 @@
+# Codex タスク指示書
+
+## 概要
+RAKUDAプロジェクトのeBay機能ファイルを生成してください。
+
+## 出力先
+生成したファイルは以下に保存してください：
+- API: /Users/naokijodan/Desktop/rakuda/codex/output/
+- UI: /Users/naokijodan/Desktop/rakuda/codex/output/
+
+## 今回のタスク
+
+### Phase 295: Competitor Tracker（競合追跡）
+- テーマカラー: violet-600
+- タブ: ダッシュボード、競合一覧、価格比較、アラート、分析、設定
+
+### Phase 296: Review Manager（レビュー管理）
+- テーマカラー: emerald-600
+- タブ: ダッシュボード、レビュー、返信、テンプレート、分析、設定
+
+---
+
+## APIファイル テンプレート
+
+ファイル名: `ebay-{機能名}.ts`
+
+```typescript
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+
+const router = Router();
+
+// =============================================================
+// Phase {番号}: eBay {機能名}（{日本語名}）
+// 28エンドポイント - テーマカラー: {カラー}
+// =============================================================
+
+// スキーマ
+const createSchema = z.object({
+  name: z.string().min(1),
+  // ... 適切なフィールド
+});
+
+// ========== ダッシュボード (5) ==========
+router.get('/dashboard', async (req: Request, res: Response) => {
+  res.json({
+    total: 100,
+    active: 80,
+    pending: 20,
+    // ... ダミーデータ
+  });
+});
+
+router.get('/dashboard/stats', async (req: Request, res: Response) => {
+  res.json({ /* 統計データ */ });
+});
+
+router.get('/dashboard/recent', async (req: Request, res: Response) => {
+  res.json({ items: [] });
+});
+
+router.get('/dashboard/performance', async (req: Request, res: Response) => {
+  res.json({ /* パフォーマンスデータ */ });
+});
+
+router.get('/dashboard/alerts', async (req: Request, res: Response) => {
+  res.json({ alerts: [] });
+});
+
+// ========== メイン機能 (6) ==========
+router.get('/items', async (req: Request, res: Response) => {
+  res.json({ items: [], total: 0, page: 1 });
+});
+
+router.get('/items/:id', async (req: Request, res: Response) => {
+  res.json({ id: req.params.id, name: 'Sample' });
+});
+
+router.post('/items', async (req: Request, res: Response) => {
+  const parsed = createSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid', details: parsed.error.issues });
+  }
+  res.json({ id: 'new-id', ...parsed.data });
+});
+
+router.put('/items/:id', async (req: Request, res: Response) => {
+  res.json({ id: req.params.id, updated: true });
+});
+
+router.delete('/items/:id', async (req: Request, res: Response) => {
+  res.json({ id: req.params.id, deleted: true });
+});
+
+router.post('/items/:id/duplicate', async (req: Request, res: Response) => {
+  res.json({ id: 'duplicated-id', originalId: req.params.id });
+});
+
+// ========== サブ機能1 (4) ==========
+// 4つのエンドポイント（GET一覧, GET詳細, POST作成, PUT更新）
+
+// ========== サブ機能2 (4) ==========
+// 4つのエンドポイント
+
+// ========== サブ機能3 (4) ==========
+// 4つのエンドポイント
+
+// ========== 分析 (3) ==========
+router.get('/analytics', async (req: Request, res: Response) => {
+  res.json({ /* 分析データ */ });
+});
+
+router.get('/analytics/trends', async (req: Request, res: Response) => {
+  res.json({ trends: [] });
+});
+
+router.get('/analytics/comparison', async (req: Request, res: Response) => {
+  res.json({ comparison: [] });
+});
+
+// ========== 設定 (2) ==========
+router.get('/settings', async (req: Request, res: Response) => {
+  res.json({ enabled: true, /* 設定 */ });
+});
+
+router.put('/settings', async (req: Request, res: Response) => {
+  res.json({ updated: true, settings: req.body });
+});
+
+export default router;
+```
+
+---
+
+## UIファイル テンプレート
+
+ファイル名: `page.tsx`
+配置先: `apps/web/src/app/ebay/{機能名}/page.tsx`
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+import useSWR from 'swr';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
+// Phase {番号}: eBay {機能名}（{日本語名}）
+// テーマカラー: {カラー}
+
+export default function Ebay{PascalCase機能名}Page() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const { data: dashboardData } = useSWR('/api/ebay-{機能名}/dashboard', fetcher);
+
+  return (
+    <div className="container mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-{カラー}">{日本語名}</h1>
+        <p className="text-gray-600">{説明文}</p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="dashboard">ダッシュボード</TabsTrigger>
+          <TabsTrigger value="tab2">{タブ2}</TabsTrigger>
+          <TabsTrigger value="tab3">{タブ3}</TabsTrigger>
+          <TabsTrigger value="tab4">{タブ4}</TabsTrigger>
+          <TabsTrigger value="analytics">分析</TabsTrigger>
+          <TabsTrigger value="settings">設定</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">指標1</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-{カラー}">
+                  {dashboardData?.total || 0}
+                </div>
+              </CardContent>
+            </Card>
+            {/* 他のカード */}
+          </div>
+        </TabsContent>
+
+        {/* 他のタブコンテンツ */}
+
+        <TabsContent value="settings">
+          <Card>
+            <CardHeader>
+              <CardTitle>設定</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button className="bg-{カラー} hover:bg-{カラー-dark}">保存</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+```
+
+---
+
+## 完了後の報告形式
+
+```
+完了しました。
+
+生成ファイル:
+1. /Users/naokijodan/Desktop/rakuda/codex/output/ebay-competitor-tracker.ts
+2. /Users/naokijodan/Desktop/rakuda/codex/output/competitor-tracker-page.tsx
+3. /Users/naokijodan/Desktop/rakuda/codex/output/ebay-review-manager.ts
+4. /Users/naokijodan/Desktop/rakuda/codex/output/review-manager-page.tsx
+
+エンドポイント数: 各28
+タブ数: 各6
+```
+
+---
+
+## 注意事項
+
+1. Express Router形式を厳守（関数exportではない）
+2. UIは `/api/ebay-{機能名}/` にfetchする
+3. shadcn/uiコンポーネントを使用
+4. 日本語のラベル・コメントを使用
+5. テーマカラーをh1とボタンに適用

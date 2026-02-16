@@ -230,6 +230,9 @@ import { ebaySellerScoreOptimizerRouter } from './routes/ebay-seller-score-optim
 import { ebayPriceElasticityAnalyzerRouter } from './routes/ebay-price-elasticity-analyzer';
 import { ebayReturnsPreventionRouter } from './routes/ebay-returns-prevention';
 import { ebayCustomerLoyaltyRouter } from './routes/ebay-customer-loyalty';
+import ebayListingTemplatesV3Router from './routes/ebay-listing-templates-v3';
+import ebayBuyerAnalyticsRouter from './routes/ebay-buyer-analytics';
+import ebaySupplyChainManagerRouter from './routes/ebay-supply-chain-manager';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -633,6 +636,9 @@ app.use('/api/ebay/seller-score-optimizer', ebaySellerScoreOptimizerRouter);
 app.use('/api/ebay/price-elasticity-analyzer', ebayPriceElasticityAnalyzerRouter);
 app.use('/api/ebay/returns-prevention', ebayReturnsPreventionRouter);
 app.use('/api/ebay/customer-loyalty', ebayCustomerLoyaltyRouter);
+app.use('/api/ebay-listing-templates-v3', ebayListingTemplatesV3Router);
+app.use('/api/ebay-buyer-analytics', ebayBuyerAnalyticsRouter);
+app.use('/api/ebay-supply-chain-manager', ebaySupplyChainManagerRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

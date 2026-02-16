@@ -1,0 +1,554 @@
+# Codex用 Phase 292-294 コード生成指示書
+
+## プロジェクト情報
+
+- **プロジェクト**: RAKUDA (越境EC自動化システム)
+- **リポジトリ**: `/Users/naokijodan/Desktop/rakuda`
+- **技術スタック**: Express.js + TypeScript (API), Next.js + React (UI)
+
+---
+
+## Phase 292: Listing Templates V3（出品テンプレートV3）
+
+### APIファイル
+**パス**: `apps/api/src/routes/ebay-listing-templates-v3.ts`
+
+```typescript
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+
+const router = Router();
+
+// =============================================================
+// Phase 292: eBay Listing Templates V3（出品テンプレートV3）
+// 28エンドポイント - テーマカラー: indigo-600
+// =============================================================
+
+// スキーマ
+const templateSchema = z.object({
+  name: z.string().min(1),
+  category: z.string(),
+  content: z.object({
+    title: z.string(),
+    description: z.string(),
+    price: z.number().positive(),
+  }),
+});
+
+// ========== ダッシュボード (5) ==========
+router.get('/dashboard', async (req: Request, res: Response) => {
+  res.json({
+    totalTemplates: 150,
+    activeTemplates: 120,
+    drafts: 30,
+    avgUsageRate: 85.5,
+    topTemplate: 'Watch Listing Pro',
+    lastUpdated: new Date().toISOString(),
+  });
+});
+
+router.get('/dashboard/stats', async (req: Request, res: Response) => {
+  res.json({
+    usageByCategory: [
+      { category: 'Watches', count: 45, percentage: 30 },
+      { category: 'Electronics', count: 35, percentage: 23 },
+      { category: 'Collectibles', count: 25, percentage: 17 },
+    ],
+    monthlyUsage: 2500,
+    conversionRate: 12.5,
+  });
+});
+
+router.get('/dashboard/recent', async (req: Request, res: Response) => {
+  res.json({
+    recentTemplates: [
+      { id: 't1', name: 'Watch Template', usedAt: '2025-02-17', count: 50 },
+      { id: 't2', name: 'Electronics Pro', usedAt: '2025-02-16', count: 35 },
+    ],
+  });
+});
+
+router.get('/dashboard/performance', async (req: Request, res: Response) => {
+  res.json({
+    performance: [
+      { templateId: 't1', name: 'Watch Template', views: 5000, sales: 250, rate: 5.0 },
+      { templateId: 't2', name: 'Electronics Pro', views: 3000, sales: 180, rate: 6.0 },
+    ],
+  });
+});
+
+router.get('/dashboard/alerts', async (req: Request, res: Response) => {
+  res.json({
+    alerts: [
+      { id: 'a1', type: 'warning', message: '3 templates need review', createdAt: '2025-02-17' },
+    ],
+  });
+});
+
+// ========== テンプレート管理 (6) ==========
+router.get('/templates', async (req: Request, res: Response) => {
+  res.json({
+    templates: [
+      { id: 't1', name: 'Watch Listing Pro', category: 'Watches', status: 'active', usageCount: 500 },
+      { id: 't2', name: 'Electronics Standard', category: 'Electronics', status: 'active', usageCount: 350 },
+      { id: 't3', name: 'Collectibles Special', category: 'Collectibles', status: 'draft', usageCount: 0 },
+    ],
+    total: 150,
+    page: 1,
+  });
+});
+
+router.get('/templates/:id', async (req: Request, res: Response) => {
+  res.json({
+    id: req.params.id,
+    name: 'Watch Listing Pro',
+    category: 'Watches',
+    content: { title: '{{brand}} {{model}} Watch', description: 'Premium {{condition}} watch...', price: 0 },
+    variables: ['brand', 'model', 'condition'],
+    createdAt: '2025-01-01',
+    updatedAt: '2025-02-15',
+  });
+});
+
+router.post('/templates', async (req: Request, res: Response) => {
+  const parsed = templateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid template', details: parsed.error.issues });
+  }
+  res.json({ id: 'new-template-id', ...parsed.data, createdAt: new Date().toISOString() });
+});
+
+router.put('/templates/:id', async (req: Request, res: Response) => {
+  res.json({ id: req.params.id, updated: true, updatedAt: new Date().toISOString() });
+});
+
+router.delete('/templates/:id', async (req: Request, res: Response) => {
+  res.json({ id: req.params.id, deleted: true });
+});
+
+router.post('/templates/:id/duplicate', async (req: Request, res: Response) => {
+  res.json({ id: 'duplicated-template-id', originalId: req.params.id, name: 'Copy of Template' });
+});
+
+// ========== カテゴリ (4) ==========
+router.get('/categories', async (req: Request, res: Response) => {
+  res.json({
+    categories: [
+      { id: 'c1', name: 'Watches', templateCount: 45 },
+      { id: 'c2', name: 'Electronics', templateCount: 35 },
+      { id: 'c3', name: 'Collectibles', templateCount: 25 },
+    ],
+  });
+});
+
+router.post('/categories', async (req: Request, res: Response) => {
+  res.json({ id: 'new-category-id', name: req.body.name, templateCount: 0 });
+});
+
+router.put('/categories/:id', async (req: Request, res: Response) => {
+  res.json({ id: req.params.id, updated: true });
+});
+
+router.delete('/categories/:id', async (req: Request, res: Response) => {
+  res.json({ id: req.params.id, deleted: true });
+});
+
+// ========== 変数・プレースホルダー (4) ==========
+router.get('/variables', async (req: Request, res: Response) => {
+  res.json({
+    variables: [
+      { name: 'brand', type: 'text', description: 'Product brand name' },
+      { name: 'model', type: 'text', description: 'Product model' },
+      { name: 'price', type: 'number', description: 'Listing price' },
+      { name: 'condition', type: 'select', options: ['New', 'Used', 'Refurbished'] },
+    ],
+  });
+});
+
+router.post('/variables', async (req: Request, res: Response) => {
+  res.json({ name: req.body.name, type: req.body.type, created: true });
+});
+
+router.put('/variables/:name', async (req: Request, res: Response) => {
+  res.json({ name: req.params.name, updated: true });
+});
+
+router.delete('/variables/:name', async (req: Request, res: Response) => {
+  res.json({ name: req.params.name, deleted: true });
+});
+
+// ========== プレビュー・適用 (4) ==========
+router.post('/preview', async (req: Request, res: Response) => {
+  res.json({
+    preview: {
+      title: 'Rolex Submariner Watch',
+      description: 'Premium Used watch with excellent condition...',
+      renderedHtml: '<h1>Rolex Submariner Watch</h1><p>Premium Used watch...</p>',
+    },
+  });
+});
+
+router.post('/apply', async (req: Request, res: Response) => {
+  res.json({ applied: true, listingId: 'listing-123', templateId: req.body.templateId });
+});
+
+router.post('/bulk-apply', async (req: Request, res: Response) => {
+  res.json({ applied: true, count: req.body.listingIds?.length || 0, templateId: req.body.templateId });
+});
+
+router.get('/usage-history', async (req: Request, res: Response) => {
+  res.json({
+    history: [
+      { id: 'h1', templateId: 't1', listingId: 'l1', appliedAt: '2025-02-17' },
+      { id: 'h2', templateId: 't1', listingId: 'l2', appliedAt: '2025-02-16' },
+    ],
+  });
+});
+
+// ========== 分析 (3) ==========
+router.get('/analytics', async (req: Request, res: Response) => {
+  res.json({
+    totalUsage: 5000,
+    avgConversionRate: 8.5,
+    topPerformers: [
+      { templateId: 't1', name: 'Watch Pro', conversionRate: 12.5 },
+    ],
+  });
+});
+
+router.get('/analytics/trends', async (req: Request, res: Response) => {
+  res.json({
+    trends: [
+      { date: '2025-02-01', usage: 150 },
+      { date: '2025-02-08', usage: 180 },
+      { date: '2025-02-15', usage: 200 },
+    ],
+  });
+});
+
+router.get('/analytics/comparison', async (req: Request, res: Response) => {
+  res.json({
+    comparison: [
+      { templateId: 't1', name: 'Template A', views: 1000, sales: 100 },
+      { templateId: 't2', name: 'Template B', views: 800, sales: 90 },
+    ],
+  });
+});
+
+// ========== 設定 (2) ==========
+router.get('/settings', async (req: Request, res: Response) => {
+  res.json({
+    defaultCategory: 'Watches',
+    autoSave: true,
+    previewMode: 'live',
+    maxTemplates: 500,
+  });
+});
+
+router.put('/settings', async (req: Request, res: Response) => {
+  res.json({ updated: true, settings: req.body });
+});
+
+export default router;
+```
+
+### UIファイル
+**パス**: `apps/web/src/app/ebay/listing-templates-v3/page.tsx`
+
+```tsx
+'use client';
+
+import { useState } from 'react';
+import useSWR from 'swr';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Progress } from '@/components/ui/progress';
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
+// Phase 292: eBay Listing Templates V3（出品テンプレートV3）
+// テーマカラー: indigo-600
+
+export default function EbayListingTemplatesV3Page() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const { data: dashboardData } = useSWR('/api/ebay-listing-templates-v3/dashboard', fetcher);
+  const { data: templatesData } = useSWR('/api/ebay-listing-templates-v3/templates', fetcher);
+  const { data: categoriesData } = useSWR('/api/ebay-listing-templates-v3/categories', fetcher);
+  const { data: settingsData } = useSWR('/api/ebay-listing-templates-v3/settings', fetcher);
+
+  return (
+    <div className="container mx-auto p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-indigo-600">出品テンプレートV3</h1>
+        <p className="text-gray-600">高度なテンプレート管理・変数システム</p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="dashboard">ダッシュボード</TabsTrigger>
+          <TabsTrigger value="templates">テンプレート</TabsTrigger>
+          <TabsTrigger value="categories">カテゴリ</TabsTrigger>
+          <TabsTrigger value="variables">変数</TabsTrigger>
+          <TabsTrigger value="analytics">分析</TabsTrigger>
+          <TabsTrigger value="settings">設定</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">総テンプレート数</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold text-indigo-600">{dashboardData?.totalTemplates || 0}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">アクティブ</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold text-green-600">{dashboardData?.activeTemplates || 0}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">下書き</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold text-yellow-600">{dashboardData?.drafts || 0}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-600">使用率</CardTitle></CardHeader>
+              <CardContent><div className="text-2xl font-bold">{dashboardData?.avgUsageRate || 0}%</div></CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader><CardTitle>人気テンプレート</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { name: 'Watch Listing Pro', usage: 500, rate: 12.5 },
+                    { name: 'Electronics Standard', usage: 350, rate: 10.2 },
+                    { name: 'Collectibles Special', usage: 200, rate: 8.5 },
+                  ].map((template, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div><div className="font-medium">{template.name}</div><div className="text-sm text-gray-500">{template.usage} 回使用</div></div>
+                      <Badge className="bg-indigo-100 text-indigo-700">{template.rate}% CVR</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>カテゴリ別分布</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[{ name: 'Watches', percent: 35 },{ name: 'Electronics', percent: 28 },{ name: 'Collectibles', percent: 22 },{ name: 'Other', percent: 15 }].map((item) => (
+                    <div key={item.name}>
+                      <div className="flex justify-between mb-1"><span className="text-sm">{item.name}</span><span className="text-sm">{item.percent}%</span></div>
+                      <Progress value={item.percent} className="h-2" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="templates">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div><CardTitle>テンプレート一覧</CardTitle><CardDescription>出品用テンプレートを管理</CardDescription></div>
+                <Button className="bg-indigo-600 hover:bg-indigo-700">+ 新規作成</Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4 mb-6">
+                <Input placeholder="テンプレート名で検索..." className="max-w-md" />
+                <Select><SelectTrigger className="w-40"><SelectValue placeholder="カテゴリ" /></SelectTrigger><SelectContent><SelectItem value="all">全て</SelectItem><SelectItem value="watches">Watches</SelectItem><SelectItem value="electronics">Electronics</SelectItem></SelectContent></Select>
+              </div>
+              <div className="space-y-3">
+                {(templatesData?.templates || [
+                  { id: 't1', name: 'Watch Listing Pro', category: 'Watches', status: 'active', usageCount: 500 },
+                  { id: 't2', name: 'Electronics Standard', category: 'Electronics', status: 'active', usageCount: 350 },
+                  { id: 't3', name: 'Collectibles Special', category: 'Collectibles', status: 'draft', usageCount: 0 },
+                ]).map((template: any) => (
+                  <div key={template.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 font-bold">{template.name.charAt(0)}</div>
+                      <div><div className="font-medium">{template.name}</div><div className="text-sm text-gray-500">{template.category} • {template.usageCount} 回使用</div></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={template.status === 'active' ? 'default' : 'secondary'}>{template.status}</Badge>
+                      <Button variant="outline" size="sm">編集</Button>
+                      <Button variant="outline" size="sm">複製</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div><CardTitle>カテゴリ管理</CardTitle><CardDescription>テンプレートカテゴリを整理</CardDescription></div>
+                <Button className="bg-indigo-600 hover:bg-indigo-700">+ カテゴリ追加</Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {(categoriesData?.categories || [
+                  { id: 'c1', name: 'Watches', templateCount: 45 },
+                  { id: 'c2', name: 'Electronics', templateCount: 35 },
+                  { id: 'c3', name: 'Collectibles', templateCount: 25 },
+                ]).map((cat: any) => (
+                  <div key={cat.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3"><span className="text-lg">📁</span><div><div className="font-medium">{cat.name}</div><div className="text-sm text-gray-500">{cat.templateCount} テンプレート</div></div></div>
+                    <div className="flex gap-2"><Button variant="outline" size="sm">編集</Button><Button variant="outline" size="sm" className="text-red-600">削除</Button></div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="variables">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div><CardTitle>変数管理</CardTitle><CardDescription>テンプレートで使用する変数・プレースホルダー</CardDescription></div>
+                <Button className="bg-indigo-600 hover:bg-indigo-700">+ 変数追加</Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[
+                  { name: 'brand', type: 'text', description: 'ブランド名' },
+                  { name: 'model', type: 'text', description: 'モデル名' },
+                  { name: 'price', type: 'number', description: '価格' },
+                  { name: 'condition', type: 'select', description: '商品状態' },
+                ].map((variable) => (
+                  <div key={variable.name} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <code className="px-2 py-1 bg-gray-100 rounded text-sm">{'{{' + variable.name + '}}'}</code>
+                      <div><div className="font-medium">{variable.name}</div><div className="text-sm text-gray-500">{variable.type} • {variable.description}</div></div>
+                    </div>
+                    <div className="flex gap-2"><Button variant="outline" size="sm">編集</Button><Button variant="outline" size="sm" className="text-red-600">削除</Button></div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">総使用回数</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-indigo-600">5,000</div></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">平均CVR</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">8.5%</div></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm">今月の使用</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">1,200</div></CardContent></Card>
+          </div>
+          <Card>
+            <CardHeader><CardTitle>テンプレート比較</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[
+                  { name: 'Watch Pro', views: 5000, sales: 250, cvr: 5.0 },
+                  { name: 'Electronics Standard', views: 3000, sales: 180, cvr: 6.0 },
+                  { name: 'Collectibles Special', views: 2000, sales: 140, cvr: 7.0 },
+                ].map((item) => (
+                  <div key={item.name} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="font-medium">{item.name}</div>
+                    <div className="flex gap-6 text-sm">
+                      <span>{item.views.toLocaleString()} views</span>
+                      <span>{item.sales} sales</span>
+                      <Badge className="bg-green-100 text-green-700">{item.cvr}% CVR</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <Card>
+            <CardHeader><CardTitle>設定</CardTitle><CardDescription>テンプレートシステムの設定</CardDescription></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div><label className="text-sm font-medium">デフォルトカテゴリ</label><Select><SelectTrigger><SelectValue placeholder="カテゴリを選択" /></SelectTrigger><SelectContent><SelectItem value="watches">Watches</SelectItem><SelectItem value="electronics">Electronics</SelectItem></SelectContent></Select></div>
+                <div><label className="text-sm font-medium">プレビューモード</label><Select><SelectTrigger><SelectValue placeholder="モードを選択" /></SelectTrigger><SelectContent><SelectItem value="live">ライブ</SelectItem><SelectItem value="static">静的</SelectItem></SelectContent></Select></div>
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div><div className="font-medium">自動保存</div><div className="text-sm text-gray-500">編集中のテンプレートを自動保存</div></div>
+                <Button variant="outline">有効</Button>
+              </div>
+              <Button className="bg-indigo-600 hover:bg-indigo-700">設定を保存</Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+```
+
+---
+
+## Phase 293: Buyer Analytics（バイヤー分析）
+
+### パラメータ
+- **機能名**: buyer-analytics
+- **日本語名**: バイヤー分析
+- **テーマカラー**: pink-600
+- **タブ**: ダッシュボード、バイヤー、セグメント、行動分析、レポート、設定
+
+### 生成するファイル
+1. `apps/api/src/routes/ebay-buyer-analytics.ts` (28エンドポイント)
+2. `apps/web/src/app/ebay/buyer-analytics/page.tsx` (6タブ)
+
+---
+
+## Phase 294: Supply Chain Manager（サプライチェーン管理）
+
+### パラメータ
+- **機能名**: supply-chain-manager
+- **日本語名**: サプライチェーン管理
+- **テーマカラー**: orange-600
+- **タブ**: ダッシュボード、サプライヤー、発注、在庫、物流、設定
+
+### 生成するファイル
+1. `apps/api/src/routes/ebay-supply-chain-manager.ts` (28エンドポイント)
+2. `apps/web/src/app/ebay/supply-chain-manager/page.tsx` (6タブ)
+
+---
+
+## 実行後の手順（Claude Code担当）
+
+1. **index.ts更新**
+   ```typescript
+   // apps/api/src/index.ts に追加
+   import ebayListingTemplatesV3 from './routes/ebay-listing-templates-v3';
+   import ebayBuyerAnalytics from './routes/ebay-buyer-analytics';
+   import ebaySupplyChainManager from './routes/ebay-supply-chain-manager';
+
+   app.use('/api/ebay-listing-templates-v3', ebayListingTemplatesV3);
+   app.use('/api/ebay-buyer-analytics', ebayBuyerAnalytics);
+   app.use('/api/ebay-supply-chain-manager', ebaySupplyChainManager);
+   ```
+
+2. **Git操作**
+   ```bash
+   git add .
+   git commit -m "feat: Phase 292-294 eBay機能追加"
+   git push
+   ```
+
+---
+
+## 注意事項
+
+- テーマカラーは各Phaseで変更すること
+- 日本語コメント・ラベルを使用
+- TypeScriptの型定義を含める
+- UIはshadcn/uiコンポーネントを使用
