@@ -3,42 +3,74 @@
 ## 最終更新
 
 **日付**: 2026-02-17
-**Phase**: 114-291完了
-**担当**: Claude
-**最新コミット**: a3d1c10
+**Phase**: 303-312完了（Codex自動生成ワークフロー確立）
+**担当**: Claude（オーケストレーター）+ Codex（コード生成）
+**最新コミット**: da24ba7
 
 ---
 
 ## 🚀 次のセッションで実行すること
 
-### 次のPhase（292-294）
+### 次のPhase（313-314）
 | Phase | 機能名 | テーマカラー |
 |-------|--------|-------------|
-| 292 | Listing Templates V3（出品テンプレートV3） | indigo-600 |
-| 293 | Buyer Analytics（バイヤー分析） | pink-600 |
-| 294 | Supply Chain Manager（サプライチェーン管理） | orange-600 |
+| 313 | 在庫同期マネージャー（ebay-inventory-sync-manager） | emerald-600 |
+| 314 | 価格アラート（ebay-price-alerts） | sky-600 |
 
-### 実装パターン（各Phase共通）
+### Codex自動生成ワークフロー（推奨）
+
+```bash
+cd /Users/naokijodan/Desktop/rakuda
+
+# 1. タスクファイル編集（codex/current-task.txt）
+# 2. Codex実行
+codex exec "$(cat codex/current-task.txt)" --full-auto
+
+# 3. ファイルコピー
+cp codex/output/ebay-xxx.ts apps/api/src/routes/
+mkdir -p apps/web/src/app/ebay/xxx
+cp codex/output/xxx-page.tsx apps/web/src/app/ebay/xxx/page.tsx
+
+# 4. index.ts編集（import + app.use追加）
+# 5. git add -A && git commit && git push
+```
+
+---
+
+## 今回のセッションで完了したPhase（303-312）
+
+| Phase | 機能名 | API | テーマ |
+|-------|--------|-----|--------|
+| 303 | 返品ポリシー管理 | ebay-return-policy | purple-600 |
+| 304 | SKU管理システム | ebay-sku-management | slate-600 |
+| 305 | 配送オプション管理 | ebay-shipping-options | teal-600 |
+| 306 | 支払い方法管理 | ebay-payment-methods | amber-600 |
+| 307 | セラーメトリクス管理 | ebay-seller-metrics | indigo-600 |
+| 308 | 商品コンディション管理 | ebay-product-condition | rose-600 |
+| 309 | カテゴリインサイト | ebay-category-insights | cyan-600 |
+| 310 | 出品監査 | ebay-listing-audit | orange-600 |
+| 311 | クロスセル管理 | ebay-cross-sell | fuchsia-600 |
+| 312 | ストアブランディング | ebay-store-branding | violet-600 |
+
+**Git履歴**:
+- da24ba7 Phase 311-312
+- 09998e0 Phase 309-310
+- 8027204 Phase 307-308
+- 0024fa2 Phase 305-306
+- a3b3f24 Phase 303-304
+
+---
+
+## 実装パターン（各Phase共通）
 1. **APIファイル作成**: `apps/api/src/routes/ebay-{機能名}.ts` (28エンドポイント)
 2. **UIファイル作成**: `apps/web/src/app/ebay/{機能名}/page.tsx` (6タブ)
 3. **index.ts更新**: import追加 + app.use()追加
 4. **Git**: add, commit, push
 
-### ⚠️ 重要: Bash heredoc問題の回避方法
+### ⚠️ 重要: コード生成はCodex CLIで
 
-`${Date.now()}` などのJS変数がbashに解釈されるため、base64方式を使用：
-
-```bash
-# 1. base64エンコード
-cat << 'ENDOFFILE' | base64 | tr -d '\n' > /tmp/file.b64
-(TypeScriptコード)
-ENDOFFILE
-
-# 2. デコードして保存（macOS用）
-cat /tmp/file.b64 | base64 -d > /path/to/file.ts
-```
-
-**注意**: macOSでは `base64 -d /tmp/file.b64` は動かない
+ClaudeのコンテキストとWeekly Limitを節約するため、コード生成はCodex CLIに委託。
+Claudeは統合作業（ファイルコピー、index.ts編集、Git、Obsidian）を担当。
 
 ---
 
