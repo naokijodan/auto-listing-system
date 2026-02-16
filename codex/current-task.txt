@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 331: Marketplace Connector（マーケットプレイスコネクター）
+## Phase 333: Smart Pricing（スマートプライシング）
 
-### API: ebay-marketplace-connector.ts
-- テーマカラー: pink-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/connections, /dashboard/sync-status, /dashboard/errors
-- 接続 (6): /connections (CRUD + test + sync)
-- マッピング (4): /mappings, /mappings/:id, /mappings/create, /mappings/auto
+### API: ebay-smart-pricing.ts
+- テーマカラー: indigo-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/opportunities, /dashboard/changes, /dashboard/impact
+- 価格設定 (6): /pricing (CRUD + apply + simulate)
 - ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
-- 分析 (3): /analytics, /analytics/performance, /analytics/errors
+- 競合 (4): /competitors, /competitors/:id, /competitors/track, /competitors/compare
+- 分析 (3): /analytics, /analytics/elasticity, /analytics/revenue
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /force-sync
+- ユーティリティ (4): /health, /export, /import, /recalculate
 
-### UI: marketplace-connector-page.tsx
-- h1: "マーケットプレイスコネクター" (text-pink-600)
-- タブ: ダッシュボード、接続、マッピング、ルール、分析、設定
-- fetch先: /api/ebay-marketplace-connector/...
+### UI: smart-pricing-page.tsx
+- h1: "スマートプライシング" (text-indigo-600)
+- タブ: ダッシュボード、価格設定、ルール、競合、分析、設定
+- fetch先: /api/ebay-smart-pricing/...
 
 ---
 
-## Phase 332: Bulk Updater（バルクアップデーター）
+## Phase 334: Order Tracker Pro（注文トラッカーPro）
 
-### API: ebay-bulk-updater.ts
-- テーマカラー: yellow-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/jobs, /dashboard/history, /dashboard/stats
-- 更新 (6): /updates (CRUD + execute + preview)
-- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/apply
-- スケジュール (4): /schedules, /schedules/:id, /schedules/create, /schedules/toggle
-- 分析 (3): /analytics, /analytics/success-rate, /analytics/fields
+### API: ebay-order-tracker-pro.ts
+- テーマカラー: sky-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/shipped, /dashboard/delivered
+- 注文 (6): /orders (list + detail + update + track + export + refresh)
+- 配送 (4): /shipments, /shipments/:id, /shipments/update, /shipments/notify
+- アラート (4): /alerts, /alerts/:id, /alerts/create, /alerts/toggle
+- 分析 (3): /analytics, /analytics/delivery-time, /analytics/carriers
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /rollback
+- ユーティリティ (4): /health, /export, /import, /bulk-update
 
-### UI: bulk-updater-page.tsx
-- h1: "バルクアップデーター" (text-yellow-600)
-- タブ: ダッシュボード、更新、テンプレート、スケジュール、分析、設定
-- fetch先: /api/ebay-bulk-updater/...
+### UI: order-tracker-pro-page.tsx
+- h1: "注文トラッカーPro" (text-sky-600)
+- タブ: ダッシュボード、注文、配送、アラート、分析、設定
+- fetch先: /api/ebay-order-tracker-pro/...
 
 ---
 
