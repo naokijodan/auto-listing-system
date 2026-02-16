@@ -192,6 +192,8 @@ import ebaySkuGeneratorRouter from './routes/ebay-sku-generator';
 import ebayShippingRateCalculatorRouter from './routes/ebay-shipping-rate-calculator';
 import ebayProductSourcingHubRouter from './routes/ebay-product-sourcing-hub';
 import ebayQualityControlManagerRouter from './routes/ebay-quality-control-manager';
+import { ebayInventoryRestockPlannerRouter } from './routes/ebay-inventory-restock-planner';
+import { ebayCustomerCommunicationHubRouter } from './routes/ebay-customer-communication-hub';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -557,6 +559,8 @@ app.use('/api/ebay/sku-generator', ebaySkuGeneratorRouter);
 app.use('/api/ebay/shipping-rate-calculator', ebayShippingRateCalculatorRouter);
 app.use('/api/ebay/product-sourcing-hub', ebayProductSourcingHubRouter);
 app.use('/api/ebay/quality-control-manager', ebayQualityControlManagerRouter);
+app.use('/api/ebay/inventory-restock-planner', ebayInventoryRestockPlannerRouter);
+app.use('/api/ebay/customer-communication-hub', ebayCustomerCommunicationHubRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
