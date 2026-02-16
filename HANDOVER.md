@@ -3,12 +3,36 @@
 ## 最終更新
 
 **日付**: 2026-02-16
-**Phase**: 114-273完了（136, 142含む）
+**Phase**: 114-276完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
 
-### Phase 271-273: eBay機能強化（最新）
+### Phase 274-276: eBay機能強化（最新）
+
+**ステータス**: 完了 ✅
+
+#### Phase 274: Tax Calculator（税金計算システム）
+- **API**: `ebay-tax-calculator.ts`（28エンドポイント）
+- **UI**: `ebay/tax-calculator/page.tsx`（6タブ）
+- **テーマカラー**: slate-600
+- ダッシュボード、計算、ネクサス、申告、分析、設定
+
+#### Phase 275: Supplier Integration（サプライヤー連携）
+- **API**: `ebay-supplier-integration.ts`（28エンドポイント）
+- **UI**: `ebay/supplier-integration/page.tsx`（6タブ）
+- **テーマカラー**: orange-600
+- ダッシュボード、サプライヤー、発注、商品、分析、設定
+
+#### Phase 276: Multi-Warehouse Manager（複数倉庫管理）
+- **API**: `ebay-multi-warehouse.ts`（28エンドポイント）
+- **UI**: `ebay/multi-warehouse/page.tsx`（6タブ）
+- **テーマカラー**: blue-600
+- ダッシュボード、倉庫、在庫、移送、分析、設定
+
+---
+
+### Phase 271-273: eBay機能強化
 
 **ステータス**: 完了 ✅
 
