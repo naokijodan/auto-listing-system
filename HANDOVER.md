@@ -3,10 +3,34 @@
 ## 最終更新
 
 **日付**: 2026-02-16
-**Phase**: 114-270完了（136, 142含む）
+**Phase**: 114-273完了（136, 142含む）
 **担当**: Claude
 
 ## 現在のステータス
+
+### Phase 271-273: eBay機能強化（最新）
+
+**ステータス**: 完了 ✅
+
+#### Phase 271: Shipping Cost Optimizer（送料最適化システム）
+- **API**: `ebay-shipping-optimizer.ts`（28エンドポイント）
+- **UI**: `ebay/shipping-optimizer/page.tsx`（6タブ）
+- **テーマカラー**: emerald-600
+- ダッシュボード、プロファイル、キャリア、ゾーン、分析、設定
+
+#### Phase 272: Buyer Feedback Manager（バイヤーフィードバック管理）
+- **API**: `ebay-buyer-feedback.ts`（28エンドポイント）
+- **UI**: `ebay/buyer-feedback/page.tsx`（6タブ）
+- **テーマカラー**: amber-600
+- ダッシュボード、フィードバック、リクエスト、テンプレート、分析、設定
+
+#### Phase 273: Promotion Manager（プロモーション管理）
+- **API**: `ebay-promotion-manager.ts`（28エンドポイント）
+- **UI**: `ebay/promotion-manager/page.tsx`（6タブ）
+- **テーマカラー**: purple-600
+- ダッシュボード、プロモーション、クーポン、スケジュール、分析、設定
+
+---
 
 ### Phase 268-270: eBay機能強化（最新）
 
