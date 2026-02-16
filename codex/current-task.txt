@@ -11,41 +11,45 @@
 
 ---
 
-## Phase 303: Return Policy Manager（返品ポリシー管理）
+## Phase 305: Shipping Options Manager（配送オプション管理）
 
-### API: ebay-return-policy.ts
-- テーマカラー: purple-600
-- ダッシュボード (5): /dashboard - 総ポリシー数、適用商品数、返品率
-- ポリシー (6): /policies (CRUD + duplicate + assign)
-- 条件 (4): /conditions, /conditions/:id, /conditions/create, /conditions/update
-- 適用 (4): /assignments, /assignments/:id, /assignments/bulk, /assignments/preview
-- 分析 (3): /analytics, /analytics/returns, /analytics/impact
+### API: ebay-shipping-options.ts
+- テーマカラー: teal-600
+- ダッシュボード (5): /dashboard - 配送オプション数、配送業者数、平均配送日数
+  - /dashboard, /dashboard/summary, /dashboard/carriers, /dashboard/rates, /dashboard/performance
+- オプション (6): /options (CRUD + duplicate + apply)
+  - GET/POST /options, GET/PUT /options/:id, POST /options/:id/duplicate, POST /options/:id/apply
+- 配送業者 (4): /carriers, /carriers/:id, /carriers/create, /carriers/update
+- 料金 (4): /rates, /rates/:id, /rates/calculate, /rates/bulk-update
+- 分析 (3): /analytics, /analytics/costs, /analytics/delivery-times
 - 設定 (2): /settings GET/PUT
 - ユーティリティ (4): /health, /export, /import, /reindex
 
-### UI: return-policy-page.tsx
-- h1: "返品ポリシー管理" (text-purple-600)
-- タブ: ダッシュボード、ポリシー、条件、適用、分析、設定
-- fetch先: /api/ebay-return-policy/...
+### UI: shipping-options-page.tsx
+- h1: "配送オプション管理" (text-teal-600)
+- タブ: ダッシュボード、オプション、配送業者、料金、分析、設定
+- fetch先: /api/ebay-shipping-options/...
 
 ---
 
-## Phase 304: SKU Management System（SKU管理システム）
+## Phase 306: Payment Methods Manager（支払い方法管理）
 
-### API: ebay-sku-management.ts
-- テーマカラー: slate-600
-- ダッシュボード (5): /dashboard - 総SKU数、アクティブ、非アクティブ、重複
-- SKU管理 (6): /skus (CRUD + merge + split)
-- マッピング (4): /mappings, /mappings/:id, /mappings/create, /mappings/sync
-- バリデーション (4): /validation, /validation/run, /validation/issues, /validation/fix
-- 分析 (3): /analytics, /analytics/usage, /analytics/duplicates
+### API: ebay-payment-methods.ts
+- テーマカラー: amber-600
+- ダッシュボード (5): /dashboard - 支払い方法数、取引数、手数料合計
+  - /dashboard, /dashboard/summary, /dashboard/transactions, /dashboard/fees, /dashboard/disputes
+- 支払い方法 (6): /methods (CRUD + activate + deactivate)
+  - GET/POST /methods, GET/PUT /methods/:id, POST /methods/:id/activate, POST /methods/:id/deactivate
+- 取引 (4): /transactions, /transactions/:id, /transactions/refund, /transactions/void
+- 手数料 (4): /fees, /fees/:id, /fees/calculate, /fees/summary
+- 分析 (3): /analytics, /analytics/revenue, /analytics/disputes
 - 設定 (2): /settings GET/PUT
 - ユーティリティ (4): /health, /export, /import, /reindex
 
-### UI: sku-management-page.tsx
-- h1: "SKU管理システム" (text-slate-600)
-- タブ: ダッシュボード、SKU、マッピング、バリデーション、分析、設定
-- fetch先: /api/ebay-sku-management/...
+### UI: payment-methods-page.tsx
+- h1: "支払い方法管理" (text-amber-600)
+- タブ: ダッシュボード、支払い方法、取引、手数料、分析、設定
+- fetch先: /api/ebay-payment-methods/...
 
 ---
 
