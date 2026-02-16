@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 325: Return Analytics（返品分析）
+## Phase 327: Buyer Communication Hub（バイヤーコミュニケーションハブ）
 
-### API: ebay-return-analytics.ts
-- テーマカラー: red-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/rate, /dashboard/reasons, /dashboard/trends
-- 返品 (6): /returns (list + detail + analyze + compare + export + refresh)
-- パターン (4): /patterns, /patterns/:id, /patterns/detect, /patterns/products
-- 予防 (4): /prevention, /prevention/:id, /prevention/recommendations, /prevention/apply
-- 分析 (3): /analytics, /analytics/costs, /analytics/buyers
+### API: ebay-buyer-communication-hub.ts
+- テーマカラー: blue-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/inbox, /dashboard/sent, /dashboard/stats
+- メッセージ (6): /messages (CRUD + send + archive)
+- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/variables
+- 自動返信 (4): /auto-replies, /auto-replies/:id, /auto-replies/create, /auto-replies/toggle
+- 分析 (3): /analytics, /analytics/response-time, /analytics/satisfaction
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /recalculate
+- ユーティリティ (4): /health, /export, /import, /bulk-send
 
-### UI: return-analytics-page.tsx
-- h1: "返品分析" (text-red-600)
-- タブ: ダッシュボード、返品、パターン、予防、分析、設定
-- fetch先: /api/ebay-return-analytics/...
+### UI: buyer-communication-hub-page.tsx
+- h1: "バイヤーコミュニケーションハブ" (text-blue-600)
+- タブ: ダッシュボード、メッセージ、テンプレート、自動返信、分析、設定
+- fetch先: /api/ebay-buyer-communication-hub/...
 
 ---
 
-## Phase 326: Listing Optimizer Pro（出品最適化Pro）
+## Phase 328: Inventory Forecaster（在庫予測）
 
-### API: ebay-listing-optimizer-pro.ts
-- テーマカラー: green-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/scores, /dashboard/opportunities, /dashboard/trends
-- 最適化 (6): /optimizations (CRUD + apply + preview)
-- 提案 (4): /suggestions, /suggestions/:id, /suggestions/generate, /suggestions/bulk-apply
-- A/Bテスト (4): /ab-tests, /ab-tests/:id, /ab-tests/create, /ab-tests/results
-- 分析 (3): /analytics, /analytics/impact, /analytics/comparison
+### API: ebay-inventory-forecaster.ts
+- テーマカラー: purple-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/predictions, /dashboard/alerts, /dashboard/accuracy
+- 予測 (6): /forecasts (CRUD + generate + compare)
+- モデル (4): /models, /models/:id, /models/train, /models/evaluate
+- アラート (4): /alerts, /alerts/:id, /alerts/create, /alerts/toggle
+- 分析 (3): /analytics, /analytics/accuracy, /analytics/trends
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /scan, /benchmark
+- ユーティリティ (4): /health, /export, /import, /recalculate
 
-### UI: listing-optimizer-pro-page.tsx
-- h1: "出品最適化Pro" (text-green-600)
-- タブ: ダッシュボード、最適化、提案、A/Bテスト、分析、設定
-- fetch先: /api/ebay-listing-optimizer-pro/...
+### UI: inventory-forecaster-page.tsx
+- h1: "在庫予測" (text-purple-600)
+- タブ: ダッシュボード、予測、モデル、アラート、分析、設定
+- fetch先: /api/ebay-inventory-forecaster/...
 
 ---
 
