@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 313: Inventory Sync Manager（在庫同期マネージャー）
+## Phase 315: Bulk Export（バルクエクスポート）
 
-### API: ebay-inventory-sync.ts
-- テーマカラー: emerald-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/sync-status, /dashboard/errors, /dashboard/activity
-- 在庫同期 (6): /syncs (CRUD + start + stop)
-- チャンネル (4): /channels, /channels/:id, /channels/connect, /channels/test
-- マッピング (4): /mappings, /mappings/:id, /mappings/create, /mappings/auto-match
-- 分析 (3): /analytics, /analytics/accuracy, /analytics/performance
+### API: ebay-bulk-export.ts
+- テーマカラー: lime-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/jobs, /dashboard/history, /dashboard/stats
+- エクスポート (6): /exports (CRUD + start + download)
+- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/preview
+- スケジュール (4): /schedules, /schedules/:id, /schedules/create, /schedules/toggle
+- 分析 (3): /analytics, /analytics/usage, /analytics/performance
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /force-sync
+- ユーティリティ (4): /health, /formats, /fields, /validate
 
-### UI: inventory-sync-page.tsx
-- h1: "在庫同期マネージャー" (text-emerald-600)
-- タブ: ダッシュボード、同期、チャンネル、マッピング、分析、設定
-- fetch先: /api/ebay-inventory-sync/...
+### UI: bulk-export-page.tsx
+- h1: "バルクエクスポート" (text-lime-600)
+- タブ: ダッシュボード、エクスポート、テンプレート、スケジュール、分析、設定
+- fetch先: /api/ebay-bulk-export/...
 
 ---
 
-## Phase 314: Price Alerts（価格アラート）
+## Phase 316: Listing Health V2（出品ヘルスv2）
 
-### API: ebay-price-alerts.ts
-- テーマカラー: sky-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/active-alerts, /dashboard/triggered, /dashboard/trends
-- アラート (6): /alerts (CRUD + enable + test)
-- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
-- 通知 (4): /notifications, /notifications/:id, /notifications/send, /notifications/channels
-- 分析 (3): /analytics, /analytics/effectiveness, /analytics/products
+### API: ebay-listing-health-v2.ts
+- テーマカラー: rose-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/scores, /dashboard/issues, /dashboard/trends
+- ヘルスチェック (6): /checks (CRUD + run + fix)
+- 問題 (4): /issues, /issues/:id, /issues/bulk-fix, /issues/ignore
+- レコメンド (4): /recommendations, /recommendations/:id, /recommendations/apply, /recommendations/dismiss
+- 分析 (3): /analytics, /analytics/improvement, /analytics/comparison
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /check-prices
+- ユーティリティ (4): /health, /export, /scan-all, /recalculate
 
-### UI: price-alerts-page.tsx
-- h1: "価格アラート" (text-sky-600)
-- タブ: ダッシュボード、アラート、ルール、通知、分析、設定
-- fetch先: /api/ebay-price-alerts/...
+### UI: listing-health-v2-page.tsx
+- h1: "出品ヘルスv2" (text-rose-600)
+- タブ: ダッシュボード、ヘルスチェック、問題、レコメンド、分析、設定
+- fetch先: /api/ebay-listing-health-v2/...
 
 ---
 
