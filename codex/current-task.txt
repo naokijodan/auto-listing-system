@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 315: Bulk Export（バルクエクスポート）
+## Phase 317: Order Insights（オーダーインサイト）
 
-### API: ebay-bulk-export.ts
-- テーマカラー: lime-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/jobs, /dashboard/history, /dashboard/stats
-- エクスポート (6): /exports (CRUD + start + download)
-- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/preview
-- スケジュール (4): /schedules, /schedules/:id, /schedules/create, /schedules/toggle
-- 分析 (3): /analytics, /analytics/usage, /analytics/performance
+### API: ebay-order-insights.ts
+- テーマカラー: indigo-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/trends, /dashboard/kpis, /dashboard/alerts
+- 注文分析 (6): /orders (list + detail + compare + segment + export + refresh)
+- パターン (4): /patterns, /patterns/:id, /patterns/detect, /patterns/apply
+- 予測 (4): /predictions, /predictions/:id, /predictions/generate, /predictions/accuracy
+- 分析 (3): /analytics, /analytics/revenue, /analytics/customers
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /formats, /fields, /validate
+- ユーティリティ (4): /health, /export, /import, /recalculate
 
-### UI: bulk-export-page.tsx
-- h1: "バルクエクスポート" (text-lime-600)
-- タブ: ダッシュボード、エクスポート、テンプレート、スケジュール、分析、設定
-- fetch先: /api/ebay-bulk-export/...
+### UI: order-insights-page.tsx
+- h1: "オーダーインサイト" (text-indigo-600)
+- タブ: ダッシュボード、注文分析、パターン、予測、分析、設定
+- fetch先: /api/ebay-order-insights/...
 
 ---
 
-## Phase 316: Listing Health V2（出品ヘルスv2）
+## Phase 318: Listing Clone（リスティングクローン）
 
-### API: ebay-listing-health-v2.ts
-- テーマカラー: rose-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/scores, /dashboard/issues, /dashboard/trends
-- ヘルスチェック (6): /checks (CRUD + run + fix)
-- 問題 (4): /issues, /issues/:id, /issues/bulk-fix, /issues/ignore
-- レコメンド (4): /recommendations, /recommendations/:id, /recommendations/apply, /recommendations/dismiss
-- 分析 (3): /analytics, /analytics/improvement, /analytics/comparison
+### API: ebay-listing-clone.ts
+- テーマカラー: amber-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/recent, /dashboard/stats, /dashboard/errors
+- クローン (6): /clones (CRUD + execute + preview)
+- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/apply
+- バルク (4): /bulk, /bulk/:id, /bulk/start, /bulk/status
+- 分析 (3): /analytics, /analytics/usage, /analytics/performance
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /scan-all, /recalculate
+- ユーティリティ (4): /health, /export, /validate, /diff
 
-### UI: listing-health-v2-page.tsx
-- h1: "出品ヘルスv2" (text-rose-600)
-- タブ: ダッシュボード、ヘルスチェック、問題、レコメンド、分析、設定
-- fetch先: /api/ebay-listing-health-v2/...
+### UI: listing-clone-page.tsx
+- h1: "リスティングクローン" (text-amber-600)
+- タブ: ダッシュボード、クローン、テンプレート、バルク、分析、設定
+- fetch先: /api/ebay-listing-clone/...
 
 ---
 
