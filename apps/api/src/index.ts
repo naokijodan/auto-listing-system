@@ -164,6 +164,8 @@ import ebayContentStudioRouter from './routes/ebay-content-studio';
 import ebayComplianceManagerRouter from './routes/ebay-compliance-manager';
 import ebaySupplierHubRouter from './routes/ebay-supplier-hub';
 import ebayReturnsManagerRouter from './routes/ebay-returns-manager';
+import ebayNotificationHubRouter from './routes/ebay-notification-hub';
+import ebayTaskManagerRouter from './routes/ebay-task-manager';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -501,6 +503,8 @@ app.use('/api/ebay/content-studio', ebayContentStudioRouter);
 app.use('/api/ebay/compliance-manager', ebayComplianceManagerRouter);
 app.use('/api/ebay/supplier-hub', ebaySupplierHubRouter);
 app.use('/api/ebay/returns-manager', ebayReturnsManagerRouter);
+app.use('/api/ebay/notification-hub', ebayNotificationHubRouter);
+app.use('/api/ebay/task-manager', ebayTaskManagerRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
