@@ -16,7 +16,7 @@ const prisma = new PrismaClient();
 const log = logger.child({ module: 'ebay-optimization' });
 
 const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null });
-const optimizationQueue = new Queue(QUEUE_NAMES.LISTING, { connection: redisConnection });
+const optimizationQueue = new Queue(QUEUE_NAMES.EBAY_PUBLISH, { connection: redisConnection });
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

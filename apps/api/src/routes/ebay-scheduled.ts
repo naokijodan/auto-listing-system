@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
 const log = logger.child({ module: 'ebay-scheduled' });
 
 const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null });
-const listingQueue = new Queue(QUEUE_NAMES.LISTING, { connection: redisConnection });
+const listingQueue = new Queue(QUEUE_NAMES.EBAY_PUBLISH, { connection: redisConnection });
 
 // バリデーション
 const createScheduleSchema = z.object({
