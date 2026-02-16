@@ -259,11 +259,11 @@ import { customReportsRouter } from './routes/custom-reports';
 import { ssoRouter } from './routes/sso';
 import { systemPerformanceRouter } from './routes/system-performance';
 import { multiCurrencyRouter } from './routes/multi-currency';
-import { complianceRouter } from './routes/compliance';
-import { advancedSearchRouter } from './routes/advanced-search';
-import { dataExportImportRouter } from './routes/data-export-import';
-import { webhookDeliveryRouter } from './routes/webhook-delivery';
-import { apiUsageRouter } from './routes/api-usage';
+// import { complianceRouter } from './routes/compliance'; // Temporarily disabled - uses Hono
+// import { advancedSearchRouter } from './routes/advanced-search'; // Temporarily disabled - uses Hono
+// import { dataExportImportRouter } from './routes/data-export-import'; // Temporarily disabled - uses Hono
+// import { webhookDeliveryRouter } from './routes/webhook-delivery'; // Temporarily disabled - uses Hono
+// import { apiUsageRouter } from './routes/api-usage'; // Temporarily disabled - uses Hono
 import { backupRecoveryRouter } from './routes/backup-recovery';
 import { monitoringAlertsRouter } from './routes/monitoring-alerts';
 import { listingPerformanceRouter } from './routes/listing-performance';
@@ -438,11 +438,11 @@ app.use('/api/custom-reports', customReportsRouter);
 app.use('/api/sso', ssoRouter);
 app.use('/api/system-performance', systemPerformanceRouter);
 app.use('/api/multi-currency', multiCurrencyRouter);
-app.use('/api/compliance', complianceRouter);
-app.use('/api/advanced-search', advancedSearchRouter);
-app.use('/api/data-export-import', dataExportImportRouter);
-app.use('/api/webhook-delivery', webhookDeliveryRouter);
-app.use('/api/api-usage', apiUsageRouter);
+// app.use('/api/compliance', complianceRouter); // Temporarily disabled - uses Hono
+// app.use('/api/advanced-search', advancedSearchRouter); // Temporarily disabled - uses Hono
+// app.use('/api/data-export-import', dataExportImportRouter); // Temporarily disabled - uses Hono
+// app.use('/api/webhook-delivery', webhookDeliveryRouter); // Temporarily disabled - uses Hono
+// app.use('/api/api-usage', apiUsageRouter); // Temporarily disabled - uses Hono
 app.use('/api/backup-recovery', backupRecoveryRouter);
 app.use('/api/monitoring-alerts', monitoringAlertsRouter);
 app.use('/api/listing-performance', listingPerformanceRouter);
@@ -614,6 +614,7 @@ async function start() {
       logger.info(`Bull Board running on http://localhost:${PORT}/admin/queues`);
     });
   } catch (error) {
+    console.error('Failed to start server:', error);
     logger.error('Failed to start server', error);
     process.exit(1);
   }
