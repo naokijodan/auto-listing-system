@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 321: Shipping Label Pro（送り状Pro）
+## Phase 323: Listing Validator（リスティングバリデーター）
 
-### API: ebay-shipping-label-pro.ts
-- テーマカラー: cyan-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/printed, /dashboard/stats
-- ラベル (6): /labels (CRUD + print + void)
-- キャリア (4): /carriers, /carriers/:id, /carriers/rates, /carriers/connect
-- バッチ (4): /batches, /batches/:id, /batches/create, /batches/print
-- 分析 (3): /analytics, /analytics/costs, /analytics/carriers
+### API: ebay-listing-validator.ts
+- テーマカラー: fuchsia-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/errors, /dashboard/warnings, /dashboard/passed
+- バリデーション (6): /validations (CRUD + run + fix)
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/toggle
+- レポート (4): /reports, /reports/:id, /reports/generate, /reports/schedule
+- 分析 (3): /analytics, /analytics/trends, /analytics/common-issues
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /validate-address, /track
+- ユーティリティ (4): /health, /export, /bulk-validate, /auto-fix
 
-### UI: shipping-label-pro-page.tsx
-- h1: "送り状Pro" (text-cyan-600)
-- タブ: ダッシュボード、ラベル、キャリア、バッチ、分析、設定
-- fetch先: /api/ebay-shipping-label-pro/...
+### UI: listing-validator-page.tsx
+- h1: "リスティングバリデーター" (text-fuchsia-600)
+- タブ: ダッシュボード、バリデーション、ルール、レポート、分析、設定
+- fetch先: /api/ebay-listing-validator/...
 
 ---
 
-## Phase 322: Category Manager（カテゴリマネージャー）
+## Phase 324: Sales Report（セールスレポート）
 
-### API: ebay-category-manager.ts
-- テーマカラー: orange-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/tree, /dashboard/stats, /dashboard/changes
-- カテゴリ (6): /categories (list + detail + search + map + suggest + sync)
-- マッピング (4): /mappings, /mappings/:id, /mappings/create, /mappings/bulk
-- ルール (4): /rules, /rules/:id, /rules/create, /rules/test
-- 分析 (3): /analytics, /analytics/distribution, /analytics/performance
+### API: ebay-sales-report.ts
+- テーマカラー: slate-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/revenue, /dashboard/orders, /dashboard/products
+- レポート (6): /reports (CRUD + generate + download)
+- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/preview
+- スケジュール (4): /schedules, /schedules/:id, /schedules/create, /schedules/toggle
+- 分析 (3): /analytics, /analytics/trends, /analytics/comparison
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /refresh
+- ユーティリティ (4): /health, /export, /import, /recalculate
 
-### UI: category-manager-page.tsx
-- h1: "カテゴリマネージャー" (text-orange-600)
-- タブ: ダッシュボード、カテゴリ、マッピング、ルール、分析、設定
-- fetch先: /api/ebay-category-manager/...
+### UI: sales-report-page.tsx
+- h1: "セールスレポート" (text-slate-600)
+- タブ: ダッシュボード、レポート、テンプレート、スケジュール、分析、設定
+- fetch先: /api/ebay-sales-report/...
 
 ---
 
