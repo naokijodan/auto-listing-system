@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 329: Profit Tracker（利益トラッカー）
+## Phase 331: Marketplace Connector（マーケットプレイスコネクター）
 
-### API: ebay-profit-tracker.ts
-- テーマカラー: emerald-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/margins, /dashboard/costs, /dashboard/trends
-- 利益 (6): /profits (list + detail + calculate + compare + export + refresh)
-- コスト (4): /costs, /costs/:id, /costs/create, /costs/categories
-- 目標 (4): /goals, /goals/:id, /goals/create, /goals/progress
-- 分析 (3): /analytics, /analytics/breakdown, /analytics/products
+### API: ebay-marketplace-connector.ts
+- テーマカラー: pink-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/connections, /dashboard/sync-status, /dashboard/errors
+- 接続 (6): /connections (CRUD + test + sync)
+- マッピング (4): /mappings, /mappings/:id, /mappings/create, /mappings/auto
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
+- 分析 (3): /analytics, /analytics/performance, /analytics/errors
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /recalculate
+- ユーティリティ (4): /health, /export, /import, /force-sync
 
-### UI: profit-tracker-page.tsx
-- h1: "利益トラッカー" (text-emerald-600)
-- タブ: ダッシュボード、利益、コスト、目標、分析、設定
-- fetch先: /api/ebay-profit-tracker/...
+### UI: marketplace-connector-page.tsx
+- h1: "マーケットプレイスコネクター" (text-pink-600)
+- タブ: ダッシュボード、接続、マッピング、ルール、分析、設定
+- fetch先: /api/ebay-marketplace-connector/...
 
 ---
 
-## Phase 330: Listing Archive（出品アーカイブ）
+## Phase 332: Bulk Updater（バルクアップデーター）
 
-### API: ebay-listing-archive.ts
-- テーマカラー: gray-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/archived, /dashboard/storage, /dashboard/stats
-- アーカイブ (6): /archives (CRUD + restore + purge)
-- カテゴリ (4): /categories, /categories/:id, /categories/create, /categories/move
-- 検索 (4): /search, /search/advanced, /search/filters, /search/saved
-- 分析 (3): /analytics, /analytics/usage, /analytics/trends
+### API: ebay-bulk-updater.ts
+- テーマカラー: yellow-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/jobs, /dashboard/history, /dashboard/stats
+- 更新 (6): /updates (CRUD + execute + preview)
+- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/apply
+- スケジュール (4): /schedules, /schedules/:id, /schedules/create, /schedules/toggle
+- 分析 (3): /analytics, /analytics/success-rate, /analytics/fields
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /cleanup
+- ユーティリティ (4): /health, /export, /import, /rollback
 
-### UI: listing-archive-page.tsx
-- h1: "出品アーカイブ" (text-gray-600)
-- タブ: ダッシュボード、アーカイブ、カテゴリ、検索、分析、設定
-- fetch先: /api/ebay-listing-archive/...
+### UI: bulk-updater-page.tsx
+- h1: "バルクアップデーター" (text-yellow-600)
+- タブ: ダッシュボード、更新、テンプレート、スケジュール、分析、設定
+- fetch先: /api/ebay-bulk-updater/...
 
 ---
 
