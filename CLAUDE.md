@@ -71,18 +71,23 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 ### eBay連携
 - EAGLEで対応中のため後回し
 
-## 現在のPhase
+## 完成済みPhase
 
-**Phase 40: Joom出品ワークフロー**
+### Phase 40: Joom出品ワークフロー ✅
+- Phase 40-A: 翻訳・属性抽出エンジン（packages/enrichment）
+- Phase 40-B: 画像処理パイプライン（apps/worker/src/lib/image-processor.ts）
+- Phase 40-C: Joom API連携（apps/worker/src/lib/joom-api.ts, joom-publish-service.ts）
+- Phase 40-D: UI・運用機能（apps/web/src/app/joom/page.tsx, products/review/page.tsx）
 
-設計書: `docs/PHASE40_JOOM_WORKFLOW_DESIGN.md`
-実装ガイド: `docs/PHASE40_IMPLEMENTATION_GUIDE.md`
+### Phase 114-270: eBay機能強化 ✅
+- 157 Phases完了（詳細はHANDOVER.md参照）
 
-### 実装順序
-1. Phase 40-A: 翻訳・属性抽出エンジン
-2. Phase 40-B: 画像処理パイプライン
-3. Phase 40-C: Joom API連携
-4. Phase 40-D: UI・運用機能
+## 現在のステータス
+
+**次のアクション候補:**
+- A) Phase 271以降のeBay機能追加を継続
+- B) 品質向上・テスト実施（APIテスト修正）
+- C) 新機能開発
 
 ## コード規約
 
