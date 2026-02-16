@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 317: Order Insights（オーダーインサイト）
+## Phase 319: Seller Dashboard Pro（セラーダッシュボードPro）
 
-### API: ebay-order-insights.ts
-- テーマカラー: indigo-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/trends, /dashboard/kpis, /dashboard/alerts
-- 注文分析 (6): /orders (list + detail + compare + segment + export + refresh)
-- パターン (4): /patterns, /patterns/:id, /patterns/detect, /patterns/apply
-- 予測 (4): /predictions, /predictions/:id, /predictions/generate, /predictions/accuracy
-- 分析 (3): /analytics, /analytics/revenue, /analytics/customers
+### API: ebay-seller-dashboard-pro.ts
+- テーマカラー: violet-600
+- ダッシュボード (5): /dashboard, /dashboard/overview, /dashboard/metrics, /dashboard/goals, /dashboard/alerts
+- ウィジェット (6): /widgets (CRUD + layout + refresh)
+- レポート (4): /reports, /reports/:id, /reports/generate, /reports/schedule
+- ベンチマーク (4): /benchmarks, /benchmarks/:id, /benchmarks/compare, /benchmarks/industry
+- 分析 (3): /analytics, /analytics/trends, /analytics/performance
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /recalculate
+- ユーティリティ (4): /health, /export, /import, /reset-layout
 
-### UI: order-insights-page.tsx
-- h1: "オーダーインサイト" (text-indigo-600)
-- タブ: ダッシュボード、注文分析、パターン、予測、分析、設定
-- fetch先: /api/ebay-order-insights/...
+### UI: seller-dashboard-pro-page.tsx
+- h1: "セラーダッシュボードPro" (text-violet-600)
+- タブ: ダッシュボード、ウィジェット、レポート、ベンチマーク、分析、設定
+- fetch先: /api/ebay-seller-dashboard-pro/...
 
 ---
 
-## Phase 318: Listing Clone（リスティングクローン）
+## Phase 320: Auto Responder（自動応答）
 
-### API: ebay-listing-clone.ts
-- テーマカラー: amber-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/recent, /dashboard/stats, /dashboard/errors
-- クローン (6): /clones (CRUD + execute + preview)
-- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/apply
-- バルク (4): /bulk, /bulk/:id, /bulk/start, /bulk/status
-- 分析 (3): /analytics, /analytics/usage, /analytics/performance
+### API: ebay-auto-responder.ts
+- テーマカラー: teal-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/stats, /dashboard/recent, /dashboard/performance
+- 応答 (6): /responses (CRUD + test + toggle)
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
+- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/variables
+- 分析 (3): /analytics, /analytics/effectiveness, /analytics/timing
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /validate, /diff
+- ユーティリティ (4): /health, /export, /import, /train
 
-### UI: listing-clone-page.tsx
-- h1: "リスティングクローン" (text-amber-600)
-- タブ: ダッシュボード、クローン、テンプレート、バルク、分析、設定
-- fetch先: /api/ebay-listing-clone/...
+### UI: auto-responder-page.tsx
+- h1: "自動応答" (text-teal-600)
+- タブ: ダッシュボード、応答、ルール、テンプレート、分析、設定
+- fetch先: /api/ebay-auto-responder/...
 
 ---
 

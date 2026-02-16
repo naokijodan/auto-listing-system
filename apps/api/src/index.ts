@@ -257,6 +257,8 @@ import ebayBulkExportRouter from './routes/ebay-bulk-export';
 import ebayListingHealthV2Router from './routes/ebay-listing-health-v2';
 import ebayOrderInsightsRouter from './routes/ebay-order-insights';
 import ebayListingCloneRouter from './routes/ebay-listing-clone';
+import ebaySellerDashboardProRouter from './routes/ebay-seller-dashboard-pro';
+import ebayAutoResponderRouter from './routes/ebay-auto-responder';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -687,6 +689,8 @@ app.use('/api/ebay-bulk-export', ebayBulkExportRouter);
 app.use('/api/ebay-listing-health-v2', ebayListingHealthV2Router);
 app.use('/api/ebay-order-insights', ebayOrderInsightsRouter);
 app.use('/api/ebay-listing-clone', ebayListingCloneRouter);
+app.use('/api/ebay-seller-dashboard-pro', ebaySellerDashboardProRouter);
+app.use('/api/ebay-auto-responder', ebayAutoResponderRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
