@@ -4,337 +4,191 @@ import { z } from 'zod';
 const router = Router();
 
 // ============================================================
-// Phase 212: Customer Insights（顧客インサイト）
-// 28エンドポイント
+// Phase 283: eBay Customer Insights（顧客インサイト）
+// 28エンドポイント - テーマカラー: violet-600
 // ============================================================
 
-// --- ダッシュボード ---
+const segmentSchema = z.object({
+  name: z.string().min(1),
+  conditions: z.array(z.object({
+    field: z.string(),
+    operator: z.string(),
+    value: z.any(),
+  })),
+  description: z.string().optional(),
+});
 
-// GET /dashboard/overview - 顧客概要
-router.get('/dashboard/overview', async (_req: Request, res: Response) => {
+router.get('/dashboard', async (req: Request, res: Response) => {
   res.json({
-    totalCustomers: 15000,
-    activeCustomers: 8500,
-    newCustomersThisMonth: 450,
-    repeatCustomerRate: 42.5,
-    avgCustomerValue: 12500,
-    customerSatisfaction: 4.6,
+    totalCustomers: 5000,
+    newCustomersThisMonth: 250,
+    repeatCustomers: 1500,
+    avgLifetimeValue: 450,
     churnRate: 5.2,
-    lastUpdated: '2026-02-16 10:00:00',
+    npsScore: 72,
   });
 });
 
-// GET /dashboard/metrics - 顧客メトリクス
-router.get('/dashboard/metrics', async (_req: Request, res: Response) => {
+router.get('/dashboard/overview', async (req: Request, res: Response) => {
   res.json({
-    metrics: [
-      { name: 'LTV（顧客生涯価値）', value: 125000, change: 8.5, trend: 'up' },
-      { name: 'CAC（顧客獲得コスト）', value: 2500, change: -3.2, trend: 'down' },
-      { name: 'NPS（推奨意向）', value: 72, change: 5.0, trend: 'up' },
-      { name: 'リピート率', value: 42.5, change: 2.3, trend: 'up' },
-    ],
-    trend: [
-      { date: '2026-02-10', customers: 14800, active: 8300, new: 55 },
-      { date: '2026-02-11', customers: 14850, active: 8350, new: 62 },
-      { date: '2026-02-12', customers: 14900, active: 8400, new: 58 },
-      { date: '2026-02-13', customers: 14920, active: 8420, new: 45 },
-      { date: '2026-02-14', customers: 14950, active: 8450, new: 70 },
-      { date: '2026-02-15', customers: 14980, active: 8480, new: 68 },
-      { date: '2026-02-16', customers: 15000, active: 8500, new: 72 },
+    bySegment: [
+      { segment: 'VIP', count: 500, revenue: 150000, avgOrders: 8.5 },
+      { segment: 'Regular', count: 1500, revenue: 200000, avgOrders: 3.2 },
+      { segment: 'New', count: 2000, revenue: 100000, avgOrders: 1.2 },
+      { segment: 'At Risk', count: 1000, revenue: 50000, avgOrders: 0.5 },
     ],
   });
 });
 
-// GET /dashboard/alerts - 顧客アラート
-router.get('/dashboard/alerts', async (_req: Request, res: Response) => {
+router.get('/dashboard/alerts', async (req: Request, res: Response) => {
   res.json({
     alerts: [
-      { id: '1', type: 'churn_risk', severity: 'high', message: '50人の顧客が離脱リスク高', count: 50, action: 'リテンションキャンペーンを推奨' },
-      { id: '2', type: 'vip_inactive', severity: 'medium', message: 'VIP顧客10人が30日以上未活動', count: 10, action: 'パーソナライズドアプローチを推奨' },
-      { id: '3', type: 'satisfaction_drop', severity: 'low', message: '顧客満足度が先週から2%低下', value: -2, action: 'フィードバック分析を推奨' },
+      { id: '1', type: 'churn_risk', message: '50人の顧客が離脱リスク', severity: 'high' },
+      { id: '2', type: 'vip_inactive', message: '5人のVIP顧客が30日以上未購入', severity: 'warning' },
     ],
   });
 });
 
-// --- 顧客分析 ---
-
-// GET /customers - 顧客一覧
-router.get('/customers', async (_req: Request, res: Response) => {
+router.get('/customers', async (req: Request, res: Response) => {
   res.json({
     customers: [
-      { id: '1', name: 'John Smith', email: 'john@example.com', segment: 'VIP', totalOrders: 25, totalSpent: 450000, lastOrder: '2026-02-14', status: 'active' },
-      { id: '2', name: 'Jane Doe', email: 'jane@example.com', segment: 'Regular', totalOrders: 8, totalSpent: 85000, lastOrder: '2026-02-10', status: 'active' },
-      { id: '3', name: 'Bob Wilson', email: 'bob@example.com', segment: 'New', totalOrders: 2, totalSpent: 15000, lastOrder: '2026-02-15', status: 'active' },
-      { id: '4', name: 'Alice Brown', email: 'alice@example.com', segment: 'At Risk', totalOrders: 12, totalSpent: 180000, lastOrder: '2026-01-05', status: 'inactive' },
+      { id: 'c1', name: 'John Smith', segment: 'VIP', orders: 25, ltv: 2500, lastOrder: '2026-02-10' },
+      { id: 'c2', name: 'Jane Doe', segment: 'Regular', orders: 8, ltv: 800, lastOrder: '2026-02-05' },
     ],
-    total: 15000,
-    segments: ['VIP', 'Regular', 'New', 'At Risk', 'Churned'],
+    total: 5000,
   });
 });
 
-// GET /customers/:id - 顧客詳細
 router.get('/customers/:id', async (req: Request, res: Response) => {
   res.json({
-    customer: {
-      id: req.params.id,
-      name: 'John Smith',
-      email: 'john@example.com',
-      phone: '+1-555-0123',
-      country: 'US',
-      segment: 'VIP',
-      status: 'active',
-      joinedAt: '2024-03-15',
-      lastActivity: '2026-02-16 09:30:00',
-      profile: {
-        totalOrders: 25,
-        totalSpent: 450000,
-        avgOrderValue: 18000,
-        favoriteCategories: ['時計', 'アクセサリー'],
-        preferredPayment: 'PayPal',
-        preferredShipping: 'Express',
-      },
-      metrics: {
-        ltv: 550000,
-        purchaseFrequency: 2.5,
-        daysSinceLastOrder: 2,
-        satisfaction: 4.8,
-        nps: 9,
-      },
-      orders: [
-        { id: 'ord_1', date: '2026-02-14', total: 35000, items: 2, status: 'delivered' },
-        { id: 'ord_2', date: '2026-01-28', total: 28000, items: 1, status: 'delivered' },
-        { id: 'ord_3', date: '2026-01-10', total: 42000, items: 3, status: 'delivered' },
-      ],
-      communications: [
-        { date: '2026-02-15', type: 'email', subject: '発送完了のお知らせ' },
-        { date: '2026-02-14', type: 'purchase', subject: '注文確認' },
-      ],
-    },
+    id: req.params.id,
+    name: 'John Smith',
+    segment: 'VIP',
+    stats: { orders: 25, ltv: 2500, avgOrderValue: 100 },
+    preferences: { categories: ['Watches', 'Electronics'] },
   });
 });
 
-// GET /customers/:id/timeline - 顧客タイムライン
 router.get('/customers/:id/timeline', async (req: Request, res: Response) => {
   res.json({
+    customerId: req.params.id,
     timeline: [
-      { id: '1', date: '2026-02-16 09:30:00', type: 'visit', description: 'サイト訪問', details: '商品ページ閲覧: 5ページ' },
-      { id: '2', date: '2026-02-14 15:00:00', type: 'purchase', description: '注文完了', details: '¥35,000 / 2アイテム' },
-      { id: '3', date: '2026-02-14 14:45:00', type: 'cart', description: 'カート追加', details: 'セイコー プロスペックス' },
-      { id: '4', date: '2026-02-10 10:00:00', type: 'email_open', description: 'メール開封', details: '週末セールのご案内' },
+      { date: '2026-02-10', type: 'order', description: 'Placed order #12345' },
+      { date: '2026-02-08', type: 'message', description: 'Asked about product' },
     ],
   });
 });
 
-// --- セグメント ---
+router.post('/customers/:id/tags', async (req: Request, res: Response) => {
+  res.json({ customerId: req.params.id, tags: req.body.tags, updatedAt: new Date().toISOString() });
+});
 
-// GET /segments - セグメント一覧
-router.get('/segments', async (_req: Request, res: Response) => {
+router.get('/segments', async (req: Request, res: Response) => {
   res.json({
     segments: [
-      { id: '1', name: 'VIP', description: '累計購入額50万円以上', customerCount: 850, avgSpent: 650000, avgOrders: 22, revenue: 552500000 },
-      { id: '2', name: 'Regular', description: '過去6ヶ月に2回以上購入', customerCount: 4500, avgSpent: 85000, avgOrders: 5, revenue: 382500000 },
-      { id: '3', name: 'New', description: '過去30日以内に初購入', customerCount: 450, avgSpent: 12000, avgOrders: 1, revenue: 5400000 },
-      { id: '4', name: 'At Risk', description: '90日以上未購入', customerCount: 1200, avgSpent: 45000, avgOrders: 3, revenue: 54000000 },
-      { id: '5', name: 'Churned', description: '180日以上未購入', customerCount: 1500, avgSpent: 35000, avgOrders: 2, revenue: 52500000 },
+      { id: 's1', name: 'VIP', count: 500, avgLtv: 2000 },
+      { id: 's2', name: 'Regular', count: 1500, avgLtv: 500 },
+      { id: 's3', name: 'New', count: 2000, avgLtv: 100 },
+      { id: 's4', name: 'At Risk', count: 1000, avgLtv: 300 },
     ],
   });
 });
 
-// GET /segments/:id - セグメント詳細
+router.post('/segments', async (req: Request, res: Response) => {
+  const parsed = segmentSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Invalid segment', details: parsed.error.issues });
+  res.status(201).json({ id: \`seg_\${Date.now()}\`, ...parsed.data, count: 0, createdAt: new Date().toISOString() });
+});
+
 router.get('/segments/:id', async (req: Request, res: Response) => {
-  res.json({
-    segment: {
-      id: req.params.id,
-      name: 'VIP',
-      description: '累計購入額50万円以上の優良顧客',
-      criteria: [
-        { field: 'totalSpent', operator: 'gte', value: 500000 },
-      ],
-      customerCount: 850,
-      metrics: {
-        avgSpent: 650000,
-        avgOrders: 22,
-        avgLtv: 850000,
-        avgSatisfaction: 4.8,
-        retentionRate: 95,
-      },
-      topCustomers: [
-        { id: '1', name: 'John Smith', totalSpent: 450000, orders: 25 },
-        { id: '2', name: 'Emily Johnson', totalSpent: 380000, orders: 18 },
-      ],
-    },
-  });
+  res.json({ id: req.params.id, name: 'VIP', count: 500, avgLtv: 2000 });
 });
 
-// POST /segments - セグメント作成
-router.post('/segments', async (_req: Request, res: Response) => {
-  res.json({ success: true, segmentId: 'seg_new_123', message: 'セグメントを作成しました' });
-});
-
-// PUT /segments/:id - セグメント更新
 router.put('/segments/:id', async (req: Request, res: Response) => {
-  res.json({ success: true, segmentId: req.params.id, message: 'セグメントを更新しました' });
+  res.json({ id: req.params.id, ...req.body, updatedAt: new Date().toISOString() });
 });
 
-// --- 行動分析 ---
+router.delete('/segments/:id', async (req: Request, res: Response) => {
+  res.json({ success: true, deletedId: req.params.id });
+});
 
-// GET /behavior/overview - 行動概要
-router.get('/behavior/overview', async (_req: Request, res: Response) => {
+router.get('/behavior/purchase-patterns', async (req: Request, res: Response) => {
   res.json({
-    overview: {
-      avgSessionDuration: 420,
-      avgPagesPerSession: 8.5,
-      bounceRate: 32.5,
-      conversionRate: 3.8,
-      cartAbandonmentRate: 68.5,
-    },
-    topActions: [
-      { action: 'product_view', count: 125000, change: 5.2 },
-      { action: 'add_to_cart', count: 18500, change: 8.5 },
-      { action: 'checkout_start', count: 8200, change: 3.2 },
-      { action: 'purchase', count: 4750, change: 6.8 },
+    patterns: [
+      { pattern: 'Weekend Shoppers', count: 1200, avgOrderValue: 180 },
+      { pattern: 'Bulk Buyers', count: 300, avgOrderValue: 500 },
     ],
+    peakDays: ['Saturday', 'Sunday'],
   });
 });
 
-// GET /behavior/journey - カスタマージャーニー
-router.get('/behavior/journey', async (_req: Request, res: Response) => {
-  res.json({
-    journey: {
-      stages: [
-        { stage: 'awareness', customers: 50000, conversion: 40 },
-        { stage: 'interest', customers: 20000, conversion: 50 },
-        { stage: 'consideration', customers: 10000, conversion: 60 },
-        { stage: 'purchase', customers: 6000, conversion: 70 },
-        { stage: 'retention', customers: 4200, conversion: 50 },
-        { stage: 'advocacy', customers: 2100, conversion: null },
-      ],
-      dropoffPoints: [
-        { from: 'awareness', to: 'interest', dropoff: 60, reason: '価格が高い' },
-        { from: 'consideration', to: 'purchase', dropoff: 40, reason: '送料が高い' },
-      ],
-    },
-  });
+router.get('/behavior/browsing', async (req: Request, res: Response) => {
+  res.json({ avgSessionDuration: 8.5, avgPagesPerSession: 12, topViewedCategories: ['Watches', 'Electronics'] });
 });
 
-// GET /behavior/cohorts - コホート分析
-router.get('/behavior/cohorts', async (_req: Request, res: Response) => {
+router.get('/behavior/cohort', async (req: Request, res: Response) => {
   res.json({
     cohorts: [
-      { cohort: '2025-09', month0: 100, month1: 45, month2: 32, month3: 28, month4: 25, month5: 23 },
-      { cohort: '2025-10', month0: 100, month1: 48, month2: 35, month3: 30, month4: 27, month5: null },
-      { cohort: '2025-11', month0: 100, month1: 52, month2: 38, month3: 33, month4: null, month5: null },
-      { cohort: '2025-12', month0: 100, month1: 50, month2: 36, month3: null, month4: null, month5: null },
-      { cohort: '2026-01', month0: 100, month1: 55, month2: null, month3: null, month4: null, month5: null },
-      { cohort: '2026-02', month0: 100, month1: null, month2: null, month3: null, month4: null, month5: null },
+      { cohort: '2025-Q4', size: 1000, retention: { m1: 45, m2: 35, m3: 30 } },
+      { cohort: '2026-Q1', size: 800, retention: { m1: 50, m2: 40 } },
     ],
   });
 });
 
-// --- 予測分析 ---
-
-// GET /predictions/churn - 離脱予測
-router.get('/predictions/churn', async (_req: Request, res: Response) => {
+router.get('/predictions/churn', async (req: Request, res: Response) => {
   res.json({
-    predictions: {
-      highRisk: { count: 50, percentage: 0.33 },
-      mediumRisk: { count: 150, percentage: 1.0 },
-      lowRisk: { count: 300, percentage: 2.0 },
-    },
-    topRiskCustomers: [
-      { id: '1', name: 'Alice Brown', riskScore: 0.92, daysSinceLastOrder: 45, lastOrder: '2026-01-05', ltv: 180000, reason: '購入頻度の低下' },
-      { id: '2', name: 'Mike Davis', riskScore: 0.85, daysSinceLastOrder: 38, lastOrder: '2026-01-10', ltv: 95000, reason: 'サイト訪問減少' },
+    atRisk: [
+      { customerId: 'c10', name: 'Tom Brown', churnProbability: 85, ltv: 500 },
     ],
-    recommendations: [
-      { action: 'discount_offer', target: 'high_risk', expectedRetention: 25 },
-      { action: 'personalized_email', target: 'medium_risk', expectedRetention: 40 },
-    ],
+    totalAtRisk: 50,
+    potentialLoss: 25000,
   });
 });
 
-// GET /predictions/ltv - LTV予測
-router.get('/predictions/ltv', async (_req: Request, res: Response) => {
+router.get('/predictions/ltv', async (req: Request, res: Response) => {
   res.json({
     predictions: [
-      { segment: 'VIP', currentLtv: 650000, predictedLtv: 850000, confidence: 0.85 },
-      { segment: 'Regular', currentLtv: 85000, predictedLtv: 120000, confidence: 0.78 },
-      { segment: 'New', currentLtv: 12000, predictedLtv: 45000, confidence: 0.65 },
+      { customerId: 'c1', currentLtv: 2500, predictedLtv: 3500, confidence: 85 },
     ],
-    topPotential: [
-      { id: '1', name: 'Jane Doe', currentLtv: 85000, predictedLtv: 180000, growthPotential: 112 },
-      { id: '2', name: 'Bob Wilson', currentLtv: 15000, predictedLtv: 65000, growthPotential: 333 },
-    ],
+    avgPredictedGrowth: 25,
   });
 });
 
-// --- レポート ---
-
-// GET /reports - レポート一覧
-router.get('/reports', async (_req: Request, res: Response) => {
+router.get('/predictions/next-purchase', async (req: Request, res: Response) => {
   res.json({
-    reports: [
-      { id: '1', name: '月次顧客レポート', type: 'customer', lastGenerated: '2026-02-01', schedule: 'monthly' },
-      { id: '2', name: 'セグメント分析', type: 'segment', lastGenerated: '2026-02-15', schedule: 'weekly' },
-      { id: '3', name: '離脱リスクレポート', type: 'churn', lastGenerated: '2026-02-16', schedule: 'daily' },
+    predictions: [
+      { customerId: 'c1', predictedDate: '2026-02-25', predictedCategory: 'Watches', confidence: 80 },
     ],
   });
 });
 
-// POST /reports/generate - レポート生成
-router.post('/reports/generate', async (_req: Request, res: Response) => {
-  res.json({ success: true, reportId: 'report_123', message: 'レポート生成を開始しました' });
-});
-
-// GET /reports/:id - レポート詳細
-router.get('/reports/:id', async (req: Request, res: Response) => {
+router.get('/analytics/rfm', async (req: Request, res: Response) => {
   res.json({
-    report: {
-      id: req.params.id,
-      name: '月次顧客レポート',
-      type: 'customer',
-      generatedAt: '2026-02-01 00:00:00',
-      downloadUrl: '/reports/customer_monthly_202602.pdf',
-    },
+    rfmDistribution: [
+      { rfmScore: '555', label: 'Champions', count: 200, revenue: 100000 },
+      { rfmScore: '454', label: 'Loyal', count: 500, revenue: 150000 },
+    ],
   });
 });
 
-// --- 設定 ---
-
-// GET /settings/general - 一般設定
-router.get('/settings/general', async (_req: Request, res: Response) => {
-  res.json({
-    settings: {
-      trackingEnabled: true,
-      anonymizeData: false,
-      dataRetentionDays: 730,
-      defaultCurrency: 'JPY',
-      timezone: 'Asia/Tokyo',
-    },
-  });
+router.get('/analytics/satisfaction', async (req: Request, res: Response) => {
+  res.json({ npsScore: 72, npsDistribution: { promoters: 60, passives: 25, detractors: 15 } });
 });
 
-// PUT /settings/general - 一般設定更新
-router.put('/settings/general', async (_req: Request, res: Response) => {
-  res.json({ success: true, message: '設定を更新しました' });
+router.get('/reports/summary', async (req: Request, res: Response) => {
+  res.json({ period: req.query.period || 'last_30_days', totalCustomers: 5000, newCustomers: 250, repeatRate: 30 });
 });
 
-// GET /settings/alerts - アラート設定
-router.get('/settings/alerts', async (_req: Request, res: Response) => {
-  res.json({
-    settings: {
-      churnRiskThreshold: 0.7,
-      inactivityDays: 30,
-      vipThreshold: 500000,
-      notifyOnHighRisk: true,
-      notifyOnVipInactive: true,
-      dailyDigest: true,
-    },
-  });
+router.get('/reports/export', async (req: Request, res: Response) => {
+  res.json({ downloadUrl: '/api/ebay-customer-insights/reports/download/report.csv', format: req.query.format || 'csv', generatedAt: new Date().toISOString() });
 });
 
-// PUT /settings/alerts - アラート設定更新
-router.put('/settings/alerts', async (_req: Request, res: Response) => {
-  res.json({ success: true, message: 'アラート設定を更新しました' });
+router.get('/settings', async (req: Request, res: Response) => {
+  res.json({ vipThreshold: 1000, churnDays: 60, autoSegmentation: true, trackBrowsing: true, notifyOnChurnRisk: true });
+});
+
+router.put('/settings', async (req: Request, res: Response) => {
+  res.json({ ...req.body, updatedAt: new Date().toISOString() });
 });
 
 export default router;
