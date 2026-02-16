@@ -200,6 +200,8 @@ import { ebayProductBundleBuilderRouter } from './routes/ebay-product-bundle-bui
 import { ebayWarrantyTrackerRouter } from './routes/ebay-warranty-tracker';
 import { ebayPhotoStudioManagerRouter } from './routes/ebay-photo-studio-manager';
 import { ebayTranslationHubRouter } from './routes/ebay-translation-hub';
+import { ebayCustomsDeclarationRouter } from './routes/ebay-customs-declaration';
+import { ebayBrandProtectionRouter } from './routes/ebay-brand-protection';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -573,6 +575,8 @@ app.use('/api/ebay/product-bundle-builder', ebayProductBundleBuilderRouter);
 app.use('/api/ebay/warranty-tracker', ebayWarrantyTrackerRouter);
 app.use('/api/ebay/photo-studio-manager', ebayPhotoStudioManagerRouter);
 app.use('/api/ebay/translation-hub', ebayTranslationHubRouter);
+app.use('/api/ebay/customs-declaration', ebayCustomsDeclarationRouter);
+app.use('/api/ebay/brand-protection', ebayBrandProtectionRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
