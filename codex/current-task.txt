@@ -11,45 +11,41 @@
 
 ---
 
-## Phase 309: Category Insights（カテゴリインサイト）
+## Phase 311: Cross-Sell Manager（クロスセル管理）
 
-### API: ebay-category-insights.ts
-- テーマカラー: cyan-600
-- ダッシュボード (5): /dashboard - カテゴリ別売上、トレンド、競合状況
-  - /dashboard, /dashboard/summary, /dashboard/sales, /dashboard/trends, /dashboard/competition
-- インサイト (6): /insights (CRUD + generate + share)
-  - GET/POST /insights, GET/PUT /insights/:id, POST /insights/:id/generate, POST /insights/:id/share
-- トレンド (4): /trends, /trends/:id, /trends/forecast, /trends/seasonal
-- ベンチマーク (4): /benchmarks, /benchmarks/:id, /benchmarks/compare, /benchmarks/industry
-- 分析 (3): /analytics, /analytics/opportunities, /analytics/risks
+### API: ebay-cross-sell.ts
+- テーマカラー: fuchsia-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/performance, /dashboard/revenue, /dashboard/conversion
+- クロスセル (6): /cross-sells (CRUD + activate + test)
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
+- レコメンド (4): /recommendations, /recommendations/:id, /recommendations/generate, /recommendations/apply
+- 分析 (3): /analytics, /analytics/effectiveness, /analytics/products
 - 設定 (2): /settings GET/PUT
 - ユーティリティ (4): /health, /export, /import, /reindex
 
-### UI: category-insights-page.tsx
-- h1: "カテゴリインサイト" (text-cyan-600)
-- タブ: ダッシュボード、インサイト、トレンド、ベンチマーク、分析、設定
-- fetch先: /api/ebay-category-insights/...
+### UI: cross-sell-page.tsx
+- h1: "クロスセル管理" (text-fuchsia-600)
+- タブ: ダッシュボード、クロスセル、ルール、レコメンド、分析、設定
+- fetch先: /api/ebay-cross-sell/...
 
 ---
 
-## Phase 310: Listing Audit（出品監査）
+## Phase 312: Store Branding（ストアブランディング）
 
-### API: ebay-listing-audit.ts
-- テーマカラー: orange-600
-- ダッシュボード (5): /dashboard - 監査スコア、問題件数、改善率
-  - /dashboard, /dashboard/summary, /dashboard/scores, /dashboard/issues, /dashboard/improvements
-- 監査 (6): /audits (CRUD + run + schedule)
-  - GET/POST /audits, GET/PUT /audits/:id, POST /audits/:id/run, POST /audits/:id/schedule
-- 問題 (4): /issues, /issues/:id, /issues/resolve, /issues/bulk-fix
-- ルール (4): /rules, /rules/:id, /rules/create, /rules/test
-- 分析 (3): /analytics, /analytics/compliance, /analytics/quality
+### API: ebay-store-branding.ts
+- テーマカラー: violet-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/assets, /dashboard/usage, /dashboard/consistency
+- ブランド (6): /brands (CRUD + publish + preview)
+- アセット (4): /assets, /assets/:id, /assets/upload, /assets/organize
+- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/apply
+- 分析 (3): /analytics, /analytics/engagement, /analytics/recognition
 - 設定 (2): /settings GET/PUT
 - ユーティリティ (4): /health, /export, /import, /reindex
 
-### UI: listing-audit-page.tsx
-- h1: "出品監査" (text-orange-600)
-- タブ: ダッシュボード、監査、問題、ルール、分析、設定
-- fetch先: /api/ebay-listing-audit/...
+### UI: store-branding-page.tsx
+- h1: "ストアブランディング" (text-violet-600)
+- タブ: ダッシュボード、ブランド、アセット、テンプレート、分析、設定
+- fetch先: /api/ebay-store-branding/...
 
 ---
 
