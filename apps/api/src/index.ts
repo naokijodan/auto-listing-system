@@ -251,6 +251,8 @@ import ebayCategoryInsightsRouter from './routes/ebay-category-insights';
 import ebayListingAuditRouter from './routes/ebay-listing-audit';
 import ebayCrossSellRouter from './routes/ebay-cross-sell';
 import ebayStoreBrandingRouter from './routes/ebay-store-branding';
+import ebayInventorySyncRouter from './routes/ebay-inventory-sync';
+import ebayPriceAlertsRouter from './routes/ebay-price-alerts';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -675,6 +677,8 @@ app.use('/api/ebay-category-insights', ebayCategoryInsightsRouter);
 app.use('/api/ebay-listing-audit', ebayListingAuditRouter);
 app.use('/api/ebay-cross-sell', ebayCrossSellRouter);
 app.use('/api/ebay-store-branding', ebayStoreBrandingRouter);
+app.use('/api/ebay-inventory-sync', ebayInventorySyncRouter);
+app.use('/api/ebay-price-alerts', ebayPriceAlertsRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

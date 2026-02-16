@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 311: Cross-Sell Manager（クロスセル管理）
+## Phase 313: Inventory Sync Manager（在庫同期マネージャー）
 
-### API: ebay-cross-sell.ts
-- テーマカラー: fuchsia-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/performance, /dashboard/revenue, /dashboard/conversion
-- クロスセル (6): /cross-sells (CRUD + activate + test)
-- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
-- レコメンド (4): /recommendations, /recommendations/:id, /recommendations/generate, /recommendations/apply
-- 分析 (3): /analytics, /analytics/effectiveness, /analytics/products
+### API: ebay-inventory-sync.ts
+- テーマカラー: emerald-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/sync-status, /dashboard/errors, /dashboard/activity
+- 在庫同期 (6): /syncs (CRUD + start + stop)
+- チャンネル (4): /channels, /channels/:id, /channels/connect, /channels/test
+- マッピング (4): /mappings, /mappings/:id, /mappings/create, /mappings/auto-match
+- 分析 (3): /analytics, /analytics/accuracy, /analytics/performance
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /reindex
+- ユーティリティ (4): /health, /export, /import, /force-sync
 
-### UI: cross-sell-page.tsx
-- h1: "クロスセル管理" (text-fuchsia-600)
-- タブ: ダッシュボード、クロスセル、ルール、レコメンド、分析、設定
-- fetch先: /api/ebay-cross-sell/...
+### UI: inventory-sync-page.tsx
+- h1: "在庫同期マネージャー" (text-emerald-600)
+- タブ: ダッシュボード、同期、チャンネル、マッピング、分析、設定
+- fetch先: /api/ebay-inventory-sync/...
 
 ---
 
-## Phase 312: Store Branding（ストアブランディング）
+## Phase 314: Price Alerts（価格アラート）
 
-### API: ebay-store-branding.ts
-- テーマカラー: violet-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/assets, /dashboard/usage, /dashboard/consistency
-- ブランド (6): /brands (CRUD + publish + preview)
-- アセット (4): /assets, /assets/:id, /assets/upload, /assets/organize
-- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/apply
-- 分析 (3): /analytics, /analytics/engagement, /analytics/recognition
+### API: ebay-price-alerts.ts
+- テーマカラー: sky-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/active-alerts, /dashboard/triggered, /dashboard/trends
+- アラート (6): /alerts (CRUD + enable + test)
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
+- 通知 (4): /notifications, /notifications/:id, /notifications/send, /notifications/channels
+- 分析 (3): /analytics, /analytics/effectiveness, /analytics/products
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /reindex
+- ユーティリティ (4): /health, /export, /import, /check-prices
 
-### UI: store-branding-page.tsx
-- h1: "ストアブランディング" (text-violet-600)
-- タブ: ダッシュボード、ブランド、アセット、テンプレート、分析、設定
-- fetch先: /api/ebay-store-branding/...
+### UI: price-alerts-page.tsx
+- h1: "価格アラート" (text-sky-600)
+- タブ: ダッシュボード、アラート、ルール、通知、分析、設定
+- fetch先: /api/ebay-price-alerts/...
 
 ---
 
