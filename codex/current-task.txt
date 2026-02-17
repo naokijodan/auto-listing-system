@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 343: Competitor Watch（競合ウォッチ）
+## Phase 345: Listing Scorer（リスティングスコアラー）
 
-### API: ebay-competitor-watch.ts
-- テーマカラー: purple-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/competitors, /dashboard/changes, /dashboard/alerts
-- 競合 (6): /competitors (CRUD + track + compare)
-- 商品 (4): /products, /products/:id, /products/track, /products/analyze
-- アラート (4): /alerts, /alerts/:id, /alerts/create, /alerts/toggle
-- 分析 (3): /analytics, /analytics/trends, /analytics/pricing
+### API: ebay-listing-scorer.ts
+- テーマカラー: rose-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/scores, /dashboard/issues, /dashboard/trends
+- スコア (6): /scores (list + detail + calculate + compare + export + refresh)
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/weight
+- 改善 (4): /improvements, /improvements/:id, /improvements/suggest, /improvements/apply
+- 分析 (3): /analytics, /analytics/distribution, /analytics/impact
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /scan-now
+- ユーティリティ (4): /health, /export, /import, /recalculate-all
 
-### UI: competitor-watch-page.tsx
-- h1: "競合ウォッチ" (text-purple-600)
-- タブ: ダッシュボード、競合、商品、アラート、分析、設定
-- fetch先: /api/ebay-competitor-watch/...
+### UI: listing-scorer-page.tsx
+- h1: "リスティングスコアラー" (text-rose-600)
+- タブ: ダッシュボード、スコア、ルール、改善、分析、設定
+- fetch先: /api/ebay-listing-scorer/...
 
 ---
 
-## Phase 344: Inventory Hub（在庫ハブ）
+## Phase 346: Order Fulfillment（オーダーフルフィルメント）
 
-### API: ebay-inventory-hub.ts
-- テーマカラー: cyan-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/stock, /dashboard/low-stock, /dashboard/trends
-- 在庫 (6): /inventory (CRUD + adjust + transfer)
-- 倉庫 (4): /warehouses, /warehouses/:id, /warehouses/create, /warehouses/allocate
-- アラート (4): /alerts, /alerts/:id, /alerts/create, /alerts/toggle
-- 分析 (3): /analytics, /analytics/turnover, /analytics/forecasting
+### API: ebay-order-fulfillment.ts
+- テーマカラー: slate-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/processing, /dashboard/completed
+- フルフィルメント (6): /fulfillments (CRUD + process + complete)
+- ワークフロー (4): /workflows, /workflows/:id, /workflows/create, /workflows/optimize
+- 自動化 (4): /automations, /automations/:id, /automations/create, /automations/toggle
+- 分析 (3): /analytics, /analytics/performance, /analytics/bottlenecks
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /sync
+- ユーティリティ (4): /health, /export, /import, /process-batch
 
-### UI: inventory-hub-page.tsx
-- h1: "在庫ハブ" (text-cyan-600)
-- タブ: ダッシュボード、在庫、倉庫、アラート、分析、設定
-- fetch先: /api/ebay-inventory-hub/...
+### UI: order-fulfillment-page.tsx
+- h1: "オーダーフルフィルメント" (text-slate-600)
+- タブ: ダッシュボード、フルフィルメント、ワークフロー、自動化、分析、設定
+- fetch先: /api/ebay-order-fulfillment/...
 
 ---
 
