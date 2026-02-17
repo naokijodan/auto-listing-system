@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 345: Listing Scorer（リスティングスコアラー）
+## Phase 347: Multi-Channel Sync（マルチチャンネル同期）
 
-### API: ebay-listing-scorer.ts
-- テーマカラー: rose-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/scores, /dashboard/issues, /dashboard/trends
-- スコア (6): /scores (list + detail + calculate + compare + export + refresh)
-- ルール (4): /rules, /rules/:id, /rules/create, /rules/weight
-- 改善 (4): /improvements, /improvements/:id, /improvements/suggest, /improvements/apply
-- 分析 (3): /analytics, /analytics/distribution, /analytics/impact
+### API: ebay-multi-channel-sync.ts
+- テーマカラー: indigo-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/channels, /dashboard/sync-status, /dashboard/errors
+- チャンネル (6): /channels (CRUD + connect + sync)
+- マッピング (4): /mappings, /mappings/:id, /mappings/create, /mappings/auto
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
+- 分析 (3): /analytics, /analytics/performance, /analytics/conflicts
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /recalculate-all
+- ユーティリティ (4): /health, /export, /import, /force-sync
 
-### UI: listing-scorer-page.tsx
-- h1: "リスティングスコアラー" (text-rose-600)
-- タブ: ダッシュボード、スコア、ルール、改善、分析、設定
-- fetch先: /api/ebay-listing-scorer/...
+### UI: multi-channel-sync-page.tsx
+- h1: "マルチチャンネル同期" (text-indigo-600)
+- タブ: ダッシュボード、チャンネル、マッピング、ルール、分析、設定
+- fetch先: /api/ebay-multi-channel-sync/...
 
 ---
 
-## Phase 346: Order Fulfillment（オーダーフルフィルメント）
+## Phase 348: Customer Retention（顧客維持）
 
-### API: ebay-order-fulfillment.ts
-- テーマカラー: slate-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/processing, /dashboard/completed
-- フルフィルメント (6): /fulfillments (CRUD + process + complete)
-- ワークフロー (4): /workflows, /workflows/:id, /workflows/create, /workflows/optimize
-- 自動化 (4): /automations, /automations/:id, /automations/create, /automations/toggle
-- 分析 (3): /analytics, /analytics/performance, /analytics/bottlenecks
+### API: ebay-customer-retention.ts
+- テーマカラー: pink-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/at-risk, /dashboard/churned, /dashboard/trends
+- 顧客 (6): /customers (list + detail + segment + score + export + refresh)
+- キャンペーン (4): /campaigns, /campaigns/:id, /campaigns/create, /campaigns/launch
+- アクション (4): /actions, /actions/:id, /actions/create, /actions/trigger
+- 分析 (3): /analytics, /analytics/retention-rate, /analytics/lifetime-value
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /process-batch
+- ユーティリティ (4): /health, /export, /import, /recalculate
 
-### UI: order-fulfillment-page.tsx
-- h1: "オーダーフルフィルメント" (text-slate-600)
-- タブ: ダッシュボード、フルフィルメント、ワークフロー、自動化、分析、設定
-- fetch先: /api/ebay-order-fulfillment/...
+### UI: customer-retention-page.tsx
+- h1: "顧客維持" (text-pink-600)
+- タブ: ダッシュボード、顧客、キャンペーン、アクション、分析、設定
+- fetch先: /api/ebay-customer-retention/...
 
 ---
 
