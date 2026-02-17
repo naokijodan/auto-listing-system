@@ -275,6 +275,8 @@ import ebaySmartPricingRouter from './routes/ebay-smart-pricing';
 import ebayOrderTrackerProRouter from './routes/ebay-order-tracker-pro';
 import ebayStoreAnalyticsRouter from './routes/ebay-store-analytics';
 import ebayListingTemplateProRouter from './routes/ebay-listing-template-pro';
+import ebayDisputeManagerRouter from './routes/ebay-dispute-manager';
+import ebaySeoOptimizerRouter from './routes/ebay-seo-optimizer';
 import { bulkOperationsRouter } from './routes/bulk-operations';
 import { refundsRouter } from './routes/refunds';
 import { shippingRouter } from './routes/shipping';
@@ -723,6 +725,8 @@ app.use('/api/ebay-smart-pricing', ebaySmartPricingRouter);
 app.use('/api/ebay-order-tracker-pro', ebayOrderTrackerProRouter);
 app.use('/api/ebay-store-analytics', ebayStoreAnalyticsRouter);
 app.use('/api/ebay-listing-template-pro', ebayListingTemplateProRouter);
+app.use('/api/ebay-dispute-manager', ebayDisputeManagerRouter);
+app.use('/api/ebay-seo-optimizer', ebaySeoOptimizerRouter);
 
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());
