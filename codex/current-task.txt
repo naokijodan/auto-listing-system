@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 339: Price Monitor（価格モニター）
+## Phase 341: Feedback Automation（フィードバック自動化）
 
-### API: ebay-price-monitor.ts
-- テーマカラー: amber-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/changes, /dashboard/alerts, /dashboard/trends
-- モニタリング (6): /monitors (CRUD + start + stop)
+### API: ebay-feedback-automation.ts
+- テーマカラー: orange-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/sent, /dashboard/stats
+- 自動化 (6): /automations (CRUD + enable + test)
+- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/preview
 - ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
-- アラート (4): /alerts, /alerts/:id, /alerts/create, /alerts/toggle
-- 分析 (3): /analytics, /analytics/history, /analytics/competitors
+- 分析 (3): /analytics, /analytics/performance, /analytics/response-rate
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /check-now
+- ユーティリティ (4): /health, /export, /import, /send-now
 
-### UI: price-monitor-page.tsx
-- h1: "価格モニター" (text-amber-600)
-- タブ: ダッシュボード、モニタリング、ルール、アラート、分析、設定
-- fetch先: /api/ebay-price-monitor/...
+### UI: feedback-automation-page.tsx
+- h1: "フィードバック自動化" (text-orange-600)
+- タブ: ダッシュボード、自動化、テンプレート、ルール、分析、設定
+- fetch先: /api/ebay-feedback-automation/...
 
 ---
 
-## Phase 340: Shipping Automation（配送自動化）
+## Phase 342: Revenue Dashboard（収益ダッシュボード）
 
-### API: ebay-shipping-automation.ts
-- テーマカラー: blue-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/processed, /dashboard/stats
-- 自動化 (6): /automations (CRUD + enable + test)
-- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
-- キャリア (4): /carriers, /carriers/:id, /carriers/connect, /carriers/rates
-- 分析 (3): /analytics, /analytics/performance, /analytics/costs
+### API: ebay-revenue-dashboard.ts
+- テーマカラー: emerald-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/revenue, /dashboard/costs, /dashboard/profit
+- メトリクス (6): /metrics (list + detail + compare + trend + export + refresh)
+- 目標 (4): /goals, /goals/:id, /goals/create, /goals/progress
+- 予測 (4): /forecasts, /forecasts/:id, /forecasts/generate, /forecasts/compare
+- 分析 (3): /analytics, /analytics/breakdown, /analytics/trends
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /process-now
+- ユーティリティ (4): /health, /export, /import, /recalculate
 
-### UI: shipping-automation-page.tsx
-- h1: "配送自動化" (text-blue-600)
-- タブ: ダッシュボード、自動化、ルール、キャリア、分析、設定
-- fetch先: /api/ebay-shipping-automation/...
+### UI: revenue-dashboard-page.tsx
+- h1: "収益ダッシュボード" (text-emerald-600)
+- タブ: ダッシュボード、メトリクス、目標、予測、分析、設定
+- fetch先: /api/ebay-revenue-dashboard/...
 
 ---
 
