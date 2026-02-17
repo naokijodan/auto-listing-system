@@ -22,37 +22,37 @@ const TabPanel: React.FC<{ title: string; path: string }> = ({ title, path }) =>
   );
 };
 
-export default function InventoryHubPage() {
+export default function CompetitorWatchPage() {
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-cyan-600">在庫ハブ</h1>
+      <h1 className="text-2xl font-bold text-purple-600">競合ウォッチ</h1>
       <Tabs defaultValue="dashboard" className="w-full">
         <TabsList className="grid grid-cols-6 w-full">
           <TabsTrigger value="dashboard">ダッシュボード</TabsTrigger>
-          <TabsTrigger value="inventory">在庫</TabsTrigger>
-          <TabsTrigger value="warehouses">倉庫</TabsTrigger>
+          <TabsTrigger value="competitors">競合</TabsTrigger>
+          <TabsTrigger value="products">商品</TabsTrigger>
           <TabsTrigger value="alerts">アラート</TabsTrigger>
           <TabsTrigger value="analytics">分析</TabsTrigger>
           <TabsTrigger value="settings">設定</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard">
-          <TabPanel title="ダッシュボード" path="/api/ebay-inventory-hub/dashboard" />
+          <TabPanel title="ダッシュボード" path="/api/ebay-competitor-watch/dashboard" />
         </TabsContent>
-        <TabsContent value="inventory">
-          <TabPanel title="在庫" path="/api/ebay-inventory-hub/inventory" />
+        <TabsContent value="competitors">
+          <TabPanel title="競合" path="/api/ebay-competitor-watch/competitors" />
         </TabsContent>
-        <TabsContent value="warehouses">
-          <TabPanel title="倉庫" path="/api/ebay-inventory-hub/warehouses" />
+        <TabsContent value="products">
+          <TabPanel title="商品" path="/api/ebay-competitor-watch/products" />
         </TabsContent>
         <TabsContent value="alerts">
-          <TabPanel title="アラート" path="/api/ebay-inventory-hub/alerts" />
+          <TabPanel title="アラート" path="/api/ebay-competitor-watch/alerts" />
         </TabsContent>
         <TabsContent value="analytics">
-          <TabPanel title="分析" path="/api/ebay-inventory-hub/analytics" />
+          <TabPanel title="分析" path="/api/ebay-competitor-watch/analytics" />
         </TabsContent>
         <TabsContent value="settings">
-          <TabPanel title="設定" path="/api/ebay-inventory-hub/settings" />
+          <TabPanel title="設定" path="/api/ebay-competitor-watch/settings" />
         </TabsContent>
       </Tabs>
     </div>
