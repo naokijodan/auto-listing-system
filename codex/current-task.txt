@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 333: Smart Pricing（スマートプライシング）
+## Phase 335: Store Analytics（ストアアナリティクス）
 
-### API: ebay-smart-pricing.ts
-- テーマカラー: indigo-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/opportunities, /dashboard/changes, /dashboard/impact
-- 価格設定 (6): /pricing (CRUD + apply + simulate)
-- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
-- 競合 (4): /competitors, /competitors/:id, /competitors/track, /competitors/compare
-- 分析 (3): /analytics, /analytics/elasticity, /analytics/revenue
+### API: ebay-store-analytics.ts
+- テーマカラー: violet-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/traffic, /dashboard/conversion, /dashboard/revenue
+- メトリクス (6): /metrics (list + detail + compare + trend + export + refresh)
+- レポート (4): /reports, /reports/:id, /reports/generate, /reports/schedule
+- ベンチマーク (4): /benchmarks, /benchmarks/:id, /benchmarks/industry, /benchmarks/compare
+- 分析 (3): /analytics, /analytics/deep-dive, /analytics/attribution
 - 設定 (2): /settings GET/PUT
 - ユーティリティ (4): /health, /export, /import, /recalculate
 
-### UI: smart-pricing-page.tsx
-- h1: "スマートプライシング" (text-indigo-600)
-- タブ: ダッシュボード、価格設定、ルール、競合、分析、設定
-- fetch先: /api/ebay-smart-pricing/...
+### UI: store-analytics-page.tsx
+- h1: "ストアアナリティクス" (text-violet-600)
+- タブ: ダッシュボード、メトリクス、レポート、ベンチマーク、分析、設定
+- fetch先: /api/ebay-store-analytics/...
 
 ---
 
-## Phase 334: Order Tracker Pro（注文トラッカーPro）
+## Phase 336: Listing Template Pro（リスティングテンプレートPro）
 
-### API: ebay-order-tracker-pro.ts
-- テーマカラー: sky-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/shipped, /dashboard/delivered
-- 注文 (6): /orders (list + detail + update + track + export + refresh)
-- 配送 (4): /shipments, /shipments/:id, /shipments/update, /shipments/notify
-- アラート (4): /alerts, /alerts/:id, /alerts/create, /alerts/toggle
-- 分析 (3): /analytics, /analytics/delivery-time, /analytics/carriers
+### API: ebay-listing-template-pro.ts
+- テーマカラー: teal-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/templates, /dashboard/usage, /dashboard/performance
+- テンプレート (6): /templates (CRUD + clone + preview)
+- カテゴリ (4): /categories, /categories/:id, /categories/create, /categories/organize
+- 変数 (4): /variables, /variables/:id, /variables/create, /variables/test
+- 分析 (3): /analytics, /analytics/usage, /analytics/effectiveness
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /bulk-update
+- ユーティリティ (4): /health, /export, /import, /validate
 
-### UI: order-tracker-pro-page.tsx
-- h1: "注文トラッカーPro" (text-sky-600)
-- タブ: ダッシュボード、注文、配送、アラート、分析、設定
-- fetch先: /api/ebay-order-tracker-pro/...
+### UI: listing-template-pro-page.tsx
+- h1: "リスティングテンプレートPro" (text-teal-600)
+- タブ: ダッシュボード、テンプレート、カテゴリ、変数、分析、設定
+- fetch先: /api/ebay-listing-template-pro/...
 
 ---
 
