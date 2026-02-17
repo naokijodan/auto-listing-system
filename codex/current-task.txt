@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 337: Dispute Manager（紛争管理）
+## Phase 339: Price Monitor（価格モニター）
 
-### API: ebay-dispute-manager.ts
-- テーマカラー: red-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/open, /dashboard/resolved, /dashboard/stats
-- 紛争 (6): /disputes (CRUD + respond + escalate)
-- 証拠 (4): /evidence, /evidence/:id, /evidence/upload, /evidence/organize
-- テンプレート (4): /templates, /templates/:id, /templates/create, /templates/apply
-- 分析 (3): /analytics, /analytics/trends, /analytics/outcomes
+### API: ebay-price-monitor.ts
+- テーマカラー: amber-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/changes, /dashboard/alerts, /dashboard/trends
+- モニタリング (6): /monitors (CRUD + start + stop)
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
+- アラート (4): /alerts, /alerts/:id, /alerts/create, /alerts/toggle
+- 分析 (3): /analytics, /analytics/history, /analytics/competitors
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /bulk-respond
+- ユーティリティ (4): /health, /export, /import, /check-now
 
-### UI: dispute-manager-page.tsx
-- h1: "紛争管理" (text-red-600)
-- タブ: ダッシュボード、紛争、証拠、テンプレート、分析、設定
-- fetch先: /api/ebay-dispute-manager/...
+### UI: price-monitor-page.tsx
+- h1: "価格モニター" (text-amber-600)
+- タブ: ダッシュボード、モニタリング、ルール、アラート、分析、設定
+- fetch先: /api/ebay-price-monitor/...
 
 ---
 
-## Phase 338: SEO Optimizer（SEO最適化）
+## Phase 340: Shipping Automation（配送自動化）
 
-### API: ebay-seo-optimizer.ts
-- テーマカラー: green-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/scores, /dashboard/opportunities, /dashboard/trends
-- 最適化 (6): /optimizations (CRUD + apply + preview)
-- キーワード (4): /keywords, /keywords/:id, /keywords/research, /keywords/track
-- 提案 (4): /suggestions, /suggestions/:id, /suggestions/generate, /suggestions/bulk-apply
-- 分析 (3): /analytics, /analytics/rankings, /analytics/traffic
+### API: ebay-shipping-automation.ts
+- テーマカラー: blue-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/processed, /dashboard/stats
+- 自動化 (6): /automations (CRUD + enable + test)
+- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
+- キャリア (4): /carriers, /carriers/:id, /carriers/connect, /carriers/rates
+- 分析 (3): /analytics, /analytics/performance, /analytics/costs
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /scan
+- ユーティリティ (4): /health, /export, /import, /process-now
 
-### UI: seo-optimizer-page.tsx
-- h1: "SEO最適化" (text-green-600)
-- タブ: ダッシュボード、最適化、キーワード、提案、分析、設定
-- fetch先: /api/ebay-seo-optimizer/...
+### UI: shipping-automation-page.tsx
+- h1: "配送自動化" (text-blue-600)
+- タブ: ダッシュボード、自動化、ルール、キャリア、分析、設定
+- fetch先: /api/ebay-shipping-automation/...
 
 ---
 
