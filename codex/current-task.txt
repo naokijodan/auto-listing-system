@@ -11,41 +11,41 @@
 
 ---
 
-## Phase 347: Multi-Channel Sync（マルチチャンネル同期）
+## Phase 351: Policy Checker（出品違反チェッカー）
 
-### API: ebay-multi-channel-sync.ts
-- テーマカラー: indigo-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/channels, /dashboard/sync-status, /dashboard/errors
-- チャンネル (6): /channels (CRUD + connect + sync)
-- マッピング (4): /mappings, /mappings/:id, /mappings/create, /mappings/auto
+### API: ebay-policy-checker.ts
+- テーマカラー: red-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/violations, /dashboard/risk-score, /dashboard/trends
+- チェック (6): /checks (CRUD + run + batch)
 - ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
-- 分析 (3): /analytics, /analytics/performance, /analytics/conflicts
+- 違反 (4): /violations, /violations/:id, /violations/resolve, /violations/export
+- 分析 (3): /analytics, /analytics/categories, /analytics/risk-trends
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /force-sync
+- ユーティリティ (4): /health, /export, /import, /scan-all
 
-### UI: multi-channel-sync-page.tsx
-- h1: "マルチチャンネル同期" (text-indigo-600)
-- タブ: ダッシュボード、チャンネル、マッピング、ルール、分析、設定
-- fetch先: /api/ebay-multi-channel-sync/...
+### UI: policy-checker-page.tsx
+- h1: "出品違反チェッカー" (text-red-600)
+- タブ: ダッシュボード、チェック、ルール、違反、分析、設定
+- fetch先: /api/ebay-policy-checker/...
 
 ---
 
-## Phase 348: Customer Retention（顧客維持）
+## Phase 352: Sales AI Predictor（売上予測AI）
 
-### API: ebay-customer-retention.ts
-- テーマカラー: pink-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/at-risk, /dashboard/churned, /dashboard/trends
-- 顧客 (6): /customers (list + detail + segment + score + export + refresh)
-- キャンペーン (4): /campaigns, /campaigns/:id, /campaigns/create, /campaigns/launch
-- アクション (4): /actions, /actions/:id, /actions/create, /actions/trigger
-- 分析 (3): /analytics, /analytics/retention-rate, /analytics/lifetime-value
+### API: ebay-sales-ai-predictor.ts
+- テーマカラー: violet-600
+- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/predictions, /dashboard/accuracy, /dashboard/trends
+- 予測 (6): /predictions (CRUD + generate + evaluate)
+- モデル (4): /models, /models/:id, /models/train, /models/compare
+- データ (4): /data, /data/:id, /data/import, /data/preprocess
+- 分析 (3): /analytics, /analytics/accuracy, /analytics/revenue-impact
 - 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /recalculate
+- ユーティリティ (4): /health, /export, /import, /retrain
 
-### UI: customer-retention-page.tsx
-- h1: "顧客維持" (text-pink-600)
-- タブ: ダッシュボード、顧客、キャンペーン、アクション、分析、設定
-- fetch先: /api/ebay-customer-retention/...
+### UI: sales-ai-predictor-page.tsx
+- h1: "売上予測AI" (text-violet-600)
+- タブ: ダッシュボード、予測、モデル、データ、分析、設定
+- fetch先: /api/ebay-sales-ai-predictor/...
 
 ---
 
