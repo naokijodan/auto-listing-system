@@ -5,7 +5,7 @@
 **日付**: 2026-02-18
 **Phase**: 313-350完了（38 Phase完了）
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: (Phase 349-350コミット後に更新)
+**最新コミット**: 7d8b00d
 
 ---
 
@@ -81,7 +81,7 @@ cp codex/output/xxx-page.tsx apps/web/src/app/ebay/xxx/page.tsx
 | 350 | グローバル展開 | ebay-global-expansion | fuchsia-600 |
 
 **Git履歴**:
-- (新規) Phase 349-350
+- 7d8b00d Phase 349-350
 - 5946027 Phase 347-348
 - 19bf020 Phase 345-346
 - a998747 Phase 343-344
