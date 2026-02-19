@@ -1,52 +1,61 @@
-以下の仕様でTypeScriptファイルを4つ生成してください。
+apps/api/src/index.ts（804行）をリファクタリングしてください。
+
+## 目的
+index.tsが肥大化しているため、ルーター登録を分割ファイルに切り出す。
 
 ## 出力先
 /Users/naokijodan/Desktop/rakuda/codex/output/
 
-## 共通ルール
-- Express Router形式（import { Router } from 'express'）
-- 各API: 28エンドポイント
-- 各UI: 6タブ、shadcn/ui使用、SWRでfetch
-- UIファイル先頭に 'use client'; を必ず入れる
+## 生成するファイル
 
----
+### 1. routes/ebay-routes.ts
+eBay系ルーター（248件）のimportとapp.use()をまとめたファイル。
 
-## Phase 351: Policy Checker（出品違反チェッカー）
+```typescript
+import { Express } from 'express';
 
-### API: ebay-policy-checker.ts
-- テーマカラー: red-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/violations, /dashboard/risk-score, /dashboard/trends
-- チェック (6): /checks (CRUD + run + batch)
-- ルール (4): /rules, /rules/:id, /rules/create, /rules/priority
-- 違反 (4): /violations, /violations/:id, /violations/resolve, /violations/export
-- 分析 (3): /analytics, /analytics/categories, /analytics/risk-trends
-- 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /scan-all
+export function registerEbayRoutes(app: Express): void {
+  // 各eBayルーターのimportとapp.use()をここにまとめる
+  // 例:
+  // const ebayAuthRouter = require('./ebay-auth').default;
+  // app.use('/api/ebay', ebayAuthRouter);
 
-### UI: policy-checker-page.tsx
-- h1: "出品違反チェッカー" (text-red-600)
-- タブ: ダッシュボード、チェック、ルール、違反、分析、設定
-- fetch先: /api/ebay-policy-checker/...
+  // 動的importではなく、既存のstatic importパターンを維持
+  // ただしimport文はファイル先頭に、app.use()はregisterEbayRoutes関数内に配置
+}
+```
 
----
+importは全てファイル先頭にstatic importで配置し、関数内でapp.use()を呼ぶ形式にしてください。
 
-## Phase 352: Sales AI Predictor（売上予測AI）
+### 2. routes/core-routes.ts
+コア系ルーター（health, products, listings, jobs, admin等のeBay以外）のimportとapp.use()をまとめたファイル。
 
-### API: ebay-sales-ai-predictor.ts
-- テーマカラー: violet-600
-- ダッシュボード (5): /dashboard, /dashboard/summary, /dashboard/predictions, /dashboard/accuracy, /dashboard/trends
-- 予測 (6): /predictions (CRUD + generate + evaluate)
-- モデル (4): /models, /models/:id, /models/train, /models/compare
-- データ (4): /data, /data/:id, /data/import, /data/preprocess
-- 分析 (3): /analytics, /analytics/accuracy, /analytics/revenue-impact
-- 設定 (2): /settings GET/PUT
-- ユーティリティ (4): /health, /export, /import, /retrain
+```typescript
+import { Express } from 'express';
 
-### UI: sales-ai-predictor-page.tsx
-- h1: "売上予測AI" (text-violet-600)
-- タブ: ダッシュボード、予測、モデル、データ、分析、設定
-- fetch先: /api/ebay-sales-ai-predictor/...
+export function registerCoreRoutes(app: Express): void {
+  // コア系ルーターのapp.use()をここにまとめる
+}
+```
 
----
+### 3. index.ts.new（リファクタリング後のindex.ts）
+上記2ファイルを使って簡潔にしたindex.ts。以下の構造を維持:
+- dotenv, express, cors, helmet等のインフラimport
+- Redis, BullMQ, Bull Board セットアップ
+- ミドルウェア設定
+- Swagger設定
+- registerCoreRoutes(app) 呼び出し
+- registerEbayRoutes(app) 呼び出し
+- Bull Board、エラーハンドラー
+- サーバー起動、Graceful Shutdown
+
+## 重要ルール
+- 現在のindex.tsの全import文と全app.use()文を漏れなく移行すること
+- 既存の動作を一切変更しないこと（純粋なリファクタリング）
+- eBay系は「ebay」がパス名に含まれるものすべて
+- コア系はそれ以外すべて
+
+## 参照
+現在のindex.tsは /Users/naokijodan/Desktop/rakuda/apps/api/src/index.ts にあります。
 
 完了したらファイルパスのみ報告してください。
