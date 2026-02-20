@@ -48,9 +48,20 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 | INT-2 | Shopify OAuth認証実行（アプリ作成→認証フロー実行→トークン取得） |
 | INT-3 | Etsy出品テスト（テスト商品1件でフルフロー確認） |
 | INT-4 | Shopify出品テスト（テスト商品1件でフルフロー確認） |
+| **M-7** | **Instagram Shop連携（Shopify Hub経由）** — Shopify「Facebook & Instagram」チャネルアプリ設定。追加コードほぼなし。INT-2完了後に実行可能。 |
+| **M-8 Ph1** | **TikTok Shop連携（Shopify Hub経由）** — Shopify公式TikTokアプリ設定。追加コードほぼなし。INT-2完了後に実行可能。 |
+| **M-8 Ph2** | **TikTok Shop直接API連携** — tiktok-api.ts作成。月間注文>100件またはライブコマースAPI必要時に移行。約1,500行。 |
 | INT-5 | eBay出品サービスのE2Eテスト |
-| INT-6 | 在庫同期の結合テスト（全4プラットフォーム） |
+| INT-6 | 在庫同期の結合テスト（全6+チャネル） |
 | QP-6 | 既存eBayルーター242件をファクトリ（createEbayRouter）に移行 |
+
+### 設計変更（v3.0 Social Commerce Edition）
+- **Shopify = Social Commerce Hub**: Instagram/TikTok/Facebook/Pinterestへの配信ハブ
+- **Product = Catalog Core（SSoT）**: カタログの核として位置づけ
+- **SupplierSource**: 在庫の出どころを分離管理（STOCKED/DROPSHIP/HYBRID）
+- **Marketplace enum拡張**: INSTAGRAM_SHOP, TIKTOK_SHOP を追加予定
+- **段階的リアルタイム化**: Phase 1 APIポーリング → Phase 2 Webhook/イベント駆動
+- **Hub限界の境界条件**: 月間TikTok注文>100件、ライブコマースAPI必要時に直接API移行
 
 ### 完了済み（マルチプラットフォーム統合）
 | タスク | 内容 | コミット |

@@ -134,8 +134,101 @@ M-1 (DB基盤) ──→ M-2 (eBay完成) ──→ M-5 (在庫一元管理)
 
 M-2, M-3, M-4は並列実行可能（M-1完了後）。
 
-## 合計推定
+### Phase M-7: Instagram Shop連携（Shopify Hub経由）
 
-- 新規コード: 約6,500行
-- 変更ファイル: 約20ファイル
-- 新規ファイル: 約15ファイル
+**戦略:** Shopifyの「Facebook & Instagram」チャネルアプリを利用。追加API開発はほぼゼロ。
+
+**前提条件:**
+- M-4（Shopify連携）完了 ✅
+- Shopify OAuth認証済み（INT-2）
+- Shopifyストアにて「Facebook & Instagram」アプリインストール済み
+
+**手順:**
+1. Shopify管理画面で「Facebook & Instagram」チャネルアプリをインストール
+2. Meta Business Suite / Instagram Businessアカウントと接続
+3. 商品カタログの同期設定を有効化
+4. RAKUDAがShopifyに出品した商品は自動でInstagram Shopにも表示
+
+**注意点:**
+- Meta社はアプリ内決済を廃止済み → ウェブサイト決済（Shopify checkout）
+- 在庫はShopify経由で自動同期
+- 注文はShopify注文として入ってくる（既存のshopify-sync-workerで処理可能）
+- 画像はビジュアルコマース向けに最適化が望ましい（将来）
+
+**推定工数:** 設定作業のみ（コード変更ほぼなし）
+
+---
+
+### Phase M-8: TikTok Shop連携（2段階）
+
+**Phase 1: Shopify Hub経由（最速ルート）**
+
+**前提条件:**
+- M-4（Shopify連携）完了 ✅
+- Shopify OAuth認証済み（INT-2）
+
+**手順:**
+1. Shopify管理画面で「TikTok」チャネルアプリをインストール
+2. TikTok for Businessアカウントと接続
+3. 商品カタログの同期設定を有効化
+4. TikTok Shop Japan対応済み
+
+**特徴:**
+- ショート動画 × 商品タグ
+- 在庫はShopify経由で自動同期
+- 注文はShopify注文として入ってくる
+
+**推定工数:** 設定作業のみ（コード変更ほぼなし）
+
+---
+
+**Phase 2: TikTok Shop Open API直接連携（スケール時）**
+
+**移行トリガー（いずれかを満たしたら移行検討）:**
+- 月間TikTok注文 > 100件
+- ライブコマースプロモーションAPIが必要
+- Shopify APIのレート制限が同期頻度に不足
+- Shopify経由手数料 > 直接手数料
+
+**新規作成:**
+1. `apps/worker/src/lib/tiktok-api.ts` - TikTok Shop Open APIクライアント
+   - OAuth2認証
+   - Product CRUD（Create/Update/Delete）
+   - Inventory管理
+   - Order取得・フルフィルメント
+   - ライブコマースプロモーションAPI
+   - レート制限対応
+2. `apps/worker/src/lib/tiktok-publish-service.ts` - TikTok出品フロー
+3. `apps/worker/src/jobs/tiktok-sync-worker.ts` - BullMQワーカー
+4. `apps/api/src/routes/tiktok-auth.ts` - OAuth認証エンドポイント
+
+**DB変更:**
+- `Marketplace` enumに `TIKTOK` を追加（既に `TIKTOK_SHOP` として設計済み）
+
+**推定行数:** 約1,500行
+
+---
+
+## 実行順序と依存関係（更新版）
+
+```
+M-1 (DB基盤) ──→ M-2 (eBay完成) ──→ M-5 (在庫一元管理)
+              ├─→ M-3 (Etsy連携)  ──→ M-5
+              ├─→ M-4 (Shopify)   ──→ M-5
+              └─→ M-5 完了後 ──→ M-6 (UI)
+                                   ├─→ M-7 (Instagram Shop via Shopify)
+                                   └─→ M-8 Phase 1 (TikTok Shop via Shopify)
+                                        └─→ M-8 Phase 2 (TikTok Direct API) ※条件付き
+```
+
+M-7, M-8 Phase 1はShopify認証（INT-2）完了後に実行可能。
+M-8 Phase 2は移行トリガー条件を満たした場合のみ。
+
+## 合計推定（更新版）
+
+- M-1〜M-6: 新規コード約6,500行（完了済み）
+- M-7: 設定作業のみ
+- M-8 Phase 1: 設定作業のみ
+- M-8 Phase 2: 新規コード約1,500行（条件付き）
+- 変更ファイル: 約20ファイル + M-8 Phase 2で約4ファイル追加
+- 新規ファイル: 約15ファイル + M-8 Phase 2で約4ファイル追加

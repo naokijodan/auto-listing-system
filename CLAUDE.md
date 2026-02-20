@@ -2,7 +2,25 @@
 
 ## プロジェクト概要
 
-RAKUDAは、日本のECサイト（ヤフオク、メルカリ、Amazon JP）から商品をスクレイピングし、海外マーケットプレイス（Joom、eBay）に自動出品する越境EC自動化システム。
+RAKUDAは、日本のECサイト（ヤフオク、メルカリ、Amazon JP）から商品をスクレイピングし、海外6+チャネルに自動出品する越境EC自動化システム。
+
+### 販売チャネル（6+）
+| チャネル | 連携方式 | 役割 | ステータス |
+|---------|---------|------|----------|
+| eBay | 直接API | 高額品（¥900K+） | OAuth済 |
+| Joom | 直接API | EU/CIS市場 | OAuth済 |
+| Etsy | 直接API | ヴィンテージ・AI対応 | 実装済・認証待ち |
+| Shopify | 直接API + **Social Commerce Hub** | 自社EC + ソーシャル配信ハブ | 実装済・認証待ち |
+| Instagram Shop | Shopify経由 | ビジュアルコマース | M-7予定 |
+| TikTok Shop | Shopify→直接API（2段階） | ライブコマース | M-8予定 |
+
+### Shopify Hub戦略
+ShopifyはRAKUDAの「ソーシャルコマースHub」。Shopifyに商品を同期すれば、Instagram/TikTok/Facebook/Pinterestへ自動配信される。追加API開発はほぼゼロ。月間TikTok注文>100件またはライブコマースAPI必要時に直接API移行。
+
+### カタログ・在庫モデル
+- **Product = カタログの核（Single Source of Truth）** - 何を売るか
+- **SupplierSource = 在庫の出どころ** - どこにあるか
+- 3つの在庫モード: STOCKED（有在庫）/ DROPSHIP（無在庫）/ HYBRID
 
 ## 技術スタック
 
@@ -66,10 +84,23 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 
 ### Joom連携（OAuth完了）
 - トークン取得済み（有効期限: 2026-03-08）
-- 出品機能は未実装（Phase 40で実装予定）
+- 出品パイプライン完成（Phase 40）
 
-### eBay連携
-- EAGLEで対応中のため後回し
+### eBay連携（OAuth完了）
+- 954行のAPIクライアント、242のUI画面
+- 352 Phase完了
+
+### Etsy連携（実装済み・認証待ち）
+- OAuth2 PKCE認証フロー実装
+- ヴィンテージ自動判定、タグ最適化
+
+### Shopify連携（実装済み・認証待ち）
+- Social Commerce Hub（Instagram/TikTok配信）
+- AI商品説明最適化、Schema.org構造化データ
+
+### Instagram/TikTok連携（設計済み・M-7/M-8）
+- Instagram: Shopify「Facebook & Instagram」チャネル経由
+- TikTok: Phase 1 Shopify経由、Phase 2 直接API
 
 ## 完成済みPhase
 
@@ -85,9 +116,12 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 ## 現在のステータス
 
 **次のアクション候補:**
-- A) Phase 271以降のeBay機能追加を継続
-- B) 品質向上・テスト実施（APIテスト修正）
-- C) 新機能開発
+- INT-1: Etsy OAuth認証実行
+- INT-2: Shopify OAuth認証実行
+- INT-3〜INT-4: テスト出品（Etsy/Shopify）
+- M-7: Instagram Shop連携（Shopify Hub経由・設定のみ）
+- M-8: TikTok Shop連携（Phase 1: Shopify経由、Phase 2: 直接API）
+- INT-5〜INT-6: 全チャネル在庫同期結合テスト
 
 ## コード規約
 
