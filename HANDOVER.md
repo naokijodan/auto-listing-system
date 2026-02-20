@@ -3,9 +3,9 @@
 ## 最終更新
 
 **日付**: 2026-02-20
-**Phase**: 機能追加完了（Phase 114-352, 239機能）+ 品質向上QP-1完了
+**Phase**: 機能追加完了（Phase 114-352, 239機能）+ 品質向上QP-1〜QP-5完了
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: fd8f099
+**最新コミット**: 4a73b80
 
 ---
 
@@ -40,19 +40,23 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 ## 🚀 次のセッションで実行すること
 
-### 品質向上フェーズ QP-2〜QP-5（4タスクバッチ）
+### 次のアクション候補
 
-| タスク | 内容 | 出力先 |
-|--------|------|--------|
-| QP-2 | コアAPIユニットテスト（products, listings, jobs, orders） | `apps/api/src/test/` |
-| QP-3 | eBayルーター共通化リファクタリング（テンプレート抽出） | `apps/api/src/routes/ebay-route-factory.ts` |
-| QP-4 | APIエラーハンドリング統一 | `apps/api/src/middleware/` |
-| QP-5 | OpenAPI仕様書自動生成スクリプト | `scripts/generate-api-docs.ts` |
+| 候補 | 内容 |
+|------|------|
+| QP-6 | 既存eBayルーター242件をファクトリ（createEbayRouter）に移行 |
+| QP-7 | テスト実行・カバレッジ確認・CI統合 |
+| QP-8 | error-handler-v2を全ルーターに適用 |
+| QP-9 | asyncHandlerを全ルーターに適用 |
 
 ### 完了済み
 | タスク | 内容 | コミット |
 |--------|------|---------|
 | QP-1 | index.ts分割リファクタリング（804行→129行） | fd8f099 |
+| QP-2 | コアAPIユニットテスト（products, listings, jobs, orders） | 53c002a |
+| QP-3 | eBayルーターファクトリ抽出（createEbayRouter） | 29d285a |
+| QP-4 | APIエラーハンドリング統一（api-error, error-handler-v2, async-handler） | a4e938e |
+| QP-5 | OpenAPI仕様書自動生成スクリプト（5345パス、329タグ） | 4a73b80 |
 
 ### codex/current-task.txt の準備
 
