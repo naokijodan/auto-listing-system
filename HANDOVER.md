@@ -2,10 +2,10 @@
 
 ## 最終更新
 
-**日付**: 2026-02-20
-**Phase**: 機能追加完了（Phase 114-352, 239機能）+ 品質向上QP-1〜QP-5完了
+**日付**: 2026-02-21
+**Phase**: マルチプラットフォーム統合M-1〜M-6完了 + 品質向上QP-1〜QP-5完了
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: 4a73b80
+**最新コミット**: 232f08b
 
 ---
 
@@ -44,12 +44,25 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 | 候補 | 内容 |
 |------|------|
+| INT-1 | Etsy OAuth認証実行（API Key取得→認証フロー実行→トークン取得） |
+| INT-2 | Shopify OAuth認証実行（アプリ作成→認証フロー実行→トークン取得） |
+| INT-3 | Etsy出品テスト（テスト商品1件でフルフロー確認） |
+| INT-4 | Shopify出品テスト（テスト商品1件でフルフロー確認） |
+| INT-5 | eBay出品サービスのE2Eテスト |
+| INT-6 | 在庫同期の結合テスト（全4プラットフォーム） |
 | QP-6 | 既存eBayルーター242件をファクトリ（createEbayRouter）に移行 |
-| QP-7 | テスト実行・カバレッジ確認・CI統合 |
-| QP-8 | error-handler-v2を全ルーターに適用 |
-| QP-9 | asyncHandlerを全ルーターに適用 |
 
-### 完了済み
+### 完了済み（マルチプラットフォーム統合）
+| タスク | 内容 | コミット |
+|--------|------|---------|
+| M-1 | DB基盤拡張（Marketplace enum + InventoryEvent + MarketplaceSyncState + EtsyListing） | 464455c |
+| M-2 | eBay出品サービス＆注文同期（ebay-publish-service, ebay-publish-worker） | bfdf9db |
+| M-3 | Etsy連携フルスクラッチ（OAuth PKCE + API + 出品 + ワーカー） | 5fd4ca5 |
+| M-4 | Shopify連携（OAuth + API + AI最適化出品 + ワーカー） | 990b8a9 |
+| M-5 | 在庫一元管理（inventory-manager + order-sync-manager + marketplace-router） | bb4c841 |
+| M-6 | 統合管理UI（在庫ダッシュボード + マーケットプレイス管理） | 232f08b |
+
+### 完了済み（品質向上）
 | タスク | 内容 | コミット |
 |--------|------|---------|
 | QP-1 | index.ts分割リファクタリング（804行→129行） | fd8f099 |
