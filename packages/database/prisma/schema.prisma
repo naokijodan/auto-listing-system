@@ -103,6 +103,10 @@ model Product {
   marketplaceSyncStates MarketplaceSyncState[]
   etsyListings          EtsyListing[]
 
+  // v3.0: Social Commerce / カタログモデル
+  inventoryMode   InventoryMode    @default(STOCKED)
+  supplierSources SupplierSource[]
+
   @@unique([sourceId, sourceItemId])
   @@index([status])
   @@index([sourceHash])
@@ -196,6 +200,8 @@ enum Marketplace {
   EBAY
   ETSY
   SHOPIFY
+  INSTAGRAM_SHOP
+  TIKTOK_SHOP
 }
 
 enum ListingStatus {
@@ -10716,4 +10722,37 @@ enum EtsyListingStatus {
   EXPIRED
   ERROR
   DELETED
+}
+
+// ========================================
+// v3.0: Social Commerce カタログモデル
+// ========================================
+
+model SupplierSource {
+  id            String      @id @default(cuid())
+  productId     String
+  type          SupplyType
+  supplierUrl   String?
+  quantity      Int         @default(0)
+  priority      Int         @default(0)
+  lastCheckedAt DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@map("supplier_sources")
+}
+
+enum SupplyType {
+  WAREHOUSE
+  SUPPLIER
+  ON_DEMAND
+}
+
+enum InventoryMode {
+  STOCKED
+  DROPSHIP
+  HYBRID
 }
