@@ -98,6 +98,11 @@ model Product {
   // Phase 39: エンリッチメント
   enrichmentTask EnrichmentTask?
 
+  // マルチプラットフォーム在庫一元管理（Phase M-1）
+  inventoryEvents       InventoryEvent[]
+  marketplaceSyncStates MarketplaceSyncState[]
+  etsyListings          EtsyListing[]
+
   @@unique([sourceId, sourceItemId])
   @@index([status])
   @@index([sourceHash])
@@ -189,6 +194,8 @@ model Listing {
 enum Marketplace {
   JOOM
   EBAY
+  ETSY
+  SHOPIFY
 }
 
 enum ListingStatus {
@@ -10581,4 +10588,132 @@ enum BulkOperationStatus {
   COMPLETED
   FAILED
   CANCELLED
+}
+
+// ========================================
+// マルチプラットフォーム在庫一元管理（Phase M-1）
+// ========================================
+
+// 在庫変動イベント（全プラットフォーム共通）
+model InventoryEvent {
+  id        String   @id @default(cuid())
+  productId String
+
+  eventType   InventoryEventType
+  quantity    Int      // 変動数（正: 入荷、負: 出荷/販売）
+  prevStock   Int      // 変動前在庫
+  newStock    Int      // 変動後在庫
+
+  marketplace Marketplace?  // どのプラットフォームで発生したか（手動調整はnull）
+  orderId     String?       // 注文起因の場合
+  reason      String?       // 変動理由
+
+  syncedTo    String[]      // 同期済みプラットフォーム一覧
+  syncErrors  Json?         // 同期エラー詳細
+
+  createdAt DateTime @default(now())
+
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("inventory_events")
+}
+
+enum InventoryEventType {
+  SALE           // 販売
+  RESTOCK        // 入荷
+  ADJUSTMENT     // 手動調整
+  RETURN         // 返品
+  SYNC           // 同期による補正
+  RESERVED       // 予約（出品中のロック）
+}
+
+// マーケットプレイス同期状態
+model MarketplaceSyncState {
+  id            String      @id @default(cuid())
+  marketplace   Marketplace
+  productId     String
+  listingId     String?     // プラットフォーム側のID
+
+  syncStatus    MarketplaceSyncStatus  @default(PENDING)
+  lastSyncAt    DateTime?
+  lastSyncError String?
+  retryCount    Int         @default(0)
+
+  localStock    Int         @default(0)  // rakuda側の在庫数
+  remoteStock   Int?        // プラットフォーム側の在庫数
+  localPrice    Float?      // rakuda側の価格
+  remotePrice   Float?      // プラットフォーム側の価格
+
+  isActive      Boolean     @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@unique([marketplace, productId])
+  @@index([syncStatus])
+  @@index([marketplace, isActive])
+  @@map("marketplace_sync_states")
+}
+
+enum MarketplaceSyncStatus {
+  PENDING
+  SYNCING
+  SYNCED
+  ERROR
+  STALE
+}
+
+// Etsy出品データ（JoomListingと同様の専用テーブル）
+model EtsyListing {
+  id            String   @id @default(cuid())
+  productId     String
+  listingId     String?  // rakuda Listing ID
+
+  etsyListingId   Int?     // Etsy側のlisting_id（数値）
+  etsyShopId      Int?     // Etsy Shop ID
+
+  title           String?  // Etsy向け最適化タイトル（最大140文字）
+  description     String?  // Etsy向け説明文
+  tags            String[] // 最大13タグ
+  materials       String[] // 素材
+
+  categoryId      Int?     // Etsy Taxonomy ID
+  whoMade         String   @default("someone_else")  // i_did, someone_else, collective
+  whenMade        String   @default("before_2005")   // ヴィンテージ用
+  isSupply        Boolean  @default(false)
+
+  price           Float?   // USD
+  quantity        Int      @default(1)
+  shippingProfileId Int?   // Etsy配送プロファイルID
+
+  status          EtsyListingStatus @default(DRAFT)
+  errorMessage    String?
+  errorCount      Int      @default(0)
+
+  publishedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([etsyListingId])
+  @@index([status])
+  @@map("etsy_listings")
+}
+
+enum EtsyListingStatus {
+  DRAFT
+  READY
+  PUBLISHING
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  ERROR
+  DELETED
 }
