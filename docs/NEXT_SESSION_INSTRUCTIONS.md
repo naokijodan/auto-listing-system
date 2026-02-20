@@ -1,160 +1,307 @@
 # RAKUDA 次セッション指示書
 
-## 更新日
-2026-02-13
+## 日付: 2026-02-21作成
+## 目的: v3.0 Social Commerce Edition の実装開始
 
-## 現在の状態
+---
 
-### 完了済みPhase（直近）
+## 前提状態
 
-| Phase | 内容 | 状態 |
-|-------|------|------|
-| 101-102 | テストカバレッジ拡充 & Phase 93-96テスト追加 | ✅ 完了 |
-| 99-100 | テスト強化 & ドキュメント整備 | ✅ 完了 |
-| 97-98 | 自動アクションルール & 利益計算・原価管理 | ✅ 完了 |
-| 95-96 | eBay出品パフォーマンス分析 & 改善提案エンジン | ✅ 完了 |
-| 93-94 | バックアップ・リカバリ強化 & 監視アラート強化 | ✅ 完了 |
-| 91-92 | Webhook配信システム強化 & API利用統計＆レート制限強化 | ✅ 完了 |
-| 89-90 | 高度な検索・フィルタリング & データエクスポート・インポート強化 | ✅ 完了 |
-| 87-88 | 多通貨対応強化 & 監査・コンプライアンス | ✅ 完了 |
-| 85-86 | SSO/SAML対応 & パフォーマンス最適化 | ✅ 完了 |
-| 83-84 | カスタマーサクセス機能 & 高度なレポーティング | ✅ 完了 |
-| 81-82 | 外部連携強化 & セキュリティ強化 | ✅ 完了 |
+### 完了済み
+- M-1〜M-6: マルチプラットフォーム統合（eBay, Joom, Etsy, Shopify）
+- QP-1〜QP-5: 品質向上
+- v3.0設計書: プレゼンHTML改訂済み（Shopify Hub/カタログモデル/Instagram/TikTok）
+- 最新コミット: `32da3bf`
 
-### 最新コミット
+### 未完了（このセッションで実行）
+OAuthトークンが一切ない状態。Etsy/Shopifyのコード（API/出品サービス/ワーカー/認証ルート）は実装済みだが、認証情報が未設定。
 
+---
+
+## 実行タスク（この順番で）
+
+### Task 1: 環境変数の整備
+
+`.env` と `.env.example` にEtsy/Shopify用の環境変数を追加。
+
+```env
+# Etsy
+ETSY_API_KEY=          # Etsy開発者ポータルで取得
+ETSY_REDIRECT_URI=http://localhost:3000/api/etsy/callback
+
+# Shopify
+SHOPIFY_API_KEY=       # Shopifyパートナーダッシュボードで取得
+SHOPIFY_API_SECRET=
+SHOPIFY_SCOPES=read_products,write_products,read_inventory,write_inventory,read_orders,write_orders
+SHOPIFY_REDIRECT_URI=http://localhost:3000/api/shopify/callback
+SHOPIFY_SHOP_DOMAIN=   # xxx.myshopify.com
 ```
-(コミット予定) feat: Phase 101-102 テストカバレッジ拡充
+
+**実装内容:**
+1. `.env.example` に上記テンプレート追加
+2. ユーザーに認証情報の取得方法を案内
+
+**参考ファイル:**
+- `apps/api/src/routes/etsy-auth.ts` → `process.env.ETSY_API_KEY`
+- `apps/api/src/routes/shopify-auth.ts` → `process.env.SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`
+
+---
+
+### Task 2: INT-1 Etsy OAuth認証
+
+**ゴール:** Etsyアクセストークンを取得し、DB（OAuthState or 専用テーブル）に保存。
+
+**手順:**
+1. ユーザーがEtsy開発者ポータル（https://www.etsy.com/developers/your-apps）でAPIキーを取得
+2. `.env` に `ETSY_API_KEY` をセット
+3. `npm run dev` でAPIサーバー起動
+4. ブラウザで `http://localhost:3000/api/etsy/auth` にアクセス
+5. Etsy認証画面でログイン・許可
+6. コールバックでトークン取得 → DBに保存
+7. 確認: `curl http://localhost:3000/api/etsy/status` でトークン有効を確認
+
+**既存コード:**
+- 認証フロー: `apps/api/src/routes/etsy-auth.ts` (OAuth2 PKCE実装済み)
+- APIクライアント: `apps/worker/src/lib/etsy-api.ts` (EtsyApiClient)
+- OAuthStateモデル: `packages/database/prisma/schema.prisma` line 637
+
+**注意:**
+- PKCE方式（code_verifier → code_challenge）
+- スコープ: listings_r/w, transactions_r/w, shops_r/w, profile_r, email_r
+- トークン有効期間: 1時間（refresh_token で自動更新が必要）
+
+---
+
+### Task 3: INT-2 Shopify OAuth認証
+
+**ゴール:** Shopifyアクセストークンを取得。
+
+**手順:**
+1. Shopifyパートナーダッシュボード（https://partners.shopify.com/）でアプリ作成
+2. `.env` に `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, `SHOPIFY_SHOP_DOMAIN` をセット
+3. ブラウザで `http://localhost:3000/api/shopify/auth?shop=YOUR-STORE` にアクセス
+4. Shopify認証画面で許可
+5. コールバックでトークン取得 → DBに保存
+
+**既存コード:**
+- 認証フロー: `apps/api/src/routes/shopify-auth.ts`
+- APIクライアント: `apps/worker/src/lib/shopify-api.ts` (ShopifyApiClient)
+- HMAC検証: verifyShopifyHmacFromQuery() 実装済み
+
+---
+
+### Task 4: INT-3 Etsy出品テスト
+
+**ゴール:** テスト商品1件でEtsy出品フルフローを確認。
+
+**手順:**
+1. テスト用商品をDBに登録（or 既存商品を使用）
+2. marketplace-router で Etsy に振り分けられるか確認（ヴィンテージ判定: whenMade > 20年前）
+3. `etsy-publish-service.ts` で出品フロー実行:
+   - enrichment → 翻訳・属性抽出
+   - 画像処理 → アップロード
+   - Etsy APIでドラフト出品 → 確認後 publish
+4. Etsyショップで出品確認
+5. 出品成功したらMarketplaceSyncState更新確認
+
+**既存コード:**
+- 出品サービス: `apps/worker/src/lib/etsy-publish-service.ts`
+- ワーカー: `apps/worker/src/jobs/etsy-publish-worker.ts`
+- ルーター: `apps/worker/src/lib/marketplace-router.ts`
+
+---
+
+### Task 5: INT-4 Shopify出品テスト
+
+**ゴール:** テスト商品1件でShopify出品フルフローを確認。
+
+**手順:**
+1. テスト用商品をDBに登録（or Task 4と同じ商品）
+2. `shopify-publish-service.ts` で出品フロー実行:
+   - AI商品説明最適化（GPT-4o）
+   - Schema.org構造化データ生成
+   - メタフィールド設定
+   - Shopify APIで商品作成
+3. Shopifyストアで商品確認
+4. MarketplaceSyncState更新確認
+
+**既存コード:**
+- 出品サービス: `apps/worker/src/lib/shopify-publish-service.ts`
+- ワーカー: `apps/worker/src/jobs/shopify-sync-worker.ts`
+
+---
+
+### Task 6: M-7 Instagram Shop連携（Shopify Hub経由）
+
+**ゴール:** Shopifyストアの商品をInstagram Shopに表示。
+
+**前提:** Task 5完了（Shopify認証済み、テスト商品あり）
+
+**手順（ほぼ設定作業、コード変更最小限）:**
+1. Shopify管理画面 → 販売チャネル → 「Facebook & Instagram」を追加
+2. Meta Business Suiteアカウントと接続
+3. Instagram Businessアカウントをリンク
+4. 商品カタログの同期を有効化
+5. 同期を待つ（通常24-48時間）
+6. Instagramアプリでショップタブに商品が表示されることを確認
+
+**コード変更（任意）:**
+- `Marketplace` enumに `INSTAGRAM_SHOP` 追加（将来の注文識別用）
+  - 場所: `packages/database/prisma/schema.prisma` line 194
+- Instagram経由の注文はShopify注文として入るため、Shopify sync workerで自動処理
+
+---
+
+### Task 7: M-8 Phase 1 TikTok Shop連携（Shopify Hub経由）
+
+**ゴール:** Shopifyストアの商品をTikTok Shopに表示。
+
+**前提:** Task 5完了
+
+**手順（ほぼ設定作業、コード変更最小限）:**
+1. Shopify管理画面 → 販売チャネル → 「TikTok」を追加
+2. TikTok for Businessアカウントと接続
+3. TikTok Shop Japan の審査完了（ビジネスアカウント必要）
+4. 商品カタログの同期を有効化
+5. TikTokアプリでShop機能から商品確認
+
+**コード変更（任意）:**
+- `Marketplace` enumに `TIKTOK_SHOP` 追加
+- TikTok経由の注文もShopify注文として入るため、既存workerで処理
+
+---
+
+### Task 8: INT-5〜INT-6 統合テスト
+
+**ゴール:** 全チャネルでの在庫同期を確認。
+
+**テストシナリオ:**
+1. 商品をProduct DBに登録
+2. marketplace-router で自動振り分け
+3. 全チャネルに出品されることを確認
+4. 1つのチャネルで注文が入った想定で在庫減算
+5. 他の全チャネルで在庫が更新されることを確認
+6. 在庫0になったら全チャネルで出品停止を確認
+7. 入荷（在庫追加）で全チャネルで出品再開を確認
+
+---
+
+## DB変更（必要に応じて）
+
+### Prisma schema.prisma への追加
+
+```prisma
+// Marketplace enumに追加（Task 6,7のタイミングで）
+enum Marketplace {
+  JOOM
+  EBAY
+  ETSY
+  SHOPIFY
+  INSTAGRAM_SHOP  // 追加
+  TIKTOK_SHOP     // 追加
+}
+
+// SupplierSource モデル追加（将来の無在庫対応）
+model SupplierSource {
+  id          String   @id @default(cuid())
+  productId   String
+  type        SourceType
+  supplierUrl String?
+  quantity    Int      @default(0)
+  priority    Int      @default(0)
+  lastCheckedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+}
+
+enum SourceType {
+  WAREHOUSE   // 自社倉庫
+  SUPPLIER    // 仕入先
+  ON_DEMAND   // オンデマンド
+}
+
+enum InventoryMode {
+  STOCKED     // 有在庫
+  DROPSHIP    // 無在庫
+  HYBRID      // ハイブリッド
+}
+
+// Product modelに追加フィールド:
+// inventoryMode InventoryMode @default(STOCKED)
+// supplierSources SupplierSource[]
+```
+
+**マイグレーション実行:**
+```bash
+npx prisma migrate dev --schema=packages/database/prisma/schema.prisma --name add-social-commerce-support
+npx prisma generate --schema=packages/database/prisma/schema.prisma
 ```
 
 ---
 
-## 次に実装すべきPhase
+## ファイルマップ
 
-### Phase 101以降: 継続的改善
-
-**候補機能:**
-1. **テストカバレッジ向上**
-   - 目標: 80%以上のカバレッジ達成
-   - 未テストAPIルートの追加テスト
-   - エッジケースのテスト追加
-
-2. **パフォーマンス最適化**
-   - N+1クエリの最適化
-   - キャッシュ戦略の改善
-   - 大量データ処理の効率化
-
-3. **UI/UX改善**
-   - レスポンシブデザインの改善
-   - アクセシビリティ対応
-   - ダークモード対応強化
-
-4. **eBay出品ワークフロー**
-   - Joomと同様のフロー実装
-   - eBay API連携強化
-   - 一括出品機能
-
-5. **AI機能強化**
-   - 価格予測精度向上
-   - 需要予測モデル改善
-   - 自動翻訳品質向上
-
----
-
-## Phase 101-102 実装内容（完了）
-
-### Phase 101: テストカバレッジ拡充
-**新規ユニットテスト:**
-- `apps/api/src/test/unit/listing-performance.test.ts` - 出品パフォーマンスAPIテスト
-- `apps/api/src/test/unit/listing-improvement.test.ts` - 改善提案APIテスト
-- `apps/api/src/test/unit/backup-recovery.test.ts` - バックアップ・リカバリAPIテスト
-- `apps/api/src/test/unit/monitoring-alerts.test.ts` - 監視アラートAPIテスト
-
-**新規E2Eテスト:**
-- `apps/web/e2e/listing-performance.spec.ts`
-- `apps/web/e2e/listing-improvement.spec.ts`
-- `apps/web/e2e/backup-recovery.spec.ts`
-- `apps/web/e2e/monitoring-alerts.spec.ts`
-
-### Phase 102: テストセットアップ強化
-- Phase 93-96モデルのモック追加（backupJob, alertRule, listingPerformance等）
-
----
-
-## Phase 99-100 実装内容（完了）
-
-### Phase 99: テスト強化
-**新規ファイル:**
-- `apps/api/src/test/unit/automation-rules.test.ts` - 自動アクションAPIテスト
-- `apps/api/src/test/unit/profit-calculation.test.ts` - 利益計算APIテスト
-- `apps/web/e2e/automation-rules.spec.ts` - 自動アクションE2Eテスト
-- `apps/web/e2e/profit-calculation.spec.ts` - 利益計算E2Eテスト
-
-**変更:**
-- `apps/api/src/test/setup.ts` - テストモック追加
-
-### Phase 100: ドキュメント整備
-**新規ファイル:**
-- `docs/API_REFERENCE.md` - API仕様書
-- `docs/DEVELOPER_GUIDE.md` - 開発者ガイド
-
----
-
-## 技術スタック
-
-| レイヤー | 技術 |
+### 認証（実装済み）
+| ファイル | 内容 |
 |---------|------|
-| Frontend | Next.js 16 (App Router), Tailwind CSS, shadcn/ui |
-| Backend | Express.js (Hono), TypeScript |
-| Database | PostgreSQL (Prisma ORM) |
-| Queue | BullMQ (Redis) |
-| Storage | MinIO/S3 |
-| AI | OpenAI GPT-4o |
+| `apps/api/src/routes/etsy-auth.ts` | Etsy OAuth2 PKCE |
+| `apps/api/src/routes/shopify-auth.ts` | Shopify OAuth2 + HMAC検証 |
+
+### APIクライアント（実装済み）
+| ファイル | 内容 |
+|---------|------|
+| `apps/worker/src/lib/ebay-api.ts` | 954行、Inventory/Offer/Fulfillment |
+| `apps/worker/src/lib/joom-api.ts` | 811行、Marketplace API v3 |
+| `apps/worker/src/lib/etsy-api.ts` | OAuth PKCE、Listing CRUD、10req/sec |
+| `apps/worker/src/lib/shopify-api.ts` | Admin REST API、Webhook |
+
+### 出品サービス（実装済み）
+| ファイル | 内容 |
+|---------|------|
+| `apps/worker/src/lib/ebay-publish-service.ts` | 3段階出品フロー |
+| `apps/worker/src/lib/joom-publish-service.ts` | 808行 |
+| `apps/worker/src/lib/etsy-publish-service.ts` | ヴィンテージ判定、タグ最適化 |
+| `apps/worker/src/lib/shopify-publish-service.ts` | AI最適化、Schema.org |
+
+### 在庫管理（実装済み）
+| ファイル | 内容 |
+|---------|------|
+| `apps/worker/src/lib/inventory-manager.ts` | 在庫一元管理 |
+| `apps/worker/src/lib/order-sync-manager.ts` | 注文統合 |
+| `apps/worker/src/lib/marketplace-router.ts` | 出品先自動ルーティング |
+
+### DB
+| ファイル | 内容 |
+|---------|------|
+| `packages/database/prisma/schema.prisma` | Marketplace enum (line 194), OAuthState (line 637) |
 
 ---
 
-## 実装パターン
+## 成功基準
 
-### APIルート作成手順
-1. `apps/api/src/routes/xxx.ts` でHono APIを実装
-2. `apps/api/src/index.ts` にimport・use追加
-3. RESTful CRUD + 統計エンドポイント
-
-### フロントエンドページ作成手順
-1. `apps/web/src/app/xxx/page.tsx` でページ実装
-2. shadcn/ui コンポーネント使用
-3. タブ構成（一覧・詳細・設定）
-4. ダイアログで作成・編集
-
-### Prismaスキーマ追加手順
-1. `packages/database/prisma/schema.prisma` にモデル追加
-2. enum定義（必要に応じて）
-3. リレーション設定
-
-### ナビゲーション更新
-1. `apps/web/src/components/layout/sidebar.tsx` にリンク追加
-2. `apps/web/src/components/layout/mobile-nav.tsx` にリンク追加
-3. lucide-reactアイコン使用
+- [ ] Etsy OAuthトークン取得成功
+- [ ] Shopify OAuthトークン取得成功
+- [ ] テスト商品1件がEtsyに出品される
+- [ ] テスト商品1件がShopifyに出品される
+- [ ] Instagram Shop に商品が表示される（同期待ち24-48h）
+- [ ] TikTok Shop に商品が表示される（審査待ちの可能性あり）
+- [ ] 在庫減算→全チャネル同期が正常動作
+- [ ] Prisma schema に INSTAGRAM_SHOP, TIKTOK_SHOP 追加
+- [ ] 全変更をコミット・プッシュ
+- [ ] Obsidianノート作成
 
 ---
 
-## 完了条件
+## ユーザーが事前に準備すること
 
-各Phaseで以下を必ず実施：
-1. Prismaスキーマ追加
-2. APIルート実装
-3. フロントエンドページ実装
-4. サイドバー・モバイルナビ更新
-5. HANDOVER.md更新
-6. Git commit & push
-7. Obsidianノート作成（`/Users/naokijodan/開発ログ/rakuda_phaseXX_YYYYMMDD.md`）
+1. **Etsy開発者アカウント** → https://www.etsy.com/developers/your-apps でAPIキー取得
+2. **Shopifyパートナーアカウント** → https://partners.shopify.com/ でアプリ作成・API認証情報取得
+3. **Shopifyストア** → テスト用or開発ストアを作成（xxx.myshopify.com）
+4. **Instagram Businessアカウント** → Meta Business Suite連携用
+5. **TikTok for Businessアカウント** → TikTok Shop Japan登録
 
----
-
-## 参照ファイル
-
-- `HANDOVER.md` - 引き継ぎ書（最新状態）
-- `CLAUDE.md` - プロジェクトルール
-- `packages/database/prisma/schema.prisma` - DBスキーマ
-- `apps/api/src/index.ts` - APIルート登録
-- `apps/web/src/components/layout/sidebar.tsx` - サイドバー
+## 確認不要で完了まで進めること
