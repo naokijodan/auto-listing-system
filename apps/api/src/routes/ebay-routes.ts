@@ -252,6 +252,8 @@ import ebayCustomerCommunicationHubRouter from './ebay-customer-communication-hu
 import ebayShippingRateComparatorRouter from './ebay-shipping-rate-comparator';
 import ebayListingPerformanceTrackerRouter from './ebay-listing-performance-tracker';
 import ebayOrderDisputeResolutionRouter from './ebay-order-dispute-resolution';
+import ebayBulkListingSchedulerRouter from './ebay-bulk-listing-scheduler';
+import ebayMarketplaceAnalyticsProRouter from './ebay-marketplace-analytics-pro';
 import ebayProductSourcingAssistantRouter from './ebay-product-sourcing-assistant';
 
 
@@ -510,4 +512,6 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-listing-performance-tracker', ebayListingPerformanceTrackerRouter);
   app.use('/api/ebay-order-dispute-resolution', ebayOrderDisputeResolutionRouter);
   app.use('/api/ebay-product-sourcing-assistant', ebayProductSourcingAssistantRouter);
+  app.use('/api/ebay-bulk-listing-scheduler', ebayBulkListingSchedulerRouter);
+  app.use('/api/ebay-marketplace-analytics-pro', ebayMarketplaceAnalyticsProRouter);
 }

@@ -283,6 +283,8 @@ APIエラーハンドリングを統一するミドルウェアを生成して�
 | 356 | 出品パフォーマンストラッカー | ebay-listing-performance-tracker | teal-600 |
 | 357 | 注文紛争解決 | ebay-order-dispute-resolution | violet-600 |
 | 358 | 商品ソーシングアシスタント | ebay-product-sourcing-assistant | indigo-600 |
+| 359 | 一括出品スケジューラー | ebay-bulk-listing-scheduler | amber-600 |
+| 360 | マーケットプレイス分析Pro | ebay-marketplace-analytics-pro | sky-600 |
 
 **Git履歴**:
 - e8ec5e5 Phase 351-352【最終バッチ】
