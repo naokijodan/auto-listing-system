@@ -133,7 +133,7 @@ export class EtsyApiClient {
     await etsyRateLimiter.acquire();
 
     const form = new FormData();
-    const blob = new Blob([imageBuffer]);
+    const blob = new Blob([new Uint8Array(imageBuffer)]);
     (form as any).append('image', blob, filename);
 
     const url = `${ETSY_API_BASE}/application/shops/${shopId}/listings/${listingId}/images`;

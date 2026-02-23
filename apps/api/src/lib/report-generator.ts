@@ -180,21 +180,25 @@ export async function collectSalesSummaryData(
 ): Promise<SalesSummaryData> {
   const orders = await prisma.order.findMany({
     where: {
-      orderDate: { gte: startDate, lte: endDate },
+      orderedAt: { gte: startDate, lte: endDate },
     },
     include: {
-      listing: {
+      sales: {
         include: {
-          product: true,
+          listing: {
+            include: {
+              product: true,
+            },
+          },
         },
       },
     },
   });
 
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
   const totalProfit = orders.reduce((sum, o) => {
-    const cost = o.listing?.product?.costPrice || 0;
-    return sum + ((o.totalAmount || 0) - cost);
+    const cost = o.sales[0]?.listing?.product?.price || 0;
+    return sum + ((o.total || 0) - cost);
   }, 0);
 
   // マーケットプレイス別集計
@@ -204,10 +208,10 @@ export async function collectSalesSummaryData(
       if (!acc[mp]) {
         acc[mp] = { marketplace: mp, revenue: 0, orders: 0, profit: 0 };
       }
-      acc[mp].revenue += o.totalAmount || 0;
+      acc[mp].revenue += o.total || 0;
       acc[mp].orders += 1;
-      const cost = o.listing?.product?.costPrice || 0;
-      acc[mp].profit += (o.totalAmount || 0) - cost;
+      const cost = o.sales[0]?.listing?.product?.price || 0;
+      acc[mp].profit += (o.total || 0) - cost;
       return acc;
     }, {} as Record<string, { marketplace: string; revenue: number; orders: number; profit: number }>)
   );
@@ -215,11 +219,11 @@ export async function collectSalesSummaryData(
   // カテゴリ別集計
   const byCategory = Object.values(
     orders.reduce((acc, o) => {
-      const cat = o.listing?.product?.category || 'その他';
+      const cat = o.sales[0]?.listing?.product?.category || 'その他';
       if (!acc[cat]) {
         acc[cat] = { category: cat, revenue: 0, orders: 0 };
       }
-      acc[cat].revenue += o.totalAmount || 0;
+      acc[cat].revenue += o.total || 0;
       acc[cat].orders += 1;
       return acc;
     }, {} as Record<string, { category: string; revenue: number; orders: number }>)
@@ -227,14 +231,14 @@ export async function collectSalesSummaryData(
 
   // 日別トレンド
   const dailyMap = orders.reduce((acc, o) => {
-    const date = o.orderDate.toISOString().split('T')[0];
+    const date = o.orderedAt.toISOString().split('T')[0];
     if (!acc[date]) {
       acc[date] = { date, revenue: 0, orders: 0, profit: 0 };
     }
-    acc[date].revenue += o.totalAmount || 0;
+    acc[date].revenue += o.total || 0;
     acc[date].orders += 1;
-    const cost = o.listing?.product?.costPrice || 0;
-    acc[date].profit += (o.totalAmount || 0) - cost;
+    const cost = o.sales[0]?.listing?.product?.price || 0;
+    acc[date].profit += (o.total || 0) - cost;
     return acc;
   }, {} as Record<string, { date: string; revenue: number; orders: number; profit: number }>);
 
@@ -245,7 +249,7 @@ export async function collectSalesSummaryData(
     totalRevenue,
     totalProfit,
     totalOrders: orders.length,
-    totalItems: orders.reduce((sum, o) => sum + (o.quantity || 1), 0),
+    totalItems: orders.reduce((sum, o) => sum + (o.sales.reduce((s, sale) => s + (sale.quantity || 1), 0)), 0),
     avgOrderValue: orders.length > 0 ? totalRevenue / orders.length : 0,
     profitMargin: totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0,
     byMarketplace,
@@ -260,30 +264,34 @@ export async function collectOrderDetailData(
 ): Promise<OrderDetailData> {
   const orders = await prisma.order.findMany({
     where: {
-      orderDate: { gte: startDate, lte: endDate },
+      orderedAt: { gte: startDate, lte: endDate },
     },
     include: {
-      listing: {
+      sales: {
         include: {
-          product: true,
+          listing: {
+            include: {
+              product: true,
+            },
+          },
         },
       },
     },
-    orderBy: { orderDate: 'desc' },
+    orderBy: { orderedAt: 'desc' },
   });
 
   return {
     period: { start: startDate, end: endDate },
     orders: orders.map((o) => ({
       orderId: o.id,
-      orderNumber: o.orderNumber || o.id,
+      orderNumber: o.marketplaceOrderId || o.id,
       marketplace: o.marketplace || 'unknown',
       buyerName: o.buyerName || 'Unknown',
-      productTitle: o.listing?.product?.title || 'Unknown Product',
-      quantity: o.quantity || 1,
-      price: o.totalAmount || 0,
+      productTitle: o.sales[0]?.listing?.product?.title || 'Unknown Product',
+      quantity: o.sales.reduce((sum, s) => sum + (s.quantity || 1), 0),
+      price: o.total || 0,
       status: o.status,
-      orderDate: o.orderDate,
+      orderDate: o.orderedAt,
       shippedAt: o.shippedAt || undefined,
       trackingNumber: o.trackingNumber || undefined,
     })),
@@ -314,7 +322,7 @@ export async function collectInventoryStatusData(
 
   const bySource = Object.values(
     products.reduce((acc, p) => {
-      const source = p.sourceType || 'unknown';
+      const source = p.sourceId || 'unknown';
       if (!acc[source]) {
         acc[source] = { source, count: 0 };
       }
@@ -325,8 +333,8 @@ export async function collectInventoryStatusData(
 
   const topProducts = products.slice(0, 20).map((p) => ({
     title: p.title,
-    sku: p.sku || undefined,
-    source: p.sourceType || 'unknown',
+    sku: p.sourceItemId || undefined,
+    source: p.sourceId || 'unknown',
     status: p.status,
     price: p.price || 0,
     createdAt: p.createdAt,
@@ -335,9 +343,9 @@ export async function collectInventoryStatusData(
   return {
     period: { start: startDate, end: endDate },
     totalProducts: products.length,
-    availableProducts: products.filter((p) => p.status === 'AVAILABLE').length,
+    availableProducts: products.filter((p) => p.status === 'ACTIVE').length,
     soldProducts: products.filter((p) => p.status === 'SOLD').length,
-    draftProducts: products.filter((p) => p.status === 'DRAFT').length,
+    draftProducts: products.filter((p) => p.status === 'PENDING_SCRAPE').length,
     lowStockAlerts: 0,
     byStatus,
     bySource,
@@ -353,9 +361,14 @@ export async function collectProductPerformanceData(
     include: {
       listings: {
         include: {
-          orders: {
+          sales: {
             where: {
-              orderDate: { gte: startDate, lte: endDate },
+              order: {
+                orderedAt: { gte: startDate, lte: endDate },
+              },
+            },
+            include: {
+              order: true,
             },
           },
         },
@@ -364,10 +377,10 @@ export async function collectProductPerformanceData(
   });
 
   const performanceData = products.map((p) => {
-    const orders = p.listings.flatMap((l) => l.orders);
-    const totalSales = orders.reduce((sum, o) => sum + (o.quantity || 1), 0);
-    const revenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-    const profit = revenue - (p.costPrice || 0) * totalSales;
+    const sales = p.listings.flatMap((l) => l.sales);
+    const totalSales = sales.reduce((sum, s) => sum + (s.quantity || 1), 0);
+    const revenue = sales.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
+    const profit = revenue - (p.price || 0) * totalSales;
 
     return {
       productId: p.id,
@@ -404,22 +417,28 @@ export async function collectProfitAnalysisData(
 ): Promise<ProfitAnalysisData> {
   const orders = await prisma.order.findMany({
     where: {
-      orderDate: { gte: startDate, lte: endDate },
+      orderedAt: { gte: startDate, lte: endDate },
     },
     include: {
-      listing: {
+      sales: {
         include: {
-          product: true,
+          listing: {
+            include: {
+              product: true,
+            },
+          },
         },
       },
     },
   });
 
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+  const totalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
   const totalCost = orders.reduce((sum, o) => {
-    const cost = o.listing?.product?.costPrice || 0;
-    const qty = o.quantity || 1;
-    return sum + cost * qty;
+    return sum + o.sales.reduce((saleSum, s) => {
+      const cost = s.listing?.product?.price || 0;
+      const qty = s.quantity || 1;
+      return saleSum + cost * qty;
+    }, 0);
   }, 0);
   const grossProfit = totalRevenue - totalCost;
   const netProfit = grossProfit * 0.85; // 簡易計算（手数料等考慮）
@@ -430,8 +449,10 @@ export async function collectProfitAnalysisData(
       if (!acc[mp]) {
         acc[mp] = { marketplace: mp, revenue: 0, cost: 0, profit: 0, margin: 0 };
       }
-      const cost = (o.listing?.product?.costPrice || 0) * (o.quantity || 1);
-      acc[mp].revenue += o.totalAmount || 0;
+      const cost = o.sales.reduce((saleSum, s) => {
+        return saleSum + ((s.listing?.product?.price || 0) * (s.quantity || 1));
+      }, 0);
+      acc[mp].revenue += o.total || 0;
       acc[mp].cost += cost;
       acc[mp].profit = acc[mp].revenue - acc[mp].cost;
       acc[mp].margin = acc[mp].revenue > 0 ? (acc[mp].profit / acc[mp].revenue) * 100 : 0;
@@ -458,16 +479,16 @@ export async function collectCustomerAnalysisData(
 ): Promise<CustomerAnalysisData> {
   const orders = await prisma.order.findMany({
     where: {
-      orderDate: { gte: startDate, lte: endDate },
+      orderedAt: { gte: startDate, lte: endDate },
     },
   });
 
   const customerMap = new Map<string, { orders: number; revenue: number }>();
   orders.forEach((o) => {
-    const buyer = o.buyerId || o.buyerName || 'unknown';
+    const buyer = o.buyerUsername || o.buyerName || 'unknown';
     const existing = customerMap.get(buyer) || { orders: 0, revenue: 0 };
     existing.orders += 1;
-    existing.revenue += o.totalAmount || 0;
+    existing.revenue += o.total || 0;
     customerMap.set(buyer, existing);
   });
 
@@ -480,7 +501,8 @@ export async function collectCustomerAnalysisData(
   // 国別集計
   const countryMap = new Map<string, number>();
   orders.forEach((o) => {
-    const country = o.shippingCountry || 'Unknown';
+    const addr = o.shippingAddress as Record<string, unknown> | null;
+    const country = (addr?.country as string) || 'Unknown';
     countryMap.set(country, (countryMap.get(country) || 0) + 1);
   });
 
@@ -507,9 +529,14 @@ export async function collectMarketplaceComparisonData(
 ): Promise<MarketplaceComparisonData> {
   const listings = await prisma.listing.findMany({
     include: {
-      orders: {
+      sales: {
         where: {
-          orderDate: { gte: startDate, lte: endDate },
+          order: {
+            orderedAt: { gte: startDate, lte: endDate },
+          },
+        },
+        include: {
+          order: true,
         },
       },
     },
@@ -538,9 +565,9 @@ export async function collectMarketplaceComparisonData(
     existing.totalListings += 1;
     if (l.status === 'ACTIVE') existing.activeListings += 1;
     if (l.status === 'SOLD') existing.soldListings += 1;
-    const orderRevenue = l.orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-    existing.revenue += orderRevenue;
-    existing.totalPrice += l.price || 0;
+    const saleRevenue = l.sales.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
+    existing.revenue += saleRevenue;
+    existing.totalPrice += l.listingPrice || 0;
     mpMap.set(mp, existing);
   });
 
@@ -649,9 +676,9 @@ export async function generatePdfReport(
 
     // フッター
     doc.moveDown(2);
+    doc.opacity(0.5);
     doc.fontSize(8).text('Generated by RAKUDA - Cross-border EC Automation System', {
       align: 'center',
-      opacity: 0.5,
     });
 
     doc.end();
@@ -1091,7 +1118,7 @@ export async function generateReport(
   await prisma.report.update({
     where: { id: reportId },
     data: {
-      status: 'PROCESSING',
+      status: 'GENERATING',
       startedAt: new Date(),
       progress: 10,
     },

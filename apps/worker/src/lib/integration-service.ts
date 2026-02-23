@@ -426,7 +426,7 @@ export async function getSyncLogs(params: {
     prisma.integrationSyncLog.findMany({
       where: where as any,
       include: {
-        integration: { select: { name: true, displayName: true, provider: true } },
+        ExternalIntegration: { select: { name: true, displayName: true, provider: true } },
       },
       orderBy: { createdAt: 'desc' },
       take: params.limit || 50,
@@ -602,7 +602,7 @@ export async function executeAccountingExport(exportId: string): Promise<{
 }> {
   const exportJob = await prisma.accountingExport.findUnique({
     where: { id: exportId },
-    include: { integration: true },
+    include: { ExternalIntegration: true },
   });
 
   if (!exportJob) {

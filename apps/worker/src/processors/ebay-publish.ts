@@ -666,10 +666,10 @@ async function processPriceSync(options: {
       await prisma.priceHistory.create({
         data: {
           listingId: listing.id,
-          oldPrice,
-          newPrice,
-          reason: 'auto_sync',
+          price: newPrice,
+          source: 'auto_sync',
           metadata: {
+            oldPrice,
             exchangeRate,
             costJpy,
             costUsd,

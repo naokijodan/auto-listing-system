@@ -187,6 +187,10 @@ export const Marketplace = {
 // Prisma モジュールをモック
 vi.mock('@rakuda/database', () => ({
   prisma: mockPrisma,
+  Prisma: {
+    DbNull: 'DbNull',
+    JsonNull: 'JsonNull',
+  },
   OrderStatus,
   PaymentStatus,
   FulfillmentStatus,

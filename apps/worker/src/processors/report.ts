@@ -1,20 +1,29 @@
 /**
  * レポート生成プロセッサ
  * Phase 65: BullMQワーカーでレポートを生成
+ * レポート生成はAPIサーバーのHTTPエンドポイント経由で実行
  */
 
 import { Job } from 'bullmq';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
-import { generateReport } from '../../../api/src/lib/report-generator';
-import { alertManager } from '../lib/alert-manager';
-
 const log = logger.child({ processor: 'report' });
+
+const API_BASE = process.env.API_URL || 'http://localhost:3000';
 
 export interface ReportJobData {
   reportId: string;
   scheduleId?: string;
   manual?: boolean;
+}
+
+async function generateReportViaApi(reportId: string): Promise<{ filePath: string; fileName: string; fileSize: number }> {
+  const res = await fetch(`${API_BASE}/api/reports/${reportId}/generate`, { method: 'POST' });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Report generation API failed (${res.status}): ${body}`);
+  }
+  return res.json();
 }
 
 export async function processReportJob(job: Job<ReportJobData>): Promise<void> {
@@ -23,8 +32,8 @@ export async function processReportJob(job: Job<ReportJobData>): Promise<void> {
   log.info({ jobId: job.id, reportId, scheduleId, manual }, 'Processing report job');
 
   try {
-    // レポート生成
-    const result = await generateReport(reportId);
+    // レポート生成（API経由）
+    const result = await generateReportViaApi(reportId);
 
     log.info(
       { jobId: job.id, reportId, filePath: result.filePath, fileSize: result.fileSize },
@@ -62,16 +71,13 @@ export async function processReportJob(job: Job<ReportJobData>): Promise<void> {
     });
 
     if (report) {
-      await alertManager.sendCustomAlert({
-        type: 'success',
-        title: 'レポート生成完了',
-        message: `「${report.name}」の生成が完了しました（${(result.fileSize / 1024).toFixed(1)}KB）`,
-        metadata: {
-          reportId,
-          fileName: result.fileName,
-          fileSize: result.fileSize,
-        },
-      });
+      log.info({
+        type: 'report_completed',
+        reportId,
+        reportName: report.name,
+        fileName: result.fileName,
+        fileSize: result.fileSize,
+      }, `レポート「${report.name}」の生成が完了しました`);
     }
   } catch (error) {
     log.error({ jobId: job.id, reportId, error }, 'Report generation failed');
@@ -100,12 +106,12 @@ export async function processReportJob(job: Job<ReportJobData>): Promise<void> {
     }
 
     // エラー通知
-    await alertManager.sendCustomAlert({
-      type: 'error',
-      title: 'レポート生成失敗',
-      message: `レポート生成に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      metadata: { reportId, scheduleId },
-    });
+    log.error({
+      type: 'report_failed',
+      reportId,
+      scheduleId,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+    }, 'レポート生成に失敗しました');
 
     throw error;
   }

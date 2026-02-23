@@ -1,4 +1,4 @@
-import { prisma } from '@rakuda/database';
+import { prisma, Prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { ebayApi } from './ebay-api';
 import { joomApi } from './joom-api';
@@ -391,7 +391,7 @@ export class InventoryManager {
       prisma.product.count(),
       prisma.listing.groupBy({ by: ['marketplace'], _count: true }),
       prisma.marketplaceSyncState.groupBy({ by: ['marketplace', 'syncStatus'], _count: true }),
-      prisma.inventoryEvent.count({ where: { syncErrors: { not: null } } }),
+      prisma.inventoryEvent.count({ where: { syncErrors: { not: Prisma.DbNull } } }),
     ]);
 
     const statusCounts = await prisma.product.groupBy({ by: ['status'], _count: true });

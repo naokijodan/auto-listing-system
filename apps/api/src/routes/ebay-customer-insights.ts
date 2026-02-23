@@ -97,11 +97,21 @@ router.get('/segments', async (req: Request, res: Response) => {
 router.post('/segments', async (req: Request, res: Response) => {
   const parsed = segmentSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid segment', details: parsed.error.issues });
-  res.status(201).json({ id: \`seg_\${Date.now()}\`, ...parsed.data, count: 0, createdAt: new Date().toISOString() });
+  res.status(201).json({ id: `seg_${Date.now()}`, ...parsed.data, count: 0, createdAt: new Date().toISOString() });
 });
 
 router.get('/segments/:id', async (req: Request, res: Response) => {
-  res.json({ id: req.params.id, name: 'VIP', count: 500, avgLtv: 2000 });
+  res.json({
+    id: req.params.id,
+    name: 'VIP',
+    conditions: [{ field: 'ltv', operator: 'gte', value: 1000 }],
+    count: 500,
+    avgLtv: 2000,
+    topCustomers: [
+      { id: 'c1', name: 'John Smith', ltv: 5000 },
+      { id: 'c5', name: 'Alice Brown', ltv: 4500 },
+    ],
+  });
 });
 
 router.put('/segments/:id', async (req: Request, res: Response) => {
@@ -109,86 +119,174 @@ router.put('/segments/:id', async (req: Request, res: Response) => {
 });
 
 router.delete('/segments/:id', async (req: Request, res: Response) => {
-  res.json({ success: true, deletedId: req.params.id });
+  res.json({ deleted: true, segmentId: req.params.id });
 });
 
-router.get('/behavior/purchase-patterns', async (req: Request, res: Response) => {
+// ========== ライフタイムバリュー ==========
+router.get('/ltv/overview', async (req: Request, res: Response) => {
   res.json({
-    patterns: [
-      { pattern: 'Weekend Shoppers', count: 1200, avgOrderValue: 180 },
-      { pattern: 'Bulk Buyers', count: 300, avgOrderValue: 500 },
+    avgLtv: 450,
+    medianLtv: 300,
+    topPercentileLtv: 5000,
+    distribution: [
+      { range: '$0-$100', count: 1500, percentage: 30 },
+      { range: '$100-$500', count: 2000, percentage: 40 },
+      { range: '$500-$1000', count: 1000, percentage: 20 },
+      { range: '$1000+', count: 500, percentage: 10 },
     ],
-    peakDays: ['Saturday', 'Sunday'],
   });
 });
 
-router.get('/behavior/browsing', async (req: Request, res: Response) => {
-  res.json({ avgSessionDuration: 8.5, avgPagesPerSession: 12, topViewedCategories: ['Watches', 'Electronics'] });
+router.get('/ltv/trends', async (req: Request, res: Response) => {
+  res.json({
+    monthly: [
+      { month: '2026-01', avgLtv: 420, newCustomerLtv: 80 },
+      { month: '2025-12', avgLtv: 410, newCustomerLtv: 75 },
+    ],
+  });
 });
 
-router.get('/behavior/cohort', async (req: Request, res: Response) => {
+// ========== コホート分析 ==========
+router.get('/cohort', async (req: Request, res: Response) => {
   res.json({
     cohorts: [
-      { cohort: '2025-Q4', size: 1000, retention: { m1: 45, m2: 35, m3: 30 } },
-      { cohort: '2026-Q1', size: 800, retention: { m1: 50, m2: 40 } },
+      { month: '2025-12', size: 300, retention: [100, 65, 45, 38] },
+      { month: '2025-11', size: 280, retention: [100, 60, 42, 35] },
+      { month: '2025-10', size: 350, retention: [100, 58, 40, 32] },
     ],
   });
 });
 
-router.get('/predictions/churn', async (req: Request, res: Response) => {
+router.get('/cohort/:month', async (req: Request, res: Response) => {
   res.json({
-    atRisk: [
-      { customerId: 'c10', name: 'Tom Brown', churnProbability: 85, ltv: 500 },
-    ],
-    totalAtRisk: 50,
-    potentialLoss: 25000,
+    month: req.params.month,
+    size: 300,
+    retentionWeekly: [100, 80, 65, 55, 50, 48, 45, 42],
+    avgOrdersPerCustomer: 2.3,
+    avgRevenue: 230,
   });
 });
 
-router.get('/predictions/ltv', async (req: Request, res: Response) => {
+// ========== リテンション・チャーン ==========
+router.get('/retention', async (req: Request, res: Response) => {
+  res.json({
+    overall: 72,
+    bySegment: [
+      { segment: 'VIP', retention: 95 },
+      { segment: 'Regular', retention: 70 },
+      { segment: 'New', retention: 45 },
+    ],
+    trend: [
+      { month: '2026-01', rate: 72 },
+      { month: '2025-12', rate: 70 },
+    ],
+  });
+});
+
+router.get('/churn', async (req: Request, res: Response) => {
+  res.json({
+    churnRate: 5.2,
+    atRiskCustomers: 150,
+    churnedThisMonth: 50,
+    reasons: [
+      { reason: 'Price sensitivity', percentage: 35 },
+      { reason: 'Better alternatives', percentage: 25 },
+      { reason: 'Service issues', percentage: 20 },
+      { reason: 'No longer needed', percentage: 20 },
+    ],
+  });
+});
+
+router.get('/churn/predictions', async (req: Request, res: Response) => {
   res.json({
     predictions: [
-      { customerId: 'c1', currentLtv: 2500, predictedLtv: 3500, confidence: 85 },
+      { customerId: 'c10', name: 'Bob Wilson', churnProbability: 85, lastOrder: '2025-11-15' },
+      { customerId: 'c22', name: 'Carol Davis', churnProbability: 72, lastOrder: '2025-12-01' },
     ],
-    avgPredictedGrowth: 25,
+    total: 150,
   });
 });
 
-router.get('/predictions/next-purchase', async (req: Request, res: Response) => {
+// ========== 顧客フィードバック ==========
+router.get('/feedback', async (req: Request, res: Response) => {
   res.json({
-    predictions: [
-      { customerId: 'c1', predictedDate: '2026-02-25', predictedCategory: 'Watches', confidence: 80 },
+    avgRating: 4.5,
+    totalReviews: 3200,
+    npsScore: 72,
+    recent: [
+      { id: 'f1', customerId: 'c1', rating: 5, comment: 'Excellent service', date: '2026-02-14' },
+      { id: 'f2', customerId: 'c2', rating: 4, comment: 'Good quality', date: '2026-02-13' },
     ],
   });
 });
 
-router.get('/analytics/rfm', async (req: Request, res: Response) => {
+router.get('/feedback/sentiment', async (req: Request, res: Response) => {
   res.json({
-    rfmDistribution: [
-      { rfmScore: '555', label: 'Champions', count: 200, revenue: 100000 },
-      { rfmScore: '454', label: 'Loyal', count: 500, revenue: 150000 },
+    positive: 75,
+    neutral: 15,
+    negative: 10,
+    topTopics: [
+      { topic: 'Shipping speed', sentiment: 'positive', mentions: 450 },
+      { topic: 'Product quality', sentiment: 'positive', mentions: 380 },
+      { topic: 'Customer support', sentiment: 'neutral', mentions: 200 },
     ],
   });
 });
 
-router.get('/analytics/satisfaction', async (req: Request, res: Response) => {
-  res.json({ npsScore: 72, npsDistribution: { promoters: 60, passives: 25, detractors: 15 } });
+// ========== RFM分析 ==========
+router.get('/rfm', async (req: Request, res: Response) => {
+  res.json({
+    segments: [
+      { rfmScore: '555', label: 'Champions', count: 200, avgRevenue: 3000 },
+      { rfmScore: '444', label: 'Loyal', count: 400, avgRevenue: 1500 },
+      { rfmScore: '333', label: 'Potential', count: 800, avgRevenue: 500 },
+      { rfmScore: '111', label: 'Lost', count: 600, avgRevenue: 50 },
+    ],
+  });
 });
 
-router.get('/reports/summary', async (req: Request, res: Response) => {
-  res.json({ period: req.query.period || 'last_30_days', totalCustomers: 5000, newCustomers: 250, repeatRate: 30 });
+// ========== 購買パターン ==========
+router.get('/purchase-patterns', async (req: Request, res: Response) => {
+  res.json({
+    topCategories: [
+      { category: 'Watches', customers: 2500, avgSpend: 300 },
+      { category: 'Electronics', customers: 1800, avgSpend: 200 },
+    ],
+    peakHours: [{ hour: 10, orders: 250 }, { hour: 14, orders: 300 }, { hour: 20, orders: 400 }],
+    avgDaysBetweenOrders: 18,
+  });
 });
 
-router.get('/reports/export', async (req: Request, res: Response) => {
-  res.json({ downloadUrl: '/api/ebay-customer-insights/reports/download/report.csv', format: req.query.format || 'csv', generatedAt: new Date().toISOString() });
-});
-
+// ========== 設定 ==========
 router.get('/settings', async (req: Request, res: Response) => {
-  res.json({ vipThreshold: 1000, churnDays: 60, autoSegmentation: true, trackBrowsing: true, notifyOnChurnRisk: true });
+  res.json({ segmentAutoUpdate: true, churnThresholdDays: 60, vipThresholdLtv: 1000, emailAlerts: true });
 });
 
 router.put('/settings', async (req: Request, res: Response) => {
   res.json({ ...req.body, updatedAt: new Date().toISOString() });
+});
+
+// ========== レポート ==========
+router.get('/reports', async (req: Request, res: Response) => {
+  res.json({
+    reports: [
+      { id: 'r1', name: 'Customer Segment Report', generatedAt: '2026-02-15', format: 'csv' },
+      { id: 'r2', name: 'Churn Analysis', generatedAt: '2026-02-14', format: 'pdf' },
+    ],
+  });
+});
+
+router.post('/reports/generate', async (req: Request, res: Response) => {
+  res.status(201).json({
+    id: `rpt_${Date.now()}`,
+    name: req.body.name || 'Customer Insights Report',
+    status: 'GENERATING',
+    estimatedCompletion: new Date(Date.now() + 60000).toISOString(),
+  });
+});
+
+router.get('/reports/download', async (req: Request, res: Response) => {
+  res.json({ downloadUrl: '/api/ebay-customer-insights/reports/download/report.csv', format: req.query.format || 'csv', generatedAt: new Date().toISOString() });
 });
 
 export default router;

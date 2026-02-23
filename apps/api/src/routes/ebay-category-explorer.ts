@@ -97,35 +97,196 @@ router.get('/tree/:id', async (req: Request, res: Response) => {
   });
 });
 
-// ========== ã‚«ãƒ†ã‚´ãƒªè©³ç´° ‚OOOOOOOOOBœ›Ý]\‹™Ù]
-	ËØØ]YÛÜšY\ËÎšY	Ë\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËšœÛÛŠÂˆYˆ™\Kœ\˜[\ËšYˆ˜[YNˆ	ÕÜš\ÝØ]Ú\ÉËˆ]ˆÉÒ™]Ù[žH	ˆØ]Ú\ÉË	ÕØ]Ú\ÉË	ÕÜš\ÝØ]Ú\É×Kˆ™YT˜]NˆLKKˆ\Ý[™ÜÎˆMLˆ]™ÔšXÙNˆKˆÛÛ\]][ÛŽˆ	ÒQÒ	Ëˆ™\]Z\™YÜXÚYšXÜÎˆÉÐœ˜[™	Ë	Ó[Ý™[Y[	Ë	ÐØ\ÙHÚ^™I×Kˆ™XÛÛ[Y[™YÜXÚYšXÜÎˆÉÑX[ÛÛÜ‰Ë	Ð˜[™X]\šX[	Ë	ÕØ]\ˆ™\Ú\Ý[˜ÙI×KˆJNÂŸJNÂ‚œ›Ý]\‹™Ù]
-	ËØØ]YÛÜšY\ËÎšYÜÝ]ÉË\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËšœÛÛŠÂˆYˆ™\Kœ\˜[\ËšYˆ\Ý[™ÜÎˆMLˆÛÛ\ÝÌ^\ÎˆLˆ]™ÔšXÙNˆKˆ]™ÔÛÛšXÙNˆŒŒˆÙ[›ÝYÚ˜]NˆÌËŒËˆšXÙT˜[™ÙNˆÈZ[ŽˆŒX^ˆLKˆJNÂŸJNÂ‚œ›Ý]\‹™Ù]
-	ËØØ]YÛÜšY\ËÎšYÜÜXÚYšXÜÉË\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËšœÛÛŠÂˆYˆ™\Kœ\˜[\ËšYˆÜXÚYšXÜÎˆÂˆÈ˜[YNˆ	Ðœ˜[™	Ë™\]Z\™YˆYK˜[Y\ÎˆÉÔÙZZÛÉË	ÐØ\Ú[ÉË	ÓÜšY[	Ë	ÐÚ]^™[‰×HKˆÈ˜[YNˆ	Ó[Ý™[Y[	Ë™\]Z\™YˆYK˜[Y\ÎˆÉÐ]]ÛX]XÉË	Ô]X\‰Ë	ÓYXÚ[šXØ[	×HKˆÈ˜[YNˆ	ÐØ\ÙHÚ^™IË™\]Z\™Yˆ˜[ÙK˜[Y\ÎˆÉÍ[IË	Í›[IË	Í[I×HKˆKˆJNÂŸJNÂ‚‹ËÈOOOOOOOOOH9/çykf8àªøàá¸à­8àêˆOOOOOOOOOBœ›Ý]\‹™Ù]
-	ËÜØ]™Y	Ë\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËšœÛÛŠÂˆØ]YÛÜšY\ÎˆÂˆÈYˆ	ÌŽLL	Ë˜[YNˆ	ÕÜš\ÝØ]Ú\ÉËØ]™Y]ˆ	ÌŒ‹L‹LL	ÈKˆÈYˆ	ÌMÌ	Ë˜[YNˆ	ÕØ]Ú\ÉËØ]™Y]ˆ	ÌŒ‹L‹LL‰ÈKˆKˆÝ[ˆKˆJNÂŸJNÂ‚œ›Ý]\‹œÜÝ
-	ËÜØ]™Y	Ë\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËœÝ]\ÊŒJKšœÛÛŠÂˆØ]YÛÜžRYˆ™\K˜›ÙK˜Ø]YÛÜžRYˆØ]™Y]ˆ™]È]J
-KÒTÓÔÝš[™Ê
-KˆJNÂŸJNÂ‚œ›Ý]\‹™[]J	ËÜØ]™YÎšY	Ë\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËšœÛÛŠÈÝXØÙ\ÜÎˆYK[]YYˆ™\Kœ\˜[\ËšYJNÂŸJNÂ‚‹ËÈOOOOOOOOOH8àç¸ààøàå8àìøà¬OOOOOOOOOBœ›Ý]\‹™Ù]
-	ËÛX\[™ÜÉË\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËšœÛÛŠÂˆX\[™ÜÎˆÂˆÈYˆ	ÛLIËÛÝ\˜ÙPØ]YÛÜžNˆ	ú!ey¦`º*"	ËX˜^PØ]YÛÜžRYˆ	ÌŽLL	ËX˜^PØ]YÛÜžS˜[YNˆ	ÕÜš\ÝØ]Ú\ÉÈKˆÈYˆ	ÛL‰ËÛÝ\˜ÙPØ]YÛÜžNˆ	ù¤#¹¦`º*"	ËX˜^PØ]YÛÜžRYˆ	ÌŽLL‰ËX˜^PØ]YÛÜžS˜[YNˆ	ÔØÚÙ]Ø]Ú\ÉÈKˆKˆÝ[ˆLˆJNÂŸJNÂ‚œ›Ý]\‹œÜÝ
-	ËÛX\[™ÜÉË\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËœÝ]\ÊŒJKšœÛÛŠÂˆYˆX\[™×ÉÑ]K››ÝÊ
-_Xˆ‹‹œ™\K˜›ÙKˆÜ™X]Y]ˆ™]È]J
-KÒTÓÔÝš[™Ê
-KˆJNÂŸJNÂ‚œ›Ý]\‹œ]
-	ËÛX\[™ÜËÎšY	Ë\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËšœÛÛŠÂˆYˆ™\Kœ\˜[\ËšYˆ‹‹œ™\K˜›ÙKˆ\]Y]ˆ™]È]J
-KÒTÓÔÝš[™Ê
-KˆJNÂŸJNÂ‚œ›Ý]\‹™[]J	ËÛX\[™ÜËÎšY	Ë\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËšœÛÛŠÈÝXØÙ\ÜÎˆYK[]YYˆ™\Kœ\˜[\ËšYJNÂŸJNÂ‚‹ËÈOOOOOOOOOH:*+yk¦ˆOOOOOOOOOBœ›Ý]\‹™Ù]
-	ËÜÙ][™ÜÉË\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËšœÛÛŠÂˆY˜][X\šÙ]XÙNˆ	ÕTÉËˆÚÝÑ™YT˜]\ÎˆYKˆÚÝÓ\Ý[™ÐÛÝ[ÎˆYKˆ]]ÔÝYÙÙ\ÝˆYKˆJNÂŸJNÂ‚œ›Ý]\‹œ]
-	ËÜÙ][™ÜÉË\Þ[˜È
-™\Nˆ™\]Y\Ý™\Îˆ™\ÜÛœÙJHOˆÂˆ™\ËšœÛÛŠÂˆ‹‹œ™\K˜›ÙKˆ\]Y]ˆ™]È]J
-KÒTÓÔÝš[™Ê
-KˆJNÂŸJNÂ‚™^ÜY˜][›Ý]\
+// ========== ã‚«ãƒ†ã‚´ãƒªè©³ç´° ==========
+router.get('/categories/:id', async (req: Request, res: Response) => {
+  res.json({
+    id: req.params.id,
+    name: 'Wristwatches',
+    path: 'Jewelry & Watches > Watches > Wristwatches',
+    level: 3,
+    parentId: '281100',
+    feeRate: 11.5,
+    listingCount: 1500000,
+    itemSpecifics: ['Brand', 'Movement', 'Case Material', 'Band Color'],
+  });
+});
+
+router.get('/categories/:id/fees', async (req: Request, res: Response) => {
+  res.json({
+    categoryId: req.params.id,
+    insertionFee: 0.35,
+    finalValueFee: 11.5,
+    internationalFee: 1.65,
+    paymentProcessingFee: 2.35,
+    promotedListingFee: 5.0,
+    estimatedTotal: 20.85,
+  });
+});
+
+router.get('/categories/:id/specifics', async (req: Request, res: Response) => {
+  res.json({
+    categoryId: req.params.id,
+    specifics: [
+      { name: 'Brand', required: true, values: ['Seiko', 'Citizen', 'Casio', 'Orient'] },
+      { name: 'Movement', required: true, values: ['Automatic', 'Quartz', 'Mechanical'] },
+      { name: 'Case Material', required: false, values: ['Stainless Steel', 'Titanium', 'Gold'] },
+    ],
+  });
+});
+
+router.get('/categories/:id/policies', async (req: Request, res: Response) => {
+  res.json({
+    categoryId: req.params.id,
+    policies: {
+      conditionRequired: true,
+      allowedConditions: ['New', 'Pre-owned', 'Refurbished'],
+      returnPolicyRequired: true,
+      itemSpecificsRequired: true,
+    },
+  });
+});
+
+// ========== ãŠæ°—ã«å…¥ã‚Šãƒ»æœ€è¿‘ä½¿ç”¨ ==========
+router.get('/saved', async (req: Request, res: Response) => {
+  res.json({
+    saved: [
+      { id: '281104', name: 'Wristwatches', savedAt: '2026-02-01', usageCount: 50 },
+      { id: '14324', name: 'Watch Parts', savedAt: '2026-01-15', usageCount: 30 },
+    ],
+    total: 25,
+  });
+});
+
+router.post('/saved', async (req: Request, res: Response) => {
+  res.status(201).json({ id: req.body.categoryId, savedAt: new Date().toISOString() });
+});
+
+router.delete('/saved/:id', async (req: Request, res: Response) => {
+  res.json({ deleted: true, categoryId: req.params.id });
+});
+
+router.get('/recent', async (req: Request, res: Response) => {
+  res.json({
+    recent: [
+      { id: '281104', name: 'Wristwatches', lastUsed: '2026-02-15' },
+      { id: '175684', name: 'Cell Phones & Smartphones', lastUsed: '2026-02-14' },
+      { id: '2614', name: 'Video Games', lastUsed: '2026-02-13' },
+    ],
+  });
+});
+
+// ========== ã‚«ãƒ†ã‚´ãƒªæ¯”è¼ƒ ==========
+router.post('/compare', async (req: Request, res: Response) => {
+  res.json({
+    categories: [
+      { id: '281104', name: 'Wristwatches', feeRate: 11.5, listings: 1500000, avgPrice: 250 },
+      { id: '175684', name: 'Cell Phones', feeRate: 13.25, listings: 1200000, avgPrice: 400 },
+    ],
+    recommendation: 'Wristwatches has lower fees and higher volume',
+  });
+});
+
+// ========== äººæ°—ãƒ»ãƒˆãƒ¬ãƒ³ãƒ‰ ==========
+router.get('/popular/by-marketplace', async (req: Request, res: Response) => {
+  res.json({
+    marketplaces: [
+      { marketplace: 'US', top: [{ id: '281104', name: 'Wristwatches', listings: 800000 }] },
+      { marketplace: 'UK', top: [{ id: '281104', name: 'Wristwatches', listings: 300000 }] },
+    ],
+  });
+});
+
+router.get('/popular/by-season', async (req: Request, res: Response) => {
+  res.json({
+    seasonal: [
+      { season: 'Spring', categories: ['Garden & Patio', 'Sporting Goods'] },
+      { season: 'Winter', categories: ['Electronics', 'Toys & Hobbies'] },
+    ],
+  });
+});
+
+// ========== ãƒžãƒƒãƒ”ãƒ³ã‚°ãƒ»å¤‰æ› ==========
+router.get('/mapping/:id', async (req: Request, res: Response) => {
+  res.json({
+    categoryId: req.params.id,
+    mappings: {
+      amazon: { id: 'B07XYZ', name: 'Watches' },
+      yahoo: { id: '23456', name: 'è…•æ™‚è¨ˆ' },
+      mercari: { id: '345', name: 'è…•æ™‚è¨ˆ' },
+    },
+  });
+});
+
+router.get('/mapping/cross-platform', async (req: Request, res: Response) => {
+  res.json({
+    mappings: [
+      { ebay: 'Wristwatches', amazon: 'Watches', yahoo: 'è…•æ™‚è¨ˆ', mercari: 'è…•æ™‚è¨ˆ' },
+      { ebay: 'Watch Parts', amazon: 'Watch Accessories', yahoo: 'æ™‚è¨ˆãƒ‘ãƒ¼ãƒ„', mercari: 'æ™‚è¨ˆãƒ‘ãƒ¼ãƒ„' },
+    ],
+  });
+});
+
+// ========== åˆ†æžãƒ»çµ±è¨ˆ ==========
+router.get('/analytics/fee-comparison', async (req: Request, res: Response) => {
+  res.json({
+    comparison: [
+      { category: 'Wristwatches', feeRate: 11.5, avgPrice: 250, estimatedFee: 28.75 },
+      { category: 'Electronics', feeRate: 12.9, avgPrice: 300, estimatedFee: 38.70 },
+    ],
+  });
+});
+
+router.get('/analytics/listing-distribution', async (req: Request, res: Response) => {
+  res.json({
+    distribution: [
+      { category: 'Jewelry & Watches', percentage: 22, listings: 330000 },
+      { category: 'Electronics', percentage: 18, listings: 270000 },
+      { category: 'Collectibles', percentage: 15, listings: 225000 },
+    ],
+  });
+});
+
+router.get('/analytics/price-ranges', async (req: Request, res: Response) => {
+  res.json({
+    priceRanges: [
+      { range: '$0-$50', percentage: 35, avgListings: 500000 },
+      { range: '$50-$200', percentage: 30, avgListings: 450000 },
+      { range: '$200-$1000', percentage: 25, avgListings: 375000 },
+      { range: '$1000+', percentage: 10, avgListings: 150000 },
+    ],
+  });
+});
+
+// ========== è¨­å®š ==========
+router.get('/settings', async (req: Request, res: Response) => {
+  res.json({ defaultMarketplace: 'US', autoSuggest: true, recentLimit: 20, savedLimit: 100 });
+});
+
+router.put('/settings', async (req: Request, res: Response) => {
+  res.json({ ...req.body, updatedAt: new Date().toISOString() });
+});
+
+// ========== ãƒ¬ãƒãƒ¼ãƒˆ ==========
+router.get('/reports', async (req: Request, res: Response) => {
+  res.json({
+    reports: [
+      { id: 'r1', name: 'Category Fee Report', generatedAt: '2026-02-15', format: 'csv' },
+      { id: 'r2', name: 'Trending Categories', generatedAt: '2026-02-14', format: 'pdf' },
+    ],
+  });
+});
+
+router.post('/reports/generate', async (req: Request, res: Response) => {
+  res.status(201).json({
+    id: `rpt_${Date.now()}`,
+    name: req.body.name || 'Category Report',
+    status: 'GENERATING',
+    estimatedCompletion: new Date(Date.now() + 60000).toISOString(),
+  });
+});
+
+router.get('/reports/download', async (req: Request, res: Response) => {
+  res.json({ downloadUrl: '/api/ebay-category-explorer/reports/download/report.csv', format: req.query.format || 'csv', generatedAt: new Date().toISOString() });
+});
+
+export default router;
