@@ -101,7 +101,7 @@ export interface SchedulerConfig {
     enabled: boolean;
     cronExpression: string;   // 新商品チェック間隔
     maxListingsPerRun: number;  // 1回の実行で出品する最大数
-    marketplace: 'joom' | 'ebay' | 'all';  // 対象マーケットプレイス
+    marketplace: 'joom' | 'ebay' | 'etsy' | 'shopify' | 'all';  // 対象マーケットプレイス
   };
   // Active商品の高頻度在庫監視（Phase 52）
   activeInventoryMonitor: {
