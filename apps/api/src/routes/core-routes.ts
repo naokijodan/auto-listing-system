@@ -90,6 +90,10 @@ import { listingPerformanceRouter } from './listing-performance';
 import { listingImprovementRouter } from './listing-improvement';
 import { automationRulesRouter } from './automation-rules';
 import { profitCalculationRouter } from './profit-calculation';
+import etsyAuthRouter from './etsy-auth';
+import etsyRouter from './etsy';
+import shopifyRouter from './shopify';
+import { shopifyAuthRouter } from './shopify-auth';
 
 
 export function registerCoreRoutes(app: Express): void {
@@ -184,4 +188,10 @@ export function registerCoreRoutes(app: Express): void {
   app.use('/api/listing-improvement', listingImprovementRouter);
   app.use('/api/automation-rules', automationRulesRouter);
   app.use('/api/profit-calculation', profitCalculationRouter);
+
+  // v3.0: Etsy/Shopify OAuth認証
+  app.use('/api/etsy', etsyAuthRouter);
+  app.use('/api/etsy-listings', etsyRouter);
+  app.use('/api/shopify-products', shopifyRouter);
+  app.use('/api/shopify', shopifyAuthRouter);
 }
