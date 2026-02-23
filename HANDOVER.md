@@ -2,10 +2,10 @@
 
 ## 最終更新
 
-**日付**: 2026-02-21
-**Phase**: マルチプラットフォーム統合M-1〜M-6完了 + 品質向上QP-1〜QP-5完了
+**日付**: 2026-02-23
+**Phase**: v3.0 Social Commerce Edition + Quality Foundation進行中
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: 232f08b
+**最新コミット**: 4e35116
 
 ---
 
@@ -40,7 +40,16 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 ## 🚀 次のセッションで実行すること
 
-### 次のアクション候補
+### Quality Foundation マイルストーン（3者協議で合意）
+
+| # | タスク | ステータス | 詳細 |
+|---|--------|-----------|------|
+| 1 | TSコンパイルエラー修正 | ✅ 完了 | Worker 0エラー達成、API破損ファイル5件再構築、report-generator 50箇所修正 |
+| 2 | HANDOVER.md更新 | ✅ 完了 | v3.0進捗反映 |
+| 3 | Etsy/Shopifyリフレッシュトークンテスト | 🔲 未着手 | OAuth refresh token自動更新のユニットテスト |
+| 4 | Phase 12コア（MSWハンドラー+API主要ユニットテスト） | 🔲 未着手 | MSWモック強化、主要API統合テスト |
+
+### 次のアクション候補（認証後）
 
 | 候補 | 内容 |
 |------|------|
@@ -72,6 +81,38 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 | M-4 | Shopify連携（OAuth + API + AI最適化出品 + ワーカー） | 990b8a9 |
 | M-5 | 在庫一元管理（inventory-manager + order-sync-manager + marketplace-router） | bb4c841 |
 | M-6 | 統合管理UI（在庫ダッシュボード + マーケットプレイス管理） | 232f08b |
+
+### 完了済み（v3.0 Social Commerce Edition - 2026-02-22〜23）
+| タスク | 内容 | コミット |
+|--------|------|---------|
+| SC-1 | Etsy/Shopify/Social Commerce基盤（キュー・ワーカー・API・UI） | 3e9608d |
+| SC-2 | Etsy出品API・Shopifyマーケットプレイスルーター | 03bb9d0 |
+| SC-3 | marketplace-router強化 + inventory-manager全チャネル対応 | 80ced40 |
+| SC-4 | 統合テスト13件（inventory-manager, marketplace-router） | d9e208f |
+| SC-5 | SchedulerConfig marketplace型にetsy/shopify追加 | f0be58a |
+| SC-6 | 既存テスト19件の修正（モック不整合の解消） | bad95cb, 3b67622 |
+| QF-1 | TSコンパイルエラー88件修正（worker 0エラー、API破損5ファイル再構築） | 4e35116 |
+
+#### v3.0新規ファイル
+- `apps/worker/src/lib/marketplace-router.ts` - 全チャネル統一ルーティング
+- `apps/worker/src/lib/inventory-manager.ts` - 6+チャネル在庫一元管理
+- `apps/worker/src/lib/etsy-api.ts` - Etsy REST API v3クライアント
+- `apps/worker/src/lib/shopify-api.ts` - Shopify Admin APIクライアント
+- `apps/worker/src/lib/integration-service.ts` - 外部連携統合サービス
+- `apps/worker/src/processors/etsy-publish.ts` - Etsy出品プロセッサ
+- `apps/worker/src/processors/shopify-publish.ts` - Shopify出品プロセッサ
+- `apps/api/src/routes/etsy-*.ts` - Etsy関連APIルート（4ファイル）
+- `apps/api/src/routes/shopify-*.ts` - Shopify関連APIルート（2ファイル）
+- `docs/oauth-setup-guide.md` - OAuth認証セットアップガイド
+
+#### QF-1で修正した主要ファイル
+- `report-generator.ts`: Prismaフィールド名50箇所修正（orderDate→orderedAt等）
+- `report.ts`: rootDir違反解消（API直接import→HTTP API呼び出し）
+- `ebay-publish.ts`: PriceHistory作成フィールド修正
+- `integration-service.ts`: Prismaリレーション名修正
+- `inventory-manager.ts`: Json nullフィルタ修正（Prisma.DbNull）
+- `etsy-api.ts`: Buffer→Uint8Array変換
+- 5 eBayルートファイル: バイナリ破損完全再構築
 
 ### 完了済み（品質向上）
 | タスク | 内容 | コミット |
