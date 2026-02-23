@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Hoist mocks
 const {
@@ -236,6 +236,21 @@ describe('Inventory Processor', () => {
   });
 
   describe('processScheduledInventoryCheck', () => {
+    let originalSetTimeout: typeof globalThis.setTimeout;
+
+    beforeEach(() => {
+      originalSetTimeout = globalThis.setTimeout;
+      // Mock setTimeout to execute callback immediately (skip rate limiting delay)
+      globalThis.setTimeout = ((fn: (...args: any[]) => void, _delay?: number) => {
+        fn();
+        return 0 as any;
+      }) as any;
+    });
+
+    afterEach(() => {
+      globalThis.setTimeout = originalSetTimeout;
+    });
+
     it('should check specific products when provided', async () => {
       mockPrisma.product.findMany.mockResolvedValue([
         { id: 'product-1' },
