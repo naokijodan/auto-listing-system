@@ -10,6 +10,10 @@ const JOOM_API = 'https://api-merchant.joom.com/api/v3';
 // 外部API
 const EXCHANGE_RATE_API = 'https://api.exchangerate-api.com';
 
+// Etsy API
+const ETSY_API = 'https://openapi.etsy.com/v3';
+const ETSY_TOKEN_URL = 'https://api.etsy.com/v3/public/oauth/token';
+
 export const handlers = [
   // ========================================
   // eBay OAuth
@@ -350,6 +354,225 @@ export const handlers = [
   // Phase 41-E: Cancel order
   http.post(`${JOOM_API}/orders/:orderId/cancel`, () => {
     return HttpResponse.json({});
+  }),
+
+  // ========================================
+  // Etsy API (v3)
+  // ========================================
+
+  // Etsy OAuth Token Refresh
+  http.post(ETSY_TOKEN_URL, async ({ request }) => {
+    const body = await request.text();
+    const params = new URLSearchParams(body);
+    const grantType = params.get('grant_type');
+
+    if (grantType === 'refresh_token') {
+      const refreshToken = params.get('refresh_token');
+      if (!refreshToken || refreshToken === 'invalid_token') {
+        return HttpResponse.json(
+          { error: 'invalid_grant', error_description: 'Invalid refresh token' },
+          { status: 400 },
+        );
+      }
+      return HttpResponse.json({
+        access_token: 'etsy-new-access-token',
+        expires_in: 3600,
+        token_type: 'Bearer',
+        refresh_token: 'etsy-new-refresh-token',
+      });
+    }
+
+    return HttpResponse.json({ error: 'unsupported_grant_type' }, { status: 400 });
+  }),
+
+  // Etsy Get Shop
+  http.get(`${ETSY_API}/application/shops`, () => {
+    return HttpResponse.json({
+      results: [{ shop_id: 12345, shop_name: 'TestShop' }],
+    });
+  }),
+
+  // Etsy Create Draft Listing
+  http.post(`${ETSY_API}/application/shops/:shopId/listings`, async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    if (!body.title) {
+      return HttpResponse.json({ error: 'title is required' }, { status: 400 });
+    }
+    return HttpResponse.json({
+      listing_id: 100001,
+      title: body.title,
+      state: 'draft',
+    });
+  }),
+
+  // Etsy Update Listing
+  http.put(`${ETSY_API}/application/shops/:shopId/listings/:listingId`, () => {
+    return HttpResponse.json({ listing_id: 100001, state: 'active' });
+  }),
+
+  // Etsy Get Listing
+  http.get(`${ETSY_API}/application/listings/:listingId`, ({ params }) => {
+    return HttpResponse.json({
+      listing_id: Number(params.listingId),
+      title: 'Test Etsy Listing',
+      state: 'active',
+    });
+  }),
+
+  // Etsy Delete Listing
+  http.delete(`${ETSY_API}/application/shops/:shopId/listings/:listingId`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  // Etsy Upload Image
+  http.post(`${ETSY_API}/application/shops/:shopId/listings/:listingId/images`, () => {
+    return HttpResponse.json({
+      listing_image_id: 200001,
+      url_fullxfull: 'https://i.etsystatic.com/test-image.jpg',
+    });
+  }),
+
+  // Etsy Get Receipts
+  http.get(`${ETSY_API}/application/shops/:shopId/receipts`, () => {
+    return HttpResponse.json({
+      count: 1,
+      results: [{ receipt_id: 300001, status: 'paid', grandtotal: { amount: 2999, divisor: 100 } }],
+    });
+  }),
+
+  // Etsy Seller Taxonomy
+  http.get(`${ETSY_API}/application/seller-taxonomy/nodes`, () => {
+    return HttpResponse.json({
+      results: [
+        { id: 1, name: 'Jewelry', children: [{ id: 10, name: 'Rings' }] },
+        { id: 2, name: 'Clothing', children: [] },
+      ],
+    });
+  }),
+
+  // Etsy Shipping Profiles
+  http.get(`${ETSY_API}/application/shops/:shopId/shipping-profiles`, () => {
+    return HttpResponse.json({
+      results: [{ shipping_profile_id: 400001, title: 'Standard Shipping' }],
+    });
+  }),
+
+  // ========================================
+  // Shopify Admin API
+  // ========================================
+
+  // Shopify Create Product
+  http.post('https://*/admin/api/2024-01/products.json', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    const product = body.product as Record<string, unknown> | undefined;
+    if (!product?.title) {
+      return HttpResponse.json({ errors: { title: ["can't be blank"] } }, { status: 422 });
+    }
+    return HttpResponse.json({
+      product: { id: 500001, title: product.title, status: 'active' },
+    });
+  }),
+
+  // Shopify Get Product
+  http.get('https://*/admin/api/2024-01/products/:productId.json', ({ params }) => {
+    return HttpResponse.json({
+      product: { id: Number(params.productId), title: 'Test Shopify Product', status: 'active' },
+    });
+  }),
+
+  // Shopify List Products
+  http.get('https://*/admin/api/2024-01/products.json', () => {
+    return HttpResponse.json({
+      products: [
+        { id: 500001, title: 'Product 1' },
+        { id: 500002, title: 'Product 2' },
+      ],
+    });
+  }),
+
+  // Shopify Update Product
+  http.put('https://*/admin/api/2024-01/products/:productId.json', async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    const product = body.product as Record<string, unknown> | undefined;
+    return HttpResponse.json({
+      product: { id: Number(params.productId), ...product },
+    });
+  }),
+
+  // Shopify Delete Product
+  http.delete('https://*/admin/api/2024-01/products/:productId.json', () => {
+    return HttpResponse.json({});
+  }),
+
+  // Shopify Set Inventory Level
+  http.post('https://*/admin/api/2024-01/inventory_levels/set.json', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({
+      inventory_level: {
+        inventory_item_id: body.inventory_item_id,
+        location_id: body.location_id,
+        available: body.available,
+      },
+    });
+  }),
+
+  // Shopify Adjust Inventory Level
+  http.post('https://*/admin/api/2024-01/inventory_levels/adjust.json', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({
+      inventory_level: {
+        inventory_item_id: body.inventory_item_id,
+        available: 10 + (body.available_adjustment as number || 0),
+      },
+    });
+  }),
+
+  // Shopify Get Inventory Levels
+  http.get('https://*/admin/api/2024-01/inventory_levels.json', () => {
+    return HttpResponse.json({
+      inventory_levels: [
+        { inventory_item_id: '1', location_id: 'loc-1', available: 10 },
+      ],
+    });
+  }),
+
+  // Shopify Get Orders
+  http.get('https://*/admin/api/2024-01/orders.json', () => {
+    return HttpResponse.json({
+      orders: [
+        { id: 600001, name: '#1001', total_price: '29.99', financial_status: 'paid' },
+      ],
+    });
+  }),
+
+  // Shopify Get Order
+  http.get('https://*/admin/api/2024-01/orders/:orderId.json', ({ params }) => {
+    return HttpResponse.json({
+      order: { id: Number(params.orderId), name: '#1001', total_price: '29.99' },
+    });
+  }),
+
+  // Shopify Create Fulfillment
+  http.post('https://*/admin/api/2024-01/orders/:orderId/fulfillments.json', () => {
+    return HttpResponse.json({
+      fulfillment: { id: 700001, status: 'success' },
+    });
+  }),
+
+  // Shopify Get Locations
+  http.get('https://*/admin/api/2024-01/locations.json', () => {
+    return HttpResponse.json({
+      locations: [{ id: 800001, name: 'Main Warehouse', active: true }],
+    });
+  }),
+
+  // Shopify Create Webhook
+  http.post('https://*/admin/api/2024-01/webhooks.json', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    const webhook = body.webhook as Record<string, unknown> | undefined;
+    return HttpResponse.json({
+      webhook: { id: 900001, topic: webhook?.topic, address: webhook?.address },
+    });
   }),
 ];
 
