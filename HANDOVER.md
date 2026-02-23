@@ -2,10 +2,10 @@
 
 ## 最終更新
 
-**日付**: 2026-02-23
-**Phase**: v3.0 Social Commerce Edition + Quality Foundation進行中
+**日付**: 2026-02-24
+**Phase**: v3.0 Social Commerce Edition — Quality Foundation完了
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: 0b483fe
+**最新コミット**: e445a5d
 
 ---
 
@@ -40,7 +40,36 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 ## 🚀 次のセッションで実行すること
 
-### Quality Foundation マイルストーン（3者協議で合意）
+### 優先度A: 外部認証（ユーザー操作が必要）
+
+| 候補 | 内容 | 前提条件 |
+|------|------|----------|
+| **INT-1** | **Etsy OAuth認証実行** — API Key取得→認証フロー実行→トークン取得 | Etsy Developer Accountが必要 |
+| **INT-2** | **Shopify OAuth認証実行** — アプリ作成→認証フロー実行→トークン取得 | Shopify Partnerアカウントが必要 |
+
+### 優先度B: 認証後の出品テスト
+
+| 候補 | 内容 | 前提条件 |
+|------|------|----------|
+| INT-3 | Etsy出品テスト（テスト商品1件でフルフロー確認） | INT-1完了 |
+| INT-4 | Shopify出品テスト（テスト商品1件でフルフロー確認） | INT-2完了 |
+| **M-7** | **Instagram Shop連携（Shopify Hub経由）** — 「Facebook & Instagram」チャネルアプリ設定。追加コードほぼなし | INT-2完了 |
+| **M-8 Ph1** | **TikTok Shop連携（Shopify Hub経由）** — Shopify公式TikTokアプリ設定。追加コードほぼなし | INT-2完了 |
+
+### 優先度C: コード品質改善（認証待ちの間に実行可能）
+
+| 候補 | 内容 | 見積り |
+|------|------|--------|
+| QP-7 | API側TSエラー580件修正（eBay Phase 114-270スタブ） | 大規模・段階的に |
+| QP-8 | API側テスト12ファイル修正（既存失敗テスト） | 中規模 |
+| M-8 Ph2 | TikTok Shop直接API連携（tiktok-api.ts作成、約1,500行） | 月間注文>100件時 |
+| INT-5 | eBay出品サービスのE2Eテスト | 中規模 |
+| INT-6 | 在庫同期の結合テスト（全6+チャネル） | 中規模 |
+| QP-6 | 既存eBayルーター242件をファクトリ（createEbayRouter）に移行 | 大規模 |
+
+---
+
+### 完了済みマイルストーン: Quality Foundation（3者協議で合意・全4タスク完了）
 
 | # | タスク | ステータス | 詳細 |
 |---|--------|-----------|------|
@@ -92,6 +121,7 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 | SC-5 | SchedulerConfig marketplace型にetsy/shopify追加 | f0be58a |
 | SC-6 | 既存テスト19件の修正（モック不整合の解消） | bad95cb, 3b67622 |
 | QF-1 | TSコンパイルエラー88件修正（worker 0エラー、API破損5ファイル再構築） | 4e35116 |
+| QF-2 | マルチチャネルテスト修正（v3.0の6チャネル対応） | e445a5d |
 
 #### v3.0新規ファイル
 - `apps/worker/src/lib/marketplace-router.ts` - 全チャネル統一ルーティング
@@ -113,6 +143,21 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 - `inventory-manager.ts`: Json nullフィルタ修正（Prisma.DbNull）
 - `etsy-api.ts`: Buffer→Uint8Array変換
 - 5 eBayルートファイル: バイナリ破損完全再構築
+
+### 現在のテスト・ビルド状況（2026-02-24時点）
+
+| 項目 | Worker | API |
+|------|--------|-----|
+| TSコンパイル | ✅ 0エラー | ❌ 580エラー（51ファイル、eBay Phase 114-270スタブ由来） |
+| テスト | ✅ 65ファイル / 1295テスト全パス | ❌ 12ファイル既存失敗（QF以前からの問題） |
+
+### 既知の問題・技術的負債
+
+1. **API TSエラー580件**: eBay Phase 114-270で生成されたスタブルーター242ファイルに型エラーが残存。実行時エラーではないが、厳密型チェックで検出される。
+2. **API既存テスト失敗12件**: QF以前から存在する失敗テスト。モック不整合が主因。
+3. **Vitest mock hoisting**: `vi.mock()`内で外部変数を参照する場合、必ず`vi.hoisted()`を使用すること。通常の`const`宣言はhoisting前に評価されるためアクセス不可。
+4. **Shopify APIレスポンス形式**: `response.text()` + `JSON.parse()`を使用。`response.json()`ではない。テストモック作成時に注意。
+5. **Prisma.DbNull**: JSONフィールドの`{ not: null }`フィルタには`Prisma.DbNull`が必要。モックには`Prisma: { DbNull: 'DbNull', JsonNull: 'JsonNull' }`を含めること。
 
 ### 完了済み（品質向上）
 | タスク | 内容 | コミット |
