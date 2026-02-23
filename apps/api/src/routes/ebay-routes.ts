@@ -256,6 +256,9 @@ import ebayOrderDisputeResolutionRouter from './ebay-order-dispute-resolution';
 import ebayBulkListingSchedulerRouter from './ebay-bulk-listing-scheduler';
 import ebayMarketplaceAnalyticsProRouter from './ebay-marketplace-analytics-pro';
 import ebayProductSourcingAssistantRouter from './ebay-product-sourcing-assistant';
+import ebayWarrantyManagerRouter from './ebay-warranty-manager';
+import ebayInventoryValuationToolRouter from './ebay-inventory-valuation-tool';
+import ebayCrossBorderTaxCalculatorRouter from './ebay-cross-border-tax-calculator';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -519,4 +522,8 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-product-sourcing-assistant', ebayProductSourcingAssistantRouter);
   app.use('/api/ebay-bulk-listing-scheduler', ebayBulkListingSchedulerRouter);
   app.use('/api/ebay-marketplace-analytics-pro', ebayMarketplaceAnalyticsProRouter);
+  // Phase 368-370
+  app.use('/api/ebay-warranty-manager', ebayWarrantyManagerRouter);
+  app.use('/api/ebay-inventory-valuation-tool', ebayInventoryValuationToolRouter);
+  app.use('/api/ebay-cross-border-tax-calculator', ebayCrossBorderTaxCalculatorRouter);
 }

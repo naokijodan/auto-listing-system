@@ -3,7 +3,7 @@
 ## 最終更新
 
 **日付**: 2026-02-24
-**Phase**: v3.0 Social Commerce Edition — Phase 367完了
+**Phase**: v3.0 Social Commerce Edition — Phase 370完了
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
 **最新コミット**: 50c70d2
 
@@ -292,6 +292,9 @@ APIエラーハンドリングを統一するミドルウェアを生成して�
 | 365 | 価格弾力性アナライザー | ebay-price-elasticity-analyzer | violet-600 |
 | 366 | 返品防止 | ebay-returns-prevention | indigo-600 |
 | 367 | 顧客ロイヤルティ | ebay-customer-loyalty | amber-600 |
+| 368 | 保証管理 | ebay-warranty-manager | sky-600 |
+| 369 | 在庫評価ツール | ebay-inventory-valuation-tool | orange-600 |
+| 370 | 越境税金計算機 | ebay-cross-border-tax-calculator | lime-600 |
 
 **Git履歴**:
 - e8ec5e5 Phase 351-352【最終バッチ】
