@@ -3,9 +3,9 @@
 ## 最終更新
 
 **日付**: 2026-02-24
-**Phase**: v3.0 Social Commerce Edition — Quality Foundation完了
+**Phase**: v3.0 Social Commerce Edition — Phase 354完了
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: e445a5d
+**最新コミット**: 50c70d2
 
 ---
 
@@ -150,12 +150,12 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 | 項目 | Worker | API |
 |------|--------|-----|
 | TSコンパイル | ✅ 0エラー | ❌ 580エラー（51ファイル、eBay Phase 114-270スタブ由来） |
-| テスト | ✅ 65ファイル / 1295テスト全パス | ❌ 12ファイル既存失敗（QF以前からの問題） |
+| テスト | ✅ 65ファイル / 1295テスト全パス | ✅ 12ファイル修正済み（QP-8完了、231テスト全パス） |
 
 ### 既知の問題・技術的負債
 
 1. **API TSエラー580件**: eBay Phase 114-270で生成されたスタブルーター242ファイルに型エラーが残存。実行時エラーではないが、厳密型チェックで検出される。
-2. **API既存テスト失敗12件**: QF以前から存在する失敗テスト。モック不整合が主因。
+2. ~~**API既存テスト失敗12件**~~: ✅ QP-8で修正完了（vi.hoisted、インポートパス、ルート順序、テスト期待値修正）。
 3. **Vitest mock hoisting**: `vi.mock()`内で外部変数を参照する場合、必ず`vi.hoisted()`を使用すること。通常の`const`宣言はhoisting前に評価されるためアクセス不可。
 4. **Shopify APIレスポンス形式**: `response.text()` + `JSON.parse()`を使用。`response.json()`ではない。テストモック作成時に注意。
 5. **Prisma.DbNull**: JSONフィールドの`{ not: null }`フィルタには`Prisma.DbNull`が必要。モックには`Prisma: { DbNull: 'DbNull', JsonNull: 'JsonNull' }`を含めること。
@@ -168,6 +168,7 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 | QP-3 | eBayルーターファクトリ抽出（createEbayRouter） | 29d285a |
 | QP-4 | APIエラーハンドリング統一（api-error, error-handler-v2, async-handler） | a4e938e |
 | QP-5 | OpenAPI仕様書自動生成スクリプト（5345パス、329タグ） | 4a73b80 |
+| QP-8 | API側テスト12ファイル修正（231テスト全パス） | 50c70d2 |
 
 ### codex/current-task.txt の準備
 
@@ -276,6 +277,8 @@ APIエラーハンドリングを統一するミドルウェアを生成して�
 | 350 | グローバル展開 | ebay-global-expansion | fuchsia-600 |
 | 351 | 出品違反チェッカー | ebay-policy-checker | red-600 |
 | 352 | 売上予測AI | ebay-sales-ai-predictor | violet-600 |
+| 353 | 在庫補充計画 | ebay-inventory-restock-planner | orange-600 |
+| 354 | 顧客コミュニケーションハブ | ebay-customer-communication-hub | lime-600 |
 
 **Git履歴**:
 - e8ec5e5 Phase 351-352【最終バッチ】
