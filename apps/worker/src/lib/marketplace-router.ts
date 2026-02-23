@@ -1,11 +1,11 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 
-export type MarketplaceTarget = 'JOOM' | 'EBAY' | 'ETSY' | 'SHOPIFY';
+export type MarketplaceTarget = 'JOOM' | 'EBAY' | 'ETSY' | 'SHOPIFY' | 'INSTAGRAM_SHOP' | 'TIKTOK_SHOP';
 
 export interface RoutingResult {
   targets: MarketplaceTarget[];
-  reasons: Record<MarketplaceTarget, string>;
+  reasons: Record<string, string>;
 }
 
 const log = logger.child({ module: 'marketplace-router' });
@@ -43,11 +43,17 @@ export class MarketplaceRouter {
     if (hasBrand || priceJpy > 30000) {
       targets.push('SHOPIFY');
       reasons['SHOPIFY'] = `ブランド品/高単価: Shopify出品対象（AIコマース最適化）`;
+
+      // Shopify Hub経由でソーシャルコマースチャネルに自動配信
+      targets.push('INSTAGRAM_SHOP');
+      reasons['INSTAGRAM_SHOP'] = `Shopify Hub経由: Instagram Shop自動配信`;
+      targets.push('TIKTOK_SHOP');
+      reasons['TIKTOK_SHOP'] = `Shopify Hub経由: TikTok Shop自動配信`;
     }
 
     const uniqueTargets = [...new Set(targets)];
     log.info({ type: 'route_product', productId, targets: uniqueTargets, reasons });
-    return { targets: uniqueTargets, reasons: reasons as Record<MarketplaceTarget, string> };
+    return { targets: uniqueTargets, reasons };
   }
 
   isVintageItem(product: { attributes?: any; title?: string; category?: string }): boolean {

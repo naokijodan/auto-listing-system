@@ -169,14 +169,24 @@ export class InventoryManager {
       })());
     }
 
-    if (grouped['SHOPIFY']) {
+    // Shopify + Shopify Hub channels (Instagram Shop, TikTok Shop) share the same inventory
+    const shopifyChannels = ['SHOPIFY', 'INSTAGRAM_SHOP', 'TIKTOK_SHOP'] as const;
+    const shopifyListings = shopifyChannels.flatMap(ch => grouped[ch] || []);
+
+    if (shopifyListings.length > 0) {
       tasks.push((async () => {
         try {
-          for (const listing of grouped['SHOPIFY']) {
+          const processed = new Set<string>();
+          for (const listing of shopifyListings) {
             const md = (listing.marketplaceData as any) || {};
             const variantId = md.variantId || md.shopifyVariantId;
             let inventoryItemId: string | undefined = md.inventoryItemId;
             const locationId: string | undefined = md.locationId;
+
+            // Skip duplicate inventory items (Instagram/TikTok share Shopify inventory)
+            const inventoryKey = `${inventoryItemId || variantId}-${locationId}`;
+            if (processed.has(inventoryKey)) continue;
+
             if (!inventoryItemId && variantId) {
               try {
                 const p = await shopifyApi.getProduct(listing.marketplaceListingId || '');
@@ -186,13 +196,19 @@ export class InventoryManager {
             }
             if (!inventoryItemId || !locationId) throw new Error('Missing Shopify inventoryItemId/locationId');
             await shopifyApi.setInventoryLevel(inventoryItemId, locationId, newStock);
+            processed.add(`${inventoryItemId}-${locationId}`);
           }
-          await updateSyncState('SHOPIFY', true);
+          // Update sync state for all Shopify Hub channels
+          for (const ch of shopifyChannels) {
+            if (grouped[ch]) await updateSyncState(ch, true);
+          }
         } catch (e: any) {
-          const msg = `SHOPIFY sync error: ${e.message}`;
+          const msg = `SHOPIFY Hub sync error: ${e.message}`;
           errors.push(msg);
-          await updateSyncState('SHOPIFY', false, msg);
-          log.error({ type: 'inventory_sync_error', marketplace: 'SHOPIFY', productId, error: e.message });
+          for (const ch of shopifyChannels) {
+            if (grouped[ch]) await updateSyncState(ch, false, msg);
+          }
+          log.error({ type: 'inventory_sync_error', marketplace: 'SHOPIFY_HUB', productId, error: e.message });
         }
       })());
     }
@@ -233,7 +249,9 @@ export class InventoryManager {
             if (listingId) tasks.push(etsyApi.updateListingInventory(listingId, [{ sku: (l.marketplaceData as any)?.sku || `RAKUDA-ETSY-${productId}`, property_values: [], offerings: [{ quantity: 0, is_enabled: false }] }]));
             break;
           }
-          case 'SHOPIFY': {
+          case 'SHOPIFY':
+          case 'INSTAGRAM_SHOP':
+          case 'TIKTOK_SHOP': {
             const md = (l.marketplaceData as any) || {};
             const inventoryItemId = md.inventoryItemId;
             const locationId = md.locationId;
@@ -271,7 +289,9 @@ export class InventoryManager {
             if (listingId) tasks.push(etsyApi.updateListingInventory(listingId, [{ sku: (l.marketplaceData as any)?.sku || `RAKUDA-ETSY-${productId}`, property_values: [], offerings: [{ quantity: newStock, is_enabled: newStock > 0 }] }]));
             break;
           }
-          case 'SHOPIFY': {
+          case 'SHOPIFY':
+          case 'INSTAGRAM_SHOP':
+          case 'TIKTOK_SHOP': {
             const md = (l.marketplaceData as any) || {};
             const inventoryItemId = md.inventoryItemId;
             const locationId = md.locationId;

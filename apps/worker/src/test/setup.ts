@@ -28,6 +28,8 @@ export const mockPrisma = {
     findUnique: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    count: vi.fn(),
+    groupBy: vi.fn(),
   },
   source: {
     findFirst: vi.fn(),
@@ -41,6 +43,7 @@ export const mockPrisma = {
     create: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
+    groupBy: vi.fn(),
   },
   notification: {
     create: vi.fn(),
@@ -61,6 +64,15 @@ export const mockPrisma = {
   },
   priceChangeLog: {
     create: vi.fn(),
+  },
+  inventoryEvent: {
+    create: vi.fn(),
+    update: vi.fn(),
+    count: vi.fn(),
+  },
+  marketplaceSyncState: {
+    upsert: vi.fn(),
+    groupBy: vi.fn(),
   },
   $transaction: vi.fn((operations) => Promise.all(operations)),
 };
@@ -166,6 +178,10 @@ export const FulfillmentStatus = {
 export const Marketplace = {
   JOOM: 'JOOM',
   EBAY: 'EBAY',
+  ETSY: 'ETSY',
+  SHOPIFY: 'SHOPIFY',
+  INSTAGRAM_SHOP: 'INSTAGRAM_SHOP',
+  TIKTOK_SHOP: 'TIKTOK_SHOP',
 };
 
 // Prisma モジュールをモック
