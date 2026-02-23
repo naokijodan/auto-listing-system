@@ -97,7 +97,8 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 - **Shopify = Social Commerce Hub**: Instagram/TikTok/Facebook/Pinterestへの配信ハブ
 - **Product = Catalog Core（SSoT）**: カタログの核として位置づけ
 - **SupplierSource**: 在庫の出どころを分離管理（STOCKED/DROPSHIP/HYBRID）
-- **Marketplace enum拡張**: INSTAGRAM_SHOP, TIKTOK_SHOP を追加予定
+- **Marketplace enum拡張**: INSTAGRAM_SHOP, TIKTOK_SHOP 追加済み
+- **SupplierSource/SupplyType/InventoryMode**: DB追加済み（prisma db push適用済み）
 - **段階的リアルタイム化**: Phase 1 APIポーリング → Phase 2 Webhook/イベント駆動
 - **Hub限界の境界条件**: 月間TikTok注文>100件、ライブコマースAPI必要時に直接API移行
 
