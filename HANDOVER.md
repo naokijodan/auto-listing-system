@@ -5,7 +5,7 @@
 **日付**: 2026-02-23
 **Phase**: v3.0 Social Commerce Edition + Quality Foundation進行中
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: 4e35116
+**最新コミット**: 0b483fe
 
 ---
 
@@ -46,8 +46,8 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 |---|--------|-----------|------|
 | 1 | TSコンパイルエラー修正 | ✅ 完了 | Worker 0エラー達成、API破損ファイル5件再構築、report-generator 50箇所修正 |
 | 2 | HANDOVER.md更新 | ✅ 完了 | v3.0進捗反映 |
-| 3 | Etsy/Shopifyリフレッシュトークンテスト | 🔲 未着手 | OAuth refresh token自動更新のユニットテスト |
-| 4 | Phase 12コア（MSWハンドラー+API主要ユニットテスト） | 🔲 未着手 | MSWモック強化、主要API統合テスト |
+| 3 | Etsy/Shopifyリフレッシュトークンテスト | ✅ 完了 | Etsy 13テスト + Shopify 14テスト = 27テスト追加 |
+| 4 | Phase 12コア（MSWハンドラー+API主要ユニットテスト） | ✅ 完了 | Etsy/Shopify MSWハンドラー + APIルートテスト10件 |
 
 ### 次のアクション候補（認証後）
 
