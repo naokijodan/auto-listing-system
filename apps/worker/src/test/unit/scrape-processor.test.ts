@@ -1,6 +1,38 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { processScrapeJob } from '../../processors/scrape';
 import { mockPrisma } from '../setup';
+
+// Hoist mock values so they are available when vi.mock factories run
+const { mockQueueAdd, mockAlertManagerProcessEvent, mockRedisSet, mockRedisGet } = vi.hoisted(() => ({
+  mockQueueAdd: vi.fn().mockResolvedValue({}),
+  mockAlertManagerProcessEvent: vi.fn().mockResolvedValue(undefined),
+  mockRedisSet: vi.fn().mockResolvedValue('OK'),
+  mockRedisGet: vi.fn().mockResolvedValue(null),
+}));
+
+// Mock ioredis
+vi.mock('ioredis', () => ({
+  default: vi.fn().mockReturnValue({
+    set: mockRedisSet,
+    get: mockRedisGet,
+    quit: vi.fn().mockResolvedValue('OK'),
+  }),
+}));
+
+// Mock bullmq
+vi.mock('bullmq', () => ({
+  Queue: vi.fn().mockImplementation(() => ({
+    add: mockQueueAdd,
+    close: vi.fn().mockResolvedValue(undefined),
+  })),
+  Job: vi.fn(),
+}));
+
+// Mock alert-manager
+vi.mock('../../lib/alert-manager', () => ({
+  alertManager: {
+    processEvent: mockAlertManagerProcessEvent,
+  },
+}));
 
 // Mock scrapers
 vi.mock('../../lib/scrapers', () => ({
@@ -17,6 +49,7 @@ vi.mock('@rakuda/schema', async (importOriginal) => {
   };
 });
 
+import { processScrapeJob } from '../../processors/scrape';
 import { scrapeProduct, scrapeSellerProducts } from '../../lib/scrapers';
 
 const mockScrapeProduct = vi.mocked(scrapeProduct);
@@ -42,7 +75,7 @@ describe('Scrape Processor', () => {
     mockPrisma.source.create.mockResolvedValue(mockSource);
     mockPrisma.product.findUnique.mockResolvedValue(null);
     mockPrisma.product.create.mockResolvedValue({ id: 'product-1', images: [], title: 'Test', description: 'Desc' });
-    mockPrisma.product.update.mockResolvedValue({ id: 'product-1' });
+    mockPrisma.product.update.mockResolvedValue({ id: 'product-1', images: [], title: 'Test', description: 'Desc' });
     mockPrisma.jobLog.create.mockResolvedValue({ id: 'log-1' });
   });
 

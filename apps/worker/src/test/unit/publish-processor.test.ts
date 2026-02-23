@@ -1,44 +1,106 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { processPublishJob } from '../../processors/publish';
-import { mockPrisma } from '../setup';
 
-// Mock external modules
-vi.mock('../../lib/joom-api', () => ({
-  isJoomConfigured: vi.fn(),
-  joomApi: {
-    createProduct: vi.fn(),
-    enableProduct: vi.fn(),
+// Hoist mocks so they're available before vi.mock() factory functions run
+const {
+  mockPrismaLocal,
+  mockJoomApi,
+  mockEbayApi,
+  mockIsJoomConfigured,
+  mockIsEbayConfigured,
+  mockMapConditionToEbay,
+  mockCalculatePrice,
+  mockAlertManager,
+  mockEventBus,
+} = vi.hoisted(() => {
+  return {
+    mockPrismaLocal: {
+      listing: {
+        findUnique: vi.fn(),
+        update: vi.fn(),
+      },
+      product: {
+        update: vi.fn(),
+      },
+      jobLog: {
+        create: vi.fn(),
+      },
+    },
+    mockJoomApi: {
+      createProduct: vi.fn(),
+      enableProduct: vi.fn(),
+    },
+    mockEbayApi: {
+      getCategoryId: vi.fn(),
+      getCategoryWithSpecifics: vi.fn(),
+      createOrUpdateInventoryItem: vi.fn(),
+      createOffer: vi.fn(),
+      publishOffer: vi.fn(),
+    },
+    mockIsJoomConfigured: vi.fn(),
+    mockIsEbayConfigured: vi.fn(),
+    mockMapConditionToEbay: vi.fn().mockReturnValue('NEW'),
+    mockCalculatePrice: vi.fn(),
+    mockAlertManager: {
+      processEvent: vi.fn(),
+    },
+    mockEventBus: {
+      publishListingUpdate: vi.fn(),
+    },
+  };
+});
+
+vi.mock('@rakuda/logger', () => ({
+  logger: {
+    child: vi.fn().mockReturnValue({
+      info: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+    }),
   },
+}));
+
+vi.mock('@rakuda/database', () => ({
+  prisma: mockPrismaLocal,
+}));
+
+vi.mock('@rakuda/config', () => ({
+  processBatch: vi.fn(),
+  MARKETPLACE_PRICE_LIMITS: {
+    JOOM_PRICE_LIMIT_JPY: 900000,
+  },
+}));
+
+vi.mock('../../lib/joom-api', () => ({
+  joomApi: mockJoomApi,
+  isJoomConfigured: mockIsJoomConfigured,
 }));
 
 vi.mock('../../lib/ebay-api', () => ({
-  isEbayConfigured: vi.fn(),
-  mapConditionToEbay: vi.fn().mockReturnValue('NEW'),
-  ebayApi: {
-    getCategoryId: vi.fn(),
-    getCategoryWithSpecifics: vi.fn(),
-    createOrUpdateInventoryItem: vi.fn(),
-    createOffer: vi.fn(),
-    publishOffer: vi.fn(),
-  },
+  ebayApi: mockEbayApi,
+  isEbayConfigured: mockIsEbayConfigured,
+  mapConditionToEbay: mockMapConditionToEbay,
 }));
 
 vi.mock('../../lib/price-calculator', () => ({
-  calculatePrice: vi.fn().mockResolvedValue({
-    listingPrice: 100,
-    shippingCost: 15,
-    profit: 25,
-    profitMargin: 0.25,
-  }),
+  calculatePrice: mockCalculatePrice,
 }));
 
-import { isJoomConfigured, joomApi } from '../../lib/joom-api';
-import { isEbayConfigured, ebayApi } from '../../lib/ebay-api';
+vi.mock('../../lib/alert-manager', () => ({
+  alertManager: mockAlertManager,
+}));
 
-const mockIsJoomConfigured = vi.mocked(isJoomConfigured);
-const mockIsEbayConfigured = vi.mocked(isEbayConfigured);
-const mockJoomApi = vi.mocked(joomApi);
-const mockEbayApi = vi.mocked(ebayApi);
+vi.mock('../../lib/event-bus', () => ({
+  eventBus: mockEventBus,
+}));
+
+vi.mock('../../lib/api-utils', () => ({
+  RateLimiter: vi.fn().mockImplementation(() => ({
+    acquire: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
+import { processPublishJob } from '../../processors/publish';
 
 describe('Publish Processor', () => {
   const mockProduct = {
@@ -51,6 +113,7 @@ describe('Publish Processor', () => {
     images: ['https://example.com/image1.jpg'],
     processedImages: ['https://cdn.example.com/image1.jpg'],
     category: 'Electronics',
+    attributes: {},
   };
 
   const mockListing = {
@@ -73,10 +136,18 @@ describe('Publish Processor', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockPrisma.listing.findUnique.mockResolvedValue(mockListing);
-    mockPrisma.listing.update.mockResolvedValue({ id: 'listing-1' });
-    mockPrisma.product.update.mockResolvedValue({ id: 'product-1' });
-    mockPrisma.jobLog.create.mockResolvedValue({ id: 'log-1' });
+    mockPrismaLocal.listing.findUnique.mockResolvedValue(mockListing);
+    mockPrismaLocal.listing.update.mockResolvedValue({ id: 'listing-1' });
+    mockPrismaLocal.product.update.mockResolvedValue({ id: 'product-1' });
+    mockPrismaLocal.jobLog.create.mockResolvedValue({ id: 'log-1' });
+    mockCalculatePrice.mockResolvedValue({
+      listingPrice: 100,
+      shippingCost: 15,
+      profit: 25,
+      profitMargin: 0.25,
+    });
+    mockAlertManager.processEvent.mockResolvedValue(undefined);
+    mockEventBus.publishListingUpdate.mockResolvedValue(undefined);
   });
 
   describe('dry run mode', () => {
@@ -97,7 +168,7 @@ describe('Publish Processor', () => {
 
   describe('listing not found', () => {
     it('should throw error when listing not found', async () => {
-      mockPrisma.listing.findUnique.mockResolvedValue(null);
+      mockPrismaLocal.listing.findUnique.mockResolvedValue(null);
 
       await expect(processPublishJob(mockJob)).rejects.toThrow('Listing not found');
     });
@@ -106,11 +177,11 @@ describe('Publish Processor', () => {
   describe('eBay publish', () => {
     beforeEach(() => {
       mockIsEbayConfigured.mockResolvedValue(true);
-      mockEbayApi.getCategoryId.mockResolvedValue('123456');
+      mockMapConditionToEbay.mockReturnValue('NEW');
       mockEbayApi.getCategoryWithSpecifics.mockResolvedValue({
         categoryId: '123456',
         categoryName: 'Electronics',
-        specifics: [],
+        itemSpecifics: {},
       });
       mockEbayApi.createOrUpdateInventoryItem.mockResolvedValue({
         success: true,
@@ -137,7 +208,7 @@ describe('Publish Processor', () => {
     it('should update listing status to ACTIVE on success', async () => {
       await processPublishJob(mockJob);
 
-      expect(mockPrisma.listing.update).toHaveBeenCalledWith({
+      expect(mockPrismaLocal.listing.update).toHaveBeenCalledWith({
         where: { id: 'listing-1' },
         data: expect.objectContaining({
           status: 'ACTIVE',
@@ -149,7 +220,7 @@ describe('Publish Processor', () => {
     it('should create job log on success', async () => {
       await processPublishJob(mockJob);
 
-      expect(mockPrisma.jobLog.create).toHaveBeenCalledWith({
+      expect(mockPrismaLocal.jobLog.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           jobId: 'job-123',
           queueName: 'publish',
@@ -167,7 +238,7 @@ describe('Publish Processor', () => {
 
       await expect(processPublishJob(mockJob)).rejects.toThrow('eBay Inventory API error');
 
-      expect(mockPrisma.listing.update).toHaveBeenCalledWith({
+      expect(mockPrismaLocal.listing.update).toHaveBeenCalledWith({
         where: { id: 'listing-1' },
         data: expect.objectContaining({
           status: 'ERROR',
@@ -201,7 +272,7 @@ describe('Publish Processor', () => {
     };
 
     beforeEach(() => {
-      mockPrisma.listing.findUnique.mockResolvedValue({
+      mockPrismaLocal.listing.findUnique.mockResolvedValue({
         ...mockListing,
         marketplace: 'JOOM',
       });
