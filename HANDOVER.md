@@ -279,6 +279,8 @@ APIエラーハンドリングを統一するミドルウェアを生成して�
 | 352 | 売上予測AI | ebay-sales-ai-predictor | violet-600 |
 | 353 | 在庫補充計画 | ebay-inventory-restock-planner | orange-600 |
 | 354 | 顧客コミュニケーションハブ | ebay-customer-communication-hub | lime-600 |
+| 355 | 送料比較ツール | ebay-shipping-rate-comparator | pink-600 |
+| 356 | 出品パフォーマンストラッカー | ebay-listing-performance-tracker | teal-600 |
 
 **Git履歴**:
 - e8ec5e5 Phase 351-352【最終バッチ】

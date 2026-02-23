@@ -249,6 +249,8 @@ import ebayPolicyCheckerRouter from './ebay-policy-checker';
 import ebaySalesAiPredictorRouter from './ebay-sales-ai-predictor';
 import ebayInventoryRestockPlannerRouter from './ebay-inventory-restock-planner';
 import ebayCustomerCommunicationHubRouter from './ebay-customer-communication-hub';
+import ebayShippingRateComparatorRouter from './ebay-shipping-rate-comparator';
+import ebayListingPerformanceTrackerRouter from './ebay-listing-performance-tracker';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -502,4 +504,6 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-sales-ai-predictor', ebaySalesAiPredictorRouter);
   app.use('/api/ebay-inventory-restock-planner', ebayInventoryRestockPlannerRouter);
   app.use('/api/ebay-customer-communication-hub', ebayCustomerCommunicationHubRouter);
+  app.use('/api/ebay-shipping-rate-comparator', ebayShippingRateComparatorRouter);
+  app.use('/api/ebay-listing-performance-tracker', ebayListingPerformanceTrackerRouter);
 }
