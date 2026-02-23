@@ -145,14 +145,16 @@ describe('INT-5〜6: 全チャネル在庫同期結合テスト', () => {
   // ──────────────────────────────────────────────
 
   describe('marketplace-router: 自動振り分け', () => {
-    it('ヴィンテージ + ブランド品は全4チャネルに振り分けられる', async () => {
+    it('ヴィンテージ + ブランド品は全6チャネルに振り分けられる（Shopify Hub経由含む）', async () => {
       const result = await marketplaceRouter.routeProduct('product-test-1');
 
       expect(result.targets).toContain('EBAY');
       expect(result.targets).toContain('JOOM');
       expect(result.targets).toContain('ETSY');
       expect(result.targets).toContain('SHOPIFY');
-      expect(result.targets.length).toBe(4);
+      expect(result.targets).toContain('INSTAGRAM_SHOP');
+      expect(result.targets).toContain('TIKTOK_SHOP');
+      expect(result.targets.length).toBe(6);
     });
 
     it('¥900,000超の商品はJoom対象外（eBay + Shopify）', async () => {
