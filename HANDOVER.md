@@ -281,6 +281,8 @@ APIエラーハンドリングを統一するミドルウェアを生成して�
 | 354 | 顧客コミュニケーションハブ | ebay-customer-communication-hub | lime-600 |
 | 355 | 送料比較ツール | ebay-shipping-rate-comparator | pink-600 |
 | 356 | 出品パフォーマンストラッカー | ebay-listing-performance-tracker | teal-600 |
+| 357 | 注文紛争解決 | ebay-order-dispute-resolution | violet-600 |
+| 358 | 商品ソーシングアシスタント | ebay-product-sourcing-assistant | indigo-600 |
 
 **Git履歴**:
 - e8ec5e5 Phase 351-352【最終バッチ】
