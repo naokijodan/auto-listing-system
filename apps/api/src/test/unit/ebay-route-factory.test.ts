@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import request from 'supertest';
 import { describe, test, expect } from 'vitest';
-import { createEbayRouter, EbayRouteConfig } from './ebay-route-factory';
+import { createEbayRouter, EbayRouteConfig } from '../../routes/ebay-route-factory';
 
 function countRoutes(router: Router): number {
   const stack: unknown = (router as unknown as { stack?: unknown }).stack;

@@ -2,6 +2,35 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
+const { prismaMock } = vi.hoisted(() => {
+  const prismaMock = {
+    order: {
+      findMany: vi.fn().mockResolvedValue([{ id: 'o1', marketplace: 'JOOM', total: 10, orderedAt: new Date() }]),
+      count: vi.fn().mockResolvedValue(1),
+      findUnique: vi.fn().mockResolvedValue({ id: 'o1', marketplace: 'JOOM', marketplaceOrderId: 'M1' }),
+      aggregate: vi.fn().mockResolvedValue({ _sum: { total: 10 } }),
+      update: vi.fn().mockResolvedValue({ id: 'o1' }),
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
+    sale: {
+      aggregate: vi.fn().mockResolvedValue({ _sum: { totalPrice: 10, costPrice: 5, profitJpy: 500 } }),
+      findMany: vi.fn().mockResolvedValue([{ id: 's1', orderId: 'o1' }]),
+      findUnique: vi.fn().mockResolvedValue({ id: 's1', totalPrice: 10 }),
+      update: vi.fn().mockResolvedValue({ id: 's1' }),
+    },
+    exchangeRate: {
+      findFirst: vi.fn().mockResolvedValue({ rate: 0.0067 }),
+    },
+    jobLog: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    notification: {
+      create: vi.fn().mockResolvedValue({ id: 'n1' }),
+    },
+  };
+  return { prismaMock };
+});
+
 vi.mock('bullmq', () => ({
   Queue: vi.fn().mockImplementation(() => ({
     add: vi.fn().mockResolvedValue({ id: 'job-123' }),
@@ -22,30 +51,6 @@ vi.mock('ioredis', () => {
   };
   return { default: vi.fn().mockImplementation(() => mockRedis) };
 });
-
-const prismaMock = {
-  order: {
-    findMany: vi.fn().mockResolvedValue([{ id: 'o1', marketplace: 'JOOM', total: 10, orderedAt: new Date() }]),
-    count: vi.fn().mockResolvedValue(1),
-    findUnique: vi.fn().mockResolvedValue({ id: 'o1', marketplace: 'JOOM', marketplaceOrderId: 'M1' }),
-    aggregate: vi.fn().mockResolvedValue({ _sum: { total: 10 } }),
-  },
-  sale: {
-    aggregate: vi.fn().mockResolvedValue({ _sum: { totalPrice: 10, costPrice: 5, profitJpy: 500 } }),
-    findMany: vi.fn().mockResolvedValue([{ id: 's1', orderId: 'o1' }]),
-    findUnique: vi.fn().mockResolvedValue({ id: 's1', totalPrice: 10 }),
-    update: vi.fn().mockResolvedValue({ id: 's1' }),
-  },
-  exchangeRate: {
-    findFirst: vi.fn().mockResolvedValue({ rate: 0.0067 }),
-  },
-  jobLog: {
-    findMany: vi.fn().mockResolvedValue([]),
-  },
-  notification: {
-    create: vi.fn().mockResolvedValue({ id: 'n1' }),
-  },
-};
 
 vi.mock('@rakuda/database', async () => ({ prisma: prismaMock }));
 vi.mock('@rakuda/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }) } }));

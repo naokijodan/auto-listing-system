@@ -11,41 +11,36 @@ vi.mock('@rakuda/database', async () => {
           {
             id: 'perf-1',
             listingId: 'listing-1',
-            impressions: 1000,
+            ebayItemId: 'ebay-abc123',
+            title: 'Test Product',
+            price: 100,
+            currency: 'USD',
+            category: 'Electronics',
+            categoryId: 'cat-1',
             views: 50,
-            clicks: 25,
             watchers: 5,
-            sales: 2,
-            ctr: 0.025,
-            conversionRate: 0.08,
-            score: 75,
-            recordedAt: new Date(),
-            listing: {
-              id: 'listing-1',
-              title: 'Test Product',
-              listingPrice: 100,
-            },
+            impressions: 1000,
+            clicks: 25,
+            ctr: 2.5,
+            daysListed: 10,
+            performanceScore: 75,
+            isLowPerformer: false,
+            _count: { flags: 1, suggestions: 2 },
           },
         ]),
         findUnique: vi.fn().mockResolvedValue({
           id: 'perf-1',
           listingId: 'listing-1',
-          impressions: 1000,
           views: 50,
-          score: 75,
+          watchers: 5,
+          performanceScore: 75,
         }),
-        create: vi.fn().mockResolvedValue({
-          id: 'perf-2',
-          listingId: 'listing-2',
-          impressions: 500,
-          views: 30,
-          score: 60,
-        }),
+        createMany: vi.fn().mockResolvedValue({ count: 20 }),
         count: vi.fn().mockResolvedValue(10),
-        aggregate: vi.fn().mockResolvedValue({
-          _avg: { score: 70, ctr: 0.03 },
-          _sum: { impressions: 10000, views: 500 },
-        }),
+        aggregate: vi.fn()
+          .mockResolvedValueOnce({ _avg: { views: 45.3 } })
+          .mockResolvedValueOnce({ _avg: { watchers: 8.7 } }),
+        groupBy: vi.fn().mockResolvedValue([]),
       },
       performanceSnapshot: {
         findMany: vi.fn().mockResolvedValue([]),
@@ -55,57 +50,80 @@ vi.mock('@rakuda/database', async () => {
         findMany: vi.fn().mockResolvedValue([
           {
             id: 'thresh-1',
+            organizationId: 'default',
+            name: 'Low Views Threshold',
+            description: 'Flag listings with low views',
             metric: 'views',
-            minValue: 10,
-            warningValue: 5,
-            criticalValue: 0,
+            operator: 'LESS_THAN',
+            absoluteValue: 10,
+            relativePercentile: null,
+            daysListedMin: null,
+            actionOnMatch: 'FLAG',
+            priority: 1,
             isActive: true,
           },
         ]),
-        findFirst: vi.fn().mockResolvedValue({
-          id: 'thresh-1',
+        create: vi.fn().mockResolvedValue({
+          id: 'thresh-2',
+          organizationId: 'default',
+          name: 'New Threshold',
           metric: 'views',
-          minValue: 10,
+          operator: 'LESS_THAN',
+          absoluteValue: 15,
+          priority: 0,
+          isActive: true,
         }),
-        upsert: vi.fn().mockResolvedValue({
+        update: vi.fn().mockResolvedValue({
           id: 'thresh-1',
+          name: 'Updated Threshold',
           metric: 'views',
-          minValue: 15,
+          absoluteValue: 15,
+          isActive: true,
         }),
+        delete: vi.fn().mockResolvedValue({}),
+        count: vi.fn().mockResolvedValue(3),
       },
       lowPerformanceFlag: {
         findMany: vi.fn().mockResolvedValue([
           {
             id: 'flag-1',
-            listingId: 'listing-1',
-            reason: 'low_views',
+            organizationId: 'default',
+            listingId: 'perf-1',
+            reason: 'Low performance detected during sync',
             score: 20,
-            recommendedAction: 'review_title',
-            flaggedAt: new Date(),
+            metrics: { views: 5, watchers: 0, ctr: 0, daysListed: 45 },
+            suggestedActions: ['PRICE_REDUCE', 'IMPROVE_TITLE'],
+            status: 'ACTIVE',
+            listing: { title: 'Test Product', views: 5, watchers: 0, price: 100 },
           },
         ]),
         create: vi.fn().mockResolvedValue({}),
+        update: vi.fn().mockResolvedValue({
+          id: 'flag-1',
+          status: 'DISMISSED',
+          dismissedAt: new Date(),
+          dismissedBy: 'user',
+          dismissReason: 'Not relevant',
+        }),
         count: vi.fn().mockResolvedValue(5),
       },
       categoryBenchmark: {
         findMany: vi.fn().mockResolvedValue([
           {
             id: 'bench-1',
-            category: 'Electronics',
+            organizationId: 'default',
+            categoryId: 'cat-1',
+            categoryName: 'Electronics',
             avgViews: 100,
-            avgCtr: 0.05,
-            avgConversionRate: 0.1,
+            avgWatchers: 15,
+            avgImpressions: 2000,
+            avgCtr: 5.0,
+            avgDaysToSell: 14,
+            sampleSize: 50,
           },
         ]),
-        findFirst: vi.fn().mockResolvedValue({
-          id: 'bench-1',
-          category: 'Electronics',
-          avgViews: 100,
-        }),
-      },
-      listing: {
-        findMany: vi.fn().mockResolvedValue([]),
-        count: vi.fn().mockResolvedValue(50),
+        count: vi.fn().mockResolvedValue(4),
+        upsert: vi.fn().mockResolvedValue({}),
       },
     },
   };
@@ -126,6 +144,7 @@ vi.mock('@rakuda/logger', () => ({
 
 // Import after mocks
 import { listingPerformanceRouter } from '../../routes/listing-performance';
+import { prisma } from '@rakuda/database';
 
 describe('Listing Performance API', () => {
   let app: express.Application;
@@ -135,9 +154,14 @@ describe('Listing Performance API', () => {
     app = express();
     app.use(express.json());
     app.use('/api/listing-performance', listingPerformanceRouter);
-    app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      res.status(err.status || 500).json({ success: false, error: err.message });
+    app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      res.status(err.status || 500).json({ error: err.message });
     });
+
+    // Reset aggregate mock to return correct sequential values for stats endpoint
+    (prisma.listingPerformance.aggregate as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce({ _avg: { views: 45.3 } })
+      .mockResolvedValueOnce({ _avg: { watchers: 8.7 } });
   });
 
   describe('GET /api/listing-performance/stats', () => {
@@ -146,8 +170,28 @@ describe('Listing Performance API', () => {
         .get('/api/listing-performance/stats');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
+      expect(response.body).toHaveProperty('totalListings');
+      expect(response.body).toHaveProperty('lowPerformers');
+      expect(response.body).toHaveProperty('lowPerformerRate');
+      expect(response.body).toHaveProperty('avgViews');
+      expect(response.body).toHaveProperty('avgWatchers');
+      expect(response.body).toHaveProperty('totalFlags');
+      expect(response.body).toHaveProperty('activeFlags');
+      expect(response.body).toHaveProperty('totalThresholds');
+      expect(response.body).toHaveProperty('activeThresholds');
+      expect(response.body).toHaveProperty('totalBenchmarks');
+    });
+
+    it('should calculate lowPerformerRate correctly', async () => {
+      // count mock returns 10 for all count() calls
+      // lowPerformerRate = (10 / 10) * 100 = 100
+      const response = await request(app)
+        .get('/api/listing-performance/stats');
+
+      expect(response.status).toBe(200);
+      expect(typeof response.body.lowPerformerRate).toBe('number');
+      expect(typeof response.body.avgViews).toBe('number');
+      expect(typeof response.body.avgWatchers).toBe('number');
     });
   });
 
@@ -157,24 +201,35 @@ describe('Listing Performance API', () => {
         .get('/api/listing-performance/listings');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeInstanceOf(Array);
+      expect(response.body).toHaveProperty('listings');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body.listings).toBeInstanceOf(Array);
     });
 
-    it('should support pagination', async () => {
+    it('should support pagination with limit and offset', async () => {
       const response = await request(app)
-        .get('/api/listing-performance/listings?page=1&limit=10');
+        .get('/api/listing-performance/listings?limit=10&offset=0');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
+      expect(response.body).toHaveProperty('listings');
+      expect(response.body).toHaveProperty('total');
     });
 
-    it('should filter by score range', async () => {
+    it('should filter by lowPerformer flag', async () => {
       const response = await request(app)
-        .get('/api/listing-performance/listings?minScore=50&maxScore=100');
+        .get('/api/listing-performance/listings?lowPerformer=true');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
+      expect(response.body).toHaveProperty('listings');
+      expect(response.body).toHaveProperty('total');
+    });
+
+    it('should support sorting', async () => {
+      const response = await request(app)
+        .get('/api/listing-performance/listings?sortBy=views&order=desc');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('listings');
     });
   });
 
@@ -184,29 +239,33 @@ describe('Listing Performance API', () => {
         .get('/api/listing-performance/low-performers');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeInstanceOf(Array);
+      expect(response.body).toHaveProperty('listings');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body.listings).toBeInstanceOf(Array);
     });
 
-    it('should filter by reason', async () => {
+    it('should support pagination with limit and offset', async () => {
       const response = await request(app)
-        .get('/api/listing-performance/low-performers?reason=low_views');
+        .get('/api/listing-performance/low-performers?limit=10&offset=0');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
+      expect(response.body).toHaveProperty('listings');
+      expect(response.body).toHaveProperty('total');
     });
   });
 
   describe('POST /api/listing-performance/sync', () => {
-    it('should sync performance data', async () => {
+    it('should sync performance data and return counts', async () => {
       const response = await request(app)
         .post('/api/listing-performance/sync');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('synced');
+      expect(response.body).toHaveProperty('lowPerformersDetected');
     });
 
-    it('should accept marketplace filter', async () => {
+    it('should accept request body without error', async () => {
       const response = await request(app)
         .post('/api/listing-performance/sync')
         .send({ marketplace: 'ebay' });
@@ -217,66 +276,157 @@ describe('Listing Performance API', () => {
   });
 
   describe('GET /api/listing-performance/thresholds', () => {
-    it('should return threshold settings', async () => {
+    it('should return threshold settings as array', async () => {
       const response = await request(app)
         .get('/api/listing-performance/thresholds');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeInstanceOf(Array);
+      expect(response.body).toBeInstanceOf(Array);
+      expect(response.body[0]).toHaveProperty('metric');
+      expect(response.body[0]).toHaveProperty('isActive');
+    });
+
+    it('should filter by active status', async () => {
+      const response = await request(app)
+        .get('/api/listing-performance/thresholds?active=true');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toBeInstanceOf(Array);
     });
   });
 
-  describe('PUT /api/listing-performance/thresholds', () => {
-    it('should update threshold settings', async () => {
+  describe('POST /api/listing-performance/thresholds', () => {
+    it('should create a new threshold', async () => {
       const response = await request(app)
-        .put('/api/listing-performance/thresholds')
+        .post('/api/listing-performance/thresholds')
         .send({
+          name: 'New Threshold',
           metric: 'views',
-          minValue: 15,
-          warningValue: 8,
-          criticalValue: 0,
+          operator: 'LESS_THAN',
+          absoluteValue: 15,
+          priority: 0,
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('id');
+      expect(response.body).toHaveProperty('metric', 'views');
+    });
+  });
+
+  describe('PUT /api/listing-performance/thresholds/:id', () => {
+    it('should update threshold settings by id', async () => {
+      const response = await request(app)
+        .put('/api/listing-performance/thresholds/thresh-1')
+        .send({
+          name: 'Updated Threshold',
+          absoluteValue: 15,
         });
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
+      expect(response.body).toHaveProperty('id', 'thresh-1');
+      expect(response.body).toHaveProperty('absoluteValue', 15);
+    });
+  });
+
+  describe('DELETE /api/listing-performance/thresholds/:id', () => {
+    it('should delete a threshold by id', async () => {
+      const response = await request(app)
+        .delete('/api/listing-performance/thresholds/thresh-1');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
     });
   });
 
   describe('GET /api/listing-performance/trends', () => {
-    it('should return performance trends', async () => {
+    it('should return performance trends as array', async () => {
       const response = await request(app)
         .get('/api/listing-performance/trends');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
+      expect(response.body).toBeInstanceOf(Array);
     });
 
-    it('should accept date range', async () => {
+    it('should accept days query parameter', async () => {
       const response = await request(app)
         .get('/api/listing-performance/trends?days=30');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
+      expect(response.body).toBeInstanceOf(Array);
+    });
+
+    it('should accept listingId query parameter', async () => {
+      const response = await request(app)
+        .get('/api/listing-performance/trends?listingId=listing-1');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toBeInstanceOf(Array);
     });
   });
 
-  describe('GET /api/listing-performance/benchmarks', () => {
-    it('should return category benchmarks', async () => {
+  describe('GET /api/listing-performance/category-benchmark', () => {
+    it('should return category benchmarks as array', async () => {
       const response = await request(app)
-        .get('/api/listing-performance/benchmarks');
+        .get('/api/listing-performance/category-benchmark');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeInstanceOf(Array);
+      expect(response.body).toBeInstanceOf(Array);
+      expect(response.body[0]).toHaveProperty('categoryName');
+      expect(response.body[0]).toHaveProperty('avgViews');
+      expect(response.body[0]).toHaveProperty('avgCtr');
+    });
+  });
+
+  describe('POST /api/listing-performance/calculate-benchmarks', () => {
+    it('should calculate and return benchmarks', async () => {
+      const response = await request(app)
+        .post('/api/listing-performance/calculate-benchmarks');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('benchmarks');
+      expect(response.body.benchmarks).toBeInstanceOf(Array);
+    });
+  });
+
+  describe('GET /api/listing-performance/flags', () => {
+    it('should return flags with total count', async () => {
+      const response = await request(app)
+        .get('/api/listing-performance/flags');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('flags');
+      expect(response.body).toHaveProperty('total');
+      expect(response.body.flags).toBeInstanceOf(Array);
     });
 
-    it('should filter by category', async () => {
+    it('should filter by status', async () => {
       const response = await request(app)
-        .get('/api/listing-performance/benchmarks?category=Electronics');
+        .get('/api/listing-performance/flags?status=ACTIVE');
 
       expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
+      expect(response.body).toHaveProperty('flags');
+      expect(response.body).toHaveProperty('total');
+    });
+
+    it('should support pagination', async () => {
+      const response = await request(app)
+        .get('/api/listing-performance/flags?limit=10&offset=0');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('flags');
+    });
+  });
+
+  describe('PATCH /api/listing-performance/flags/:id/dismiss', () => {
+    it('should dismiss a flag by id', async () => {
+      const response = await request(app)
+        .patch('/api/listing-performance/flags/flag-1/dismiss')
+        .send({ reason: 'Not relevant' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('id', 'flag-1');
+      expect(response.body).toHaveProperty('status', 'DISMISSED');
     });
   });
 });

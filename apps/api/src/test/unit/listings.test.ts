@@ -2,6 +2,29 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
+const { prismaMock } = vi.hoisted(() => {
+  const prismaMock = {
+    listing: {
+      findMany: vi.fn().mockResolvedValue([{ id: 'l1', marketplace: 'JOOM', productId: 'p1', listingPrice: 10 }]),
+      count: vi.fn().mockResolvedValue(1),
+      findUnique: vi.fn().mockResolvedValue({ id: 'l1', productId: 'p1', marketplace: 'JOOM', status: 'DRAFT' }),
+      update: vi.fn().mockResolvedValue({ id: 'l1' }),
+      updateMany: vi.fn().mockResolvedValue({ count: 2 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 2 }),
+      delete: vi.fn().mockResolvedValue({}),
+      create: vi.fn().mockResolvedValue({ id: 'l2' }),
+      countActive: vi.fn().mockResolvedValue(0),
+    },
+    product: {
+      findUnique: vi.fn().mockResolvedValue({ id: 'p1' }),
+    },
+    jobLog: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  };
+  return { prismaMock };
+});
+
 vi.mock('bullmq', () => ({
   Queue: vi.fn().mockImplementation(() => ({
     add: vi.fn().mockResolvedValue({ id: 'job-123' }),
@@ -24,26 +47,6 @@ vi.mock('ioredis', () => {
   };
   return { default: vi.fn().mockImplementation(() => mockRedis) };
 });
-
-const prismaMock = {
-  listing: {
-    findMany: vi.fn().mockResolvedValue([{ id: 'l1', marketplace: 'JOOM', productId: 'p1', listingPrice: 10 }]),
-    count: vi.fn().mockResolvedValue(1),
-    findUnique: vi.fn().mockResolvedValue({ id: 'l1', productId: 'p1', marketplace: 'JOOM', status: 'DRAFT' }),
-    update: vi.fn().mockResolvedValue({ id: 'l1' }),
-    updateMany: vi.fn().mockResolvedValue({ count: 2 }),
-    deleteMany: vi.fn().mockResolvedValue({ count: 2 }),
-    delete: vi.fn().mockResolvedValue({}),
-    create: vi.fn().mockResolvedValue({ id: 'l2' }),
-    countActive: vi.fn().mockResolvedValue(0),
-  },
-  product: {
-    findUnique: vi.fn().mockResolvedValue({ id: 'p1' }),
-  },
-  jobLog: {
-    findMany: vi.fn().mockResolvedValue([]),
-  },
-};
 
 vi.mock('@rakuda/database', async () => ({ prisma: prismaMock }));
 vi.mock('@rakuda/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }) } }));

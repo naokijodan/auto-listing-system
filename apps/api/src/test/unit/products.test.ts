@@ -2,7 +2,38 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-// Minimal mocks
+const { prismaMock } = vi.hoisted(() => {
+  const prismaMock = {
+    product: {
+      findMany: vi.fn().mockResolvedValue([{ id: 'p1', title: 'A', price: 1000, images: [], sourceUrl: 'https://x', status: 'ACTIVE', createdAt: new Date() }]),
+      count: vi.fn().mockResolvedValue(1),
+      findUnique: vi.fn().mockResolvedValue({ id: 'p1', title: 'A', price: 1000, images: [], sourceUrl: 'https://x', status: 'ACTIVE', createdAt: new Date() }),
+      update: vi.fn().mockResolvedValue({ id: 'p1' }),
+      updateMany: vi.fn().mockResolvedValue({ count: 2 }),
+      deleteMany: vi.fn().mockResolvedValue({ count: 2 }),
+      create: vi.fn().mockResolvedValue({ id: 'new-product', images: [], title: 'A', description: '', price: 1000 }),
+    },
+    listing: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: 'l1' }),
+    },
+    source: {
+      findFirst: vi.fn().mockResolvedValue({ id: 'src1', type: 'MERCARI' }),
+      create: vi.fn().mockResolvedValue({ id: 'src1', type: 'MERCARI' }),
+    },
+    exchangeRate: {
+      findFirst: vi.fn().mockResolvedValue({ rate: 0.0067 }),
+    },
+    priceSetting: {
+      findFirst: vi.fn().mockResolvedValue({ platformFeeRate: 0.15, paymentFeeRate: 0.03, targetProfitRate: 0.3 }),
+    },
+    jobLog: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  };
+  return { prismaMock };
+});
+
 vi.mock('bullmq', () => ({
   Queue: vi.fn().mockImplementation(() => ({
     add: vi.fn().mockResolvedValue({ id: 'job-123' }),
@@ -41,36 +72,6 @@ vi.mock('ioredis', () => {
   };
   return { default: vi.fn().mockImplementation(() => mockRedis) };
 });
-
-// Prisma mock with adjustable behaviors per test
-const prismaMock = {
-  product: {
-    findMany: vi.fn().mockResolvedValue([{ id: 'p1', title: 'A', price: 1000, images: [], sourceUrl: 'https://x', status: 'ACTIVE', createdAt: new Date() }]),
-    count: vi.fn().mockResolvedValue(1),
-    findUnique: vi.fn().mockResolvedValue({ id: 'p1', title: 'A', price: 1000, images: [], sourceUrl: 'https://x', status: 'ACTIVE', createdAt: new Date() }),
-    update: vi.fn().mockResolvedValue({ id: 'p1' }),
-    updateMany: vi.fn().mockResolvedValue({ count: 2 }),
-    deleteMany: vi.fn().mockResolvedValue({ count: 2 }),
-    create: vi.fn().mockResolvedValue({ id: 'new-product', images: [], title: 'A', description: '', price: 1000 }),
-  },
-  listing: {
-    findUnique: vi.fn().mockResolvedValue(null),
-    create: vi.fn().mockResolvedValue({ id: 'l1' }),
-  },
-  source: {
-    findFirst: vi.fn().mockResolvedValue({ id: 'src1', type: 'MERCARI' }),
-    create: vi.fn().mockResolvedValue({ id: 'src1', type: 'MERCARI' }),
-  },
-  exchangeRate: {
-    findFirst: vi.fn().mockResolvedValue({ rate: 0.0067 }),
-  },
-  priceSetting: {
-    findFirst: vi.fn().mockResolvedValue({ platformFeeRate: 0.15, paymentFeeRate: 0.03, targetProfitRate: 0.3 }),
-  },
-  jobLog: {
-    findMany: vi.fn().mockResolvedValue([]),
-  },
-};
 
 vi.mock('@rakuda/database', async () => ({ prisma: prismaMock }));
 

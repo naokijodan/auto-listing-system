@@ -2,11 +2,33 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-// BullMQ and Redis mocks
-const mockJobs: any[] = [
-  { id: 'j1', name: 'task', data: {}, timestamp: Date.now(), attemptsMade: 0, failedReason: undefined,
-    getState: vi.fn().mockResolvedValue('waiting'), progress: 0 },
-];
+// Hoist mocks to avoid TDZ issues with vi.mock hoisting
+const { mockJobs, prismaMock } = vi.hoisted(() => {
+  const mockJobs: any[] = [
+    { id: 'j1', name: 'task', data: {}, timestamp: Date.now(), attemptsMade: 0, failedReason: undefined,
+      getState: vi.fn().mockResolvedValue('waiting'), progress: 0 },
+  ];
+
+  const prismaMock = {
+    jobLog: {
+      findMany: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    failedJob: {
+      findMany: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
+      update: vi.fn().mockResolvedValue({}),
+      findUnique: vi.fn().mockResolvedValue({ id: 'f1', queueName: 'scrape-queue', jobName: 'task', jobData: {}, maxAttempts: 3, attemptsMade: 1, canRetry: true, status: 'PENDING' }),
+      groupBy: vi.fn().mockResolvedValue([]),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    order: {
+      aggregate: vi.fn().mockResolvedValue({ _count: 0 }),
+    },
+  };
+
+  return { mockJobs, prismaMock };
+});
 
 vi.mock('bullmq', () => ({
   Queue: vi.fn().mockImplementation((name: string) => ({
@@ -23,7 +45,6 @@ vi.mock('bullmq', () => ({
     getFailed: vi.fn().mockResolvedValue([]),
     getDelayed: vi.fn().mockResolvedValue([]),
     getFailedJobs: vi.fn().mockResolvedValue([]),
-    getFailed: vi.fn().mockResolvedValue([]),
     getJob: vi.fn().mockImplementation(async (id: string) => id === 'j1' ? ({
       id: 'j1', name: 'task', data: {}, timestamp: Date.now(), attemptsMade: 0,
       failedReason: undefined, progress: 0, getState: vi.fn().mockResolvedValue('waiting'), retry: vi.fn().mockResolvedValue(undefined)
@@ -41,24 +62,6 @@ vi.mock('ioredis', () => {
   };
   return { default: vi.fn().mockImplementation(() => mockRedis) };
 });
-
-const prismaMock = {
-  jobLog: {
-    findMany: vi.fn().mockResolvedValue([]),
-    count: vi.fn().mockResolvedValue(0),
-  },
-  failedJob: {
-    findMany: vi.fn().mockResolvedValue([]),
-    count: vi.fn().mockResolvedValue(0),
-    update: vi.fn().mockResolvedValue({}),
-    findUnique: vi.fn().mockResolvedValue({ id: 'f1', queueName: 'scrape-queue', jobName: 'task', jobData: {}, maxAttempts: 3, attemptsMade: 1, canRetry: true, status: 'PENDING' }),
-    groupBy: vi.fn().mockResolvedValue([]),
-    deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-  },
-  order: {
-    aggregate: vi.fn().mockResolvedValue({ _count: 0 }),
-  },
-};
 
 vi.mock('@rakuda/database', async () => ({ prisma: prismaMock }));
 vi.mock('@rakuda/config', () => ({ QUEUE_NAMES: { SCRAPE: 'scrape-queue', IMAGE: 'image-queue', TRANSLATE: 'translate-queue', PUBLISH: 'publish-queue', INVENTORY: 'inventory-queue' } }));
@@ -179,4 +182,3 @@ describe('jobsRouter', () => {
     expect(res.status).toBe(200);
   });
 });
-

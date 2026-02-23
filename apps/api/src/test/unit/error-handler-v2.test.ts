@@ -18,9 +18,9 @@ import {
   ConflictError,
   RateLimitError,
   ExternalServiceError,
-} from './api-error';
-import { errorHandlerV2 } from './error-handler-v2';
-import { asyncHandler } from './async-handler';
+} from '../../middleware/api-error';
+import { errorHandlerV2 } from '../../middleware/error-handler-v2';
+import { asyncHandler } from '../../middleware/async-handler';
 
 function createMockRes() {
   const store: { statusCode?: number; body?: any; headers: Record<string, string> } = {

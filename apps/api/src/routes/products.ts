@@ -641,6 +641,38 @@ router.post('/', async (req, res, next) => {
 });
 
 /**
+ * 一括削除（/:id より先に定義）
+ */
+router.delete('/bulk', async (req, res, next) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      throw new AppError(400, 'ids array is required', 'INVALID_REQUEST');
+    }
+
+    const result = await prisma.product.updateMany({
+      where: { id: { in: ids } },
+      data: { status: 'DELETED' },
+    });
+
+    logger.info({
+      type: 'products_bulk_deleted',
+      count: result.count,
+      ids,
+    });
+
+    res.json({
+      success: true,
+      message: `${result.count} products deleted`,
+      data: { deletedCount: result.count },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * 商品削除
  */
 router.delete('/:id', async (req, res, next) => {
@@ -934,38 +966,6 @@ router.post('/import', async (req, res, next) => {
       success: true,
       message: 'Import completed',
       data: results,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * 一括削除
- */
-router.delete('/bulk', async (req, res, next) => {
-  try {
-    const { ids } = req.body;
-
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      throw new AppError(400, 'ids array is required', 'INVALID_REQUEST');
-    }
-
-    const result = await prisma.product.updateMany({
-      where: { id: { in: ids } },
-      data: { status: 'DELETED' },
-    });
-
-    logger.info({
-      type: 'products_bulk_deleted',
-      count: result.count,
-      ids,
-    });
-
-    res.json({
-      success: true,
-      message: `${result.count} products deleted`,
-      data: { deletedCount: result.count },
     });
   } catch (error) {
     next(error);
