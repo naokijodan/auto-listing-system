@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 
-type PlatformKey = 'ebay' | 'joom' | 'etsy' | 'shopify'
+type PlatformKey = 'ebay' | 'joom' | 'etsy' | 'shopify' | 'instagram_shop' | 'tiktok_shop'
 
 type PlatformStatus = {
   connected: boolean
@@ -34,6 +34,8 @@ const platformMeta: Record<PlatformKey, { label: string; color: string }> = {
   joom: { label: 'Joom', color: 'green-600' },
   etsy: { label: 'Etsy', color: 'orange-600' },
   shopify: { label: 'Shopify', color: 'emerald-600' },
+  instagram_shop: { label: 'Instagram Shop', color: 'pink-600' },
+  tiktok_shop: { label: 'TikTok Shop', color: 'cyan-600' },
 }
 
 function cn(...classes: (string | false | null | undefined)[]) {
@@ -92,6 +94,20 @@ export default function MarketplacePage() {
                 settings: { inventorySync: true, orderSync: true, priceSync: false, interval: '30m' },
               },
               shopify: sData.platforms?.shopify ?? {
+                connected: false,
+                tokenExpiry: null,
+                lastSyncedAt: null,
+                stats: { listings: 0, orders: 0, sales: 0 },
+                settings: { inventorySync: true, orderSync: true, priceSync: false, interval: '30m' },
+              },
+              instagram_shop: sData.platforms?.instagram_shop ?? {
+                connected: false,
+                tokenExpiry: null,
+                lastSyncedAt: null,
+                stats: { listings: 0, orders: 0, sales: 0 },
+                settings: { inventorySync: true, orderSync: true, priceSync: false, interval: '30m' },
+              },
+              tiktok_shop: sData.platforms?.tiktok_shop ?? {
                 connected: false,
                 tokenExpiry: null,
                 lastSyncedAt: null,

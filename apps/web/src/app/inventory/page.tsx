@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 
-type PlatformKey = 'ebay' | 'joom' | 'etsy' | 'shopify'
+type PlatformKey = 'ebay' | 'joom' | 'etsy' | 'shopify' | 'instagram_shop' | 'tiktok_shop'
 
 type PlatformSummary = {
   name: string
@@ -42,6 +42,8 @@ const platforms: { key: PlatformKey; label: string }[] = [
   { key: 'joom', label: 'Joom' },
   { key: 'etsy', label: 'Etsy' },
   { key: 'shopify', label: 'Shopify' },
+  { key: 'instagram_shop', label: 'Instagram' },
+  { key: 'tiktok_shop', label: 'TikTok' },
 ]
 
 function classNames(...classes: (string | false | null | undefined)[]) {
@@ -104,6 +106,8 @@ export default function InventoryDashboardPage() {
               joom: sData.platforms?.joom ?? { name: 'Joom', listings: 0, synced: 0, errors: 0, connected: false },
               etsy: sData.platforms?.etsy ?? { name: 'Etsy', listings: 0, synced: 0, errors: 0, connected: false },
               shopify: sData.platforms?.shopify ?? { name: 'Shopify', listings: 0, synced: 0, errors: 0, connected: false },
+              instagram_shop: sData.platforms?.instagram_shop ?? { name: 'Instagram Shop', listings: 0, synced: 0, errors: 0, connected: false },
+              tiktok_shop: sData.platforms?.tiktok_shop ?? { name: 'TikTok Shop', listings: 0, synced: 0, errors: 0, connected: false },
             },
           })
           const items = Array.isArray(pData) ? pData : pData.items ?? []
