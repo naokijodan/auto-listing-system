@@ -3,7 +3,7 @@
 ## 最終更新
 
 **日付**: 2026-02-24
-**Phase**: v3.0 Social Commerce Edition — Phase 354完了
+**Phase**: v3.0 Social Commerce Edition — Phase 367完了
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
 **最新コミット**: 50c70d2
 
@@ -285,6 +285,13 @@ APIエラーハンドリングを統一するミドルウェアを生成して�
 | 358 | 商品ソーシングアシスタント | ebay-product-sourcing-assistant | indigo-600 |
 | 359 | 一括出品スケジューラー | ebay-bulk-listing-scheduler | amber-600 |
 | 360 | マーケットプレイス分析Pro | ebay-marketplace-analytics-pro | sky-600 |
+| 361 | 返品自動化エンジン | ebay-return-automation-engine | orange-600 |
+| 362 | セラースコア最適化 | ebay-seller-score-optimizer | lime-600 |
+| 363 | 注文欠陥トラッカー | ebay-order-defect-tracker | pink-600 |
+| 364 | 地理的販売分析 | ebay-geographic-sales-analytics | teal-600 |
+| 365 | 価格弾力性アナライザー | ebay-price-elasticity-analyzer | violet-600 |
+| 366 | 返品防止 | ebay-returns-prevention | indigo-600 |
+| 367 | 顧客ロイヤルティ | ebay-customer-loyalty | amber-600 |
 
 **Git履歴**:
 - e8ec5e5 Phase 351-352【最終バッチ】

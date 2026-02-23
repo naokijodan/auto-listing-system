@@ -183,6 +183,7 @@ import { ebayBrandProtectionRouter } from './ebay-brand-protection';
 import { ebayOrderDefectTrackerRouter } from './ebay-order-defect-tracker';
 import { ebayGeographicSalesAnalyticsRouter } from './ebay-geographic-sales-analytics';
 import { ebaySellerScoreOptimizerRouter } from './ebay-seller-score-optimizer';
+import ebayReturnAutomationEngineRouter from './ebay-return-automation-engine';
 import { ebayPriceElasticityAnalyzerRouter } from './ebay-price-elasticity-analyzer';
 import { ebayReturnsPreventionRouter } from './ebay-returns-prevention';
 import { ebayCustomerLoyaltyRouter } from './ebay-customer-loyalty';
@@ -442,6 +443,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay/order-defect-tracker', ebayOrderDefectTrackerRouter);
   app.use('/api/ebay/geographic-sales-analytics', ebayGeographicSalesAnalyticsRouter);
   app.use('/api/ebay/seller-score-optimizer', ebaySellerScoreOptimizerRouter);
+  // Alias base for Phase 362 web page
+  app.use('/api/ebay-seller-score-optimizer', ebaySellerScoreOptimizerRouter);
+  // Return Automation Engine (Phase 361)
+  app.use('/api/ebay-return-automation-engine', ebayReturnAutomationEngineRouter);
   app.use('/api/ebay/price-elasticity-analyzer', ebayPriceElasticityAnalyzerRouter);
   app.use('/api/ebay/returns-prevention', ebayReturnsPreventionRouter);
   app.use('/api/ebay/customer-loyalty', ebayCustomerLoyaltyRouter);

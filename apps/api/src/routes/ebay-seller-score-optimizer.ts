@@ -274,6 +274,105 @@ router.get('/analytics/benchmarks', async (_req: Request, res: Response) => {
   });
 });
 
+// ============================================================
+// Phase 362 additions: expanded endpoints (lime-600 themed)
+// ============================================================
+
+// Dashboard (5)
+router.get('/dashboard', (_req: Request, res: Response) => {
+  res.json({ section: 'dashboard', action: 'overview' });
+});
+router.get('/dashboard/summary', (_req: Request, res: Response) => {
+  res.json({ section: 'dashboard', action: 'summary' });
+});
+router.get('/dashboard/score-breakdown', (_req: Request, res: Response) => {
+  res.json({ section: 'dashboard', action: 'score-breakdown' });
+});
+router.get('/dashboard/history', (_req: Request, res: Response) => {
+  res.json({ section: 'dashboard', action: 'history' });
+});
+router.get('/dashboard/goals', (_req: Request, res: Response) => {
+  res.json({ section: 'dashboard', action: 'goals' });
+});
+
+// Metrics (6)
+router.get('/metrics', (_req: Request, res: Response) => {
+  res.json({ section: 'metrics', action: 'list' });
+});
+router.get('/metrics/:id', (_req: Request, res: Response) => {
+  res.json({ section: 'metrics', action: 'detail' });
+});
+router.post('/metrics/calculate', (_req: Request, res: Response) => {
+  res.json({ section: 'metrics', action: 'calculate' });
+});
+router.get('/metrics/history', (_req: Request, res: Response) => {
+  res.json({ section: 'metrics', action: 'history' });
+});
+router.post('/metrics/compare', (_req: Request, res: Response) => {
+  res.json({ section: 'metrics', action: 'compare' });
+});
+router.get('/metrics/targets', (_req: Request, res: Response) => {
+  res.json({ section: 'metrics', action: 'targets' });
+});
+
+// Actions (4)
+router.get('/actions', (_req: Request, res: Response) => {
+  res.json({ section: 'actions', action: 'list' });
+});
+router.get('/actions/:id', (_req: Request, res: Response) => {
+  res.json({ section: 'actions', action: 'detail' });
+});
+router.post('/actions', (_req: Request, res: Response) => {
+  res.json({ section: 'actions', action: 'create' });
+});
+router.post('/actions/:id/complete', (_req: Request, res: Response) => {
+  res.json({ section: 'actions', action: 'complete' });
+});
+
+// Recommendations (4)
+router.get('/recommendations', (_req: Request, res: Response) => {
+  res.json({ section: 'recommendations', action: 'list' });
+});
+router.get('/recommendations/:id', (_req: Request, res: Response) => {
+  res.json({ section: 'recommendations', action: 'detail' });
+});
+router.post('/recommendations/:id/apply', (_req: Request, res: Response) => {
+  res.json({ section: 'recommendations', action: 'apply' });
+});
+router.post('/recommendations/:id/dismiss', (_req: Request, res: Response) => {
+  res.json({ section: 'recommendations', action: 'dismiss' });
+});
+
+// Analytics (3)
+router.get('/analytics', (_req: Request, res: Response) => {
+  res.json({ section: 'analytics', action: 'overview' });
+});
+router.get('/analytics/competitor-scores', (_req: Request, res: Response) => {
+  res.json({ section: 'analytics', action: 'competitor-scores' });
+});
+
+// Settings (2)
+router.get('/settings', (_req: Request, res: Response) => {
+  res.json({ section: 'settings', action: 'get' });
+});
+router.put('/settings', (_req: Request, res: Response) => {
+  res.json({ section: 'settings', action: 'update' });
+});
+
+// Utilities (4)
+router.get('/health', (_req: Request, res: Response) => {
+  res.json({ section: 'utilities', action: 'health' });
+});
+router.get('/export', (_req: Request, res: Response) => {
+  res.json({ section: 'utilities', action: 'export' });
+});
+router.post('/import', (_req: Request, res: Response) => {
+  res.json({ section: 'utilities', action: 'import' });
+});
+router.post('/refresh', (_req: Request, res: Response) => {
+  res.json({ section: 'utilities', action: 'refresh' });
+});
+
 // --- レポート ---
 
 // GET /reports/summary - サマリーレポート
