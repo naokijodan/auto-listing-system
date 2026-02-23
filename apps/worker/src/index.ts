@@ -65,7 +65,7 @@ async function main() {
         enabled: process.env.AUTO_PUBLISH_ENABLED !== 'false',
         cronExpression: process.env.AUTO_PUBLISH_CRON || '0 * * * *',
         maxListingsPerRun: parseInt(process.env.AUTO_PUBLISH_MAX_PER_RUN || '20', 10),
-        marketplace: (process.env.AUTO_PUBLISH_MARKETPLACE as 'joom' | 'ebay' | 'all') || 'all',
+        marketplace: (process.env.AUTO_PUBLISH_MARKETPLACE as 'joom' | 'ebay' | 'etsy' | 'shopify' | 'all') || 'all',
       },
       activeInventoryMonitor: {
         enabled: process.env.ACTIVE_INVENTORY_MONITOR_ENABLED !== 'false',

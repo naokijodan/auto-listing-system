@@ -21,6 +21,9 @@ import { processJoomPublishJob, processFullJoomWorkflow, processAutoJoomPublish 
 import { processEbayPublishJob, processFullEbayWorkflow } from '../processors/ebay-publish';
 // Phase 105-C: eBay自動再出品
 import { processEbayAutoRelistJob } from '../processors/ebay-auto-relist';
+// v3.0: Etsy出品・Shopify同期
+import { processEtsyPublishJob, processFullEtsyWorkflow } from '../processors/etsy-publish';
+import { processShopifyPublishJob, processFullShopifyWorkflow } from '../processors/shopify-publish';
 // Phase 51: 注文処理
 import { processOrderJob, processDeadlineCheckJob } from '../processors/order';
 // Phase 52: 発送処理
@@ -247,6 +250,38 @@ export async function startWorkers(connection: IORedis): Promise<void> {
     QUEUE_CONFIG[QUEUE_NAMES.EBAY_PUBLISH]
   );
   workers.push(ebayPublishWorker);
+
+  // Etsy出品ワーカー（v3.0）
+  const etsyPublishWorker = createWorker(
+    QUEUE_NAMES.ETSY_PUBLISH,
+    async (job) => {
+      // 完全ワークフロー（リスティング作成→画像処理→出品）
+      if (job.name === 'full-etsy-workflow') {
+        return processFullEtsyWorkflow(job as any);
+      }
+      // 通常のEtsy出品ジョブ
+      return processEtsyPublishJob(job as any);
+    },
+    connection,
+    QUEUE_CONFIG[QUEUE_NAMES.ETSY_PUBLISH]
+  );
+  workers.push(etsyPublishWorker);
+
+  // Shopify同期ワーカー（v3.0）
+  const shopifySyncWorker = createWorker(
+    QUEUE_NAMES.SHOPIFY_SYNC,
+    async (job) => {
+      // 完全ワークフロー（リスティング作成→画像処理→出品）
+      if (job.name === 'full-shopify-workflow') {
+        return processFullShopifyWorkflow(job as any);
+      }
+      // 通常のShopify同期ジョブ
+      return processShopifyPublishJob(job as any);
+    },
+    connection,
+    QUEUE_CONFIG[QUEUE_NAMES.SHOPIFY_SYNC]
+  );
+  workers.push(shopifySyncWorker);
 
   // 注文処理ワーカー（Phase 51）
   const orderWorker = createWorker(

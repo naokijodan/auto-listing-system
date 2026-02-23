@@ -1,65 +1,56 @@
-# Dependencies
-node_modules/
+
+__pycache__/
+!**/src/**/logs/
+!apps/*/src/**/*.config.js
+.cache/
+.DS_Store
+.env
+.env.*.local
+.env.local
+.idea/
+.next/
+.nyc_output/
 .pnp
 .pnp.js
-
-# Build outputs
-dist/
-build/
-.next/
-out/
-
-# TypeScript build artifacts in source directories
-apps/*/src/**/*.js
-apps/*/src/**/*.d.ts
-apps/*/src/**/*.js.map
-!apps/*/src/**/*.config.js
-
-# Environment
-.env
-.env.local
-.env.*.local
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-.DS_Store
-
-# Logs
-/logs/
-*.log
-npm-debug.log*
-# Exception: Allow source code logs directory
-!**/src/**/logs/
-
-# Testing
-coverage/
-.nyc_output/
-
-# Turbo
+.Python
 .turbo/
-
+.venv/
+.vscode/
+*.log
+*.py[cod]
+*.swo
+*.swp
+*.tgz
+*$py.class
+/logs/
+# Build outputs
+# Dependencies
+# Docker volumes (local)
+# Environment
+# Exception: Allow source code logs directory
+# IDE
+# Logs
+# Misc
 # Prisma
+# Python
+# Testing
+# Turbo
+# TypeScript build artifacts in source directories
+apps/*/src/**/*.d.ts
+apps/*/src/**/*.js
+apps/*/src/**/*.js.map
+build/
+codex/output/
+coverage/
+dist/
+minio_data/
+node_modules/
+npm-debug.log*
+out/
 packages/database/prisma/*.db
 packages/database/prisma/*.db-journal
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.Python
-venv/
-.venv/
-
-# Docker volumes (local)
 postgres_data/
 redis_data/
-minio_data/
-
-# Misc
-*.tgz
-.cache/
-tmp/
 temp/
+tmp/
+venv/

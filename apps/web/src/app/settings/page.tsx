@@ -610,6 +610,138 @@ function MarketplaceSettings() {
             </CardContent>
           </Card>
 
+          {/* Etsy Card */}
+          <Card className="border-2 border-orange-200 dark:border-orange-800">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Store className="h-5 w-5 text-orange-600" />
+                  Etsy
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-zinc-400" />
+                  <span className="text-sm text-zinc-500">認証待ち</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg bg-orange-50 p-3 dark:bg-orange-900/20">
+                  <p className="text-xs text-orange-600 dark:text-orange-400">連携方式</p>
+                  <p className="text-sm font-medium text-orange-900 dark:text-orange-200">OAuth2 PKCE</p>
+                </div>
+                <div className="rounded-lg bg-orange-50 p-3 dark:bg-orange-900/20">
+                  <p className="text-xs text-orange-600 dark:text-orange-400">対象商品</p>
+                  <p className="text-sm font-medium text-orange-900 dark:text-orange-200">ヴィンテージ品</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/api/etsy/auth">
+                    <Zap className="h-4 w-4" />
+                    OAuth認証開始
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/api/etsy/status" target="_blank">
+                    <RefreshCw className="h-4 w-4" />
+                    ステータス確認
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Shopify Card */}
+          <Card className="border-2 border-green-200 dark:border-green-800">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Store className="h-5 w-5 text-green-600" />
+                  Shopify (Social Commerce Hub)
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-zinc-400" />
+                  <span className="text-sm text-zinc-500">認証待ち</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg bg-green-50 p-3 dark:bg-green-900/20">
+                  <p className="text-xs text-green-600 dark:text-green-400">連携方式</p>
+                  <p className="text-sm font-medium text-green-900 dark:text-green-200">OAuth2</p>
+                </div>
+                <div className="rounded-lg bg-green-50 p-3 dark:bg-green-900/20">
+                  <p className="text-xs text-green-600 dark:text-green-400">対象商品</p>
+                  <p className="text-sm font-medium text-green-900 dark:text-green-200">ブランド品/高単価</p>
+                </div>
+                <div className="rounded-lg bg-green-50 p-3 dark:bg-green-900/20">
+                  <p className="text-xs text-green-600 dark:text-green-400">配信先</p>
+                  <p className="text-sm font-medium text-green-900 dark:text-green-200">Instagram / TikTok</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/api/shopify/auth?shop=YOUR-STORE">
+                    <Zap className="h-4 w-4" />
+                    OAuth認証開始
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <a href="/api/shopify/status" target="_blank">
+                    <RefreshCw className="h-4 w-4" />
+                    ステータス確認
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Social Commerce Channels */}
+          <Card className="border-2 border-purple-200 dark:border-purple-800">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-600" />
+                ソーシャルコマース (Shopify Hub経由)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-lg border border-pink-200 p-4 dark:border-pink-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">📸</span>
+                    <h4 className="font-medium text-zinc-900 dark:text-white">Instagram Shop</h4>
+                  </div>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    Shopifyの「Facebook & Instagram」チャネル経由で自動配信
+                  </p>
+                  <p className="mt-2 text-xs text-pink-600 dark:text-pink-400">
+                    Shopify認証後に設定可能
+                  </p>
+                </div>
+                <div className="rounded-lg border border-cyan-200 p-4 dark:border-cyan-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">🎵</span>
+                    <h4 className="font-medium text-zinc-900 dark:text-white">TikTok Shop</h4>
+                  </div>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    Shopifyの「TikTok」チャネル経由で自動配信
+                  </p>
+                  <p className="mt-2 text-xs text-cyan-600 dark:text-cyan-400">
+                    Shopify認証後に設定可能
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-lg bg-purple-50 p-3 dark:bg-purple-900/20">
+                <p className="text-sm text-purple-700 dark:text-purple-300">
+                  Shopifyに商品を出品すると、Instagram Shop / TikTok Shopに自動的に配信されます。
+                  追加のAPI連携は不要です。
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Quick Links */}
           <Card>
             <CardHeader>
@@ -633,6 +765,26 @@ function MarketplaceSettings() {
                 <div className="flex items-center gap-3">
                   <Store className="h-5 w-5 text-blue-600" />
                   <span className="font-medium">eBay管理</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-zinc-400" />
+              </Link>
+              <Link
+                href="/etsy"
+                className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              >
+                <div className="flex items-center gap-3">
+                  <Store className="h-5 w-5 text-orange-600" />
+                  <span className="font-medium">Etsy管理</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-zinc-400" />
+              </Link>
+              <Link
+                href="/shopify"
+                className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              >
+                <div className="flex items-center gap-3">
+                  <Store className="h-5 w-5 text-green-600" />
+                  <span className="font-medium">Shopify管理</span>
                 </div>
                 <ChevronRight className="h-5 w-5 text-zinc-400" />
               </Link>
@@ -664,7 +816,7 @@ const intervalOptions = [
 ];
 
 function SyncScheduleSettings() {
-  const [selectedMarketplace, setSelectedMarketplace] = useState<'JOOM' | 'EBAY'>('JOOM');
+  const [selectedMarketplace, setSelectedMarketplace] = useState<'JOOM' | 'EBAY' | 'ETSY' | 'SHOPIFY'>('JOOM');
   const [schedules, setSchedules] = useState<Record<string, SyncSchedule>>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -701,6 +853,20 @@ function SyncScheduleSettings() {
               prices: { interval: 6, enabled: true },
               updatedAt: new Date().toISOString(),
             },
+            ETSY: {
+              marketplace: 'ETSY',
+              inventory: { interval: 6, enabled: true },
+              orders: { interval: 6, enabled: true },
+              prices: { interval: 6, enabled: true },
+              updatedAt: new Date().toISOString(),
+            },
+            SHOPIFY: {
+              marketplace: 'SHOPIFY',
+              inventory: { interval: 6, enabled: true },
+              orders: { interval: 6, enabled: true },
+              prices: { interval: 6, enabled: true },
+              updatedAt: new Date().toISOString(),
+            },
           });
         }
       } catch {
@@ -715,6 +881,20 @@ function SyncScheduleSettings() {
           },
           EBAY: {
             marketplace: 'EBAY',
+            inventory: { interval: 6, enabled: true },
+            orders: { interval: 6, enabled: true },
+            prices: { interval: 6, enabled: true },
+            updatedAt: new Date().toISOString(),
+          },
+          ETSY: {
+            marketplace: 'ETSY',
+            inventory: { interval: 6, enabled: true },
+            orders: { interval: 6, enabled: true },
+            prices: { interval: 6, enabled: true },
+            updatedAt: new Date().toISOString(),
+          },
+          SHOPIFY: {
+            marketplace: 'SHOPIFY',
             inventory: { interval: 6, enabled: true },
             orders: { interval: 6, enabled: true },
             prices: { interval: 6, enabled: true },
@@ -812,6 +992,30 @@ function SyncScheduleSettings() {
                 <Store className="h-4 w-4" />
                 eBay
               </button>
+              <button
+                onClick={() => setSelectedMarketplace('ETSY')}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
+                  selectedMarketplace === 'ETSY'
+                    ? 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400'
+                    : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                )}
+              >
+                <Store className="h-4 w-4" />
+                Etsy
+              </button>
+              <button
+                onClick={() => setSelectedMarketplace('SHOPIFY')}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors',
+                  selectedMarketplace === 'SHOPIFY'
+                    ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                    : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                )}
+              >
+                <Store className="h-4 w-4" />
+                Shopify
+              </button>
             </div>
           </div>
 
@@ -824,7 +1028,7 @@ function SyncScheduleSettings() {
                 config={currentSchedule.inventory}
                 onIntervalChange={(v) => updateScheduleField('inventory', 'interval', v)}
                 onEnabledChange={(v) => updateScheduleField('inventory', 'enabled', v)}
-                color={selectedMarketplace === 'JOOM' ? 'amber' : 'blue'}
+                color={selectedMarketplace === 'JOOM' ? 'amber' : selectedMarketplace === 'EBAY' ? 'blue' : selectedMarketplace === 'ETSY' ? 'orange' : 'green'}
               />
 
               {/* Orders Sync */}
@@ -834,7 +1038,7 @@ function SyncScheduleSettings() {
                 config={currentSchedule.orders}
                 onIntervalChange={(v) => updateScheduleField('orders', 'interval', v)}
                 onEnabledChange={(v) => updateScheduleField('orders', 'enabled', v)}
-                color={selectedMarketplace === 'JOOM' ? 'amber' : 'blue'}
+                color={selectedMarketplace === 'JOOM' ? 'amber' : selectedMarketplace === 'EBAY' ? 'blue' : selectedMarketplace === 'ETSY' ? 'orange' : 'green'}
               />
 
               {/* Prices Sync */}
@@ -844,7 +1048,7 @@ function SyncScheduleSettings() {
                 config={currentSchedule.prices}
                 onIntervalChange={(v) => updateScheduleField('prices', 'interval', v)}
                 onEnabledChange={(v) => updateScheduleField('prices', 'enabled', v)}
-                color={selectedMarketplace === 'JOOM' ? 'amber' : 'blue'}
+                color={selectedMarketplace === 'JOOM' ? 'amber' : selectedMarketplace === 'EBAY' ? 'blue' : selectedMarketplace === 'ETSY' ? 'orange' : 'green'}
               />
             </div>
           )}

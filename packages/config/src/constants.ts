@@ -81,6 +81,9 @@ export const QUEUE_NAMES = {
   SHIPMENT: 'shipment-queue',
   // Phase 103: eBay出品
   EBAY_PUBLISH: 'ebay-publish-queue',
+  // v3.0: Etsy出品・Shopify同期
+  ETSY_PUBLISH: 'etsy-publish-queue',
+  SHOPIFY_SYNC: 'shopify-sync-queue',
 } as const;
 
 // キュー設定
@@ -179,6 +182,22 @@ export const QUEUE_CONFIG = {
     concurrency: 2,
     attempts: 3,
     backoff: { type: 'exponential', delay: 60000 },
+  },
+  // v3.0: Etsy出品キュー
+  [QUEUE_NAMES.ETSY_PUBLISH]: {
+    priority: 1,
+    rateLimit: { max: 10, duration: 60000 }, // 10件/分（Etsy APIレート制限: 10req/sec）
+    concurrency: 3,
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 30000 },
+  },
+  // v3.0: Shopify同期キュー
+  [QUEUE_NAMES.SHOPIFY_SYNC]: {
+    priority: 1,
+    rateLimit: { max: 20, duration: 60000 }, // 20件/分
+    concurrency: 3,
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 15000 },
   },
 } as const;
 

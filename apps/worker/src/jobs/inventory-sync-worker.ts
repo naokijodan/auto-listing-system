@@ -14,6 +14,8 @@ const publishQueues: Record<string, Queue> = {
   JOOM: new Queue('publish-joom', { connection: new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null }) }),
   ETSY: new Queue('publish-etsy', { connection: new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null }) }),
   SHOPIFY: new Queue('publish-shopify', { connection: new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null }) }),
+  INSTAGRAM_SHOP: new Queue('publish-shopify', { connection: new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null }) }),
+  TIKTOK_SHOP: new Queue('publish-shopify', { connection: new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null }) }),
 };
 
 const worker = new Worker(QUEUE_NAME, async (job: Job) => {
