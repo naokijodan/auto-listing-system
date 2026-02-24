@@ -162,6 +162,11 @@ import ebayReturnsDashboardProRouter from './ebay-returns-dashboard-pro';
 import ebayInventorySnapshotToolRouter from './ebay-inventory-snapshot-tool';
 import ebayShippingInsuranceManagerRouter from './ebay-shipping-insurance-manager';
 import ebayListingExpiryTrackerRouter from './ebay-listing-expiry-tracker';
+import ebayOrderConsolidationToolRouter from './ebay-order-consolidation-tool';
+import ebayListingDraftManagerRouter from './ebay-listing-draft-manager';
+import ebaySellerGoalTrackerRouter from './ebay-seller-goal-tracker';
+import ebayPriceComparisonEngineRouter from './ebay-price-comparison-engine';
+import ebayBulkDescriptionUpdaterRouter from './ebay-bulk-description-updater';
 import ebayReturnLabelRouter from './ebay-return-label';
 import ebayFeedbackResponseRouter from './ebay-feedback-response';
 import ebaySalesPerformanceRouter from './ebay-sales-performance';
@@ -625,4 +630,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-snapshot-tool', ebayInventorySnapshotToolRouter);
   app.use('/api/ebay-shipping-insurance-manager', ebayShippingInsuranceManagerRouter);
   app.use('/api/ebay-listing-expiry-tracker', ebayListingExpiryTrackerRouter);
+  // Phase 416-420
+  app.use('/api/ebay-order-consolidation-tool', ebayOrderConsolidationToolRouter);
+  app.use('/api/ebay-listing-draft-manager', ebayListingDraftManagerRouter);
+  app.use('/api/ebay-seller-goal-tracker', ebaySellerGoalTrackerRouter);
+  app.use('/api/ebay-price-comparison-engine', ebayPriceComparisonEngineRouter);
+  app.use('/api/ebay-bulk-description-updater', ebayBulkDescriptionUpdaterRouter);
 }
