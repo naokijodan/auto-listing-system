@@ -1,0 +1,98 @@
+// Phase 2261-2265
+app.use('/api/ebay-listing-ai-optimization-ultra', ebayListingAiOptimizationUltraRouter);
+app.use('/api/ebay-order-smart-routing-ultra', ebayOrderSmartRoutingUltraRouter);
+app.use('/api/ebay-inventory-predictive-management-ultra', ebayInventoryPredictiveManagementUltraRouter);
+app.use('/api/ebay-seller-brand-building-ultra', ebaySellerBrandBuildingUltraRouter);
+app.use('/api/ebay-product-matching-management-ultra', ebayProductMatchingManagementUltraRouter);
+
+// Phase 2266-2270
+app.use('/api/ebay-listing-conversion-tracking-ultra', ebayListingConversionTrackingUltraRouter);
+app.use('/api/ebay-order-express-processing-ultra', ebayOrderExpressProcessingUltraRouter);
+app.use('/api/ebay-inventory-zone-management-ultra', ebayInventoryZoneManagementUltraRouter);
+app.use('/api/ebay-seller-market-expansion-ultra', ebaySellerMarketExpansionUltraRouter);
+app.use('/api/ebay-product-quality-assurance-ultra', ebayProductQualityAssuranceUltraRouter);
+
+// Phase 2271-2275
+app.use('/api/ebay-listing-price-monitoring-ultra', ebayListingPriceMonitoringUltraRouter);
+app.use('/api/ebay-order-claim-management-ultra', ebayOrderClaimManagementUltraRouter);
+app.use('/api/ebay-inventory-rotation-management-ultra', ebayInventoryRotationManagementUltraRouter);
+app.use('/api/ebay-seller-score-management-ultra', ebaySellerScoreManagementUltraRouter);
+app.use('/api/ebay-product-research-management-ultra', ebayProductResearchManagementUltraRouter);
+
+// Phase 2276-2280
+app.use('/api/ebay-listing-seo-management-ultra', ebayListingSeoManagementUltraRouter);
+app.use('/api/ebay-order-customs-management-ultra', ebayOrderCustomsManagementUltraRouter);
+app.use('/api/ebay-inventory-bin-management-ultra', ebayInventoryBinManagementUltraRouter);
+app.use('/api/ebay-seller-insight-management-ultra', ebaySellerInsightManagementUltraRouter);
+app.use('/api/ebay-product-packaging-management-ultra', ebayProductPackagingManagementUltraRouter);
+
+// Phase 2281-2285
+app.use('/api/ebay-listing-image-management-ultra', ebayListingImageManagementUltraRouter);
+app.use('/api/ebay-order-split-management-ultra', ebayOrderSplitManagementUltraRouter);
+app.use('/api/ebay-inventory-count-management-ultra', ebayInventoryCountManagementUltraRouter);
+app.use('/api/ebay-seller-event-management-ultra', ebaySellerEventManagementUltraRouter);
+app.use('/api/ebay-product-dimension-management-ultra', ebayProductDimensionManagementUltraRouter);
+
+// Phase 2286-2290
+app.use('/api/ebay-listing-category-optimization-ultra', ebayListingCategoryOptimizationUltraRouter);
+app.use('/api/ebay-order-merge-management-ultra', ebayOrderMergeManagementUltraRouter);
+app.use('/api/ebay-inventory-transfer-management-ultra', ebayInventoryTransferManagementUltraRouter);
+app.use('/api/ebay-seller-campaign-management-ultra', ebaySellerCampaignManagementUltraRouter);
+app.use('/api/ebay-product-certification-management-ultra', ebayProductCertificationManagementUltraRouter);
+
+// Phase 2291-2295
+app.use('/api/ebay-listing-variation-management-ultra', ebayListingVariationManagementUltraRouter);
+app.use('/api/ebay-order-priority-routing-ultra', ebayOrderPriorityRoutingUltraRouter);
+app.use('/api/ebay-inventory-forecast-planning-ultra', ebayInventoryForecastPlanningUltraRouter);
+app.use('/api/ebay-seller-loyalty-management-ultra', ebaySellerLoyaltyManagementUltraRouter);
+app.use('/api/ebay-product-compliance-tracking-ultra', ebayProductComplianceTrackingUltraRouter);
+
+// Phase 2296-2300
+app.use('/api/ebay-listing-schedule-management-ultra', ebayListingScheduleManagementUltraRouter);
+app.use('/api/ebay-order-batch-processing-ultra', ebayOrderBatchProcessingUltraRouter);
+app.use('/api/ebay-inventory-audit-management-ultra', ebayInventoryAuditManagementUltraRouter);
+app.use('/api/ebay-seller-affiliate-management-ultra', ebaySellerAffiliateManagementUltraRouter);
+app.use('/api/ebay-product-attribute-management-ultra', ebayProductAttributeManagementUltraRouter);
+
+// Phase 2301-2305
+app.use('/api/ebay-listing-fee-calculator-ultra', ebayListingFeeCalculatorUltraRouter);
+app.use('/api/ebay-order-insurance-management-ultra', ebayOrderInsuranceManagementUltraRouter);
+app.use('/api/ebay-inventory-shrinkage-management-ultra', ebayInventoryShrinkageManagementUltraRouter);
+app.use('/api/ebay-seller-training-management-ultra', ebaySellerTrainingManagementUltraRouter);
+app.use('/api/ebay-product-cross-reference-ultra', ebayProductCrossReferenceUltraRouter);
+
+// Phase 2306-2310
+app.use('/api/ebay-listing-draft-management-ultra', ebayListingDraftManagementUltraRouter);
+app.use('/api/ebay-order-gift-management-ultra', ebayOrderGiftManagementUltraRouter);
+app.use('/api/ebay-inventory-receiving-management-ultra', ebayInventoryReceivingManagementUltraRouter);
+app.use('/api/ebay-seller-resource-management-ultra', ebaySellerResourceManagementUltraRouter);
+app.use('/api/ebay-product-hazmat-management-ultra', ebayProductHazmatManagementUltraRouter);
+
+// Phase 2311-2315
+app.use('/api/ebay-listing-bulk-management-ultra', ebayListingBulkManagementUltraRouter);
+app.use('/api/ebay-order-subscription-management-ultra', ebayOrderSubscriptionManagementUltraRouter);
+app.use('/api/ebay-inventory-kitting-management-ultra', ebayInventoryKittingManagementUltraRouter);
+app.use('/api/ebay-seller-channel-management-ultra', ebaySellerChannelManagementUltraRouter);
+app.use('/api/ebay-product-recall-management-ultra', ebayProductRecallManagementUltraRouter);
+
+// Phase 2316-2320
+app.use('/api/ebay-listing-testing-management-ultra', ebayListingTestingManagementUltraRouter);
+app.use('/api/ebay-order-dropship-management-ultra', ebayOrderDropshipManagementUltraRouter);
+app.use('/api/ebay-inventory-picking-management-ultra', ebayInventoryPickingManagementUltraRouter);
+app.use('/api/ebay-seller-document-management-ultra', ebaySellerDocumentManagementUltraRouter);
+app.use('/api/ebay-product-import-management-ultra', ebayProductImportManagementUltraRouter);
+
+// Phase 2321-2325
+app.use('/api/ebay-listing-archive-management-ultra', ebayListingArchiveManagementUltraRouter);
+app.use('/api/ebay-order-consolidation-processing-ultra', ebayOrderConsolidationProcessingUltraRouter);
+app.use('/api/ebay-inventory-packing-management-ultra', ebayInventoryPackingManagementUltraRouter);
+app.use('/api/ebay-seller-workflow-management-ultra', ebaySellerWorkflowManagementUltraRouter);
+app.use('/api/ebay-product-export-management-ultra', ebayProductExportManagementUltraRouter);
+
+// Phase 2326-2330
+app.use('/api/ebay-listing-migration-management-ultra', ebayListingMigrationManagementUltraRouter);
+app.use('/api/ebay-order-analytics-management-ultra', ebayOrderAnalyticsManagementUltraRouter);
+app.use('/api/ebay-inventory-staging-management-ultra', ebayInventoryStagingManagementUltraRouter);
+app.use('/api/ebay-seller-api-management-ultra', ebaySellerApiManagementUltraRouter);
+app.use('/api/ebay-product-template-management-ultra', ebayProductTemplateManagementUltraRouter);
+
