@@ -2980,6 +2980,148 @@ import ebayInventoryLifecycleIntelligenceNovaRouter from './ebay-inventory-lifec
 import ebaySellerSupportOptimizerNovaRouter from './ebay-seller-support-optimizer-nova';
 import ebayProductClassificationOptimizerNovaRouter from './ebay-product-classification-optimizer-nova';
 
+import ebayListingRealTimePricingPulseRouter from './ebay-listing-real-time-pricing-pulse';
+import ebayOrderLiveTrackingPulseRouter from './ebay-order-live-tracking-pulse';
+import ebayInventoryRealTimeSyncPulseRouter from './ebay-inventory-real-time-sync-pulse';
+import ebaySellerLiveDashboardPulseRouter from './ebay-seller-live-dashboard-pulse';
+import ebayProductRealTimeMonitoringPulseRouter from './ebay-product-real-time-monitoring-pulse';
+import ebayListingInstantOptimizationPulseRouter from './ebay-listing-instant-optimization-pulse';
+import ebayOrderInstantRoutingPulseRouter from './ebay-order-instant-routing-pulse';
+import ebayInventoryInstantUpdatePulseRouter from './ebay-inventory-instant-update-pulse';
+import ebaySellerInstantAlertPulseRouter from './ebay-seller-instant-alert-pulse';
+import ebayProductInstantAnalysisPulseRouter from './ebay-product-instant-analysis-pulse';
+import ebayListingStreamAnalyticsPulseRouter from './ebay-listing-stream-analytics-pulse';
+import ebayOrderStreamProcessingPulseRouter from './ebay-order-stream-processing-pulse';
+import ebayInventoryStreamTrackingPulseRouter from './ebay-inventory-stream-tracking-pulse';
+import ebaySellerStreamMonitoringPulseRouter from './ebay-seller-stream-monitoring-pulse';
+import ebayProductStreamDetectionPulseRouter from './ebay-product-stream-detection-pulse';
+import ebayListingEventDrivenPulseRouter from './ebay-listing-event-driven-pulse';
+import ebayOrderEventProcessingPulseRouter from './ebay-order-event-processing-pulse';
+import ebayInventoryEventTrackingPulseRouter from './ebay-inventory-event-tracking-pulse';
+import ebaySellerEventAnalyticsPulseRouter from './ebay-seller-event-analytics-pulse';
+import ebayProductEventDetectionPulseRouter from './ebay-product-event-detection-pulse';
+import ebayListingWebhookManagementPulseRouter from './ebay-listing-webhook-management-pulse';
+import ebayOrderWebhookProcessingPulseRouter from './ebay-order-webhook-processing-pulse';
+import ebayInventoryWebhookSyncPulseRouter from './ebay-inventory-webhook-sync-pulse';
+import ebaySellerWebhookAlertsPulseRouter from './ebay-seller-webhook-alerts-pulse';
+import ebayProductWebhookUpdatesPulseRouter from './ebay-product-webhook-updates-pulse';
+import ebayListingNotificationEnginePulseRouter from './ebay-listing-notification-engine-pulse';
+import ebayOrderNotificationRoutingPulseRouter from './ebay-order-notification-routing-pulse';
+import ebayInventoryNotificationSyncPulseRouter from './ebay-inventory-notification-sync-pulse';
+import ebaySellerNotificationDashboardPulseRouter from './ebay-seller-notification-dashboard-pulse';
+import ebayProductNotificationAlertsPulseRouter from './ebay-product-notification-alerts-pulse';
+import ebayListingAlertManagementPulseRouter from './ebay-listing-alert-management-pulse';
+import ebayOrderAlertRoutingPulseRouter from './ebay-order-alert-routing-pulse';
+import ebayInventoryAlertEnginePulseRouter from './ebay-inventory-alert-engine-pulse';
+import ebaySellerAlertDashboardPulseRouter from './ebay-seller-alert-dashboard-pulse';
+import ebayProductAlertSystemPulseRouter from './ebay-product-alert-system-pulse';
+import ebayListingMonitorEnginePulseRouter from './ebay-listing-monitor-engine-pulse';
+import ebayOrderMonitorDashboardPulseRouter from './ebay-order-monitor-dashboard-pulse';
+import ebayInventoryMonitorSystemPulseRouter from './ebay-inventory-monitor-system-pulse';
+import ebaySellerMonitorAnalyticsPulseRouter from './ebay-seller-monitor-analytics-pulse';
+import ebayProductMonitorTrackerPulseRouter from './ebay-product-monitor-tracker-pulse';
+import ebayListingHealthCheckerPulseRouter from './ebay-listing-health-checker-pulse';
+import ebayOrderHealthMonitorPulseRouter from './ebay-order-health-monitor-pulse';
+import ebayInventoryHealthTrackerPulseRouter from './ebay-inventory-health-tracker-pulse';
+import ebaySellerHealthDashboardPulseRouter from './ebay-seller-health-dashboard-pulse';
+import ebayProductHealthAnalyzerPulseRouter from './ebay-product-health-analyzer-pulse';
+import ebayListingStatusTrackerPulseRouter from './ebay-listing-status-tracker-pulse';
+import ebayOrderStatusMonitorPulseRouter from './ebay-order-status-monitor-pulse';
+import ebayInventoryStatusDashboardPulseRouter from './ebay-inventory-status-dashboard-pulse';
+import ebaySellerStatusAnalyzerPulseRouter from './ebay-seller-status-analyzer-pulse';
+import ebayProductStatusEnginePulseRouter from './ebay-product-status-engine-pulse';
+import ebayListingPerformanceMonitorPulseRouter from './ebay-listing-performance-monitor-pulse';
+import ebayOrderPerformanceTrackerPulseRouter from './ebay-order-performance-tracker-pulse';
+import ebayInventoryPerformanceDashboardPulseRouter from './ebay-inventory-performance-dashboard-pulse';
+import ebaySellerPerformanceEnginePulseRouter from './ebay-seller-performance-engine-pulse';
+import ebayProductPerformanceAnalyzerPulseRouter from './ebay-product-performance-analyzer-pulse';
+import ebayListingUptimeMonitorPulseRouter from './ebay-listing-uptime-monitor-pulse';
+import ebayOrderUptimeTrackerPulseRouter from './ebay-order-uptime-tracker-pulse';
+import ebayInventoryUptimeDashboardPulseRouter from './ebay-inventory-uptime-dashboard-pulse';
+import ebaySellerUptimeEnginePulseRouter from './ebay-seller-uptime-engine-pulse';
+import ebayProductUptimeAnalyzerPulseRouter from './ebay-product-uptime-analyzer-pulse';
+import ebayListingLatencyMonitorPulseRouter from './ebay-listing-latency-monitor-pulse';
+import ebayOrderLatencyTrackerPulseRouter from './ebay-order-latency-tracker-pulse';
+import ebayInventoryLatencyDashboardPulseRouter from './ebay-inventory-latency-dashboard-pulse';
+import ebaySellerLatencyEnginePulseRouter from './ebay-seller-latency-engine-pulse';
+import ebayProductLatencyAnalyzerPulseRouter from './ebay-product-latency-analyzer-pulse';
+import ebayListingThroughputMonitorPulseRouter from './ebay-listing-throughput-monitor-pulse';
+import ebayOrderThroughputTrackerPulseRouter from './ebay-order-throughput-tracker-pulse';
+import ebayInventoryThroughputDashboardPulseRouter from './ebay-inventory-throughput-dashboard-pulse';
+import ebaySellerThroughputEnginePulseRouter from './ebay-seller-throughput-engine-pulse';
+import ebayProductThroughputAnalyzerPulseRouter from './ebay-product-throughput-analyzer-pulse';
+
+import ebayListingDynamicWorkflowFluxRouter from './ebay-listing-dynamic-workflow-flux';
+import ebayOrderDynamicRoutingFluxRouter from './ebay-order-dynamic-routing-flux';
+import ebayInventoryDynamicPlanningFluxRouter from './ebay-inventory-dynamic-planning-flux';
+import ebaySellerDynamicDashboardFluxRouter from './ebay-seller-dynamic-dashboard-flux';
+import ebayProductDynamicAnalysisFluxRouter from './ebay-product-dynamic-analysis-flux';
+import ebayListingAdaptiveWorkflowFluxRouter from './ebay-listing-adaptive-workflow-flux';
+import ebayOrderAdaptiveRoutingFluxRouter from './ebay-order-adaptive-routing-flux';
+import ebayInventoryAdaptivePlanningFluxRouter from './ebay-inventory-adaptive-planning-flux';
+import ebaySellerAdaptiveDashboardFluxRouter from './ebay-seller-adaptive-dashboard-flux';
+import ebayProductAdaptiveAnalysisFluxRouter from './ebay-product-adaptive-analysis-flux';
+import ebayListingResponsiveEngineFluxRouter from './ebay-listing-responsive-engine-flux';
+import ebayOrderResponsiveRoutingFluxRouter from './ebay-order-responsive-routing-flux';
+import ebayInventoryResponsivePlanningFluxRouter from './ebay-inventory-responsive-planning-flux';
+import ebaySellerResponsiveDashboardFluxRouter from './ebay-seller-responsive-dashboard-flux';
+import ebayProductResponsiveAnalysisFluxRouter from './ebay-product-responsive-analysis-flux';
+import ebayListingElasticEngineFluxRouter from './ebay-listing-elastic-engine-flux';
+import ebayOrderElasticRoutingFluxRouter from './ebay-order-elastic-routing-flux';
+import ebayInventoryElasticPlanningFluxRouter from './ebay-inventory-elastic-planning-flux';
+import ebaySellerElasticDashboardFluxRouter from './ebay-seller-elastic-dashboard-flux';
+import ebayProductElasticAnalysisFluxRouter from './ebay-product-elastic-analysis-flux';
+import ebayListingScalableEngineFluxRouter from './ebay-listing-scalable-engine-flux';
+import ebayOrderScalableRoutingFluxRouter from './ebay-order-scalable-routing-flux';
+import ebayInventoryScalablePlanningFluxRouter from './ebay-inventory-scalable-planning-flux';
+import ebaySellerScalableDashboardFluxRouter from './ebay-seller-scalable-dashboard-flux';
+import ebayProductScalableAnalysisFluxRouter from './ebay-product-scalable-analysis-flux';
+import ebayListingModularEngineFluxRouter from './ebay-listing-modular-engine-flux';
+import ebayOrderModularRoutingFluxRouter from './ebay-order-modular-routing-flux';
+import ebayInventoryModularPlanningFluxRouter from './ebay-inventory-modular-planning-flux';
+import ebaySellerModularDashboardFluxRouter from './ebay-seller-modular-dashboard-flux';
+import ebayProductModularAnalysisFluxRouter from './ebay-product-modular-analysis-flux';
+import ebayListingComposableEngineFluxRouter from './ebay-listing-composable-engine-flux';
+import ebayOrderComposableRoutingFluxRouter from './ebay-order-composable-routing-flux';
+import ebayInventoryComposablePlanningFluxRouter from './ebay-inventory-composable-planning-flux';
+import ebaySellerComposableDashboardFluxRouter from './ebay-seller-composable-dashboard-flux';
+import ebayProductComposableAnalysisFluxRouter from './ebay-product-composable-analysis-flux';
+import ebayListingExtensibleEngineFluxRouter from './ebay-listing-extensible-engine-flux';
+import ebayOrderExtensibleRoutingFluxRouter from './ebay-order-extensible-routing-flux';
+import ebayInventoryExtensiblePlanningFluxRouter from './ebay-inventory-extensible-planning-flux';
+import ebaySellerExtensibleDashboardFluxRouter from './ebay-seller-extensible-dashboard-flux';
+import ebayProductExtensibleAnalysisFluxRouter from './ebay-product-extensible-analysis-flux';
+import ebayListingConfigurableEngineFluxRouter from './ebay-listing-configurable-engine-flux';
+import ebayOrderConfigurableRoutingFluxRouter from './ebay-order-configurable-routing-flux';
+import ebayInventoryConfigurablePlanningFluxRouter from './ebay-inventory-configurable-planning-flux';
+import ebaySellerConfigurableDashboardFluxRouter from './ebay-seller-configurable-dashboard-flux';
+import ebayProductConfigurableAnalysisFluxRouter from './ebay-product-configurable-analysis-flux';
+import ebayListingPluggableEngineFluxRouter from './ebay-listing-pluggable-engine-flux';
+import ebayOrderPluggableRoutingFluxRouter from './ebay-order-pluggable-routing-flux';
+import ebayInventoryPluggablePlanningFluxRouter from './ebay-inventory-pluggable-planning-flux';
+import ebaySellerPluggableDashboardFluxRouter from './ebay-seller-pluggable-dashboard-flux';
+import ebayProductPluggableAnalysisFluxRouter from './ebay-product-pluggable-analysis-flux';
+import ebayListingPortableEngineFluxRouter from './ebay-listing-portable-engine-flux';
+import ebayOrderPortableRoutingFluxRouter from './ebay-order-portable-routing-flux';
+import ebayInventoryPortablePlanningFluxRouter from './ebay-inventory-portable-planning-flux';
+import ebaySellerPortableDashboardFluxRouter from './ebay-seller-portable-dashboard-flux';
+import ebayProductPortableAnalysisFluxRouter from './ebay-product-portable-analysis-flux';
+import ebayListingReusableEngineFluxRouter from './ebay-listing-reusable-engine-flux';
+import ebayOrderReusableRoutingFluxRouter from './ebay-order-reusable-routing-flux';
+import ebayInventoryReusablePlanningFluxRouter from './ebay-inventory-reusable-planning-flux';
+import ebaySellerReusableDashboardFluxRouter from './ebay-seller-reusable-dashboard-flux';
+import ebayProductReusableAnalysisFluxRouter from './ebay-product-reusable-analysis-flux';
+import ebayListingTestableEngineFluxRouter from './ebay-listing-testable-engine-flux';
+import ebayOrderTestableRoutingFluxRouter from './ebay-order-testable-routing-flux';
+import ebayInventoryTestablePlanningFluxRouter from './ebay-inventory-testable-planning-flux';
+import ebaySellerTestableDashboardFluxRouter from './ebay-seller-testable-dashboard-flux';
+import ebayProductTestableAnalysisFluxRouter from './ebay-product-testable-analysis-flux';
+import ebayListingMaintainableEngineFluxRouter from './ebay-listing-maintainable-engine-flux';
+import ebayOrderMaintainableRoutingFluxRouter from './ebay-order-maintainable-routing-flux';
+import ebayInventoryMaintainablePlanningFluxRouter from './ebay-inventory-maintainable-planning-flux';
+import ebaySellerMaintainableDashboardFluxRouter from './ebay-seller-maintainable-dashboard-flux';
+import ebayProductMaintainableAnalysisFluxRouter from './ebay-product-maintainable-analysis-flux';
+
 export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay', ebayAuthRouter);
   app.use('/api/ebay-listings', ebayListingsRouter);
@@ -6308,4 +6450,198 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-lifecycle-intelligence-nova', ebayInventoryLifecycleIntelligenceNovaRouter);
   app.use('/api/ebay-seller-support-optimizer-nova', ebaySellerSupportOptimizerNovaRouter);
   app.use('/api/ebay-product-classification-optimizer-nova', ebayProductClassificationOptimizerNovaRouter);
+  // Phase 2821-2825
+  app.use('/api/ebay-listing-real-time-pricing-pulse', ebayListingRealTimePricingPulseRouter);
+  app.use('/api/ebay-order-live-tracking-pulse', ebayOrderLiveTrackingPulseRouter);
+  app.use('/api/ebay-inventory-real-time-sync-pulse', ebayInventoryRealTimeSyncPulseRouter);
+  app.use('/api/ebay-seller-live-dashboard-pulse', ebaySellerLiveDashboardPulseRouter);
+  app.use('/api/ebay-product-real-time-monitoring-pulse', ebayProductRealTimeMonitoringPulseRouter);
+  
+  // Phase 2826-2830
+  app.use('/api/ebay-listing-instant-optimization-pulse', ebayListingInstantOptimizationPulseRouter);
+  app.use('/api/ebay-order-instant-routing-pulse', ebayOrderInstantRoutingPulseRouter);
+  app.use('/api/ebay-inventory-instant-update-pulse', ebayInventoryInstantUpdatePulseRouter);
+  app.use('/api/ebay-seller-instant-alert-pulse', ebaySellerInstantAlertPulseRouter);
+  app.use('/api/ebay-product-instant-analysis-pulse', ebayProductInstantAnalysisPulseRouter);
+  
+  // Phase 2831-2835
+  app.use('/api/ebay-listing-stream-analytics-pulse', ebayListingStreamAnalyticsPulseRouter);
+  app.use('/api/ebay-order-stream-processing-pulse', ebayOrderStreamProcessingPulseRouter);
+  app.use('/api/ebay-inventory-stream-tracking-pulse', ebayInventoryStreamTrackingPulseRouter);
+  app.use('/api/ebay-seller-stream-monitoring-pulse', ebaySellerStreamMonitoringPulseRouter);
+  app.use('/api/ebay-product-stream-detection-pulse', ebayProductStreamDetectionPulseRouter);
+  
+  // Phase 2836-2840
+  app.use('/api/ebay-listing-event-driven-pulse', ebayListingEventDrivenPulseRouter);
+  app.use('/api/ebay-order-event-processing-pulse', ebayOrderEventProcessingPulseRouter);
+  app.use('/api/ebay-inventory-event-tracking-pulse', ebayInventoryEventTrackingPulseRouter);
+  app.use('/api/ebay-seller-event-analytics-pulse', ebaySellerEventAnalyticsPulseRouter);
+  app.use('/api/ebay-product-event-detection-pulse', ebayProductEventDetectionPulseRouter);
+  
+  // Phase 2841-2845
+  app.use('/api/ebay-listing-webhook-management-pulse', ebayListingWebhookManagementPulseRouter);
+  app.use('/api/ebay-order-webhook-processing-pulse', ebayOrderWebhookProcessingPulseRouter);
+  app.use('/api/ebay-inventory-webhook-sync-pulse', ebayInventoryWebhookSyncPulseRouter);
+  app.use('/api/ebay-seller-webhook-alerts-pulse', ebaySellerWebhookAlertsPulseRouter);
+  app.use('/api/ebay-product-webhook-updates-pulse', ebayProductWebhookUpdatesPulseRouter);
+  
+  // Phase 2846-2850
+  app.use('/api/ebay-listing-notification-engine-pulse', ebayListingNotificationEnginePulseRouter);
+  app.use('/api/ebay-order-notification-routing-pulse', ebayOrderNotificationRoutingPulseRouter);
+  app.use('/api/ebay-inventory-notification-sync-pulse', ebayInventoryNotificationSyncPulseRouter);
+  app.use('/api/ebay-seller-notification-dashboard-pulse', ebaySellerNotificationDashboardPulseRouter);
+  app.use('/api/ebay-product-notification-alerts-pulse', ebayProductNotificationAlertsPulseRouter);
+  
+  // Phase 2851-2855
+  app.use('/api/ebay-listing-alert-management-pulse', ebayListingAlertManagementPulseRouter);
+  app.use('/api/ebay-order-alert-routing-pulse', ebayOrderAlertRoutingPulseRouter);
+  app.use('/api/ebay-inventory-alert-engine-pulse', ebayInventoryAlertEnginePulseRouter);
+  app.use('/api/ebay-seller-alert-dashboard-pulse', ebaySellerAlertDashboardPulseRouter);
+  app.use('/api/ebay-product-alert-system-pulse', ebayProductAlertSystemPulseRouter);
+  
+  // Phase 2856-2860
+  app.use('/api/ebay-listing-monitor-engine-pulse', ebayListingMonitorEnginePulseRouter);
+  app.use('/api/ebay-order-monitor-dashboard-pulse', ebayOrderMonitorDashboardPulseRouter);
+  app.use('/api/ebay-inventory-monitor-system-pulse', ebayInventoryMonitorSystemPulseRouter);
+  app.use('/api/ebay-seller-monitor-analytics-pulse', ebaySellerMonitorAnalyticsPulseRouter);
+  app.use('/api/ebay-product-monitor-tracker-pulse', ebayProductMonitorTrackerPulseRouter);
+  
+  // Phase 2861-2865
+  app.use('/api/ebay-listing-health-checker-pulse', ebayListingHealthCheckerPulseRouter);
+  app.use('/api/ebay-order-health-monitor-pulse', ebayOrderHealthMonitorPulseRouter);
+  app.use('/api/ebay-inventory-health-tracker-pulse', ebayInventoryHealthTrackerPulseRouter);
+  app.use('/api/ebay-seller-health-dashboard-pulse', ebaySellerHealthDashboardPulseRouter);
+  app.use('/api/ebay-product-health-analyzer-pulse', ebayProductHealthAnalyzerPulseRouter);
+  
+  // Phase 2866-2870
+  app.use('/api/ebay-listing-status-tracker-pulse', ebayListingStatusTrackerPulseRouter);
+  app.use('/api/ebay-order-status-monitor-pulse', ebayOrderStatusMonitorPulseRouter);
+  app.use('/api/ebay-inventory-status-dashboard-pulse', ebayInventoryStatusDashboardPulseRouter);
+  app.use('/api/ebay-seller-status-analyzer-pulse', ebaySellerStatusAnalyzerPulseRouter);
+  app.use('/api/ebay-product-status-engine-pulse', ebayProductStatusEnginePulseRouter);
+  
+  // Phase 2871-2875
+  app.use('/api/ebay-listing-performance-monitor-pulse', ebayListingPerformanceMonitorPulseRouter);
+  app.use('/api/ebay-order-performance-tracker-pulse', ebayOrderPerformanceTrackerPulseRouter);
+  app.use('/api/ebay-inventory-performance-dashboard-pulse', ebayInventoryPerformanceDashboardPulseRouter);
+  app.use('/api/ebay-seller-performance-engine-pulse', ebaySellerPerformanceEnginePulseRouter);
+  app.use('/api/ebay-product-performance-analyzer-pulse', ebayProductPerformanceAnalyzerPulseRouter);
+  
+  // Phase 2876-2880
+  app.use('/api/ebay-listing-uptime-monitor-pulse', ebayListingUptimeMonitorPulseRouter);
+  app.use('/api/ebay-order-uptime-tracker-pulse', ebayOrderUptimeTrackerPulseRouter);
+  app.use('/api/ebay-inventory-uptime-dashboard-pulse', ebayInventoryUptimeDashboardPulseRouter);
+  app.use('/api/ebay-seller-uptime-engine-pulse', ebaySellerUptimeEnginePulseRouter);
+  app.use('/api/ebay-product-uptime-analyzer-pulse', ebayProductUptimeAnalyzerPulseRouter);
+  
+  // Phase 2881-2885
+  app.use('/api/ebay-listing-latency-monitor-pulse', ebayListingLatencyMonitorPulseRouter);
+  app.use('/api/ebay-order-latency-tracker-pulse', ebayOrderLatencyTrackerPulseRouter);
+  app.use('/api/ebay-inventory-latency-dashboard-pulse', ebayInventoryLatencyDashboardPulseRouter);
+  app.use('/api/ebay-seller-latency-engine-pulse', ebaySellerLatencyEnginePulseRouter);
+  app.use('/api/ebay-product-latency-analyzer-pulse', ebayProductLatencyAnalyzerPulseRouter);
+  
+  // Phase 2886-2890
+  app.use('/api/ebay-listing-throughput-monitor-pulse', ebayListingThroughputMonitorPulseRouter);
+  app.use('/api/ebay-order-throughput-tracker-pulse', ebayOrderThroughputTrackerPulseRouter);
+  app.use('/api/ebay-inventory-throughput-dashboard-pulse', ebayInventoryThroughputDashboardPulseRouter);
+  app.use('/api/ebay-seller-throughput-engine-pulse', ebaySellerThroughputEnginePulseRouter);
+  app.use('/api/ebay-product-throughput-analyzer-pulse', ebayProductThroughputAnalyzerPulseRouter);
+  // Phase 2891-2895
+  app.use('/api/ebay-listing-dynamic-workflow-flux', ebayListingDynamicWorkflowFluxRouter);
+  app.use('/api/ebay-order-dynamic-routing-flux', ebayOrderDynamicRoutingFluxRouter);
+  app.use('/api/ebay-inventory-dynamic-planning-flux', ebayInventoryDynamicPlanningFluxRouter);
+  app.use('/api/ebay-seller-dynamic-dashboard-flux', ebaySellerDynamicDashboardFluxRouter);
+  app.use('/api/ebay-product-dynamic-analysis-flux', ebayProductDynamicAnalysisFluxRouter);
+  
+  // Phase 2896-2900
+  app.use('/api/ebay-listing-adaptive-workflow-flux', ebayListingAdaptiveWorkflowFluxRouter);
+  app.use('/api/ebay-order-adaptive-routing-flux', ebayOrderAdaptiveRoutingFluxRouter);
+  app.use('/api/ebay-inventory-adaptive-planning-flux', ebayInventoryAdaptivePlanningFluxRouter);
+  app.use('/api/ebay-seller-adaptive-dashboard-flux', ebaySellerAdaptiveDashboardFluxRouter);
+  app.use('/api/ebay-product-adaptive-analysis-flux', ebayProductAdaptiveAnalysisFluxRouter);
+  
+  // Phase 2901-2905
+  app.use('/api/ebay-listing-responsive-engine-flux', ebayListingResponsiveEngineFluxRouter);
+  app.use('/api/ebay-order-responsive-routing-flux', ebayOrderResponsiveRoutingFluxRouter);
+  app.use('/api/ebay-inventory-responsive-planning-flux', ebayInventoryResponsivePlanningFluxRouter);
+  app.use('/api/ebay-seller-responsive-dashboard-flux', ebaySellerResponsiveDashboardFluxRouter);
+  app.use('/api/ebay-product-responsive-analysis-flux', ebayProductResponsiveAnalysisFluxRouter);
+  
+  // Phase 2906-2910
+  app.use('/api/ebay-listing-elastic-engine-flux', ebayListingElasticEngineFluxRouter);
+  app.use('/api/ebay-order-elastic-routing-flux', ebayOrderElasticRoutingFluxRouter);
+  app.use('/api/ebay-inventory-elastic-planning-flux', ebayInventoryElasticPlanningFluxRouter);
+  app.use('/api/ebay-seller-elastic-dashboard-flux', ebaySellerElasticDashboardFluxRouter);
+  app.use('/api/ebay-product-elastic-analysis-flux', ebayProductElasticAnalysisFluxRouter);
+  
+  // Phase 2911-2915
+  app.use('/api/ebay-listing-scalable-engine-flux', ebayListingScalableEngineFluxRouter);
+  app.use('/api/ebay-order-scalable-routing-flux', ebayOrderScalableRoutingFluxRouter);
+  app.use('/api/ebay-inventory-scalable-planning-flux', ebayInventoryScalablePlanningFluxRouter);
+  app.use('/api/ebay-seller-scalable-dashboard-flux', ebaySellerScalableDashboardFluxRouter);
+  app.use('/api/ebay-product-scalable-analysis-flux', ebayProductScalableAnalysisFluxRouter);
+  
+  // Phase 2916-2920
+  app.use('/api/ebay-listing-modular-engine-flux', ebayListingModularEngineFluxRouter);
+  app.use('/api/ebay-order-modular-routing-flux', ebayOrderModularRoutingFluxRouter);
+  app.use('/api/ebay-inventory-modular-planning-flux', ebayInventoryModularPlanningFluxRouter);
+  app.use('/api/ebay-seller-modular-dashboard-flux', ebaySellerModularDashboardFluxRouter);
+  app.use('/api/ebay-product-modular-analysis-flux', ebayProductModularAnalysisFluxRouter);
+  
+  // Phase 2921-2925
+  app.use('/api/ebay-listing-composable-engine-flux', ebayListingComposableEngineFluxRouter);
+  app.use('/api/ebay-order-composable-routing-flux', ebayOrderComposableRoutingFluxRouter);
+  app.use('/api/ebay-inventory-composable-planning-flux', ebayInventoryComposablePlanningFluxRouter);
+  app.use('/api/ebay-seller-composable-dashboard-flux', ebaySellerComposableDashboardFluxRouter);
+  app.use('/api/ebay-product-composable-analysis-flux', ebayProductComposableAnalysisFluxRouter);
+  
+  // Phase 2926-2930
+  app.use('/api/ebay-listing-extensible-engine-flux', ebayListingExtensibleEngineFluxRouter);
+  app.use('/api/ebay-order-extensible-routing-flux', ebayOrderExtensibleRoutingFluxRouter);
+  app.use('/api/ebay-inventory-extensible-planning-flux', ebayInventoryExtensiblePlanningFluxRouter);
+  app.use('/api/ebay-seller-extensible-dashboard-flux', ebaySellerExtensibleDashboardFluxRouter);
+  app.use('/api/ebay-product-extensible-analysis-flux', ebayProductExtensibleAnalysisFluxRouter);
+  
+  // Phase 2931-2935
+  app.use('/api/ebay-listing-configurable-engine-flux', ebayListingConfigurableEngineFluxRouter);
+  app.use('/api/ebay-order-configurable-routing-flux', ebayOrderConfigurableRoutingFluxRouter);
+  app.use('/api/ebay-inventory-configurable-planning-flux', ebayInventoryConfigurablePlanningFluxRouter);
+  app.use('/api/ebay-seller-configurable-dashboard-flux', ebaySellerConfigurableDashboardFluxRouter);
+  app.use('/api/ebay-product-configurable-analysis-flux', ebayProductConfigurableAnalysisFluxRouter);
+  
+  // Phase 2936-2940
+  app.use('/api/ebay-listing-pluggable-engine-flux', ebayListingPluggableEngineFluxRouter);
+  app.use('/api/ebay-order-pluggable-routing-flux', ebayOrderPluggableRoutingFluxRouter);
+  app.use('/api/ebay-inventory-pluggable-planning-flux', ebayInventoryPluggablePlanningFluxRouter);
+  app.use('/api/ebay-seller-pluggable-dashboard-flux', ebaySellerPluggableDashboardFluxRouter);
+  app.use('/api/ebay-product-pluggable-analysis-flux', ebayProductPluggableAnalysisFluxRouter);
+  
+  // Phase 2941-2945
+  app.use('/api/ebay-listing-portable-engine-flux', ebayListingPortableEngineFluxRouter);
+  app.use('/api/ebay-order-portable-routing-flux', ebayOrderPortableRoutingFluxRouter);
+  app.use('/api/ebay-inventory-portable-planning-flux', ebayInventoryPortablePlanningFluxRouter);
+  app.use('/api/ebay-seller-portable-dashboard-flux', ebaySellerPortableDashboardFluxRouter);
+  app.use('/api/ebay-product-portable-analysis-flux', ebayProductPortableAnalysisFluxRouter);
+  
+  // Phase 2946-2950
+  app.use('/api/ebay-listing-reusable-engine-flux', ebayListingReusableEngineFluxRouter);
+  app.use('/api/ebay-order-reusable-routing-flux', ebayOrderReusableRoutingFluxRouter);
+  app.use('/api/ebay-inventory-reusable-planning-flux', ebayInventoryReusablePlanningFluxRouter);
+  app.use('/api/ebay-seller-reusable-dashboard-flux', ebaySellerReusableDashboardFluxRouter);
+  app.use('/api/ebay-product-reusable-analysis-flux', ebayProductReusableAnalysisFluxRouter);
+  
+  // Phase 2951-2955
+  app.use('/api/ebay-listing-testable-engine-flux', ebayListingTestableEngineFluxRouter);
+  app.use('/api/ebay-order-testable-routing-flux', ebayOrderTestableRoutingFluxRouter);
+  app.use('/api/ebay-inventory-testable-planning-flux', ebayInventoryTestablePlanningFluxRouter);
+  app.use('/api/ebay-seller-testable-dashboard-flux', ebaySellerTestableDashboardFluxRouter);
+  app.use('/api/ebay-product-testable-analysis-flux', ebayProductTestableAnalysisFluxRouter);
+  
+  // Phase 2956-2960
+  app.use('/api/ebay-listing-maintainable-engine-flux', ebayListingMaintainableEngineFluxRouter);
+  app.use('/api/ebay-order-maintainable-routing-flux', ebayOrderMaintainableRoutingFluxRouter);
+  app.use('/api/ebay-inventory-maintainable-planning-flux', ebayInventoryMaintainablePlanningFluxRouter);
+  app.use('/api/ebay-seller-maintainable-dashboard-flux', ebaySellerMaintainableDashboardFluxRouter);
+  app.use('/api/ebay-product-maintainable-analysis-flux', ebayProductMaintainableAnalysisFluxRouter);
 }
