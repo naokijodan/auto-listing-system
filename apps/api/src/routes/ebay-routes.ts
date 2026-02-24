@@ -2839,6 +2839,147 @@ import ebayInventoryLifecycleOptimizerOmegaRouter from './ebay-inventory-lifecyc
 import ebaySellerSupportEngineOmegaRouter from './ebay-seller-support-engine-omega';
 import ebayProductClassificationEngineOmegaRouter from './ebay-product-classification-engine-omega';
 
+import ebayListingSmartBiddingVertexRouter from './ebay-listing-smart-bidding-vertex';
+import ebayOrderRapidFulfillmentVertexRouter from './ebay-order-rapid-fulfillment-vertex';
+import ebayInventorySmartWarehouseVertexRouter from './ebay-inventory-smart-warehouse-vertex';
+import ebaySellerBrandOptimizerVertexRouter from './ebay-seller-brand-optimizer-vertex';
+import ebayProductMatchEngineVertexRouter from './ebay-product-match-engine-vertex';
+import ebayListingDynamicTemplateVertexRouter from './ebay-listing-dynamic-template-vertex';
+import ebayOrderExpressShippingVertexRouter from './ebay-order-express-shipping-vertex';
+import ebayInventoryZonePlannerVertexRouter from './ebay-inventory-zone-planner-vertex';
+import ebaySellerMarketAnalyzerVertexRouter from './ebay-seller-market-analyzer-vertex';
+import ebayProductQualityCheckerVertexRouter from './ebay-product-quality-checker-vertex';
+import ebayListingPriceOptimizerVertexRouter from './ebay-listing-price-optimizer-vertex';
+import ebayOrderClaimProcessorVertexRouter from './ebay-order-claim-processor-vertex';
+import ebayInventoryRotationEngineVertexRouter from './ebay-inventory-rotation-engine-vertex';
+import ebaySellerScoreTrackerVertexRouter from './ebay-seller-score-tracker-vertex';
+import ebayProductResearchOptimizerVertexRouter from './ebay-product-research-optimizer-vertex';
+import ebayListingSeoEngineVertexRouter from './ebay-listing-seo-engine-vertex';
+import ebayOrderCustomsOptimizerVertexRouter from './ebay-order-customs-optimizer-vertex';
+import ebayInventoryBinPlannerVertexRouter from './ebay-inventory-bin-planner-vertex';
+import ebaySellerInsightOptimizerVertexRouter from './ebay-seller-insight-optimizer-vertex';
+import ebayProductPackagingEngineVertexRouter from './ebay-product-packaging-engine-vertex';
+import ebayListingImageEngineVertexRouter from './ebay-listing-image-engine-vertex';
+import ebayOrderSplitOptimizerVertexRouter from './ebay-order-split-optimizer-vertex';
+import ebayInventoryCountEngineVertexRouter from './ebay-inventory-count-engine-vertex';
+import ebaySellerEventOptimizerVertexRouter from './ebay-seller-event-optimizer-vertex';
+import ebayProductDimensionEngineVertexRouter from './ebay-product-dimension-engine-vertex';
+import ebayListingCategoryOptimizerVertexRouter from './ebay-listing-category-optimizer-vertex';
+import ebayOrderMergeOptimizerVertexRouter from './ebay-order-merge-optimizer-vertex';
+import ebayInventoryTransferEngineVertexRouter from './ebay-inventory-transfer-engine-vertex';
+import ebaySellerCampaignOptimizerVertexRouter from './ebay-seller-campaign-optimizer-vertex';
+import ebayProductCertificationEngineVertexRouter from './ebay-product-certification-engine-vertex';
+import ebayListingVariationEngineVertexRouter from './ebay-listing-variation-engine-vertex';
+import ebayOrderPriorityOptimizerVertexRouter from './ebay-order-priority-optimizer-vertex';
+import ebayInventoryForecastOptimizerVertexRouter from './ebay-inventory-forecast-optimizer-vertex';
+import ebaySellerLoyaltyOptimizerVertexRouter from './ebay-seller-loyalty-optimizer-vertex';
+import ebayProductComplianceOptimizerVertexRouter from './ebay-product-compliance-optimizer-vertex';
+import ebayListingScheduleEngineVertexRouter from './ebay-listing-schedule-engine-vertex';
+import ebayOrderBatchOptimizerVertexRouter from './ebay-order-batch-optimizer-vertex';
+import ebayInventoryAuditOptimizerVertexRouter from './ebay-inventory-audit-optimizer-vertex';
+import ebaySellerAffiliateOptimizerVertexRouter from './ebay-seller-affiliate-optimizer-vertex';
+import ebayProductAttributeOptimizerVertexRouter from './ebay-product-attribute-optimizer-vertex';
+import ebayListingFeeEngineVertexRouter from './ebay-listing-fee-engine-vertex';
+import ebayOrderInsuranceOptimizerVertexRouter from './ebay-order-insurance-optimizer-vertex';
+import ebayInventoryShrinkageEngineVertexRouter from './ebay-inventory-shrinkage-engine-vertex';
+import ebaySellerTrainingOptimizerVertexRouter from './ebay-seller-training-optimizer-vertex';
+import ebayProductCrossReferenceOptimizerVertexRouter from './ebay-product-cross-reference-optimizer-vertex';
+import ebayListingDraftEngineVertexRouter from './ebay-listing-draft-engine-vertex';
+import ebayOrderGiftOptimizerVertexRouter from './ebay-order-gift-optimizer-vertex';
+import ebayInventoryReceivingOptimizerVertexRouter from './ebay-inventory-receiving-optimizer-vertex';
+import ebaySellerResourceOptimizerVertexRouter from './ebay-seller-resource-optimizer-vertex';
+import ebayProductHazmatEngineVertexRouter from './ebay-product-hazmat-engine-vertex';
+import ebayListingBulkEngineVertexRouter from './ebay-listing-bulk-engine-vertex';
+import ebayOrderSubscriptionOptimizerVertexRouter from './ebay-order-subscription-optimizer-vertex';
+import ebayInventoryKittingOptimizerVertexRouter from './ebay-inventory-kitting-optimizer-vertex';
+import ebaySellerChannelOptimizerVertexRouter from './ebay-seller-channel-optimizer-vertex';
+import ebayProductRecallEngineVertexRouter from './ebay-product-recall-engine-vertex';
+import ebayListingTestingOptimizerVertexRouter from './ebay-listing-testing-optimizer-vertex';
+import ebayOrderDropshipOptimizerVertexRouter from './ebay-order-dropship-optimizer-vertex';
+import ebayInventoryPickingEngineVertexRouter from './ebay-inventory-picking-engine-vertex';
+import ebaySellerDocumentOptimizerVertexRouter from './ebay-seller-document-optimizer-vertex';
+import ebayProductImportOptimizerVertexRouter from './ebay-product-import-optimizer-vertex';
+import ebayListingArchiveOptimizerVertexRouter from './ebay-listing-archive-optimizer-vertex';
+import ebayOrderConsolidationEngineVertexRouter from './ebay-order-consolidation-engine-vertex';
+import ebayInventoryPackingOptimizerVertexRouter from './ebay-inventory-packing-optimizer-vertex';
+import ebaySellerWorkflowOptimizerVertexRouter from './ebay-seller-workflow-optimizer-vertex';
+import ebayProductExportOptimizerVertexRouter from './ebay-product-export-optimizer-vertex';
+import ebayListingMigrationOptimizerVertexRouter from './ebay-listing-migration-optimizer-vertex';
+import ebayOrderAnalyticsOptimizerVertexRouter from './ebay-order-analytics-optimizer-vertex';
+import ebayInventoryStagingOptimizerVertexRouter from './ebay-inventory-staging-optimizer-vertex';
+import ebaySellerApiOptimizerVertexRouter from './ebay-seller-api-optimizer-vertex';
+import ebayProductTemplateOptimizerVertexRouter from './ebay-product-template-optimizer-vertex';
+import ebayListingGlobalIntelligenceNovaRouter from './ebay-listing-global-intelligence-nova';
+import ebayOrderFulfillmentIntelligenceNovaRouter from './ebay-order-fulfillment-intelligence-nova';
+import ebayInventoryChannelIntelligenceNovaRouter from './ebay-inventory-channel-intelligence-nova';
+import ebaySellerVerificationOptimizerNovaRouter from './ebay-seller-verification-optimizer-nova';
+import ebayProductDiscoveryIntelligenceNovaRouter from './ebay-product-discovery-intelligence-nova';
+import ebayListingRepricingIntelligenceNovaRouter from './ebay-listing-repricing-intelligence-nova';
+import ebayOrderReturnIntelligenceNovaRouter from './ebay-order-return-intelligence-nova';
+import ebayInventoryDemandOptimizerNovaRouter from './ebay-inventory-demand-optimizer-nova';
+import ebaySellerTierIntelligenceNovaRouter from './ebay-seller-tier-intelligence-nova';
+import ebayProductCurationOptimizerNovaRouter from './ebay-product-curation-optimizer-nova';
+import ebayListingCompetitiveIntelligenceNovaRouter from './ebay-listing-competitive-intelligence-nova';
+import ebayOrderFraudIntelligenceNovaRouter from './ebay-order-fraud-intelligence-nova';
+import ebayInventoryNetworkIntelligenceNovaRouter from './ebay-inventory-network-intelligence-nova';
+import ebaySellerCollaborationOptimizerNovaRouter from './ebay-seller-collaboration-optimizer-nova';
+import ebayProductSustainabilityOptimizerNovaRouter from './ebay-product-sustainability-optimizer-nova';
+import ebayListingVisualIntelligenceNovaRouter from './ebay-listing-visual-intelligence-nova';
+import ebayOrderSplitIntelligenceNovaRouter from './ebay-order-split-intelligence-nova';
+import ebayInventoryWarehouseIntelligenceNovaRouter from './ebay-inventory-warehouse-intelligence-nova';
+import ebaySellerContentOptimizerNovaRouter from './ebay-seller-content-optimizer-nova';
+import ebayProductLocalizationOptimizerNovaRouter from './ebay-product-localization-optimizer-nova';
+import ebayListingRecommendationIntelligenceNovaRouter from './ebay-listing-recommendation-intelligence-nova';
+import ebayOrderCostIntelligenceNovaRouter from './ebay-order-cost-intelligence-nova';
+import ebayInventorySpaceIntelligenceNovaRouter from './ebay-inventory-space-intelligence-nova';
+import ebaySellerPayoutOptimizerNovaRouter from './ebay-seller-payout-optimizer-nova';
+import ebayProductTranslationOptimizerNovaRouter from './ebay-product-translation-optimizer-nova';
+import ebayListingSeasonalIntelligenceNovaRouter from './ebay-listing-seasonal-intelligence-nova';
+import ebayOrderNotificationIntelligenceNovaRouter from './ebay-order-notification-intelligence-nova';
+import ebayInventoryQualityOptimizerNovaRouter from './ebay-inventory-quality-optimizer-nova';
+import ebaySellerRiskOptimizerNovaRouter from './ebay-seller-risk-optimizer-nova';
+import ebayProductVideoIntelligenceNovaRouter from './ebay-product-video-intelligence-nova';
+import ebayListingChannelIntelligenceNovaRouter from './ebay-listing-channel-intelligence-nova';
+import ebayOrderAutomationIntelligenceNovaRouter from './ebay-order-automation-intelligence-nova';
+import ebayInventoryReservationOptimizerNovaRouter from './ebay-inventory-reservation-optimizer-nova';
+import ebaySellerFinanceOptimizerNovaRouter from './ebay-seller-finance-optimizer-nova';
+import ebayProductBundleIntelligenceNovaRouter from './ebay-product-bundle-intelligence-nova';
+import ebayListingGeographicIntelligenceNovaRouter from './ebay-listing-geographic-intelligence-nova';
+import ebayOrderLabelIntelligenceNovaRouter from './ebay-order-label-intelligence-nova';
+import ebayInventorySupplierIntelligenceNovaRouter from './ebay-inventory-supplier-intelligence-nova';
+import ebaySellerTaskOptimizerNovaRouter from './ebay-seller-task-optimizer-nova';
+import ebayProductTaggingIntelligenceNovaRouter from './ebay-product-tagging-intelligence-nova';
+import ebayListingComplianceIntelligenceNovaRouter from './ebay-listing-compliance-intelligence-nova';
+import ebayOrderRouteIntelligenceNovaRouter from './ebay-order-route-intelligence-nova';
+import ebayInventoryWasteIntelligenceNovaRouter from './ebay-inventory-waste-intelligence-nova';
+import ebaySellerGoalOptimizerNovaRouter from './ebay-seller-goal-optimizer-nova';
+import ebayProductVersionOptimizerNovaRouter from './ebay-product-version-optimizer-nova';
+import ebayListingTaxIntelligenceNovaRouter from './ebay-listing-tax-intelligence-nova';
+import ebayOrderExchangeIntelligenceNovaRouter from './ebay-order-exchange-intelligence-nova';
+import ebayInventoryDispositionOptimizerNovaRouter from './ebay-inventory-disposition-optimizer-nova';
+import ebaySellerMetricOptimizerNovaRouter from './ebay-seller-metric-optimizer-nova';
+import ebayProductWeightIntelligenceNovaRouter from './ebay-product-weight-intelligence-nova';
+import ebayListingWarrantyIntelligenceNovaRouter from './ebay-listing-warranty-intelligence-nova';
+import ebayOrderSchedulingIntelligenceNovaRouter from './ebay-order-scheduling-intelligence-nova';
+import ebayInventoryTrackingIntelligenceNovaRouter from './ebay-inventory-tracking-intelligence-nova';
+import ebaySellerBadgeOptimizerNovaRouter from './ebay-seller-badge-optimizer-nova';
+import ebayProductSafetyOptimizerNovaRouter from './ebay-product-safety-optimizer-nova';
+import ebayListingDiscountIntelligenceNovaRouter from './ebay-listing-discount-intelligence-nova';
+import ebayOrderQueueIntelligenceNovaRouter from './ebay-order-queue-intelligence-nova';
+import ebayInventoryPurchaseIntelligenceNovaRouter from './ebay-inventory-purchase-intelligence-nova';
+import ebaySellerEventOptimizerNovaRouter from './ebay-seller-event-optimizer-nova';
+import ebayProductOriginOptimizerNovaRouter from './ebay-product-origin-optimizer-nova';
+import ebayListingReviewIntelligenceNovaRouter from './ebay-listing-review-intelligence-nova';
+import ebayOrderHistoryIntelligenceNovaRouter from './ebay-order-history-intelligence-nova';
+import ebayInventoryPlanningIntelligenceNovaRouter from './ebay-inventory-planning-intelligence-nova';
+import ebaySellerBillingOptimizerNovaRouter from './ebay-seller-billing-optimizer-nova';
+import ebayProductGradingOptimizerNovaRouter from './ebay-product-grading-optimizer-nova';
+import ebayListingInsightIntelligenceNovaRouter from './ebay-listing-insight-intelligence-nova';
+import ebayOrderExperienceIntelligenceNovaRouter from './ebay-order-experience-intelligence-nova';
+import ebayInventoryLifecycleIntelligenceNovaRouter from './ebay-inventory-lifecycle-intelligence-nova';
+import ebaySellerSupportOptimizerNovaRouter from './ebay-seller-support-optimizer-nova';
+import ebayProductClassificationOptimizerNovaRouter from './ebay-product-classification-optimizer-nova';
+
 export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay', ebayAuthRouter);
   app.use('/api/ebay-listings', ebayListingsRouter);
@@ -5973,4 +6114,198 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-lifecycle-optimizer-omega', ebayInventoryLifecycleOptimizerOmegaRouter);
   app.use('/api/ebay-seller-support-engine-omega', ebaySellerSupportEngineOmegaRouter);
   app.use('/api/ebay-product-classification-engine-omega', ebayProductClassificationEngineOmegaRouter);
+  // Phase 2681-2685
+  app.use('/api/ebay-listing-smart-bidding-vertex', ebayListingSmartBiddingVertexRouter);
+  app.use('/api/ebay-order-rapid-fulfillment-vertex', ebayOrderRapidFulfillmentVertexRouter);
+  app.use('/api/ebay-inventory-smart-warehouse-vertex', ebayInventorySmartWarehouseVertexRouter);
+  app.use('/api/ebay-seller-brand-optimizer-vertex', ebaySellerBrandOptimizerVertexRouter);
+  app.use('/api/ebay-product-match-engine-vertex', ebayProductMatchEngineVertexRouter);
+  
+  // Phase 2686-2690
+  app.use('/api/ebay-listing-dynamic-template-vertex', ebayListingDynamicTemplateVertexRouter);
+  app.use('/api/ebay-order-express-shipping-vertex', ebayOrderExpressShippingVertexRouter);
+  app.use('/api/ebay-inventory-zone-planner-vertex', ebayInventoryZonePlannerVertexRouter);
+  app.use('/api/ebay-seller-market-analyzer-vertex', ebaySellerMarketAnalyzerVertexRouter);
+  app.use('/api/ebay-product-quality-checker-vertex', ebayProductQualityCheckerVertexRouter);
+  
+  // Phase 2691-2695
+  app.use('/api/ebay-listing-price-optimizer-vertex', ebayListingPriceOptimizerVertexRouter);
+  app.use('/api/ebay-order-claim-processor-vertex', ebayOrderClaimProcessorVertexRouter);
+  app.use('/api/ebay-inventory-rotation-engine-vertex', ebayInventoryRotationEngineVertexRouter);
+  app.use('/api/ebay-seller-score-tracker-vertex', ebaySellerScoreTrackerVertexRouter);
+  app.use('/api/ebay-product-research-optimizer-vertex', ebayProductResearchOptimizerVertexRouter);
+  
+  // Phase 2696-2700
+  app.use('/api/ebay-listing-seo-engine-vertex', ebayListingSeoEngineVertexRouter);
+  app.use('/api/ebay-order-customs-optimizer-vertex', ebayOrderCustomsOptimizerVertexRouter);
+  app.use('/api/ebay-inventory-bin-planner-vertex', ebayInventoryBinPlannerVertexRouter);
+  app.use('/api/ebay-seller-insight-optimizer-vertex', ebaySellerInsightOptimizerVertexRouter);
+  app.use('/api/ebay-product-packaging-engine-vertex', ebayProductPackagingEngineVertexRouter);
+  
+  // Phase 2701-2705
+  app.use('/api/ebay-listing-image-engine-vertex', ebayListingImageEngineVertexRouter);
+  app.use('/api/ebay-order-split-optimizer-vertex', ebayOrderSplitOptimizerVertexRouter);
+  app.use('/api/ebay-inventory-count-engine-vertex', ebayInventoryCountEngineVertexRouter);
+  app.use('/api/ebay-seller-event-optimizer-vertex', ebaySellerEventOptimizerVertexRouter);
+  app.use('/api/ebay-product-dimension-engine-vertex', ebayProductDimensionEngineVertexRouter);
+  
+  // Phase 2706-2710
+  app.use('/api/ebay-listing-category-optimizer-vertex', ebayListingCategoryOptimizerVertexRouter);
+  app.use('/api/ebay-order-merge-optimizer-vertex', ebayOrderMergeOptimizerVertexRouter);
+  app.use('/api/ebay-inventory-transfer-engine-vertex', ebayInventoryTransferEngineVertexRouter);
+  app.use('/api/ebay-seller-campaign-optimizer-vertex', ebaySellerCampaignOptimizerVertexRouter);
+  app.use('/api/ebay-product-certification-engine-vertex', ebayProductCertificationEngineVertexRouter);
+  
+  // Phase 2711-2715
+  app.use('/api/ebay-listing-variation-engine-vertex', ebayListingVariationEngineVertexRouter);
+  app.use('/api/ebay-order-priority-optimizer-vertex', ebayOrderPriorityOptimizerVertexRouter);
+  app.use('/api/ebay-inventory-forecast-optimizer-vertex', ebayInventoryForecastOptimizerVertexRouter);
+  app.use('/api/ebay-seller-loyalty-optimizer-vertex', ebaySellerLoyaltyOptimizerVertexRouter);
+  app.use('/api/ebay-product-compliance-optimizer-vertex', ebayProductComplianceOptimizerVertexRouter);
+  
+  // Phase 2716-2720
+  app.use('/api/ebay-listing-schedule-engine-vertex', ebayListingScheduleEngineVertexRouter);
+  app.use('/api/ebay-order-batch-optimizer-vertex', ebayOrderBatchOptimizerVertexRouter);
+  app.use('/api/ebay-inventory-audit-optimizer-vertex', ebayInventoryAuditOptimizerVertexRouter);
+  app.use('/api/ebay-seller-affiliate-optimizer-vertex', ebaySellerAffiliateOptimizerVertexRouter);
+  app.use('/api/ebay-product-attribute-optimizer-vertex', ebayProductAttributeOptimizerVertexRouter);
+  
+  // Phase 2721-2725
+  app.use('/api/ebay-listing-fee-engine-vertex', ebayListingFeeEngineVertexRouter);
+  app.use('/api/ebay-order-insurance-optimizer-vertex', ebayOrderInsuranceOptimizerVertexRouter);
+  app.use('/api/ebay-inventory-shrinkage-engine-vertex', ebayInventoryShrinkageEngineVertexRouter);
+  app.use('/api/ebay-seller-training-optimizer-vertex', ebaySellerTrainingOptimizerVertexRouter);
+  app.use('/api/ebay-product-cross-reference-optimizer-vertex', ebayProductCrossReferenceOptimizerVertexRouter);
+  
+  // Phase 2726-2730
+  app.use('/api/ebay-listing-draft-engine-vertex', ebayListingDraftEngineVertexRouter);
+  app.use('/api/ebay-order-gift-optimizer-vertex', ebayOrderGiftOptimizerVertexRouter);
+  app.use('/api/ebay-inventory-receiving-optimizer-vertex', ebayInventoryReceivingOptimizerVertexRouter);
+  app.use('/api/ebay-seller-resource-optimizer-vertex', ebaySellerResourceOptimizerVertexRouter);
+  app.use('/api/ebay-product-hazmat-engine-vertex', ebayProductHazmatEngineVertexRouter);
+  
+  // Phase 2731-2735
+  app.use('/api/ebay-listing-bulk-engine-vertex', ebayListingBulkEngineVertexRouter);
+  app.use('/api/ebay-order-subscription-optimizer-vertex', ebayOrderSubscriptionOptimizerVertexRouter);
+  app.use('/api/ebay-inventory-kitting-optimizer-vertex', ebayInventoryKittingOptimizerVertexRouter);
+  app.use('/api/ebay-seller-channel-optimizer-vertex', ebaySellerChannelOptimizerVertexRouter);
+  app.use('/api/ebay-product-recall-engine-vertex', ebayProductRecallEngineVertexRouter);
+  
+  // Phase 2736-2740
+  app.use('/api/ebay-listing-testing-optimizer-vertex', ebayListingTestingOptimizerVertexRouter);
+  app.use('/api/ebay-order-dropship-optimizer-vertex', ebayOrderDropshipOptimizerVertexRouter);
+  app.use('/api/ebay-inventory-picking-engine-vertex', ebayInventoryPickingEngineVertexRouter);
+  app.use('/api/ebay-seller-document-optimizer-vertex', ebaySellerDocumentOptimizerVertexRouter);
+  app.use('/api/ebay-product-import-optimizer-vertex', ebayProductImportOptimizerVertexRouter);
+  
+  // Phase 2741-2745
+  app.use('/api/ebay-listing-archive-optimizer-vertex', ebayListingArchiveOptimizerVertexRouter);
+  app.use('/api/ebay-order-consolidation-engine-vertex', ebayOrderConsolidationEngineVertexRouter);
+  app.use('/api/ebay-inventory-packing-optimizer-vertex', ebayInventoryPackingOptimizerVertexRouter);
+  app.use('/api/ebay-seller-workflow-optimizer-vertex', ebaySellerWorkflowOptimizerVertexRouter);
+  app.use('/api/ebay-product-export-optimizer-vertex', ebayProductExportOptimizerVertexRouter);
+  
+  // Phase 2746-2750
+  app.use('/api/ebay-listing-migration-optimizer-vertex', ebayListingMigrationOptimizerVertexRouter);
+  app.use('/api/ebay-order-analytics-optimizer-vertex', ebayOrderAnalyticsOptimizerVertexRouter);
+  app.use('/api/ebay-inventory-staging-optimizer-vertex', ebayInventoryStagingOptimizerVertexRouter);
+  app.use('/api/ebay-seller-api-optimizer-vertex', ebaySellerApiOptimizerVertexRouter);
+  app.use('/api/ebay-product-template-optimizer-vertex', ebayProductTemplateOptimizerVertexRouter);
+  // Phase 2751-2755
+  app.use('/api/ebay-listing-global-intelligence-nova', ebayListingGlobalIntelligenceNovaRouter);
+  app.use('/api/ebay-order-fulfillment-intelligence-nova', ebayOrderFulfillmentIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-channel-intelligence-nova', ebayInventoryChannelIntelligenceNovaRouter);
+  app.use('/api/ebay-seller-verification-optimizer-nova', ebaySellerVerificationOptimizerNovaRouter);
+  app.use('/api/ebay-product-discovery-intelligence-nova', ebayProductDiscoveryIntelligenceNovaRouter);
+  
+  // Phase 2756-2760
+  app.use('/api/ebay-listing-repricing-intelligence-nova', ebayListingRepricingIntelligenceNovaRouter);
+  app.use('/api/ebay-order-return-intelligence-nova', ebayOrderReturnIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-demand-optimizer-nova', ebayInventoryDemandOptimizerNovaRouter);
+  app.use('/api/ebay-seller-tier-intelligence-nova', ebaySellerTierIntelligenceNovaRouter);
+  app.use('/api/ebay-product-curation-optimizer-nova', ebayProductCurationOptimizerNovaRouter);
+  
+  // Phase 2761-2765
+  app.use('/api/ebay-listing-competitive-intelligence-nova', ebayListingCompetitiveIntelligenceNovaRouter);
+  app.use('/api/ebay-order-fraud-intelligence-nova', ebayOrderFraudIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-network-intelligence-nova', ebayInventoryNetworkIntelligenceNovaRouter);
+  app.use('/api/ebay-seller-collaboration-optimizer-nova', ebaySellerCollaborationOptimizerNovaRouter);
+  app.use('/api/ebay-product-sustainability-optimizer-nova', ebayProductSustainabilityOptimizerNovaRouter);
+  
+  // Phase 2766-2770
+  app.use('/api/ebay-listing-visual-intelligence-nova', ebayListingVisualIntelligenceNovaRouter);
+  app.use('/api/ebay-order-split-intelligence-nova', ebayOrderSplitIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-warehouse-intelligence-nova', ebayInventoryWarehouseIntelligenceNovaRouter);
+  app.use('/api/ebay-seller-content-optimizer-nova', ebaySellerContentOptimizerNovaRouter);
+  app.use('/api/ebay-product-localization-optimizer-nova', ebayProductLocalizationOptimizerNovaRouter);
+  
+  // Phase 2771-2775
+  app.use('/api/ebay-listing-recommendation-intelligence-nova', ebayListingRecommendationIntelligenceNovaRouter);
+  app.use('/api/ebay-order-cost-intelligence-nova', ebayOrderCostIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-space-intelligence-nova', ebayInventorySpaceIntelligenceNovaRouter);
+  app.use('/api/ebay-seller-payout-optimizer-nova', ebaySellerPayoutOptimizerNovaRouter);
+  app.use('/api/ebay-product-translation-optimizer-nova', ebayProductTranslationOptimizerNovaRouter);
+  
+  // Phase 2776-2780
+  app.use('/api/ebay-listing-seasonal-intelligence-nova', ebayListingSeasonalIntelligenceNovaRouter);
+  app.use('/api/ebay-order-notification-intelligence-nova', ebayOrderNotificationIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-quality-optimizer-nova', ebayInventoryQualityOptimizerNovaRouter);
+  app.use('/api/ebay-seller-risk-optimizer-nova', ebaySellerRiskOptimizerNovaRouter);
+  app.use('/api/ebay-product-video-intelligence-nova', ebayProductVideoIntelligenceNovaRouter);
+  
+  // Phase 2781-2785
+  app.use('/api/ebay-listing-channel-intelligence-nova', ebayListingChannelIntelligenceNovaRouter);
+  app.use('/api/ebay-order-automation-intelligence-nova', ebayOrderAutomationIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-reservation-optimizer-nova', ebayInventoryReservationOptimizerNovaRouter);
+  app.use('/api/ebay-seller-finance-optimizer-nova', ebaySellerFinanceOptimizerNovaRouter);
+  app.use('/api/ebay-product-bundle-intelligence-nova', ebayProductBundleIntelligenceNovaRouter);
+  
+  // Phase 2786-2790
+  app.use('/api/ebay-listing-geographic-intelligence-nova', ebayListingGeographicIntelligenceNovaRouter);
+  app.use('/api/ebay-order-label-intelligence-nova', ebayOrderLabelIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-supplier-intelligence-nova', ebayInventorySupplierIntelligenceNovaRouter);
+  app.use('/api/ebay-seller-task-optimizer-nova', ebaySellerTaskOptimizerNovaRouter);
+  app.use('/api/ebay-product-tagging-intelligence-nova', ebayProductTaggingIntelligenceNovaRouter);
+  
+  // Phase 2791-2795
+  app.use('/api/ebay-listing-compliance-intelligence-nova', ebayListingComplianceIntelligenceNovaRouter);
+  app.use('/api/ebay-order-route-intelligence-nova', ebayOrderRouteIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-waste-intelligence-nova', ebayInventoryWasteIntelligenceNovaRouter);
+  app.use('/api/ebay-seller-goal-optimizer-nova', ebaySellerGoalOptimizerNovaRouter);
+  app.use('/api/ebay-product-version-optimizer-nova', ebayProductVersionOptimizerNovaRouter);
+  
+  // Phase 2796-2800
+  app.use('/api/ebay-listing-tax-intelligence-nova', ebayListingTaxIntelligenceNovaRouter);
+  app.use('/api/ebay-order-exchange-intelligence-nova', ebayOrderExchangeIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-disposition-optimizer-nova', ebayInventoryDispositionOptimizerNovaRouter);
+  app.use('/api/ebay-seller-metric-optimizer-nova', ebaySellerMetricOptimizerNovaRouter);
+  app.use('/api/ebay-product-weight-intelligence-nova', ebayProductWeightIntelligenceNovaRouter);
+  
+  // Phase 2801-2805
+  app.use('/api/ebay-listing-warranty-intelligence-nova', ebayListingWarrantyIntelligenceNovaRouter);
+  app.use('/api/ebay-order-scheduling-intelligence-nova', ebayOrderSchedulingIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-tracking-intelligence-nova', ebayInventoryTrackingIntelligenceNovaRouter);
+  app.use('/api/ebay-seller-badge-optimizer-nova', ebaySellerBadgeOptimizerNovaRouter);
+  app.use('/api/ebay-product-safety-optimizer-nova', ebayProductSafetyOptimizerNovaRouter);
+  
+  // Phase 2806-2810
+  app.use('/api/ebay-listing-discount-intelligence-nova', ebayListingDiscountIntelligenceNovaRouter);
+  app.use('/api/ebay-order-queue-intelligence-nova', ebayOrderQueueIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-purchase-intelligence-nova', ebayInventoryPurchaseIntelligenceNovaRouter);
+  app.use('/api/ebay-seller-event-optimizer-nova', ebaySellerEventOptimizerNovaRouter);
+  app.use('/api/ebay-product-origin-optimizer-nova', ebayProductOriginOptimizerNovaRouter);
+  
+  // Phase 2811-2815
+  app.use('/api/ebay-listing-review-intelligence-nova', ebayListingReviewIntelligenceNovaRouter);
+  app.use('/api/ebay-order-history-intelligence-nova', ebayOrderHistoryIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-planning-intelligence-nova', ebayInventoryPlanningIntelligenceNovaRouter);
+  app.use('/api/ebay-seller-billing-optimizer-nova', ebaySellerBillingOptimizerNovaRouter);
+  app.use('/api/ebay-product-grading-optimizer-nova', ebayProductGradingOptimizerNovaRouter);
+  
+  // Phase 2816-2820
+  app.use('/api/ebay-listing-insight-intelligence-nova', ebayListingInsightIntelligenceNovaRouter);
+  app.use('/api/ebay-order-experience-intelligence-nova', ebayOrderExperienceIntelligenceNovaRouter);
+  app.use('/api/ebay-inventory-lifecycle-intelligence-nova', ebayInventoryLifecycleIntelligenceNovaRouter);
+  app.use('/api/ebay-seller-support-optimizer-nova', ebaySellerSupportOptimizerNovaRouter);
+  app.use('/api/ebay-product-classification-optimizer-nova', ebayProductClassificationOptimizerNovaRouter);
 }
