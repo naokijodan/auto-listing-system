@@ -385,6 +385,24 @@ import ebayListingVisibilityBoosterRouter from './ebay-listing-visibility-booste
 import ebayOrderTrackingDashboardProRouter from './ebay-order-tracking-dashboard-pro';
 import ebayInventoryCostAnalyzerRouter from './ebay-inventory-cost-analyzer';
 import ebaySellerPerformanceScorecardRouter from './ebay-seller-performance-scorecard';
+// Phase 486-490
+import ebayBulkPhotoEditorRouter from './ebay-bulk-photo-editor';
+import ebayDynamicDiscountManagerRouter from './ebay-dynamic-discount-manager';
+import ebayOrderExceptionHandlerRouter from './ebay-order-exception-handler';
+import ebayInventoryHealthMonitorRouter from './ebay-inventory-health-monitor';
+import ebayListingEngagementTrackerRouter from './ebay-listing-engagement-tracker';
+// Phase 491-495
+import ebaySellerTaxComplianceRouter from './ebay-seller-tax-compliance';
+import ebayProductImageGalleryManagerRouter from './ebay-product-image-gallery-manager';
+import ebayListingSeasonalOptimizerRouter from './ebay-listing-seasonal-optimizer';
+import ebayOrderPaymentReconcilerRouter from './ebay-order-payment-reconciler';
+import ebayInventoryWarehouseOptimizerRouter from './ebay-inventory-warehouse-optimizer';
+// Phase 496-500
+import ebaySellerCustomerServiceBotRouter from './ebay-seller-customer-service-bot';
+import ebayListingCrossSellEngineRouter from './ebay-listing-cross-sell-engine';
+import ebayOrderFraudDetectorRouter from './ebay-order-fraud-detector';
+import ebayProductSourcingMarketplaceRouter from './ebay-product-sourcing-marketplace';
+import ebaySellerGrowthPlannerRouter from './ebay-seller-growth-planner';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -790,4 +808,22 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-order-tracking-dashboard-pro', ebayOrderTrackingDashboardProRouter);
   app.use('/api/ebay-inventory-cost-analyzer', ebayInventoryCostAnalyzerRouter);
   app.use('/api/ebay-seller-performance-scorecard', ebaySellerPerformanceScorecardRouter);
+  // Phase 486-490
+  app.use('/api/ebay-bulk-photo-editor', ebayBulkPhotoEditorRouter);
+  app.use('/api/ebay-dynamic-discount-manager', ebayDynamicDiscountManagerRouter);
+  app.use('/api/ebay-order-exception-handler', ebayOrderExceptionHandlerRouter);
+  app.use('/api/ebay-inventory-health-monitor', ebayInventoryHealthMonitorRouter);
+  app.use('/api/ebay-listing-engagement-tracker', ebayListingEngagementTrackerRouter);
+  // Phase 491-495
+  app.use('/api/ebay-seller-tax-compliance', ebaySellerTaxComplianceRouter);
+  app.use('/api/ebay-product-image-gallery-manager', ebayProductImageGalleryManagerRouter);
+  app.use('/api/ebay-listing-seasonal-optimizer', ebayListingSeasonalOptimizerRouter);
+  app.use('/api/ebay-order-payment-reconciler', ebayOrderPaymentReconcilerRouter);
+  app.use('/api/ebay-inventory-warehouse-optimizer', ebayInventoryWarehouseOptimizerRouter);
+  // Phase 496-500
+  app.use('/api/ebay-seller-customer-service-bot', ebaySellerCustomerServiceBotRouter);
+  app.use('/api/ebay-listing-cross-sell-engine', ebayListingCrossSellEngineRouter);
+  app.use('/api/ebay-order-fraud-detector', ebayOrderFraudDetectorRouter);
+  app.use('/api/ebay-product-sourcing-marketplace', ebayProductSourcingMarketplaceRouter);
+  app.use('/api/ebay-seller-growth-planner', ebaySellerGrowthPlannerRouter);
 }
