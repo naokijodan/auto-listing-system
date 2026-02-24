@@ -469,6 +469,12 @@ import ebayOrderPaymentGatewayRouter from './ebay-order-payment-gateway';
 import ebayInventoryBatchUpdaterRouter from './ebay-inventory-batch-updater';
 import ebaySellerFeedbackAnalyzerRouter from './ebay-seller-feedback-analyzer';
 import ebayProductPricingStrategyRouter from './ebay-product-pricing-strategy';
+// Phase 556-560
+import ebayListingImageEnhancerProRouter from './ebay-listing-image-enhancer-pro';
+import ebayOrderAutomationEngineRouter from './ebay-order-automation-engine';
+import ebayInventoryOptimizationSuiteRouter from './ebay-inventory-optimization-suite';
+import ebaySellerPerformanceInsightsRouter from './ebay-seller-performance-insights';
+import ebayProductSourcingIntelligenceRouter from './ebay-product-sourcing-intelligence';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -958,4 +964,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-batch-updater', ebayInventoryBatchUpdaterRouter);
   app.use('/api/ebay-seller-feedback-analyzer', ebaySellerFeedbackAnalyzerRouter);
   app.use('/api/ebay-product-pricing-strategy', ebayProductPricingStrategyRouter);
+  // Phase 556-560
+  app.use('/api/ebay-listing-image-enhancer-pro', ebayListingImageEnhancerProRouter);
+  app.use('/api/ebay-order-automation-engine', ebayOrderAutomationEngineRouter);
+  app.use('/api/ebay-inventory-optimization-suite', ebayInventoryOptimizationSuiteRouter);
+  app.use('/api/ebay-seller-performance-insights', ebaySellerPerformanceInsightsRouter);
+  app.use('/api/ebay-product-sourcing-intelligence', ebayProductSourcingIntelligenceRouter);
 }
