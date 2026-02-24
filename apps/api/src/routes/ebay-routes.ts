@@ -607,6 +607,12 @@ import ebayOrderDropshipCoordinatorRouter from './ebay-order-dropship-coordinato
 import ebayInventoryCrossDockManagerRouter from './ebay-inventory-cross-dock-manager';
 import ebaySellerProfitCalculatorProRouter from './ebay-seller-profit-calculator-pro';
 import ebayProductVideoManagerRouter from './ebay-product-video-manager';
+// Phase 666-670
+import ebayListingCountdownTimerRouter from './ebay-listing-countdown-timer';
+import ebayOrderMultiCurrencyProcessorRouter from './ebay-order-multi-currency-processor';
+import ebayInventoryKittingManagerRouter from './ebay-inventory-kitting-manager';
+import ebaySellerSeasonalPlannerRouter from './ebay-seller-seasonal-planner';
+import ebayProductMaterialTrackerRouter from './ebay-product-material-tracker';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1234,4 +1240,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-cross-dock-manager', ebayInventoryCrossDockManagerRouter);
   app.use('/api/ebay-seller-profit-calculator-pro', ebaySellerProfitCalculatorProRouter);
   app.use('/api/ebay-product-video-manager', ebayProductVideoManagerRouter);
+  // Phase 666-670
+  app.use('/api/ebay-listing-countdown-timer', ebayListingCountdownTimerRouter);
+  app.use('/api/ebay-order-multi-currency-processor', ebayOrderMultiCurrencyProcessorRouter);
+  app.use('/api/ebay-inventory-kitting-manager', ebayInventoryKittingManagerRouter);
+  app.use('/api/ebay-seller-seasonal-planner', ebaySellerSeasonalPlannerRouter);
+  app.use('/api/ebay-product-material-tracker', ebayProductMaterialTrackerRouter);
 }
