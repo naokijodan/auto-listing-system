@@ -355,6 +355,12 @@ import ebayBuyerLoyaltyProgramRouter from './ebay-buyer-loyalty-program';
 import ebayInventoryDemandPlannerRouter from './ebay-inventory-demand-planner';
 import ebayListingTranslationHubRouter from './ebay-listing-translation-hub';
 import ebaySellerFinancialDashboardRouter from './ebay-seller-financial-dashboard';
+// Phase 461-465
+import ebayOrderCancellationManagerRouter from './ebay-order-cancellation-manager';
+import ebayListingCategoryAdvisorRouter from './ebay-listing-category-advisor';
+import ebaySellerPayoutTrackerRouter from './ebay-seller-payout-tracker';
+import ebayProductCrossReferenceToolRouter from './ebay-product-cross-reference-tool';
+import ebayListingPromotionSchedulerRouter from './ebay-listing-promotion-scheduler';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -730,4 +736,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-demand-planner', ebayInventoryDemandPlannerRouter);
   app.use('/api/ebay-listing-translation-hub', ebayListingTranslationHubRouter);
   app.use('/api/ebay-seller-financial-dashboard', ebaySellerFinancialDashboardRouter);
+  // Phase 461-465
+  app.use('/api/ebay-order-cancellation-manager', ebayOrderCancellationManagerRouter);
+  app.use('/api/ebay-listing-category-advisor', ebayListingCategoryAdvisorRouter);
+  app.use('/api/ebay-seller-payout-tracker', ebaySellerPayoutTrackerRouter);
+  app.use('/api/ebay-product-cross-reference-tool', ebayProductCrossReferenceToolRouter);
+  app.use('/api/ebay-listing-promotion-scheduler', ebayListingPromotionSchedulerRouter);
 }
