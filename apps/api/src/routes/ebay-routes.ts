@@ -1597,6 +1597,90 @@ import ebayOrderBackorderNotificationServiceRouter from './ebay-order-backorder-
 import ebayInventoryShelfManagementServiceRouter from './ebay-inventory-shelf-management-service';
 import ebaySellerTrendAnalysisServiceRouter from './ebay-seller-trend-analysis-service';
 import ebayProductSkuManagementServiceRouter from './ebay-product-sku-management-service';
+// Phase 1491-1495
+import ebayListingBulkUploadToolkitRouter from './ebay-listing-bulk-upload-toolkit';
+import ebayOrderShipmentTrackingToolkitRouter from './ebay-order-shipment-tracking-toolkit';
+import ebayInventoryRestockPlanningToolkitRouter from './ebay-inventory-restock-planning-toolkit';
+import ebaySellerAccountAuditToolkitRouter from './ebay-seller-account-audit-toolkit';
+import ebayProductDataCleanupToolkitRouter from './ebay-product-data-cleanup-toolkit';
+// Phase 1496-1500
+import ebayListingPriceAnalysisToolkitRouter from './ebay-listing-price-analysis-toolkit';
+import ebayOrderBatchLabelToolkitRouter from './ebay-order-batch-label-toolkit';
+import ebayInventoryStockTransferToolkitRouter from './ebay-inventory-stock-transfer-toolkit';
+import ebaySellerRevenueTrackerToolkitRouter from './ebay-seller-revenue-tracker-toolkit';
+import ebayProductImageBatchToolkitRouter from './ebay-product-image-batch-toolkit';
+// Phase 1501-1505
+import ebayListingCategoryMappingToolkitRouter from './ebay-listing-category-mapping-toolkit';
+import ebayOrderReturnLabelToolkitRouter from './ebay-order-return-label-toolkit';
+import ebayInventoryCountVerificationToolkitRouter from './ebay-inventory-count-verification-toolkit';
+import ebaySellerFeedbackResponseToolkitRouter from './ebay-seller-feedback-response-toolkit';
+import ebayProductAttributeMapperToolkitRouter from './ebay-product-attribute-mapper-toolkit';
+// Phase 1506-1510
+import ebayListingTemplateLibraryToolkitRouter from './ebay-listing-template-library-toolkit';
+import ebayOrderCustomsFormToolkitRouter from './ebay-order-customs-form-toolkit';
+import ebayInventorySerialNumberToolkitRouter from './ebay-inventory-serial-number-toolkit';
+import ebaySellerPayoutTrackerToolkitRouter from './ebay-seller-payout-tracker-toolkit';
+import ebayProductWeightCalculatorToolkitRouter from './ebay-product-weight-calculator-toolkit';
+// Phase 1511-1515
+import ebayListingDraftConverterToolkitRouter from './ebay-listing-draft-converter-toolkit';
+import ebayOrderGiftMessageToolkitRouter from './ebay-order-gift-message-toolkit';
+import ebayInventoryLotManagementToolkitRouter from './ebay-inventory-lot-management-toolkit';
+import ebaySellerTaxReportToolkitRouter from './ebay-seller-tax-report-toolkit';
+import ebayProductConditionCheckerToolkitRouter from './ebay-product-condition-checker-toolkit';
+// Phase 1516-1520
+import ebayListingFeeEstimatorToolkitRouter from './ebay-listing-fee-estimator-toolkit';
+import ebayOrderAddressBookToolkitRouter from './ebay-order-address-book-toolkit';
+import ebayInventoryBarcodePrinterToolkitRouter from './ebay-inventory-barcode-printer-toolkit';
+import ebaySellerCampaignBuilderToolkitRouter from './ebay-seller-campaign-builder-toolkit';
+import ebayProductCompatibilityFinderToolkitRouter from './ebay-product-compatibility-finder-toolkit';
+// Phase 1521-1525
+import ebayListingVariationEditorToolkitRouter from './ebay-listing-variation-editor-toolkit';
+import ebayOrderCarrierCompareToolkitRouter from './ebay-order-carrier-compare-toolkit';
+import ebayInventoryReceivingLogToolkitRouter from './ebay-inventory-receiving-log-toolkit';
+import ebaySellerStoreBuilderToolkitRouter from './ebay-seller-store-builder-toolkit';
+import ebayProductSpecSheetToolkitRouter from './ebay-product-spec-sheet-toolkit';
+// Phase 1526-1530
+import ebayListingShippingProfileToolkitRouter from './ebay-listing-shipping-profile-toolkit';
+import ebayOrderLabelBatchToolkitRouter from './ebay-order-label-batch-toolkit';
+import ebayInventoryPickListToolkitRouter from './ebay-inventory-pick-list-toolkit';
+import ebaySellerPromotionBuilderToolkitRouter from './ebay-seller-promotion-builder-toolkit';
+import ebayProductCrossSellToolkitRouter from './ebay-product-cross-sell-toolkit';
+// Phase 1531-1535
+import ebayListingReserveCalculatorToolkitRouter from './ebay-listing-reserve-calculator-toolkit';
+import ebayOrderTrackingDashboardToolkitRouter from './ebay-order-tracking-dashboard-toolkit';
+import ebayInventoryTransferLogToolkitRouter from './ebay-inventory-transfer-log-toolkit';
+import ebaySellerReviewMonitorToolkitRouter from './ebay-seller-review-monitor-toolkit';
+import ebayProductRecallAlertToolkitRouter from './ebay-product-recall-alert-toolkit';
+// Phase 1536-1540
+import ebayListingGalleryEditorToolkitRouter from './ebay-listing-gallery-editor-toolkit';
+import ebayOrderCancelRequestToolkitRouter from './ebay-order-cancel-request-toolkit';
+import ebayInventoryStocktakeReportToolkitRouter from './ebay-inventory-stocktake-report-toolkit';
+import ebaySellerBillingManagerToolkitRouter from './ebay-seller-billing-manager-toolkit';
+import ebayProductCertValidatorToolkitRouter from './ebay-product-cert-validator-toolkit';
+// Phase 1541-1545
+import ebayListingMobileEditorToolkitRouter from './ebay-listing-mobile-editor-toolkit';
+import ebayOrderPartialShipToolkitRouter from './ebay-order-partial-ship-toolkit';
+import ebayInventoryContainerLogToolkitRouter from './ebay-inventory-container-log-toolkit';
+import ebaySellerPermissionManagerToolkitRouter from './ebay-seller-permission-manager-toolkit';
+import ebayProductHazmatCheckerToolkitRouter from './ebay-product-hazmat-checker-toolkit';
+// Phase 1546-1550
+import ebayListingTitleAnalyzerToolkitRouter from './ebay-listing-title-analyzer-toolkit';
+import ebayOrderDeliveryTrackerToolkitRouter from './ebay-order-delivery-tracker-toolkit';
+import ebayInventoryShelfPlannerToolkitRouter from './ebay-inventory-shelf-planner-toolkit';
+import ebaySellerInvoiceBuilderToolkitRouter from './ebay-seller-invoice-builder-toolkit';
+import ebayProductOriginCheckerToolkitRouter from './ebay-product-origin-checker-toolkit';
+// Phase 1551-1555
+import ebayListingSpecificsEditorToolkitRouter from './ebay-listing-specifics-editor-toolkit';
+import ebayOrderReplacementTrackerToolkitRouter from './ebay-order-replacement-tracker-toolkit';
+import ebayInventoryMinMaxCalculatorToolkitRouter from './ebay-inventory-min-max-calculator-toolkit';
+import ebaySellerPerformanceReportToolkitRouter from './ebay-seller-performance-report-toolkit';
+import ebayProductMaterialCheckerToolkitRouter from './ebay-product-material-checker-toolkit';
+// Phase 1556-1560
+import ebayListingPromotedManagerToolkitRouter from './ebay-listing-promoted-manager-toolkit';
+import ebayOrderSignatureTrackerToolkitRouter from './ebay-order-signature-tracker-toolkit';
+import ebayInventoryVendorPortalToolkitRouter from './ebay-inventory-vendor-portal-toolkit';
+import ebaySellerFinancialPlannerToolkitRouter from './ebay-seller-financial-planner-toolkit';
+import ebayProductSustainabilityCheckerToolkitRouter from './ebay-product-sustainability-checker-toolkit';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -3214,4 +3298,88 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-shelf-management-service', ebayInventoryShelfManagementServiceRouter);
   app.use('/api/ebay-seller-trend-analysis-service', ebaySellerTrendAnalysisServiceRouter);
   app.use('/api/ebay-product-sku-management-service', ebayProductSkuManagementServiceRouter);
+  // Phase 1491-1495
+  app.use('/api/ebay-listing-bulk-upload-toolkit', ebayListingBulkUploadToolkitRouter);
+  app.use('/api/ebay-order-shipment-tracking-toolkit', ebayOrderShipmentTrackingToolkitRouter);
+  app.use('/api/ebay-inventory-restock-planning-toolkit', ebayInventoryRestockPlanningToolkitRouter);
+  app.use('/api/ebay-seller-account-audit-toolkit', ebaySellerAccountAuditToolkitRouter);
+  app.use('/api/ebay-product-data-cleanup-toolkit', ebayProductDataCleanupToolkitRouter);
+  // Phase 1496-1500
+  app.use('/api/ebay-listing-price-analysis-toolkit', ebayListingPriceAnalysisToolkitRouter);
+  app.use('/api/ebay-order-batch-label-toolkit', ebayOrderBatchLabelToolkitRouter);
+  app.use('/api/ebay-inventory-stock-transfer-toolkit', ebayInventoryStockTransferToolkitRouter);
+  app.use('/api/ebay-seller-revenue-tracker-toolkit', ebaySellerRevenueTrackerToolkitRouter);
+  app.use('/api/ebay-product-image-batch-toolkit', ebayProductImageBatchToolkitRouter);
+  // Phase 1501-1505
+  app.use('/api/ebay-listing-category-mapping-toolkit', ebayListingCategoryMappingToolkitRouter);
+  app.use('/api/ebay-order-return-label-toolkit', ebayOrderReturnLabelToolkitRouter);
+  app.use('/api/ebay-inventory-count-verification-toolkit', ebayInventoryCountVerificationToolkitRouter);
+  app.use('/api/ebay-seller-feedback-response-toolkit', ebaySellerFeedbackResponseToolkitRouter);
+  app.use('/api/ebay-product-attribute-mapper-toolkit', ebayProductAttributeMapperToolkitRouter);
+  // Phase 1506-1510
+  app.use('/api/ebay-listing-template-library-toolkit', ebayListingTemplateLibraryToolkitRouter);
+  app.use('/api/ebay-order-customs-form-toolkit', ebayOrderCustomsFormToolkitRouter);
+  app.use('/api/ebay-inventory-serial-number-toolkit', ebayInventorySerialNumberToolkitRouter);
+  app.use('/api/ebay-seller-payout-tracker-toolkit', ebaySellerPayoutTrackerToolkitRouter);
+  app.use('/api/ebay-product-weight-calculator-toolkit', ebayProductWeightCalculatorToolkitRouter);
+  // Phase 1511-1515
+  app.use('/api/ebay-listing-draft-converter-toolkit', ebayListingDraftConverterToolkitRouter);
+  app.use('/api/ebay-order-gift-message-toolkit', ebayOrderGiftMessageToolkitRouter);
+  app.use('/api/ebay-inventory-lot-management-toolkit', ebayInventoryLotManagementToolkitRouter);
+  app.use('/api/ebay-seller-tax-report-toolkit', ebaySellerTaxReportToolkitRouter);
+  app.use('/api/ebay-product-condition-checker-toolkit', ebayProductConditionCheckerToolkitRouter);
+  // Phase 1516-1520
+  app.use('/api/ebay-listing-fee-estimator-toolkit', ebayListingFeeEstimatorToolkitRouter);
+  app.use('/api/ebay-order-address-book-toolkit', ebayOrderAddressBookToolkitRouter);
+  app.use('/api/ebay-inventory-barcode-printer-toolkit', ebayInventoryBarcodePrinterToolkitRouter);
+  app.use('/api/ebay-seller-campaign-builder-toolkit', ebaySellerCampaignBuilderToolkitRouter);
+  app.use('/api/ebay-product-compatibility-finder-toolkit', ebayProductCompatibilityFinderToolkitRouter);
+  // Phase 1521-1525
+  app.use('/api/ebay-listing-variation-editor-toolkit', ebayListingVariationEditorToolkitRouter);
+  app.use('/api/ebay-order-carrier-compare-toolkit', ebayOrderCarrierCompareToolkitRouter);
+  app.use('/api/ebay-inventory-receiving-log-toolkit', ebayInventoryReceivingLogToolkitRouter);
+  app.use('/api/ebay-seller-store-builder-toolkit', ebaySellerStoreBuilderToolkitRouter);
+  app.use('/api/ebay-product-spec-sheet-toolkit', ebayProductSpecSheetToolkitRouter);
+  // Phase 1526-1530
+  app.use('/api/ebay-listing-shipping-profile-toolkit', ebayListingShippingProfileToolkitRouter);
+  app.use('/api/ebay-order-label-batch-toolkit', ebayOrderLabelBatchToolkitRouter);
+  app.use('/api/ebay-inventory-pick-list-toolkit', ebayInventoryPickListToolkitRouter);
+  app.use('/api/ebay-seller-promotion-builder-toolkit', ebaySellerPromotionBuilderToolkitRouter);
+  app.use('/api/ebay-product-cross-sell-toolkit', ebayProductCrossSellToolkitRouter);
+  // Phase 1531-1535
+  app.use('/api/ebay-listing-reserve-calculator-toolkit', ebayListingReserveCalculatorToolkitRouter);
+  app.use('/api/ebay-order-tracking-dashboard-toolkit', ebayOrderTrackingDashboardToolkitRouter);
+  app.use('/api/ebay-inventory-transfer-log-toolkit', ebayInventoryTransferLogToolkitRouter);
+  app.use('/api/ebay-seller-review-monitor-toolkit', ebaySellerReviewMonitorToolkitRouter);
+  app.use('/api/ebay-product-recall-alert-toolkit', ebayProductRecallAlertToolkitRouter);
+  // Phase 1536-1540
+  app.use('/api/ebay-listing-gallery-editor-toolkit', ebayListingGalleryEditorToolkitRouter);
+  app.use('/api/ebay-order-cancel-request-toolkit', ebayOrderCancelRequestToolkitRouter);
+  app.use('/api/ebay-inventory-stocktake-report-toolkit', ebayInventoryStocktakeReportToolkitRouter);
+  app.use('/api/ebay-seller-billing-manager-toolkit', ebaySellerBillingManagerToolkitRouter);
+  app.use('/api/ebay-product-cert-validator-toolkit', ebayProductCertValidatorToolkitRouter);
+  // Phase 1541-1545
+  app.use('/api/ebay-listing-mobile-editor-toolkit', ebayListingMobileEditorToolkitRouter);
+  app.use('/api/ebay-order-partial-ship-toolkit', ebayOrderPartialShipToolkitRouter);
+  app.use('/api/ebay-inventory-container-log-toolkit', ebayInventoryContainerLogToolkitRouter);
+  app.use('/api/ebay-seller-permission-manager-toolkit', ebaySellerPermissionManagerToolkitRouter);
+  app.use('/api/ebay-product-hazmat-checker-toolkit', ebayProductHazmatCheckerToolkitRouter);
+  // Phase 1546-1550
+  app.use('/api/ebay-listing-title-analyzer-toolkit', ebayListingTitleAnalyzerToolkitRouter);
+  app.use('/api/ebay-order-delivery-tracker-toolkit', ebayOrderDeliveryTrackerToolkitRouter);
+  app.use('/api/ebay-inventory-shelf-planner-toolkit', ebayInventoryShelfPlannerToolkitRouter);
+  app.use('/api/ebay-seller-invoice-builder-toolkit', ebaySellerInvoiceBuilderToolkitRouter);
+  app.use('/api/ebay-product-origin-checker-toolkit', ebayProductOriginCheckerToolkitRouter);
+  // Phase 1551-1555
+  app.use('/api/ebay-listing-specifics-editor-toolkit', ebayListingSpecificsEditorToolkitRouter);
+  app.use('/api/ebay-order-replacement-tracker-toolkit', ebayOrderReplacementTrackerToolkitRouter);
+  app.use('/api/ebay-inventory-min-max-calculator-toolkit', ebayInventoryMinMaxCalculatorToolkitRouter);
+  app.use('/api/ebay-seller-performance-report-toolkit', ebaySellerPerformanceReportToolkitRouter);
+  app.use('/api/ebay-product-material-checker-toolkit', ebayProductMaterialCheckerToolkitRouter);
+  // Phase 1556-1560
+  app.use('/api/ebay-listing-promoted-manager-toolkit', ebayListingPromotedManagerToolkitRouter);
+  app.use('/api/ebay-order-signature-tracker-toolkit', ebayOrderSignatureTrackerToolkitRouter);
+  app.use('/api/ebay-inventory-vendor-portal-toolkit', ebayInventoryVendorPortalToolkitRouter);
+  app.use('/api/ebay-seller-financial-planner-toolkit', ebaySellerFinancialPlannerToolkitRouter);
+  app.use('/api/ebay-product-sustainability-checker-toolkit', ebayProductSustainabilityCheckerToolkitRouter);
 }
