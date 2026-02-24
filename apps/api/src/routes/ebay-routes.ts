@@ -481,6 +481,12 @@ import ebayOrderCustomerServiceHubRouter from './ebay-order-customer-service-hub
 import ebayInventoryProcurementPlannerRouter from './ebay-inventory-procurement-planner';
 import ebaySellerRevenueOptimizerRouter from './ebay-seller-revenue-optimizer';
 import ebayProductLifecycleTrackerRouter from './ebay-product-lifecycle-tracker';
+// Phase 566-570
+import ebayListingSeoAnalyzerProRouter from './ebay-listing-seo-analyzer-pro';
+import ebayOrderReturnsAutomationRouter from './ebay-order-returns-automation';
+import ebayInventorySafetyStockCalculatorRouter from './ebay-inventory-safety-stock-calculator';
+import ebaySellerAnalyticsSuiteRouter from './ebay-seller-analytics-suite';
+import ebayProductQualityAssuranceRouter from './ebay-product-quality-assurance';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -982,4 +988,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-procurement-planner', ebayInventoryProcurementPlannerRouter);
   app.use('/api/ebay-seller-revenue-optimizer', ebaySellerRevenueOptimizerRouter);
   app.use('/api/ebay-product-lifecycle-tracker', ebayProductLifecycleTrackerRouter);
+  // Phase 566-570
+  app.use('/api/ebay-listing-seo-analyzer-pro', ebayListingSeoAnalyzerProRouter);
+  app.use('/api/ebay-order-returns-automation', ebayOrderReturnsAutomationRouter);
+  app.use('/api/ebay-inventory-safety-stock-calculator', ebayInventorySafetyStockCalculatorRouter);
+  app.use('/api/ebay-seller-analytics-suite', ebaySellerAnalyticsSuiteRouter);
+  app.use('/api/ebay-product-quality-assurance', ebayProductQualityAssuranceRouter);
 }
