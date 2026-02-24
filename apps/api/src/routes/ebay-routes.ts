@@ -279,6 +279,11 @@ import ebayListingMigrationToolRouter from './ebay-listing-migration-tool';
 import ebaySellerNotificationCenterRouter from './ebay-seller-notification-center';
 import ebayProductVariationManagerRouter from './ebay-product-variation-manager';
 import ebayRevenueForecasterRouter from './ebay-revenue-forecaster';
+import ebayBulkImageUploaderRouter from './ebay-bulk-image-uploader';
+import ebayCustomReportBuilderRouter from './ebay-custom-report-builder';
+import ebayPackagingManagerRouter from './ebay-packaging-manager';
+import ebayMarketplaceFeeOptimizerRouter from './ebay-marketplace-fee-optimizer';
+import ebaySellerComplianceDashboardRouter from './ebay-seller-compliance-dashboard';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -570,4 +575,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-seller-notification-center', ebaySellerNotificationCenterRouter);
   app.use('/api/ebay-product-variation-manager', ebayProductVariationManagerRouter);
   app.use('/api/ebay-revenue-forecaster', ebayRevenueForecasterRouter);
+  // Phase 391-395
+  app.use('/api/ebay-bulk-image-uploader', ebayBulkImageUploaderRouter);
+  app.use('/api/ebay-custom-report-builder', ebayCustomReportBuilderRouter);
+  app.use('/api/ebay-packaging-manager', ebayPackagingManagerRouter);
+  app.use('/api/ebay-marketplace-fee-optimizer', ebayMarketplaceFeeOptimizerRouter);
+  app.use('/api/ebay-seller-compliance-dashboard', ebaySellerComplianceDashboardRouter);
 }
