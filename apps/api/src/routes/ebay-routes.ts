@@ -294,6 +294,11 @@ import ebayOrderBatchProcessorRouter from './ebay-order-batch-processor';
 import ebayKeywordRankTrackerRouter from './ebay-keyword-rank-tracker';
 import ebaySupplierOrderTrackerRouter from './ebay-supplier-order-tracker';
 import ebayListingSeoAuditRouter from './ebay-listing-seo-audit';
+import ebayStoreThemeCustomizerRouter from './ebay-store-theme-customizer';
+import ebayProfitMarginCalculatorRouter from './ebay-profit-margin-calculator';
+import ebayListingRotationSchedulerRouter from './ebay-listing-rotation-scheduler';
+import ebayCustomerFeedbackLoopRouter from './ebay-customer-feedback-loop';
+import ebaySmartInventoryAllocatorRouter from './ebay-smart-inventory-allocator';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -603,4 +608,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-keyword-rank-tracker', ebayKeywordRankTrackerRouter);
   app.use('/api/ebay-supplier-order-tracker', ebaySupplierOrderTrackerRouter);
   app.use('/api/ebay-listing-seo-audit', ebayListingSeoAuditRouter);
+  // Phase 406-410
+  app.use('/api/ebay-store-theme-customizer', ebayStoreThemeCustomizerRouter);
+  app.use('/api/ebay-profit-margin-calculator', ebayProfitMarginCalculatorRouter);
+  app.use('/api/ebay-listing-rotation-scheduler', ebayListingRotationSchedulerRouter);
+  app.use('/api/ebay-customer-feedback-loop', ebayCustomerFeedbackLoopRouter);
+  app.use('/api/ebay-smart-inventory-allocator', ebaySmartInventoryAllocatorRouter);
 }
