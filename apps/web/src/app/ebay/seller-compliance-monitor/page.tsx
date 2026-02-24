@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 
 type ApiResponse = { section: string; action: string };
 
-const API_BASE = '/api/ebay-order-tracking-hub/';
+const API_BASE = '/api/ebay-seller-compliance-monitor/';
 
 const TABS: { key: string; label: string }[] = [
   { key: 'dashboard', label: 'ダッシュボード' },
-  { key: 'orders', label: '注文' },
-  { key: 'tracking', label: '追跡' },
-  { key: 'carriers', label: '配送業者' },
+  { key: 'sellers', label: 'セラー' },
+  { key: 'compliance', label: 'コンプライアンス' },
+  { key: 'violations', label: '違反' },
   { key: 'analytics', label: '分析' },
   { key: 'settings', label: '設定' },
 ];
@@ -45,7 +45,7 @@ export default function Page() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold text-pink-600">注文トラッキングハブ</h1>
+      <h1 className="text-2xl font-semibold text-red-600">セラーコンプライアンスモニター</h1>
 
       <div className="flex gap-4 border-b">
         {TABS.map((t) => (
@@ -53,7 +53,7 @@ export default function Page() {
             key={t.key}
             onClick={() => setActiveTab(t.key)}
             className={`pb-2 -mb-px border-b-2 text-sm ${
-              activeTab === t.key ? 'border-pink-600 text-pink-600' : 'border-transparent text-gray-600'
+              activeTab === t.key ? 'border-red-600 text-red-600' : 'border-transparent text-gray-600'
             }`}
           >
             {t.label}

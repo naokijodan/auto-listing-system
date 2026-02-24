@@ -10,25 +10,25 @@ router.get('/dashboard/activity', (_req: Request, res: Response) => res.json({ s
 router.get('/dashboard/alerts', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'alerts' }));
 router.get('/dashboard/help', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'help' }));
 
-// orders (6)
-router.get('/orders/overview', (_req: Request, res: Response) => res.json({ section: 'orders', action: 'overview' }));
-router.get('/orders/pending', (_req: Request, res: Response) => res.json({ section: 'orders', action: 'pending' }));
-router.get('/orders/shipped', (_req: Request, res: Response) => res.json({ section: 'orders', action: 'shipped' }));
-router.get('/orders/cancelled', (_req: Request, res: Response) => res.json({ section: 'orders', action: 'cancelled' }));
-router.get('/orders/returns', (_req: Request, res: Response) => res.json({ section: 'orders', action: 'returns' }));
-router.get('/orders/bulk', (_req: Request, res: Response) => res.json({ section: 'orders', action: 'bulk' }));
+// products (6)
+router.get('/products/overview', (_req: Request, res: Response) => res.json({ section: 'products', action: 'overview' }));
+router.get('/products/catalog', (_req: Request, res: Response) => res.json({ section: 'products', action: 'catalog' }));
+router.get('/products/variations', (_req: Request, res: Response) => res.json({ section: 'products', action: 'variations' }));
+router.get('/products/attributes', (_req: Request, res: Response) => res.json({ section: 'products', action: 'attributes' }));
+router.get('/products/bulk', (_req: Request, res: Response) => res.json({ section: 'products', action: 'bulk' }));
+router.get('/products/drafts', (_req: Request, res: Response) => res.json({ section: 'products', action: 'drafts' }));
 
-// tracking (4)
-router.get('/tracking/overview', (_req: Request, res: Response) => res.json({ section: 'tracking', action: 'overview' }));
-router.get('/tracking/updates', (_req: Request, res: Response) => res.json({ section: 'tracking', action: 'updates' }));
-router.get('/tracking/issues', (_req: Request, res: Response) => res.json({ section: 'tracking', action: 'issues' }));
-router.get('/tracking/sla', (_req: Request, res: Response) => res.json({ section: 'tracking', action: 'sla' }));
+// photos (4)
+router.get('/photos/overview', (_req: Request, res: Response) => res.json({ section: 'photos', action: 'overview' }));
+router.get('/photos/upload', (_req: Request, res: Response) => res.json({ section: 'photos', action: 'upload' }));
+router.get('/photos/library', (_req: Request, res: Response) => res.json({ section: 'photos', action: 'library' }));
+router.get('/photos/issues', (_req: Request, res: Response) => res.json({ section: 'photos', action: 'issues' }));
 
-// carriers (4)
-router.get('/carriers/overview', (_req: Request, res: Response) => res.json({ section: 'carriers', action: 'overview' }));
-router.get('/carriers/rates', (_req: Request, res: Response) => res.json({ section: 'carriers', action: 'rates' }));
-router.get('/carriers/pickups', (_req: Request, res: Response) => res.json({ section: 'carriers', action: 'pickups' }));
-router.get('/carriers/coverage', (_req: Request, res: Response) => res.json({ section: 'carriers', action: 'coverage' }));
+// enhancement (4)
+router.get('/enhancement/overview', (_req: Request, res: Response) => res.json({ section: 'enhancement', action: 'overview' }));
+router.get('/enhancement/ai-enhance', (_req: Request, res: Response) => res.json({ section: 'enhancement', action: 'ai-enhance' }));
+router.get('/enhancement/presets', (_req: Request, res: Response) => res.json({ section: 'enhancement', action: 'presets' }));
+router.get('/enhancement/history', (_req: Request, res: Response) => res.json({ section: 'enhancement', action: 'history' }));
 
 // analytics (3)
 router.get('/analytics/overview', (_req: Request, res: Response) => res.json({ section: 'analytics', action: 'overview' }));
