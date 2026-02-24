@@ -6,16 +6,16 @@ type ApiData = Record<string, unknown>
 
 const TABS = [
   { key: 'dashboard', label: 'ダッシュボード', path: 'dashboard' },
-  { key: 'inventory', label: '在庫', path: 'inventory' },
-  { key: 'barcodes', label: 'バーコード', path: 'barcodes' },
-  { key: 'scanning', label: 'スキャン', path: 'scanning' },
+  { key: 'orders', label: '注文', path: 'orders' },
+  { key: 'refunds', label: '返金', path: 'refunds' },
+  { key: 'policies', label: 'ポリシー', path: 'policies' },
   { key: 'analytics', label: '分析', path: 'analytics' },
   { key: 'settings', label: '設定', path: 'settings' },
 ]
 
-const API_BASE = '/api/ebay-inventory-barcode-scanner/'
+const API_BASE = '/api/ebay-order-refund-manager/'
 
-export default function InventoryBarcodeScannerPage() {
+export default function OrderRefundManagerPage() {
   const [active, setActive] = useState<string>('dashboard')
   const [data, setData] = useState<ApiData | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
@@ -49,7 +49,7 @@ export default function InventoryBarcodeScannerPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold text-sky-600">在庫バーコードスキャナー</h1>
+      <h1 className="text-2xl font-semibold text-emerald-600">注文返金管理</h1>
 
       <nav className="flex gap-4 border-b">
         {TABS.map((t) => (
@@ -59,7 +59,7 @@ export default function InventoryBarcodeScannerPage() {
             className={
               'py-2 -mb-px border-b-2 transition-colors ' +
               (active === t.key
-                ? 'border-sky-600 text-sky-600'
+                ? 'border-emerald-600 text-emerald-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900')
             }
           >
@@ -73,7 +73,7 @@ export default function InventoryBarcodeScannerPage() {
           <h2 className="text-lg font-medium">API</h2>
           <button
             onClick={() => void fetchData()}
-            className="px-3 py-1.5 text-sm rounded bg-sky-600 text-white hover:bg-sky-700"
+            className="px-3 py-1.5 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700"
           >
             再読み込み
           </button>
@@ -90,3 +90,4 @@ export default function InventoryBarcodeScannerPage() {
     </div>
   )
 }
+

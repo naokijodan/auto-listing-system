@@ -4,34 +4,34 @@ import type { Request, Response } from 'express';
 const router = Router();
 
 // Dashboard (5)
-router.get('/dashboard', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'dashboard' }));
+router.get('/dashboard', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'main' }));
 router.get('/dashboard/summary', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'summary' }));
 router.get('/dashboard/score', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'score' }));
 router.get('/dashboard/risks', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'risks' }));
 router.get('/dashboard/recommendations', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'recommendations' }));
 
-// Metrics (6)
+// Sellers (6)
+router.get('/sellers', (_req: Request, res: Response) => res.json({ section: 'sellers', action: 'list' }));
+router.get('/sellers/:id', (_req: Request, res: Response) => res.json({ section: 'sellers', action: 'detail' }));
+router.get('/sellers/:id/score', (_req: Request, res: Response) => res.json({ section: 'sellers', action: 'score' }));
+router.post('/sellers/:id/review', (_req: Request, res: Response) => res.json({ section: 'sellers', action: 'review' }));
+router.get('/sellers/benchmarks', (_req: Request, res: Response) => res.json({ section: 'sellers', action: 'benchmarks' }));
+router.get('/sellers/alerts', (_req: Request, res: Response) => res.json({ section: 'sellers', action: 'alerts' }));
+
+// Health (4)
+router.get('/health-status', (_req: Request, res: Response) => res.json({ section: 'health', action: 'status' }));
+router.get('/health-issues', (_req: Request, res: Response) => res.json({ section: 'health', action: 'issues' }));
+router.post('/health-remediation', (_req: Request, res: Response) => res.json({ section: 'health', action: 'remediation' }));
+router.get('/health-history', (_req: Request, res: Response) => res.json({ section: 'health', action: 'history' }));
+
+// Metrics (4)
 router.get('/metrics', (_req: Request, res: Response) => res.json({ section: 'metrics', action: 'list' }));
-router.get('/metrics/:id', (_req: Request, res: Response) => res.json({ section: 'metrics', action: 'detail' }));
-router.post('/metrics/track', (_req: Request, res: Response) => res.json({ section: 'metrics', action: 'track' }));
-router.post('/metrics/compare', (_req: Request, res: Response) => res.json({ section: 'metrics', action: 'compare' }));
-router.get('/metrics/benchmark', (_req: Request, res: Response) => res.json({ section: 'metrics', action: 'benchmark' }));
-router.get('/metrics/history', (_req: Request, res: Response) => res.json({ section: 'metrics', action: 'history' }));
-
-// Issues (4)
-router.get('/issues', (_req: Request, res: Response) => res.json({ section: 'issues', action: 'list' }));
-router.get('/issues/:id', (_req: Request, res: Response) => res.json({ section: 'issues', action: 'detail' }));
-router.post('/issues/:id/resolve', (_req: Request, res: Response) => res.json({ section: 'issues', action: 'resolve' }));
-router.post('/issues/:id/escalate', (_req: Request, res: Response) => res.json({ section: 'issues', action: 'escalate' }));
-
-// Actions (4)
-router.get('/actions', (_req: Request, res: Response) => res.json({ section: 'actions', action: 'list' }));
-router.get('/actions/:id', (_req: Request, res: Response) => res.json({ section: 'actions', action: 'detail' }));
-router.post('/actions', (_req: Request, res: Response) => res.json({ section: 'actions', action: 'create' }));
-router.post('/actions/:id/complete', (_req: Request, res: Response) => res.json({ section: 'actions', action: 'complete' }));
+router.get('/metrics/trends', (_req: Request, res: Response) => res.json({ section: 'metrics', action: 'trends' }));
+router.get('/metrics/distribution', (_req: Request, res: Response) => res.json({ section: 'metrics', action: 'distribution' }));
+router.get('/metrics/benchmarks', (_req: Request, res: Response) => res.json({ section: 'metrics', action: 'benchmarks' }));
 
 // Analytics (3)
-router.get('/analytics', (_req: Request, res: Response) => res.json({ section: 'analytics', action: 'analytics' }));
+router.get('/analytics', (_req: Request, res: Response) => res.json({ section: 'analytics', action: 'main' }));
 router.get('/analytics/health-trend', (_req: Request, res: Response) => res.json({ section: 'analytics', action: 'health-trend' }));
 router.get('/analytics/risk-distribution', (_req: Request, res: Response) => res.json({ section: 'analytics', action: 'risk-distribution' }));
 
@@ -46,4 +46,3 @@ router.post('/import', (_req: Request, res: Response) => res.json({ section: 'ut
 router.post('/sync', (_req: Request, res: Response) => res.json({ section: 'utilities', action: 'sync' }));
 
 export default router;
-

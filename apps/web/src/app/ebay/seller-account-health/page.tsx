@@ -6,9 +6,9 @@ type ApiResponse = { section: string; action: string };
 
 const TABS = [
   { key: 'dashboard', label: 'ダッシュボード' },
-  { key: 'metrics', label: '指標' },
-  { key: 'issues', label: '問題' },
-  { key: 'actions', label: 'アクション' },
+  { key: 'sellers', label: 'セラー' },
+  { key: 'health', label: 'ヘルス' },
+  { key: 'metrics', label: 'メトリクス' },
   { key: 'analytics', label: '分析' },
   { key: 'settings', label: '設定' },
 ] as const;
@@ -19,12 +19,12 @@ function endpointForTab(tab: (typeof TABS)[number]['key']): string {
   switch (tab) {
     case 'dashboard':
       return '/dashboard';
+    case 'sellers':
+      return '/sellers';
+    case 'health':
+      return '/health-status';
     case 'metrics':
       return '/metrics';
-    case 'issues':
-      return '/issues';
-    case 'actions':
-      return '/actions';
     case 'analytics':
       return '/analytics';
     case 'settings':
@@ -63,14 +63,14 @@ export default function SellerAccountHealthPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-purple-600">セラーアカウントヘルス</h1>
+      <h1 className="text-2xl font-bold text-amber-600">セラーアカウントヘルス</h1>
       <div className="flex gap-2 border-b">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
             className={`px-3 py-2 text-sm rounded-t-md border-b-2 ${
-              tab === t.key ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-600 hover:text-gray-800'
+              tab === t.key ? 'border-amber-600 text-amber-600' : 'border-transparent text-gray-600 hover:text-gray-800'
             }`}
           >
             {t.label}
@@ -88,4 +88,3 @@ export default function SellerAccountHealthPage() {
     </div>
   );
 }
-
