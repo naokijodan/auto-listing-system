@@ -331,6 +331,18 @@ import ebaySellerReputationGuardRouter from './ebay-seller-reputation-guard';
 import ebayListingConversionOptimizerRouter from './ebay-listing-conversion-optimizer';
 import ebayOrderRoutingEngineRouter from './ebay-order-routing-engine';
 import ebayProductReviewAggregatorRouter from './ebay-product-review-aggregator';
+// Phase 441-445
+import ebayListingCalendarRouter from './ebay-listing-calendar';
+import ebayOrderEscalationManagerRouter from './ebay-order-escalation-manager';
+import ebayProductAuthenticationBadgeRouter from './ebay-product-authentication-badge';
+import ebaySellerCommunityHubRouter from './ebay-seller-community-hub';
+import ebayInventoryReservationManagerRouter from './ebay-inventory-reservation-manager';
+// Phase 446-450
+import ebaySmartBundleCreatorRouter from './ebay-smart-bundle-creator';
+import ebayListingHealthMonitorProRouter from './ebay-listing-health-monitor-pro';
+import ebayOrderDeliveryTrackerRouter from './ebay-order-delivery-tracker';
+import ebayProductCatalogEnrichmentRouter from './ebay-product-catalog-enrichment';
+import ebaySellerPerformanceOptimizerRouter from './ebay-seller-performance-optimizer';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -682,4 +694,16 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-listing-conversion-optimizer', ebayListingConversionOptimizerRouter);
   app.use('/api/ebay-order-routing-engine', ebayOrderRoutingEngineRouter);
   app.use('/api/ebay-product-review-aggregator', ebayProductReviewAggregatorRouter);
+  // Phase 441-445
+  app.use('/api/ebay-listing-calendar', ebayListingCalendarRouter);
+  app.use('/api/ebay-order-escalation-manager', ebayOrderEscalationManagerRouter);
+  app.use('/api/ebay-product-authentication-badge', ebayProductAuthenticationBadgeRouter);
+  app.use('/api/ebay-seller-community-hub', ebaySellerCommunityHubRouter);
+  app.use('/api/ebay-inventory-reservation-manager', ebayInventoryReservationManagerRouter);
+  // Phase 446-450
+  app.use('/api/ebay-smart-bundle-creator', ebaySmartBundleCreatorRouter);
+  app.use('/api/ebay-listing-health-monitor-pro', ebayListingHealthMonitorProRouter);
+  app.use('/api/ebay-order-delivery-tracker', ebayOrderDeliveryTrackerRouter);
+  app.use('/api/ebay-product-catalog-enrichment', ebayProductCatalogEnrichmentRouter);
+  app.use('/api/ebay-seller-performance-optimizer', ebaySellerPerformanceOptimizerRouter);
 }

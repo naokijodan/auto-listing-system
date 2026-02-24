@@ -4,16 +4,16 @@ import React, { useEffect, useState } from 'react'
 
 const TABS = [
   { key: 'dashboard', label: 'ダッシュボード', endpoint: '/dashboard' },
-  { key: 'events', label: 'イベント', endpoint: '/events' },
-  { key: 'schedules', label: 'スケジュール', endpoint: '/schedules' },
-  { key: 'templates', label: 'テンプレート', endpoint: '/templates' },
+  { key: 'escalations', label: 'エスカレーション', endpoint: '/escalations' },
+  { key: 'rules', label: 'ルール', endpoint: '/rules' },
+  { key: 'teams', label: 'チーム', endpoint: '/teams' },
   { key: 'analytics', label: '分析', endpoint: '/analytics' },
   { key: 'settings', label: '設定', endpoint: '/settings' },
 ]
 
-const API_BASE = '/api/ebay-listing-calendar'
+const API_BASE = '/api/ebay-order-escalation-manager'
 
-export default function ListingCalendarPage() {
+export default function OrderEscalationManagerPage() {
   const [activeTab, setActiveTab] = useState<string>('dashboard')
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState<boolean>(false)
@@ -40,7 +40,7 @@ export default function ListingCalendarPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-rose-600">出品カレンダー</h1>
+      <h1 className="text-2xl font-bold text-teal-600">注文エスカレーション管理</h1>
       <div className="flex gap-2 border-b pb-2">
         {TABS.map((tab) => (
           <button
@@ -49,8 +49,8 @@ export default function ListingCalendarPage() {
             className={
               'px-3 py-1 rounded-t text-sm ' +
               (activeTab === tab.key
-                ? 'bg-rose-100 text-rose-700 border border-b-0 border-rose-200'
-                : 'hover:bg-rose-50 text-gray-700')
+                ? 'bg-teal-100 text-teal-700 border border-b-0 border-teal-200'
+                : 'hover:bg-teal-50 text-gray-700')
             }
           >
             {tab.label}
