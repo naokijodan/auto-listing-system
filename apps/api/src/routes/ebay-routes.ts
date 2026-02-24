@@ -2698,6 +2698,147 @@ import ebayInventoryIntelligenceAiQuantumRouter from './ebay-inventory-intellige
 import ebaySellerIntelligenceAiQuantumRouter from './ebay-seller-intelligence-ai-quantum';
 import ebayProductIntelligenceAiQuantumRouter from './ebay-product-intelligence-ai-quantum';
 
+import ebayListingRevenueOptimizationZenithRouter from './ebay-listing-revenue-optimization-zenith';
+import ebayOrderSmartDispatchZenithRouter from './ebay-order-smart-dispatch-zenith';
+import ebayInventorySmartAllocationZenithRouter from './ebay-inventory-smart-allocation-zenith';
+import ebaySellerReputationEngineZenithRouter from './ebay-seller-reputation-engine-zenith';
+import ebayProductDiscoveryEngineZenithRouter from './ebay-product-discovery-engine-zenith';
+import ebayListingConversionOptimizerZenithRouter from './ebay-listing-conversion-optimizer-zenith';
+import ebayOrderExpressDispatchZenithRouter from './ebay-order-express-dispatch-zenith';
+import ebayInventoryZoneOptimizationZenithRouter from './ebay-inventory-zone-optimization-zenith';
+import ebaySellerMarketIntelligenceZenithRouter from './ebay-seller-market-intelligence-zenith';
+import ebayProductQualityScoringZenithRouter from './ebay-product-quality-scoring-zenith';
+import ebayListingPriceTrackerZenithRouter from './ebay-listing-price-tracker-zenith';
+import ebayOrderClaimResolutionZenithRouter from './ebay-order-claim-resolution-zenith';
+import ebayInventoryRotationPlannerZenithRouter from './ebay-inventory-rotation-planner-zenith';
+import ebaySellerScoreOptimizerZenithRouter from './ebay-seller-score-optimizer-zenith';
+import ebayProductResearchEngineZenithRouter from './ebay-product-research-engine-zenith';
+import ebayListingSeoOptimizerZenithRouter from './ebay-listing-seo-optimizer-zenith';
+import ebayOrderCustomsProcessingZenithRouter from './ebay-order-customs-processing-zenith';
+import ebayInventoryBinOptimizationZenithRouter from './ebay-inventory-bin-optimization-zenith';
+import ebaySellerInsightEngineZenithRouter from './ebay-seller-insight-engine-zenith';
+import ebayProductPackagingOptimizerZenithRouter from './ebay-product-packaging-optimizer-zenith';
+import ebayListingImageOptimizerZenithRouter from './ebay-listing-image-optimizer-zenith';
+import ebayOrderSplitProcessingZenithRouter from './ebay-order-split-processing-zenith';
+import ebayInventoryCountOptimizerZenithRouter from './ebay-inventory-count-optimizer-zenith';
+import ebaySellerEventTrackerZenithRouter from './ebay-seller-event-tracker-zenith';
+import ebayProductDimensionTrackerZenithRouter from './ebay-product-dimension-tracker-zenith';
+import ebayListingCategoryEngineZenithRouter from './ebay-listing-category-engine-zenith';
+import ebayOrderMergeProcessingZenithRouter from './ebay-order-merge-processing-zenith';
+import ebayInventoryTransferOptimizerZenithRouter from './ebay-inventory-transfer-optimizer-zenith';
+import ebaySellerCampaignEngineZenithRouter from './ebay-seller-campaign-engine-zenith';
+import ebayProductCertificationTrackerZenithRouter from './ebay-product-certification-tracker-zenith';
+import ebayListingVariationOptimizerZenithRouter from './ebay-listing-variation-optimizer-zenith';
+import ebayOrderPriorityDispatchZenithRouter from './ebay-order-priority-dispatch-zenith';
+import ebayInventoryForecastEngineZenithRouter from './ebay-inventory-forecast-engine-zenith';
+import ebaySellerLoyaltyEngineZenithRouter from './ebay-seller-loyalty-engine-zenith';
+import ebayProductComplianceEngineZenithRouter from './ebay-product-compliance-engine-zenith';
+import ebayListingScheduleOptimizerZenithRouter from './ebay-listing-schedule-optimizer-zenith';
+import ebayOrderBatchProcessorZenithRouter from './ebay-order-batch-processor-zenith';
+import ebayInventoryAuditEngineZenithRouter from './ebay-inventory-audit-engine-zenith';
+import ebaySellerAffiliateEngineZenithRouter from './ebay-seller-affiliate-engine-zenith';
+import ebayProductAttributeEngineZenithRouter from './ebay-product-attribute-engine-zenith';
+import ebayListingFeeOptimizerZenithRouter from './ebay-listing-fee-optimizer-zenith';
+import ebayOrderInsuranceProcessorZenithRouter from './ebay-order-insurance-processor-zenith';
+import ebayInventoryShrinkageTrackerZenithRouter from './ebay-inventory-shrinkage-tracker-zenith';
+import ebaySellerTrainingEngineZenithRouter from './ebay-seller-training-engine-zenith';
+import ebayProductCrossReferenceEngineZenithRouter from './ebay-product-cross-reference-engine-zenith';
+import ebayListingDraftOptimizerZenithRouter from './ebay-listing-draft-optimizer-zenith';
+import ebayOrderGiftProcessorZenithRouter from './ebay-order-gift-processor-zenith';
+import ebayInventoryReceivingEngineZenithRouter from './ebay-inventory-receiving-engine-zenith';
+import ebaySellerResourceEngineZenithRouter from './ebay-seller-resource-engine-zenith';
+import ebayProductHazmatTrackerZenithRouter from './ebay-product-hazmat-tracker-zenith';
+import ebayListingBulkOptimizerZenithRouter from './ebay-listing-bulk-optimizer-zenith';
+import ebayOrderSubscriptionEngineZenithRouter from './ebay-order-subscription-engine-zenith';
+import ebayInventoryKittingEngineZenithRouter from './ebay-inventory-kitting-engine-zenith';
+import ebaySellerChannelEngineZenithRouter from './ebay-seller-channel-engine-zenith';
+import ebayProductRecallTrackerZenithRouter from './ebay-product-recall-tracker-zenith';
+import ebayListingTestingEngineZenithRouter from './ebay-listing-testing-engine-zenith';
+import ebayOrderDropshipEngineZenithRouter from './ebay-order-dropship-engine-zenith';
+import ebayInventoryPickingOptimizerZenithRouter from './ebay-inventory-picking-optimizer-zenith';
+import ebaySellerDocumentEngineZenithRouter from './ebay-seller-document-engine-zenith';
+import ebayProductImportEngineZenithRouter from './ebay-product-import-engine-zenith';
+import ebayListingArchiveEngineZenithRouter from './ebay-listing-archive-engine-zenith';
+import ebayOrderConsolidationOptimizerZenithRouter from './ebay-order-consolidation-optimizer-zenith';
+import ebayInventoryPackingEngineZenithRouter from './ebay-inventory-packing-engine-zenith';
+import ebaySellerWorkflowEngineZenithRouter from './ebay-seller-workflow-engine-zenith';
+import ebayProductExportEngineZenithRouter from './ebay-product-export-engine-zenith';
+import ebayListingMigrationEngineZenithRouter from './ebay-listing-migration-engine-zenith';
+import ebayOrderAnalyticsEngineZenithRouter from './ebay-order-analytics-engine-zenith';
+import ebayInventoryStagingEngineZenithRouter from './ebay-inventory-staging-engine-zenith';
+import ebaySellerApiEngineZenithRouter from './ebay-seller-api-engine-zenith';
+import ebayProductTemplateEngineZenithRouter from './ebay-product-template-engine-zenith';
+import ebayListingGlobalOptimizerOmegaRouter from './ebay-listing-global-optimizer-omega';
+import ebayOrderFulfillmentOptimizerOmegaRouter from './ebay-order-fulfillment-optimizer-omega';
+import ebayInventoryMultiChannelOptimizerOmegaRouter from './ebay-inventory-multi-channel-optimizer-omega';
+import ebaySellerVerificationEngineOmegaRouter from './ebay-seller-verification-engine-omega';
+import ebayProductDiscoveryOptimizerOmegaRouter from './ebay-product-discovery-optimizer-omega';
+import ebayListingSmartRepricingOmegaRouter from './ebay-listing-smart-repricing-omega';
+import ebayOrderReturnOptimizerOmegaRouter from './ebay-order-return-optimizer-omega';
+import ebayInventoryDemandEngineOmegaRouter from './ebay-inventory-demand-engine-omega';
+import ebaySellerTierOptimizerOmegaRouter from './ebay-seller-tier-optimizer-omega';
+import ebayProductCurationEngineOmegaRouter from './ebay-product-curation-engine-omega';
+import ebayListingCompetitiveOptimizerOmegaRouter from './ebay-listing-competitive-optimizer-omega';
+import ebayOrderFraudPreventionOmegaRouter from './ebay-order-fraud-prevention-omega';
+import ebayInventoryNetworkOptimizerOmegaRouter from './ebay-inventory-network-optimizer-omega';
+import ebaySellerCollaborationEngineOmegaRouter from './ebay-seller-collaboration-engine-omega';
+import ebayProductSustainabilityEngineOmegaRouter from './ebay-product-sustainability-engine-omega';
+import ebayListingVisualOptimizerOmegaRouter from './ebay-listing-visual-optimizer-omega';
+import ebayOrderSplitOptimizerOmegaRouter from './ebay-order-split-optimizer-omega';
+import ebayInventoryWarehouseEngineOmegaRouter from './ebay-inventory-warehouse-engine-omega';
+import ebaySellerContentEngineOmegaRouter from './ebay-seller-content-engine-omega';
+import ebayProductLocalizationEngineOmegaRouter from './ebay-product-localization-engine-omega';
+import ebayListingRecommendationOptimizerOmegaRouter from './ebay-listing-recommendation-optimizer-omega';
+import ebayOrderCostOptimizerOmegaRouter from './ebay-order-cost-optimizer-omega';
+import ebayInventorySpaceOptimizerOmegaRouter from './ebay-inventory-space-optimizer-omega';
+import ebaySellerPayoutEngineOmegaRouter from './ebay-seller-payout-engine-omega';
+import ebayProductTranslationEngineOmegaRouter from './ebay-product-translation-engine-omega';
+import ebayListingSeasonalOptimizerOmegaRouter from './ebay-listing-seasonal-optimizer-omega';
+import ebayOrderNotificationOptimizerOmegaRouter from './ebay-order-notification-optimizer-omega';
+import ebayInventoryQualityEngineOmegaRouter from './ebay-inventory-quality-engine-omega';
+import ebaySellerRiskEngineOmegaRouter from './ebay-seller-risk-engine-omega';
+import ebayProductVideoOptimizerOmegaRouter from './ebay-product-video-optimizer-omega';
+import ebayListingChannelOptimizerOmegaRouter from './ebay-listing-channel-optimizer-omega';
+import ebayOrderAutomationOptimizerOmegaRouter from './ebay-order-automation-optimizer-omega';
+import ebayInventoryReservationEngineOmegaRouter from './ebay-inventory-reservation-engine-omega';
+import ebaySellerFinanceEngineOmegaRouter from './ebay-seller-finance-engine-omega';
+import ebayProductBundleOptimizerOmegaRouter from './ebay-product-bundle-optimizer-omega';
+import ebayListingGeographicOptimizerOmegaRouter from './ebay-listing-geographic-optimizer-omega';
+import ebayOrderLabelOptimizerOmegaRouter from './ebay-order-label-optimizer-omega';
+import ebayInventorySupplierOptimizerOmegaRouter from './ebay-inventory-supplier-optimizer-omega';
+import ebaySellerTaskEngineOmegaRouter from './ebay-seller-task-engine-omega';
+import ebayProductTaggingOptimizerOmegaRouter from './ebay-product-tagging-optimizer-omega';
+import ebayListingComplianceOptimizerOmegaRouter from './ebay-listing-compliance-optimizer-omega';
+import ebayOrderRouteOptimizerOmegaRouter from './ebay-order-route-optimizer-omega';
+import ebayInventoryWasteOptimizerOmegaRouter from './ebay-inventory-waste-optimizer-omega';
+import ebaySellerGoalEngineOmegaRouter from './ebay-seller-goal-engine-omega';
+import ebayProductVersionEngineOmegaRouter from './ebay-product-version-engine-omega';
+import ebayListingTaxOptimizerOmegaRouter from './ebay-listing-tax-optimizer-omega';
+import ebayOrderExchangeOptimizerOmegaRouter from './ebay-order-exchange-optimizer-omega';
+import ebayInventoryDispositionEngineOmegaRouter from './ebay-inventory-disposition-engine-omega';
+import ebaySellerMetricEngineOmegaRouter from './ebay-seller-metric-engine-omega';
+import ebayProductWeightOptimizerOmegaRouter from './ebay-product-weight-optimizer-omega';
+import ebayListingWarrantyOptimizerOmegaRouter from './ebay-listing-warranty-optimizer-omega';
+import ebayOrderSchedulingOptimizerOmegaRouter from './ebay-order-scheduling-optimizer-omega';
+import ebayInventoryTrackingOptimizerOmegaRouter from './ebay-inventory-tracking-optimizer-omega';
+import ebaySellerBadgeEngineOmegaRouter from './ebay-seller-badge-engine-omega';
+import ebayProductSafetyEngineOmegaRouter from './ebay-product-safety-engine-omega';
+import ebayListingDiscountOptimizerOmegaRouter from './ebay-listing-discount-optimizer-omega';
+import ebayOrderQueueOptimizerOmegaRouter from './ebay-order-queue-optimizer-omega';
+import ebayInventoryPurchaseOptimizerOmegaRouter from './ebay-inventory-purchase-optimizer-omega';
+import ebaySellerEventEngineOmegaRouter from './ebay-seller-event-engine-omega';
+import ebayProductOriginEngineOmegaRouter from './ebay-product-origin-engine-omega';
+import ebayListingReviewOptimizerOmegaRouter from './ebay-listing-review-optimizer-omega';
+import ebayOrderHistoryOptimizerOmegaRouter from './ebay-order-history-optimizer-omega';
+import ebayInventoryPlanningOptimizerOmegaRouter from './ebay-inventory-planning-optimizer-omega';
+import ebaySellerBillingEngineOmegaRouter from './ebay-seller-billing-engine-omega';
+import ebayProductGradingEngineOmegaRouter from './ebay-product-grading-engine-omega';
+import ebayListingInsightOptimizerOmegaRouter from './ebay-listing-insight-optimizer-omega';
+import ebayOrderExperienceOptimizerOmegaRouter from './ebay-order-experience-optimizer-omega';
+import ebayInventoryLifecycleOptimizerOmegaRouter from './ebay-inventory-lifecycle-optimizer-omega';
+import ebaySellerSupportEngineOmegaRouter from './ebay-seller-support-engine-omega';
+import ebayProductClassificationEngineOmegaRouter from './ebay-product-classification-engine-omega';
+
 export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay', ebayAuthRouter);
   app.use('/api/ebay-listings', ebayListingsRouter);
@@ -5638,4 +5779,198 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-intelligence-ai-quantum', ebayInventoryIntelligenceAiQuantumRouter);
   app.use('/api/ebay-seller-intelligence-ai-quantum', ebaySellerIntelligenceAiQuantumRouter);
   app.use('/api/ebay-product-intelligence-ai-quantum', ebayProductIntelligenceAiQuantumRouter);
+  // Phase 2541-2545
+  app.use('/api/ebay-listing-revenue-optimization-zenith', ebayListingRevenueOptimizationZenithRouter);
+  app.use('/api/ebay-order-smart-dispatch-zenith', ebayOrderSmartDispatchZenithRouter);
+  app.use('/api/ebay-inventory-smart-allocation-zenith', ebayInventorySmartAllocationZenithRouter);
+  app.use('/api/ebay-seller-reputation-engine-zenith', ebaySellerReputationEngineZenithRouter);
+  app.use('/api/ebay-product-discovery-engine-zenith', ebayProductDiscoveryEngineZenithRouter);
+  
+  // Phase 2546-2550
+  app.use('/api/ebay-listing-conversion-optimizer-zenith', ebayListingConversionOptimizerZenithRouter);
+  app.use('/api/ebay-order-express-dispatch-zenith', ebayOrderExpressDispatchZenithRouter);
+  app.use('/api/ebay-inventory-zone-optimization-zenith', ebayInventoryZoneOptimizationZenithRouter);
+  app.use('/api/ebay-seller-market-intelligence-zenith', ebaySellerMarketIntelligenceZenithRouter);
+  app.use('/api/ebay-product-quality-scoring-zenith', ebayProductQualityScoringZenithRouter);
+  
+  // Phase 2551-2555
+  app.use('/api/ebay-listing-price-tracker-zenith', ebayListingPriceTrackerZenithRouter);
+  app.use('/api/ebay-order-claim-resolution-zenith', ebayOrderClaimResolutionZenithRouter);
+  app.use('/api/ebay-inventory-rotation-planner-zenith', ebayInventoryRotationPlannerZenithRouter);
+  app.use('/api/ebay-seller-score-optimizer-zenith', ebaySellerScoreOptimizerZenithRouter);
+  app.use('/api/ebay-product-research-engine-zenith', ebayProductResearchEngineZenithRouter);
+  
+  // Phase 2556-2560
+  app.use('/api/ebay-listing-seo-optimizer-zenith', ebayListingSeoOptimizerZenithRouter);
+  app.use('/api/ebay-order-customs-processing-zenith', ebayOrderCustomsProcessingZenithRouter);
+  app.use('/api/ebay-inventory-bin-optimization-zenith', ebayInventoryBinOptimizationZenithRouter);
+  app.use('/api/ebay-seller-insight-engine-zenith', ebaySellerInsightEngineZenithRouter);
+  app.use('/api/ebay-product-packaging-optimizer-zenith', ebayProductPackagingOptimizerZenithRouter);
+  
+  // Phase 2561-2565
+  app.use('/api/ebay-listing-image-optimizer-zenith', ebayListingImageOptimizerZenithRouter);
+  app.use('/api/ebay-order-split-processing-zenith', ebayOrderSplitProcessingZenithRouter);
+  app.use('/api/ebay-inventory-count-optimizer-zenith', ebayInventoryCountOptimizerZenithRouter);
+  app.use('/api/ebay-seller-event-tracker-zenith', ebaySellerEventTrackerZenithRouter);
+  app.use('/api/ebay-product-dimension-tracker-zenith', ebayProductDimensionTrackerZenithRouter);
+  
+  // Phase 2566-2570
+  app.use('/api/ebay-listing-category-engine-zenith', ebayListingCategoryEngineZenithRouter);
+  app.use('/api/ebay-order-merge-processing-zenith', ebayOrderMergeProcessingZenithRouter);
+  app.use('/api/ebay-inventory-transfer-optimizer-zenith', ebayInventoryTransferOptimizerZenithRouter);
+  app.use('/api/ebay-seller-campaign-engine-zenith', ebaySellerCampaignEngineZenithRouter);
+  app.use('/api/ebay-product-certification-tracker-zenith', ebayProductCertificationTrackerZenithRouter);
+  
+  // Phase 2571-2575
+  app.use('/api/ebay-listing-variation-optimizer-zenith', ebayListingVariationOptimizerZenithRouter);
+  app.use('/api/ebay-order-priority-dispatch-zenith', ebayOrderPriorityDispatchZenithRouter);
+  app.use('/api/ebay-inventory-forecast-engine-zenith', ebayInventoryForecastEngineZenithRouter);
+  app.use('/api/ebay-seller-loyalty-engine-zenith', ebaySellerLoyaltyEngineZenithRouter);
+  app.use('/api/ebay-product-compliance-engine-zenith', ebayProductComplianceEngineZenithRouter);
+  
+  // Phase 2576-2580
+  app.use('/api/ebay-listing-schedule-optimizer-zenith', ebayListingScheduleOptimizerZenithRouter);
+  app.use('/api/ebay-order-batch-processor-zenith', ebayOrderBatchProcessorZenithRouter);
+  app.use('/api/ebay-inventory-audit-engine-zenith', ebayInventoryAuditEngineZenithRouter);
+  app.use('/api/ebay-seller-affiliate-engine-zenith', ebaySellerAffiliateEngineZenithRouter);
+  app.use('/api/ebay-product-attribute-engine-zenith', ebayProductAttributeEngineZenithRouter);
+  
+  // Phase 2581-2585
+  app.use('/api/ebay-listing-fee-optimizer-zenith', ebayListingFeeOptimizerZenithRouter);
+  app.use('/api/ebay-order-insurance-processor-zenith', ebayOrderInsuranceProcessorZenithRouter);
+  app.use('/api/ebay-inventory-shrinkage-tracker-zenith', ebayInventoryShrinkageTrackerZenithRouter);
+  app.use('/api/ebay-seller-training-engine-zenith', ebaySellerTrainingEngineZenithRouter);
+  app.use('/api/ebay-product-cross-reference-engine-zenith', ebayProductCrossReferenceEngineZenithRouter);
+  
+  // Phase 2586-2590
+  app.use('/api/ebay-listing-draft-optimizer-zenith', ebayListingDraftOptimizerZenithRouter);
+  app.use('/api/ebay-order-gift-processor-zenith', ebayOrderGiftProcessorZenithRouter);
+  app.use('/api/ebay-inventory-receiving-engine-zenith', ebayInventoryReceivingEngineZenithRouter);
+  app.use('/api/ebay-seller-resource-engine-zenith', ebaySellerResourceEngineZenithRouter);
+  app.use('/api/ebay-product-hazmat-tracker-zenith', ebayProductHazmatTrackerZenithRouter);
+  
+  // Phase 2591-2595
+  app.use('/api/ebay-listing-bulk-optimizer-zenith', ebayListingBulkOptimizerZenithRouter);
+  app.use('/api/ebay-order-subscription-engine-zenith', ebayOrderSubscriptionEngineZenithRouter);
+  app.use('/api/ebay-inventory-kitting-engine-zenith', ebayInventoryKittingEngineZenithRouter);
+  app.use('/api/ebay-seller-channel-engine-zenith', ebaySellerChannelEngineZenithRouter);
+  app.use('/api/ebay-product-recall-tracker-zenith', ebayProductRecallTrackerZenithRouter);
+  
+  // Phase 2596-2600
+  app.use('/api/ebay-listing-testing-engine-zenith', ebayListingTestingEngineZenithRouter);
+  app.use('/api/ebay-order-dropship-engine-zenith', ebayOrderDropshipEngineZenithRouter);
+  app.use('/api/ebay-inventory-picking-optimizer-zenith', ebayInventoryPickingOptimizerZenithRouter);
+  app.use('/api/ebay-seller-document-engine-zenith', ebaySellerDocumentEngineZenithRouter);
+  app.use('/api/ebay-product-import-engine-zenith', ebayProductImportEngineZenithRouter);
+  
+  // Phase 2601-2605
+  app.use('/api/ebay-listing-archive-engine-zenith', ebayListingArchiveEngineZenithRouter);
+  app.use('/api/ebay-order-consolidation-optimizer-zenith', ebayOrderConsolidationOptimizerZenithRouter);
+  app.use('/api/ebay-inventory-packing-engine-zenith', ebayInventoryPackingEngineZenithRouter);
+  app.use('/api/ebay-seller-workflow-engine-zenith', ebaySellerWorkflowEngineZenithRouter);
+  app.use('/api/ebay-product-export-engine-zenith', ebayProductExportEngineZenithRouter);
+  
+  // Phase 2606-2610
+  app.use('/api/ebay-listing-migration-engine-zenith', ebayListingMigrationEngineZenithRouter);
+  app.use('/api/ebay-order-analytics-engine-zenith', ebayOrderAnalyticsEngineZenithRouter);
+  app.use('/api/ebay-inventory-staging-engine-zenith', ebayInventoryStagingEngineZenithRouter);
+  app.use('/api/ebay-seller-api-engine-zenith', ebaySellerApiEngineZenithRouter);
+  app.use('/api/ebay-product-template-engine-zenith', ebayProductTemplateEngineZenithRouter);
+  // Phase 2611-2615
+  app.use('/api/ebay-listing-global-optimizer-omega', ebayListingGlobalOptimizerOmegaRouter);
+  app.use('/api/ebay-order-fulfillment-optimizer-omega', ebayOrderFulfillmentOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-multi-channel-optimizer-omega', ebayInventoryMultiChannelOptimizerOmegaRouter);
+  app.use('/api/ebay-seller-verification-engine-omega', ebaySellerVerificationEngineOmegaRouter);
+  app.use('/api/ebay-product-discovery-optimizer-omega', ebayProductDiscoveryOptimizerOmegaRouter);
+  
+  // Phase 2616-2620
+  app.use('/api/ebay-listing-smart-repricing-omega', ebayListingSmartRepricingOmegaRouter);
+  app.use('/api/ebay-order-return-optimizer-omega', ebayOrderReturnOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-demand-engine-omega', ebayInventoryDemandEngineOmegaRouter);
+  app.use('/api/ebay-seller-tier-optimizer-omega', ebaySellerTierOptimizerOmegaRouter);
+  app.use('/api/ebay-product-curation-engine-omega', ebayProductCurationEngineOmegaRouter);
+  
+  // Phase 2621-2625
+  app.use('/api/ebay-listing-competitive-optimizer-omega', ebayListingCompetitiveOptimizerOmegaRouter);
+  app.use('/api/ebay-order-fraud-prevention-omega', ebayOrderFraudPreventionOmegaRouter);
+  app.use('/api/ebay-inventory-network-optimizer-omega', ebayInventoryNetworkOptimizerOmegaRouter);
+  app.use('/api/ebay-seller-collaboration-engine-omega', ebaySellerCollaborationEngineOmegaRouter);
+  app.use('/api/ebay-product-sustainability-engine-omega', ebayProductSustainabilityEngineOmegaRouter);
+  
+  // Phase 2626-2630
+  app.use('/api/ebay-listing-visual-optimizer-omega', ebayListingVisualOptimizerOmegaRouter);
+  app.use('/api/ebay-order-split-optimizer-omega', ebayOrderSplitOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-warehouse-engine-omega', ebayInventoryWarehouseEngineOmegaRouter);
+  app.use('/api/ebay-seller-content-engine-omega', ebaySellerContentEngineOmegaRouter);
+  app.use('/api/ebay-product-localization-engine-omega', ebayProductLocalizationEngineOmegaRouter);
+  
+  // Phase 2631-2635
+  app.use('/api/ebay-listing-recommendation-optimizer-omega', ebayListingRecommendationOptimizerOmegaRouter);
+  app.use('/api/ebay-order-cost-optimizer-omega', ebayOrderCostOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-space-optimizer-omega', ebayInventorySpaceOptimizerOmegaRouter);
+  app.use('/api/ebay-seller-payout-engine-omega', ebaySellerPayoutEngineOmegaRouter);
+  app.use('/api/ebay-product-translation-engine-omega', ebayProductTranslationEngineOmegaRouter);
+  
+  // Phase 2636-2640
+  app.use('/api/ebay-listing-seasonal-optimizer-omega', ebayListingSeasonalOptimizerOmegaRouter);
+  app.use('/api/ebay-order-notification-optimizer-omega', ebayOrderNotificationOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-quality-engine-omega', ebayInventoryQualityEngineOmegaRouter);
+  app.use('/api/ebay-seller-risk-engine-omega', ebaySellerRiskEngineOmegaRouter);
+  app.use('/api/ebay-product-video-optimizer-omega', ebayProductVideoOptimizerOmegaRouter);
+  
+  // Phase 2641-2645
+  app.use('/api/ebay-listing-channel-optimizer-omega', ebayListingChannelOptimizerOmegaRouter);
+  app.use('/api/ebay-order-automation-optimizer-omega', ebayOrderAutomationOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-reservation-engine-omega', ebayInventoryReservationEngineOmegaRouter);
+  app.use('/api/ebay-seller-finance-engine-omega', ebaySellerFinanceEngineOmegaRouter);
+  app.use('/api/ebay-product-bundle-optimizer-omega', ebayProductBundleOptimizerOmegaRouter);
+  
+  // Phase 2646-2650
+  app.use('/api/ebay-listing-geographic-optimizer-omega', ebayListingGeographicOptimizerOmegaRouter);
+  app.use('/api/ebay-order-label-optimizer-omega', ebayOrderLabelOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-supplier-optimizer-omega', ebayInventorySupplierOptimizerOmegaRouter);
+  app.use('/api/ebay-seller-task-engine-omega', ebaySellerTaskEngineOmegaRouter);
+  app.use('/api/ebay-product-tagging-optimizer-omega', ebayProductTaggingOptimizerOmegaRouter);
+  
+  // Phase 2651-2655
+  app.use('/api/ebay-listing-compliance-optimizer-omega', ebayListingComplianceOptimizerOmegaRouter);
+  app.use('/api/ebay-order-route-optimizer-omega', ebayOrderRouteOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-waste-optimizer-omega', ebayInventoryWasteOptimizerOmegaRouter);
+  app.use('/api/ebay-seller-goal-engine-omega', ebaySellerGoalEngineOmegaRouter);
+  app.use('/api/ebay-product-version-engine-omega', ebayProductVersionEngineOmegaRouter);
+  
+  // Phase 2656-2660
+  app.use('/api/ebay-listing-tax-optimizer-omega', ebayListingTaxOptimizerOmegaRouter);
+  app.use('/api/ebay-order-exchange-optimizer-omega', ebayOrderExchangeOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-disposition-engine-omega', ebayInventoryDispositionEngineOmegaRouter);
+  app.use('/api/ebay-seller-metric-engine-omega', ebaySellerMetricEngineOmegaRouter);
+  app.use('/api/ebay-product-weight-optimizer-omega', ebayProductWeightOptimizerOmegaRouter);
+  
+  // Phase 2661-2665
+  app.use('/api/ebay-listing-warranty-optimizer-omega', ebayListingWarrantyOptimizerOmegaRouter);
+  app.use('/api/ebay-order-scheduling-optimizer-omega', ebayOrderSchedulingOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-tracking-optimizer-omega', ebayInventoryTrackingOptimizerOmegaRouter);
+  app.use('/api/ebay-seller-badge-engine-omega', ebaySellerBadgeEngineOmegaRouter);
+  app.use('/api/ebay-product-safety-engine-omega', ebayProductSafetyEngineOmegaRouter);
+  
+  // Phase 2666-2670
+  app.use('/api/ebay-listing-discount-optimizer-omega', ebayListingDiscountOptimizerOmegaRouter);
+  app.use('/api/ebay-order-queue-optimizer-omega', ebayOrderQueueOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-purchase-optimizer-omega', ebayInventoryPurchaseOptimizerOmegaRouter);
+  app.use('/api/ebay-seller-event-engine-omega', ebaySellerEventEngineOmegaRouter);
+  app.use('/api/ebay-product-origin-engine-omega', ebayProductOriginEngineOmegaRouter);
+  
+  // Phase 2671-2675
+  app.use('/api/ebay-listing-review-optimizer-omega', ebayListingReviewOptimizerOmegaRouter);
+  app.use('/api/ebay-order-history-optimizer-omega', ebayOrderHistoryOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-planning-optimizer-omega', ebayInventoryPlanningOptimizerOmegaRouter);
+  app.use('/api/ebay-seller-billing-engine-omega', ebaySellerBillingEngineOmegaRouter);
+  app.use('/api/ebay-product-grading-engine-omega', ebayProductGradingEngineOmegaRouter);
+  
+  // Phase 2676-2680
+  app.use('/api/ebay-listing-insight-optimizer-omega', ebayListingInsightOptimizerOmegaRouter);
+  app.use('/api/ebay-order-experience-optimizer-omega', ebayOrderExperienceOptimizerOmegaRouter);
+  app.use('/api/ebay-inventory-lifecycle-optimizer-omega', ebayInventoryLifecycleOptimizerOmegaRouter);
+  app.use('/api/ebay-seller-support-engine-omega', ebaySellerSupportEngineOmegaRouter);
+  app.use('/api/ebay-product-classification-engine-omega', ebayProductClassificationEngineOmegaRouter);
 }
