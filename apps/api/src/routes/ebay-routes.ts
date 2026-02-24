@@ -589,6 +589,12 @@ import ebayOrderPriorityQueueRouter from './ebay-order-priority-queue';
 import ebayInventoryShelfLifeManagerRouter from './ebay-inventory-shelf-life-manager';
 import ebaySellerHolidayPlannerRouter from './ebay-seller-holiday-planner';
 import ebayProductSizeChartManagerRouter from './ebay-product-size-chart-manager';
+// Phase 651-655
+import ebayListingTrustBadgeManagerRouter from './ebay-listing-trust-badge-manager';
+import ebayOrderSignatureConfirmationRouter from './ebay-order-signature-confirmation';
+import ebayInventoryDispositionManagerRouter from './ebay-inventory-disposition-manager';
+import ebaySellerMilestoneTrackerRouter from './ebay-seller-milestone-tracker';
+import ebayProductAuthenticityVerifierRouter from './ebay-product-authenticity-verifier';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1198,4 +1204,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-shelf-life-manager', ebayInventoryShelfLifeManagerRouter);
   app.use('/api/ebay-seller-holiday-planner', ebaySellerHolidayPlannerRouter);
   app.use('/api/ebay-product-size-chart-manager', ebayProductSizeChartManagerRouter);
+  // Phase 651-655
+  app.use('/api/ebay-listing-trust-badge-manager', ebayListingTrustBadgeManagerRouter);
+  app.use('/api/ebay-order-signature-confirmation', ebayOrderSignatureConfirmationRouter);
+  app.use('/api/ebay-inventory-disposition-manager', ebayInventoryDispositionManagerRouter);
+  app.use('/api/ebay-seller-milestone-tracker', ebaySellerMilestoneTrackerRouter);
+  app.use('/api/ebay-product-authenticity-verifier', ebayProductAuthenticityVerifierRouter);
 }
