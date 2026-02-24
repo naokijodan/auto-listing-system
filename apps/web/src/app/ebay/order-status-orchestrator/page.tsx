@@ -6,16 +6,16 @@ type ApiResponse = { section: string; action: string }
 
 const TABS = [
   { key: 'dashboard', label: 'ダッシュボード', path: 'dashboard' },
-  { key: 'products', label: '商品', path: 'products' },
-  { key: 'tags', label: 'タグ', path: 'tags' },
-  { key: 'categories', label: 'カテゴリ', path: 'categories' },
+  { key: 'orders', label: '注文', path: 'orders' },
+  { key: 'statuses', label: 'ステータス', path: 'statuses' },
+  { key: 'workflows', label: 'ワークフロー', path: 'workflows' },
   { key: 'analytics', label: '分析', path: 'analytics' },
   { key: 'settings', label: '設定', path: 'settings' },
 ]
 
-const API_BASE = '/api/ebay-product-tag-manager/'
+const API_BASE = '/api/ebay-order-status-orchestrator/'
 
-export default function ProductTagManagerPage() {
+export default function OrderStatusOrchestratorPage() {
   const [active, setActive] = useState<string>('dashboard')
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
@@ -40,13 +40,13 @@ export default function ProductTagManagerPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold text-red-600">商品タグマネージャー</h1>
+      <h1 className="text-2xl font-bold text-orange-600">注文ステータスオーケストレーター</h1>
       <div className="flex gap-2 border-b">
         {TABS.map((t) => (
           <button
             key={t.key}
             className={`px-3 py-2 text-sm border-b-2 -mb-px ${
-              active === t.key ? 'border-red-600 text-red-600' : 'border-transparent text-gray-600 hover:text-red-600'
+              active === t.key ? 'border-orange-600 text-orange-600' : 'border-transparent text-gray-600 hover:text-orange-600'
             }`}
             onClick={() => setActive(t.key)}
           >
@@ -63,5 +63,6 @@ export default function ProductTagManagerPage() {
       </div>
       <p className="text-xs text-gray-500">API: {API_BASE}</p>
     </div>
-  )}
+  )
+}
 
