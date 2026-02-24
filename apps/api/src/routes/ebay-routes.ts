@@ -1910,6 +1910,151 @@ import ebayInventoryVelocityAnalyticsStudioRouter from './ebay-inventory-velocit
 import ebaySellerOnboardingAnalyticsStudioRouter from './ebay-seller-onboarding-analytics-studio';
 import ebayProductMediaManagementStudioRouter from './ebay-product-media-management-studio';
 
+
+// Phase 1771-1840 (Lab series)
+import ebayListingSmartTargetingLabRouter from './ebay-listing-smart-targeting-lab';
+import ebayOrderFulfillmentAnalyticsLabRouter from './ebay-order-fulfillment-analytics-lab';
+import ebayInventoryDemandAnalyticsLabRouter from './ebay-inventory-demand-analytics-lab';
+import ebaySellerBrandAnalyticsLabRouter from './ebay-seller-brand-analytics-lab';
+import ebayProductCatalogAnalyticsLabRouter from './ebay-product-catalog-analytics-lab';
+import ebayListingConversionTrackingLabRouter from './ebay-listing-conversion-tracking-lab';
+import ebayOrderLogisticsAnalyticsLabRouter from './ebay-order-logistics-analytics-lab';
+import ebayInventoryWarehouseOptimizationLabRouter from './ebay-inventory-warehouse-optimization-lab';
+import ebaySellerPerformanceInsightsLabRouter from './ebay-seller-performance-insights-lab';
+import ebayProductPricingAnalyticsLabRouter from './ebay-product-pricing-analytics-lab';
+import ebayListingSeoAnalyticsLabRouter from './ebay-listing-seo-analytics-lab';
+import ebayOrderReturnsManagementLabRouter from './ebay-order-returns-management-lab';
+import ebayInventoryStockAnalyticsLabRouter from './ebay-inventory-stock-analytics-lab';
+import ebaySellerCustomerAnalyticsLabRouter from './ebay-seller-customer-analytics-lab';
+import ebayProductImageAnalyticsLabRouter from './ebay-product-image-analytics-lab';
+import ebayListingTemplateAnalyticsLabRouter from './ebay-listing-template-analytics-lab';
+import ebayOrderPaymentOptimizationLabRouter from './ebay-order-payment-optimization-lab';
+import ebayInventorySupplierManagementLabRouter from './ebay-inventory-supplier-management-lab';
+import ebaySellerComplianceAnalyticsLabRouter from './ebay-seller-compliance-analytics-lab';
+import ebayProductDescriptionAnalyticsLabRouter from './ebay-product-description-analytics-lab';
+import ebayListingCompetitiveTrackingLabRouter from './ebay-listing-competitive-tracking-lab';
+import ebayOrderDisputeManagementLabRouter from './ebay-order-dispute-management-lab';
+import ebayInventoryQualityAnalyticsLabRouter from './ebay-inventory-quality-analytics-lab';
+import ebaySellerFinancialManagementLabRouter from './ebay-seller-financial-management-lab';
+import ebayProductVariantManagementLabRouter from './ebay-product-variant-management-lab';
+import ebayListingMarketAnalyticsLabRouter from './ebay-listing-market-analytics-lab';
+import ebayOrderBatchManagementLabRouter from './ebay-order-batch-management-lab';
+import ebayInventoryTransferManagementLabRouter from './ebay-inventory-transfer-management-lab';
+import ebaySellerGrowthManagementLabRouter from './ebay-seller-growth-management-lab';
+import ebayProductReviewManagementLabRouter from './ebay-product-review-management-lab';
+import ebayListingInternationalManagementLabRouter from './ebay-listing-international-management-lab';
+import ebayOrderCustomerManagementLabRouter from './ebay-order-customer-management-lab';
+import ebayInventoryAllocationManagementLabRouter from './ebay-inventory-allocation-management-lab';
+import ebaySellerMarketingManagementLabRouter from './ebay-seller-marketing-management-lab';
+import ebayProductSourcingManagementLabRouter from './ebay-product-sourcing-management-lab';
+import ebayListingAnalyticsManagementLabRouter from './ebay-listing-analytics-management-lab';
+import ebayOrderInvoiceManagementLabRouter from './ebay-order-invoice-management-lab';
+import ebayInventoryExpirationManagementLabRouter from './ebay-inventory-expiration-management-lab';
+import ebaySellerTrainingManagementLabRouter from './ebay-seller-training-management-lab';
+import ebayProductAuthenticationManagementLabRouter from './ebay-product-authentication-management-lab';
+import ebayListingPromotionManagementLabRouter from './ebay-listing-promotion-management-lab';
+import ebayOrderConsolidationManagementLabRouter from './ebay-order-consolidation-management-lab';
+import ebayInventorySafetyManagementLabRouter from './ebay-inventory-safety-management-lab';
+import ebaySellerFeedbackManagementLabRouter from './ebay-seller-feedback-management-lab';
+import ebayProductCrossListingManagementLabRouter from './ebay-product-cross-listing-management-lab';
+import ebayListingSchedulingManagementLabRouter from './ebay-listing-scheduling-management-lab';
+import ebayOrderWorkflowManagementLabRouter from './ebay-order-workflow-management-lab';
+import ebayInventoryOptimizationManagementLabRouter from './ebay-inventory-optimization-management-lab';
+import ebaySellerDataManagementLabRouter from './ebay-seller-data-management-lab';
+import ebayProductTrendManagementLabRouter from './ebay-product-trend-management-lab';
+import ebayListingQualityManagementLabRouter from './ebay-listing-quality-management-lab';
+import ebayOrderPriorityManagementLabRouter from './ebay-order-priority-management-lab';
+import ebayInventoryAuditManagementLabRouter from './ebay-inventory-audit-management-lab';
+import ebaySellerPartnershipManagementLabRouter from './ebay-seller-partnership-management-lab';
+import ebayProductLifecycleManagementLabRouter from './ebay-product-lifecycle-management-lab';
+import ebayListingPersonalizationManagementLabRouter from './ebay-listing-personalization-management-lab';
+import ebayOrderNotificationManagementLabRouter from './ebay-order-notification-management-lab';
+import ebayInventoryReplenishmentManagementLabRouter from './ebay-inventory-replenishment-management-lab';
+import ebaySellerCertificationManagementLabRouter from './ebay-seller-certification-management-lab';
+import ebayProductComplianceManagementLabRouter from './ebay-product-compliance-management-lab';
+import ebayListingVisibilityManagementLabRouter from './ebay-listing-visibility-management-lab';
+import ebayOrderEscalationManagementLabRouter from './ebay-order-escalation-management-lab';
+import ebayInventoryDistributionManagementLabRouter from './ebay-inventory-distribution-management-lab';
+import ebaySellerRevenueManagementLabRouter from './ebay-seller-revenue-management-lab';
+import ebayProductEnrichmentManagementLabRouter from './ebay-product-enrichment-management-lab';
+import ebayListingPerformanceAnalyticsLabRouter from './ebay-listing-performance-analytics-lab';
+import ebayOrderExperienceManagementLabRouter from './ebay-order-experience-management-lab';
+import ebayInventoryVelocityManagementLabRouter from './ebay-inventory-velocity-management-lab';
+import ebaySellerOnboardingManagementLabRouter from './ebay-seller-onboarding-management-lab';
+import ebayProductMediaAnalyticsLabRouter from './ebay-product-media-analytics-lab';
+
+// Phase 1841-1910 (Nexus series)
+import ebayListingSmartAutomationNexusRouter from './ebay-listing-smart-automation-nexus';
+import ebayOrderFulfillmentIntelligenceNexusRouter from './ebay-order-fulfillment-intelligence-nexus';
+import ebayInventoryDemandIntelligenceNexusRouter from './ebay-inventory-demand-intelligence-nexus';
+import ebaySellerBrandIntelligenceNexusRouter from './ebay-seller-brand-intelligence-nexus';
+import ebayProductCatalogIntelligenceNexusRouter from './ebay-product-catalog-intelligence-nexus';
+import ebayListingConversionIntelligenceNexusRouter from './ebay-listing-conversion-intelligence-nexus';
+import ebayOrderLogisticsIntelligenceNexusRouter from './ebay-order-logistics-intelligence-nexus';
+import ebayInventoryWarehouseIntelligenceNexusRouter from './ebay-inventory-warehouse-intelligence-nexus';
+import ebaySellerPerformanceIntelligenceNexusRouter from './ebay-seller-performance-intelligence-nexus';
+import ebayProductPricingIntelligenceNexusRouter from './ebay-product-pricing-intelligence-nexus';
+import ebayListingSeoIntelligenceNexusRouter from './ebay-listing-seo-intelligence-nexus';
+import ebayOrderReturnsIntelligenceNexusRouter from './ebay-order-returns-intelligence-nexus';
+import ebayInventoryStockIntelligenceNexusRouter from './ebay-inventory-stock-intelligence-nexus';
+import ebaySellerCustomerIntelligenceNexusRouter from './ebay-seller-customer-intelligence-nexus';
+import ebayProductImageIntelligenceNexusRouter from './ebay-product-image-intelligence-nexus';
+import ebayListingTemplateIntelligenceNexusRouter from './ebay-listing-template-intelligence-nexus';
+import ebayOrderPaymentIntelligenceNexusRouter from './ebay-order-payment-intelligence-nexus';
+import ebayInventorySupplierIntelligenceNexusRouter from './ebay-inventory-supplier-intelligence-nexus';
+import ebaySellerComplianceIntelligenceNexusRouter from './ebay-seller-compliance-intelligence-nexus';
+import ebayProductDescriptionIntelligenceNexusRouter from './ebay-product-description-intelligence-nexus';
+import ebayListingCompetitiveAnalyticsNexusRouter from './ebay-listing-competitive-analytics-nexus';
+import ebayOrderDisputeIntelligenceNexusRouter from './ebay-order-dispute-intelligence-nexus';
+import ebayInventoryQualityIntelligenceNexusRouter from './ebay-inventory-quality-intelligence-nexus';
+import ebaySellerFinancialIntelligenceNexusRouter from './ebay-seller-financial-intelligence-nexus';
+import ebayProductVariantIntelligenceNexusRouter from './ebay-product-variant-intelligence-nexus';
+import ebayListingMarketOptimizationNexusRouter from './ebay-listing-market-optimization-nexus';
+import ebayOrderBatchIntelligenceNexusRouter from './ebay-order-batch-intelligence-nexus';
+import ebayInventoryTransferIntelligenceNexusRouter from './ebay-inventory-transfer-intelligence-nexus';
+import ebaySellerGrowthIntelligenceNexusRouter from './ebay-seller-growth-intelligence-nexus';
+import ebayProductReviewIntelligenceNexusRouter from './ebay-product-review-intelligence-nexus';
+import ebayListingInternationalIntelligenceNexusRouter from './ebay-listing-international-intelligence-nexus';
+import ebayOrderCustomerIntelligenceNexusRouter from './ebay-order-customer-intelligence-nexus';
+import ebayInventoryAllocationIntelligenceNexusRouter from './ebay-inventory-allocation-intelligence-nexus';
+import ebaySellerMarketingIntelligenceNexusRouter from './ebay-seller-marketing-intelligence-nexus';
+import ebayProductSourcingIntelligenceNexusRouter from './ebay-product-sourcing-intelligence-nexus';
+import ebayListingAnalyticsIntelligenceNexusRouter from './ebay-listing-analytics-intelligence-nexus';
+import ebayOrderInvoiceIntelligenceNexusRouter from './ebay-order-invoice-intelligence-nexus';
+import ebayInventoryExpirationIntelligenceNexusRouter from './ebay-inventory-expiration-intelligence-nexus';
+import ebaySellerTrainingIntelligenceNexusRouter from './ebay-seller-training-intelligence-nexus';
+import ebayProductAuthenticationIntelligenceNexusRouter from './ebay-product-authentication-intelligence-nexus';
+import ebayListingPromotionIntelligenceNexusRouter from './ebay-listing-promotion-intelligence-nexus';
+import ebayOrderConsolidationIntelligenceNexusRouter from './ebay-order-consolidation-intelligence-nexus';
+import ebayInventorySafetyIntelligenceNexusRouter from './ebay-inventory-safety-intelligence-nexus';
+import ebaySellerFeedbackIntelligenceNexusRouter from './ebay-seller-feedback-intelligence-nexus';
+import ebayProductCrossListingIntelligenceNexusRouter from './ebay-product-cross-listing-intelligence-nexus';
+import ebayListingSchedulingIntelligenceNexusRouter from './ebay-listing-scheduling-intelligence-nexus';
+import ebayOrderWorkflowIntelligenceNexusRouter from './ebay-order-workflow-intelligence-nexus';
+import ebayInventoryOptimizationIntelligenceNexusRouter from './ebay-inventory-optimization-intelligence-nexus';
+import ebaySellerDataAnalyticsNexusRouter from './ebay-seller-data-analytics-nexus';
+import ebayProductTrendAnalyticsNexusRouter from './ebay-product-trend-analytics-nexus';
+import ebayListingQualityIntelligenceNexusRouter from './ebay-listing-quality-intelligence-nexus';
+import ebayOrderPriorityIntelligenceNexusRouter from './ebay-order-priority-intelligence-nexus';
+import ebayInventoryAuditIntelligenceNexusRouter from './ebay-inventory-audit-intelligence-nexus';
+import ebaySellerPartnershipIntelligenceNexusRouter from './ebay-seller-partnership-intelligence-nexus';
+import ebayProductLifecycleIntelligenceNexusRouter from './ebay-product-lifecycle-intelligence-nexus';
+import ebayListingPersonalizationIntelligenceNexusRouter from './ebay-listing-personalization-intelligence-nexus';
+import ebayOrderNotificationIntelligenceNexusRouter from './ebay-order-notification-intelligence-nexus';
+import ebayInventoryReplenishmentIntelligenceNexusRouter from './ebay-inventory-replenishment-intelligence-nexus';
+import ebaySellerCertificationIntelligenceNexusRouter from './ebay-seller-certification-intelligence-nexus';
+import ebayProductComplianceIntelligenceNexusRouter from './ebay-product-compliance-intelligence-nexus';
+import ebayListingVisibilityIntelligenceNexusRouter from './ebay-listing-visibility-intelligence-nexus';
+import ebayOrderEscalationIntelligenceNexusRouter from './ebay-order-escalation-intelligence-nexus';
+import ebayInventoryDistributionIntelligenceNexusRouter from './ebay-inventory-distribution-intelligence-nexus';
+import ebaySellerRevenueIntelligenceNexusRouter from './ebay-seller-revenue-intelligence-nexus';
+import ebayProductEnrichmentIntelligenceNexusRouter from './ebay-product-enrichment-intelligence-nexus';
+import ebayListingPerformanceIntelligenceNexusRouter from './ebay-listing-performance-intelligence-nexus';
+import ebayOrderExperienceIntelligenceNexusRouter from './ebay-order-experience-intelligence-nexus';
+import ebayInventoryVelocityIntelligenceNexusRouter from './ebay-inventory-velocity-intelligence-nexus';
+import ebaySellerOnboardingIntelligenceNexusRouter from './ebay-seller-onboarding-intelligence-nexus';
+import ebayProductMediaIntelligenceNexusRouter from './ebay-product-media-intelligence-nexus';
+
 export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay', ebayAuthRouter);
   app.use('/api/ebay-listings', ebayListingsRouter);
@@ -3861,4 +4006,172 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-velocity-analytics-studio', ebayInventoryVelocityAnalyticsStudioRouter);
   app.use('/api/ebay-seller-onboarding-analytics-studio', ebaySellerOnboardingAnalyticsStudioRouter);
   app.use('/api/ebay-product-media-management-studio', ebayProductMediaManagementStudioRouter);
+  // Phase 1771-1775
+  app.use('/api/ebay-listing-smart-targeting-lab', ebayListingSmartTargetingLabRouter);
+  app.use('/api/ebay-order-fulfillment-analytics-lab', ebayOrderFulfillmentAnalyticsLabRouter);
+  app.use('/api/ebay-inventory-demand-analytics-lab', ebayInventoryDemandAnalyticsLabRouter);
+  app.use('/api/ebay-seller-brand-analytics-lab', ebaySellerBrandAnalyticsLabRouter);
+  app.use('/api/ebay-product-catalog-analytics-lab', ebayProductCatalogAnalyticsLabRouter);
+  // Phase 1776-1780
+  app.use('/api/ebay-listing-conversion-tracking-lab', ebayListingConversionTrackingLabRouter);
+  app.use('/api/ebay-order-logistics-analytics-lab', ebayOrderLogisticsAnalyticsLabRouter);
+  app.use('/api/ebay-inventory-warehouse-optimization-lab', ebayInventoryWarehouseOptimizationLabRouter);
+  app.use('/api/ebay-seller-performance-insights-lab', ebaySellerPerformanceInsightsLabRouter);
+  app.use('/api/ebay-product-pricing-analytics-lab', ebayProductPricingAnalyticsLabRouter);
+  // Phase 1781-1785
+  app.use('/api/ebay-listing-seo-analytics-lab', ebayListingSeoAnalyticsLabRouter);
+  app.use('/api/ebay-order-returns-management-lab', ebayOrderReturnsManagementLabRouter);
+  app.use('/api/ebay-inventory-stock-analytics-lab', ebayInventoryStockAnalyticsLabRouter);
+  app.use('/api/ebay-seller-customer-analytics-lab', ebaySellerCustomerAnalyticsLabRouter);
+  app.use('/api/ebay-product-image-analytics-lab', ebayProductImageAnalyticsLabRouter);
+  // Phase 1786-1790
+  app.use('/api/ebay-listing-template-analytics-lab', ebayListingTemplateAnalyticsLabRouter);
+  app.use('/api/ebay-order-payment-optimization-lab', ebayOrderPaymentOptimizationLabRouter);
+  app.use('/api/ebay-inventory-supplier-management-lab', ebayInventorySupplierManagementLabRouter);
+  app.use('/api/ebay-seller-compliance-analytics-lab', ebaySellerComplianceAnalyticsLabRouter);
+  app.use('/api/ebay-product-description-analytics-lab', ebayProductDescriptionAnalyticsLabRouter);
+  // Phase 1791-1795
+  app.use('/api/ebay-listing-competitive-tracking-lab', ebayListingCompetitiveTrackingLabRouter);
+  app.use('/api/ebay-order-dispute-management-lab', ebayOrderDisputeManagementLabRouter);
+  app.use('/api/ebay-inventory-quality-analytics-lab', ebayInventoryQualityAnalyticsLabRouter);
+  app.use('/api/ebay-seller-financial-management-lab', ebaySellerFinancialManagementLabRouter);
+  app.use('/api/ebay-product-variant-management-lab', ebayProductVariantManagementLabRouter);
+  // Phase 1796-1800
+  app.use('/api/ebay-listing-market-analytics-lab', ebayListingMarketAnalyticsLabRouter);
+  app.use('/api/ebay-order-batch-management-lab', ebayOrderBatchManagementLabRouter);
+  app.use('/api/ebay-inventory-transfer-management-lab', ebayInventoryTransferManagementLabRouter);
+  app.use('/api/ebay-seller-growth-management-lab', ebaySellerGrowthManagementLabRouter);
+  app.use('/api/ebay-product-review-management-lab', ebayProductReviewManagementLabRouter);
+  // Phase 1801-1805
+  app.use('/api/ebay-listing-international-management-lab', ebayListingInternationalManagementLabRouter);
+  app.use('/api/ebay-order-customer-management-lab', ebayOrderCustomerManagementLabRouter);
+  app.use('/api/ebay-inventory-allocation-management-lab', ebayInventoryAllocationManagementLabRouter);
+  app.use('/api/ebay-seller-marketing-management-lab', ebaySellerMarketingManagementLabRouter);
+  app.use('/api/ebay-product-sourcing-management-lab', ebayProductSourcingManagementLabRouter);
+  // Phase 1806-1810
+  app.use('/api/ebay-listing-analytics-management-lab', ebayListingAnalyticsManagementLabRouter);
+  app.use('/api/ebay-order-invoice-management-lab', ebayOrderInvoiceManagementLabRouter);
+  app.use('/api/ebay-inventory-expiration-management-lab', ebayInventoryExpirationManagementLabRouter);
+  app.use('/api/ebay-seller-training-management-lab', ebaySellerTrainingManagementLabRouter);
+  app.use('/api/ebay-product-authentication-management-lab', ebayProductAuthenticationManagementLabRouter);
+  // Phase 1811-1815
+  app.use('/api/ebay-listing-promotion-management-lab', ebayListingPromotionManagementLabRouter);
+  app.use('/api/ebay-order-consolidation-management-lab', ebayOrderConsolidationManagementLabRouter);
+  app.use('/api/ebay-inventory-safety-management-lab', ebayInventorySafetyManagementLabRouter);
+  app.use('/api/ebay-seller-feedback-management-lab', ebaySellerFeedbackManagementLabRouter);
+  app.use('/api/ebay-product-cross-listing-management-lab', ebayProductCrossListingManagementLabRouter);
+  // Phase 1816-1820
+  app.use('/api/ebay-listing-scheduling-management-lab', ebayListingSchedulingManagementLabRouter);
+  app.use('/api/ebay-order-workflow-management-lab', ebayOrderWorkflowManagementLabRouter);
+  app.use('/api/ebay-inventory-optimization-management-lab', ebayInventoryOptimizationManagementLabRouter);
+  app.use('/api/ebay-seller-data-management-lab', ebaySellerDataManagementLabRouter);
+  app.use('/api/ebay-product-trend-management-lab', ebayProductTrendManagementLabRouter);
+  // Phase 1821-1825
+  app.use('/api/ebay-listing-quality-management-lab', ebayListingQualityManagementLabRouter);
+  app.use('/api/ebay-order-priority-management-lab', ebayOrderPriorityManagementLabRouter);
+  app.use('/api/ebay-inventory-audit-management-lab', ebayInventoryAuditManagementLabRouter);
+  app.use('/api/ebay-seller-partnership-management-lab', ebaySellerPartnershipManagementLabRouter);
+  app.use('/api/ebay-product-lifecycle-management-lab', ebayProductLifecycleManagementLabRouter);
+  // Phase 1826-1830
+  app.use('/api/ebay-listing-personalization-management-lab', ebayListingPersonalizationManagementLabRouter);
+  app.use('/api/ebay-order-notification-management-lab', ebayOrderNotificationManagementLabRouter);
+  app.use('/api/ebay-inventory-replenishment-management-lab', ebayInventoryReplenishmentManagementLabRouter);
+  app.use('/api/ebay-seller-certification-management-lab', ebaySellerCertificationManagementLabRouter);
+  app.use('/api/ebay-product-compliance-management-lab', ebayProductComplianceManagementLabRouter);
+  // Phase 1831-1835
+  app.use('/api/ebay-listing-visibility-management-lab', ebayListingVisibilityManagementLabRouter);
+  app.use('/api/ebay-order-escalation-management-lab', ebayOrderEscalationManagementLabRouter);
+  app.use('/api/ebay-inventory-distribution-management-lab', ebayInventoryDistributionManagementLabRouter);
+  app.use('/api/ebay-seller-revenue-management-lab', ebaySellerRevenueManagementLabRouter);
+  app.use('/api/ebay-product-enrichment-management-lab', ebayProductEnrichmentManagementLabRouter);
+  // Phase 1836-1840
+  app.use('/api/ebay-listing-performance-analytics-lab', ebayListingPerformanceAnalyticsLabRouter);
+  app.use('/api/ebay-order-experience-management-lab', ebayOrderExperienceManagementLabRouter);
+  app.use('/api/ebay-inventory-velocity-management-lab', ebayInventoryVelocityManagementLabRouter);
+  app.use('/api/ebay-seller-onboarding-management-lab', ebaySellerOnboardingManagementLabRouter);
+  app.use('/api/ebay-product-media-analytics-lab', ebayProductMediaAnalyticsLabRouter);
+  // Phase 1841-1845
+  app.use('/api/ebay-listing-smart-automation-nexus', ebayListingSmartAutomationNexusRouter);
+  app.use('/api/ebay-order-fulfillment-intelligence-nexus', ebayOrderFulfillmentIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-demand-intelligence-nexus', ebayInventoryDemandIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-brand-intelligence-nexus', ebaySellerBrandIntelligenceNexusRouter);
+  app.use('/api/ebay-product-catalog-intelligence-nexus', ebayProductCatalogIntelligenceNexusRouter);
+  // Phase 1846-1850
+  app.use('/api/ebay-listing-conversion-intelligence-nexus', ebayListingConversionIntelligenceNexusRouter);
+  app.use('/api/ebay-order-logistics-intelligence-nexus', ebayOrderLogisticsIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-warehouse-intelligence-nexus', ebayInventoryWarehouseIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-performance-intelligence-nexus', ebaySellerPerformanceIntelligenceNexusRouter);
+  app.use('/api/ebay-product-pricing-intelligence-nexus', ebayProductPricingIntelligenceNexusRouter);
+  // Phase 1851-1855
+  app.use('/api/ebay-listing-seo-intelligence-nexus', ebayListingSeoIntelligenceNexusRouter);
+  app.use('/api/ebay-order-returns-intelligence-nexus', ebayOrderReturnsIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-stock-intelligence-nexus', ebayInventoryStockIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-customer-intelligence-nexus', ebaySellerCustomerIntelligenceNexusRouter);
+  app.use('/api/ebay-product-image-intelligence-nexus', ebayProductImageIntelligenceNexusRouter);
+  // Phase 1856-1860
+  app.use('/api/ebay-listing-template-intelligence-nexus', ebayListingTemplateIntelligenceNexusRouter);
+  app.use('/api/ebay-order-payment-intelligence-nexus', ebayOrderPaymentIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-supplier-intelligence-nexus', ebayInventorySupplierIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-compliance-intelligence-nexus', ebaySellerComplianceIntelligenceNexusRouter);
+  app.use('/api/ebay-product-description-intelligence-nexus', ebayProductDescriptionIntelligenceNexusRouter);
+  // Phase 1861-1865
+  app.use('/api/ebay-listing-competitive-analytics-nexus', ebayListingCompetitiveAnalyticsNexusRouter);
+  app.use('/api/ebay-order-dispute-intelligence-nexus', ebayOrderDisputeIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-quality-intelligence-nexus', ebayInventoryQualityIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-financial-intelligence-nexus', ebaySellerFinancialIntelligenceNexusRouter);
+  app.use('/api/ebay-product-variant-intelligence-nexus', ebayProductVariantIntelligenceNexusRouter);
+  // Phase 1866-1870
+  app.use('/api/ebay-listing-market-optimization-nexus', ebayListingMarketOptimizationNexusRouter);
+  app.use('/api/ebay-order-batch-intelligence-nexus', ebayOrderBatchIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-transfer-intelligence-nexus', ebayInventoryTransferIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-growth-intelligence-nexus', ebaySellerGrowthIntelligenceNexusRouter);
+  app.use('/api/ebay-product-review-intelligence-nexus', ebayProductReviewIntelligenceNexusRouter);
+  // Phase 1871-1875
+  app.use('/api/ebay-listing-international-intelligence-nexus', ebayListingInternationalIntelligenceNexusRouter);
+  app.use('/api/ebay-order-customer-intelligence-nexus', ebayOrderCustomerIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-allocation-intelligence-nexus', ebayInventoryAllocationIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-marketing-intelligence-nexus', ebaySellerMarketingIntelligenceNexusRouter);
+  app.use('/api/ebay-product-sourcing-intelligence-nexus', ebayProductSourcingIntelligenceNexusRouter);
+  // Phase 1876-1880
+  app.use('/api/ebay-listing-analytics-intelligence-nexus', ebayListingAnalyticsIntelligenceNexusRouter);
+  app.use('/api/ebay-order-invoice-intelligence-nexus', ebayOrderInvoiceIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-expiration-intelligence-nexus', ebayInventoryExpirationIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-training-intelligence-nexus', ebaySellerTrainingIntelligenceNexusRouter);
+  app.use('/api/ebay-product-authentication-intelligence-nexus', ebayProductAuthenticationIntelligenceNexusRouter);
+  // Phase 1881-1885
+  app.use('/api/ebay-listing-promotion-intelligence-nexus', ebayListingPromotionIntelligenceNexusRouter);
+  app.use('/api/ebay-order-consolidation-intelligence-nexus', ebayOrderConsolidationIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-safety-intelligence-nexus', ebayInventorySafetyIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-feedback-intelligence-nexus', ebaySellerFeedbackIntelligenceNexusRouter);
+  app.use('/api/ebay-product-cross-listing-intelligence-nexus', ebayProductCrossListingIntelligenceNexusRouter);
+  // Phase 1886-1890
+  app.use('/api/ebay-listing-scheduling-intelligence-nexus', ebayListingSchedulingIntelligenceNexusRouter);
+  app.use('/api/ebay-order-workflow-intelligence-nexus', ebayOrderWorkflowIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-optimization-intelligence-nexus', ebayInventoryOptimizationIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-data-analytics-nexus', ebaySellerDataAnalyticsNexusRouter);
+  app.use('/api/ebay-product-trend-analytics-nexus', ebayProductTrendAnalyticsNexusRouter);
+  // Phase 1891-1895
+  app.use('/api/ebay-listing-quality-intelligence-nexus', ebayListingQualityIntelligenceNexusRouter);
+  app.use('/api/ebay-order-priority-intelligence-nexus', ebayOrderPriorityIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-audit-intelligence-nexus', ebayInventoryAuditIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-partnership-intelligence-nexus', ebaySellerPartnershipIntelligenceNexusRouter);
+  app.use('/api/ebay-product-lifecycle-intelligence-nexus', ebayProductLifecycleIntelligenceNexusRouter);
+  // Phase 1896-1900
+  app.use('/api/ebay-listing-personalization-intelligence-nexus', ebayListingPersonalizationIntelligenceNexusRouter);
+  app.use('/api/ebay-order-notification-intelligence-nexus', ebayOrderNotificationIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-replenishment-intelligence-nexus', ebayInventoryReplenishmentIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-certification-intelligence-nexus', ebaySellerCertificationIntelligenceNexusRouter);
+  app.use('/api/ebay-product-compliance-intelligence-nexus', ebayProductComplianceIntelligenceNexusRouter);
+  // Phase 1901-1905
+  app.use('/api/ebay-listing-visibility-intelligence-nexus', ebayListingVisibilityIntelligenceNexusRouter);
+  app.use('/api/ebay-order-escalation-intelligence-nexus', ebayOrderEscalationIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-distribution-intelligence-nexus', ebayInventoryDistributionIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-revenue-intelligence-nexus', ebaySellerRevenueIntelligenceNexusRouter);
+  app.use('/api/ebay-product-enrichment-intelligence-nexus', ebayProductEnrichmentIntelligenceNexusRouter);
+  // Phase 1906-1910
+  app.use('/api/ebay-listing-performance-intelligence-nexus', ebayListingPerformanceIntelligenceNexusRouter);
+  app.use('/api/ebay-order-experience-intelligence-nexus', ebayOrderExperienceIntelligenceNexusRouter);
+  app.use('/api/ebay-inventory-velocity-intelligence-nexus', ebayInventoryVelocityIntelligenceNexusRouter);
+  app.use('/api/ebay-seller-onboarding-intelligence-nexus', ebaySellerOnboardingIntelligenceNexusRouter);
+  app.use('/api/ebay-product-media-intelligence-nexus', ebayProductMediaIntelligenceNexusRouter);
 }
