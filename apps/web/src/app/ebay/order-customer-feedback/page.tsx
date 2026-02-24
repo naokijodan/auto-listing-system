@@ -6,9 +6,9 @@ type ApiData = { section: string; action: string } | Record<string, unknown>;
 
 const TABS = [
   { key: 'dashboard', label: 'ダッシュボード' },
-  { key: 'inventory', label: '在庫' },
-  { key: 'transfers', label: '移動' },
-  { key: 'routes', label: 'ルート' },
+  { key: 'orders', label: '注文' },
+  { key: 'feedback', label: 'フィードバック' },
+  { key: 'responses', label: '返信' },
   { key: 'analytics', label: '分析' },
   { key: 'settings', label: '設定' },
 ] as const;
@@ -17,12 +17,12 @@ const endpointFor = (key: typeof TABS[number]['key']): string => {
   switch (key) {
     case 'dashboard':
       return 'dashboard';
-    case 'inventory':
-      return 'inventory';
-    case 'transfers':
-      return 'transfers';
-    case 'routes':
-      return 'routes';
+    case 'orders':
+      return 'orders';
+    case 'feedback':
+      return 'feedback';
+    case 'responses':
+      return 'responses';
     case 'analytics':
       return 'analytics';
     case 'settings':
@@ -32,9 +32,9 @@ const endpointFor = (key: typeof TABS[number]['key']): string => {
   }
 };
 
-const BASE_API = '/api/ebay-inventory-transfer-manager/';
+const BASE_API = '/api/ebay-order-customer-feedback/';
 
-export default function InventoryTransferManagerPage() {
+export default function OrderCustomerFeedbackPage() {
   const [active, setActive] = useState<typeof TABS[number]['key']>('dashboard');
   const [data, setData] = useState<ApiData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -64,7 +64,7 @@ export default function InventoryTransferManagerPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold text-fuchsia-600">在庫移動管理</h1>
+      <h1 className="text-2xl font-bold text-red-600">注文カスタマーフィードバック</h1>
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex gap-6" aria-label="Tabs">
           {TABS.map((t) => (
@@ -73,7 +73,7 @@ export default function InventoryTransferManagerPage() {
               onClick={() => setActive(t.key)}
               className={`whitespace-nowrap py-2 border-b-2 text-sm font-medium transition-colors ${
                 active === t.key
-                  ? 'border-fuchsia-600 text-fuchsia-600'
+                  ? 'border-red-600 text-red-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
