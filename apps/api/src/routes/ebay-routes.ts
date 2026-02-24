@@ -1177,6 +1177,90 @@ import ebayOrderPriorityManagementPlatformRouter from './ebay-order-priority-man
 import ebayInventoryStagingManagementPlatformRouter from './ebay-inventory-staging-management-platform';
 import ebaySellerEngagementTrackingPlatformRouter from './ebay-seller-engagement-tracking-platform';
 import ebayProductEnrichmentEnginePlatformRouter from './ebay-product-enrichment-engine-platform';
+// Phase 1141-1145
+import ebayListingSmartBiddingHubRouter from './ebay-listing-smart-bidding-hub';
+import ebayOrderClaimsProcessingHubRouter from './ebay-order-claims-processing-hub';
+import ebayInventoryDemandPlanningHubRouter from './ebay-inventory-demand-planning-hub';
+import ebaySellerGrowthStrategyHubRouter from './ebay-seller-growth-strategy-hub';
+import ebayProductCatalogManagementHubRouter from './ebay-product-catalog-management-hub';
+// Phase 1146-1150
+import ebayListingAudienceTargetingHubRouter from './ebay-listing-audience-targeting-hub';
+import ebayOrderPaymentGatewayHubRouter from './ebay-order-payment-gateway-hub';
+import ebayInventoryStockMonitoringHubRouter from './ebay-inventory-stock-monitoring-hub';
+import ebaySellerBrandAnalyticsHubRouter from './ebay-seller-brand-analytics-hub';
+import ebayProductReviewManagementHubRouter from './ebay-product-review-management-hub';
+// Phase 1151-1155
+import ebayListingCrossSellHubRouter from './ebay-listing-cross-sell-hub';
+import ebayOrderLogisticsManagementHubRouter from './ebay-order-logistics-management-hub';
+import ebayInventoryWarehouseManagementHubRouter from './ebay-inventory-warehouse-management-hub';
+import ebaySellerComplianceTrackingHubRouter from './ebay-seller-compliance-tracking-hub';
+import ebayProductVariantTrackingHubRouter from './ebay-product-variant-tracking-hub';
+// Phase 1156-1160
+import ebayListingSeasonalPricingHubRouter from './ebay-listing-seasonal-pricing-hub';
+import ebayOrderDisputeResolutionHubRouter from './ebay-order-dispute-resolution-hub';
+import ebayInventoryProcurementTrackingHubRouter from './ebay-inventory-procurement-tracking-hub';
+import ebaySellerRevenueAnalyticsHubRouter from './ebay-seller-revenue-analytics-hub';
+import ebayProductQualityAssuranceHubRouter from './ebay-product-quality-assurance-hub';
+// Phase 1161-1165
+import ebayListingCompetitorAnalysisHubRouter from './ebay-listing-competitor-analysis-hub';
+import ebayOrderBulkFulfillmentHubRouter from './ebay-order-bulk-fulfillment-hub';
+import ebayInventoryExpiryTrackingHubRouter from './ebay-inventory-expiry-tracking-hub';
+import ebaySellerTrainingManagementHubRouter from './ebay-seller-training-management-hub';
+import ebayProductLifecycleManagementHubRouter from './ebay-product-lifecycle-management-hub';
+// Phase 1166-1170
+import ebayListingSeoManagementHubRouter from './ebay-listing-seo-management-hub';
+import ebayOrderCustomerEngagementHubRouter from './ebay-order-customer-engagement-hub';
+import ebayInventoryCycleManagementHubRouter from './ebay-inventory-cycle-management-hub';
+import ebaySellerFeedbackManagementHubRouter from './ebay-seller-feedback-management-hub';
+import ebayProductSourcingManagementHubRouter from './ebay-product-sourcing-management-hub';
+// Phase 1171-1175
+import ebayListingImageManagementHubRouter from './ebay-listing-image-management-hub';
+import ebayOrderFulfillmentManagementHubRouter from './ebay-order-fulfillment-management-hub';
+import ebayInventorySafetyManagementHubRouter from './ebay-inventory-safety-management-hub';
+import ebaySellerPerformanceAnalyticsHubRouter from './ebay-seller-performance-analytics-hub';
+import ebayProductBundlingManagementHubRouter from './ebay-product-bundling-management-hub';
+// Phase 1176-1180
+import ebayListingPromotionTrackingHubRouter from './ebay-listing-promotion-tracking-hub';
+import ebayOrderShippingManagementHubRouter from './ebay-order-shipping-management-hub';
+import ebayInventoryAllocationManagementHubRouter from './ebay-inventory-allocation-management-hub';
+import ebaySellerMarketplaceAnalyticsHubRouter from './ebay-seller-marketplace-analytics-hub';
+import ebayProductAuthenticationManagementHubRouter from './ebay-product-authentication-management-hub';
+// Phase 1181-1185
+import ebayListingConversionManagementHubRouter from './ebay-listing-conversion-management-hub';
+import ebayOrderInvoiceTrackingHubRouter from './ebay-order-invoice-tracking-hub';
+import ebayInventoryDamageManagementHubRouter from './ebay-inventory-damage-management-hub';
+import ebaySellerCashManagementHubRouter from './ebay-seller-cash-management-hub';
+import ebayProductPricingManagementHubRouter from './ebay-product-pricing-management-hub';
+// Phase 1186-1190
+import ebayListingTemplateTrackingHubRouter from './ebay-listing-template-tracking-hub';
+import ebayOrderEscalationManagementHubRouter from './ebay-order-escalation-management-hub';
+import ebayInventoryLocationManagementHubRouter from './ebay-inventory-location-management-hub';
+import ebaySellerCollaborationManagementHubRouter from './ebay-seller-collaboration-management-hub';
+import ebayProductDescriptionManagementHubRouter from './ebay-product-description-management-hub';
+// Phase 1191-1195
+import ebayListingSchedulingTrackingHubRouter from './ebay-listing-scheduling-tracking-hub';
+import ebayOrderStatusManagementHubRouter from './ebay-order-status-management-hub';
+import ebayInventoryReplenishmentManagementHubRouter from './ebay-inventory-replenishment-management-hub';
+import ebaySellerAnalyticsManagementHubRouter from './ebay-seller-analytics-management-hub';
+import ebayProductComparisonManagementHubRouter from './ebay-product-comparison-management-hub';
+// Phase 1196-1200
+import ebayListingKeywordManagementHubRouter from './ebay-listing-keyword-management-hub';
+import ebayOrderNotificationTrackingHubRouter from './ebay-order-notification-tracking-hub';
+import ebayInventoryOptimizationManagementHubRouter from './ebay-inventory-optimization-management-hub';
+import ebaySellerCertificationTrackingHubRouter from './ebay-seller-certification-tracking-hub';
+import ebayProductMediaTrackingHubRouter from './ebay-product-media-tracking-hub';
+// Phase 1201-1205
+import ebayListingVisibilityManagementHubRouter from './ebay-listing-visibility-management-hub';
+import ebayOrderWorkflowTrackingHubRouter from './ebay-order-workflow-tracking-hub';
+import ebayInventoryAuditTrackingHubRouter from './ebay-inventory-audit-tracking-hub';
+import ebaySellerPartnershipTrackingHubRouter from './ebay-seller-partnership-tracking-hub';
+import ebayProductClassificationManagementHubRouter from './ebay-product-classification-management-hub';
+// Phase 1206-1210
+import ebayListingTestingManagementHubRouter from './ebay-listing-testing-management-hub';
+import ebayOrderPriorityTrackingHubRouter from './ebay-order-priority-tracking-hub';
+import ebayInventoryStagingTrackingHubRouter from './ebay-inventory-staging-tracking-hub';
+import ebaySellerEngagementManagementHubRouter from './ebay-seller-engagement-management-hub';
+import ebayProductEnrichmentManagementHubRouter from './ebay-product-enrichment-management-hub';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -2374,4 +2458,88 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-staging-management-platform', ebayInventoryStagingManagementPlatformRouter);
   app.use('/api/ebay-seller-engagement-tracking-platform', ebaySellerEngagementTrackingPlatformRouter);
   app.use('/api/ebay-product-enrichment-engine-platform', ebayProductEnrichmentEnginePlatformRouter);
+  // Phase 1141-1145
+  app.use('/api/ebay-listing-smart-bidding-hub', ebayListingSmartBiddingHubRouter);
+  app.use('/api/ebay-order-claims-processing-hub', ebayOrderClaimsProcessingHubRouter);
+  app.use('/api/ebay-inventory-demand-planning-hub', ebayInventoryDemandPlanningHubRouter);
+  app.use('/api/ebay-seller-growth-strategy-hub', ebaySellerGrowthStrategyHubRouter);
+  app.use('/api/ebay-product-catalog-management-hub', ebayProductCatalogManagementHubRouter);
+  // Phase 1146-1150
+  app.use('/api/ebay-listing-audience-targeting-hub', ebayListingAudienceTargetingHubRouter);
+  app.use('/api/ebay-order-payment-gateway-hub', ebayOrderPaymentGatewayHubRouter);
+  app.use('/api/ebay-inventory-stock-monitoring-hub', ebayInventoryStockMonitoringHubRouter);
+  app.use('/api/ebay-seller-brand-analytics-hub', ebaySellerBrandAnalyticsHubRouter);
+  app.use('/api/ebay-product-review-management-hub', ebayProductReviewManagementHubRouter);
+  // Phase 1151-1155
+  app.use('/api/ebay-listing-cross-sell-hub', ebayListingCrossSellHubRouter);
+  app.use('/api/ebay-order-logistics-management-hub', ebayOrderLogisticsManagementHubRouter);
+  app.use('/api/ebay-inventory-warehouse-management-hub', ebayInventoryWarehouseManagementHubRouter);
+  app.use('/api/ebay-seller-compliance-tracking-hub', ebaySellerComplianceTrackingHubRouter);
+  app.use('/api/ebay-product-variant-tracking-hub', ebayProductVariantTrackingHubRouter);
+  // Phase 1156-1160
+  app.use('/api/ebay-listing-seasonal-pricing-hub', ebayListingSeasonalPricingHubRouter);
+  app.use('/api/ebay-order-dispute-resolution-hub', ebayOrderDisputeResolutionHubRouter);
+  app.use('/api/ebay-inventory-procurement-tracking-hub', ebayInventoryProcurementTrackingHubRouter);
+  app.use('/api/ebay-seller-revenue-analytics-hub', ebaySellerRevenueAnalyticsHubRouter);
+  app.use('/api/ebay-product-quality-assurance-hub', ebayProductQualityAssuranceHubRouter);
+  // Phase 1161-1165
+  app.use('/api/ebay-listing-competitor-analysis-hub', ebayListingCompetitorAnalysisHubRouter);
+  app.use('/api/ebay-order-bulk-fulfillment-hub', ebayOrderBulkFulfillmentHubRouter);
+  app.use('/api/ebay-inventory-expiry-tracking-hub', ebayInventoryExpiryTrackingHubRouter);
+  app.use('/api/ebay-seller-training-management-hub', ebaySellerTrainingManagementHubRouter);
+  app.use('/api/ebay-product-lifecycle-management-hub', ebayProductLifecycleManagementHubRouter);
+  // Phase 1166-1170
+  app.use('/api/ebay-listing-seo-management-hub', ebayListingSeoManagementHubRouter);
+  app.use('/api/ebay-order-customer-engagement-hub', ebayOrderCustomerEngagementHubRouter);
+  app.use('/api/ebay-inventory-cycle-management-hub', ebayInventoryCycleManagementHubRouter);
+  app.use('/api/ebay-seller-feedback-management-hub', ebaySellerFeedbackManagementHubRouter);
+  app.use('/api/ebay-product-sourcing-management-hub', ebayProductSourcingManagementHubRouter);
+  // Phase 1171-1175
+  app.use('/api/ebay-listing-image-management-hub', ebayListingImageManagementHubRouter);
+  app.use('/api/ebay-order-fulfillment-management-hub', ebayOrderFulfillmentManagementHubRouter);
+  app.use('/api/ebay-inventory-safety-management-hub', ebayInventorySafetyManagementHubRouter);
+  app.use('/api/ebay-seller-performance-analytics-hub', ebaySellerPerformanceAnalyticsHubRouter);
+  app.use('/api/ebay-product-bundling-management-hub', ebayProductBundlingManagementHubRouter);
+  // Phase 1176-1180
+  app.use('/api/ebay-listing-promotion-tracking-hub', ebayListingPromotionTrackingHubRouter);
+  app.use('/api/ebay-order-shipping-management-hub', ebayOrderShippingManagementHubRouter);
+  app.use('/api/ebay-inventory-allocation-management-hub', ebayInventoryAllocationManagementHubRouter);
+  app.use('/api/ebay-seller-marketplace-analytics-hub', ebaySellerMarketplaceAnalyticsHubRouter);
+  app.use('/api/ebay-product-authentication-management-hub', ebayProductAuthenticationManagementHubRouter);
+  // Phase 1181-1185
+  app.use('/api/ebay-listing-conversion-management-hub', ebayListingConversionManagementHubRouter);
+  app.use('/api/ebay-order-invoice-tracking-hub', ebayOrderInvoiceTrackingHubRouter);
+  app.use('/api/ebay-inventory-damage-management-hub', ebayInventoryDamageManagementHubRouter);
+  app.use('/api/ebay-seller-cash-management-hub', ebaySellerCashManagementHubRouter);
+  app.use('/api/ebay-product-pricing-management-hub', ebayProductPricingManagementHubRouter);
+  // Phase 1186-1190
+  app.use('/api/ebay-listing-template-tracking-hub', ebayListingTemplateTrackingHubRouter);
+  app.use('/api/ebay-order-escalation-management-hub', ebayOrderEscalationManagementHubRouter);
+  app.use('/api/ebay-inventory-location-management-hub', ebayInventoryLocationManagementHubRouter);
+  app.use('/api/ebay-seller-collaboration-management-hub', ebaySellerCollaborationManagementHubRouter);
+  app.use('/api/ebay-product-description-management-hub', ebayProductDescriptionManagementHubRouter);
+  // Phase 1191-1195
+  app.use('/api/ebay-listing-scheduling-tracking-hub', ebayListingSchedulingTrackingHubRouter);
+  app.use('/api/ebay-order-status-management-hub', ebayOrderStatusManagementHubRouter);
+  app.use('/api/ebay-inventory-replenishment-management-hub', ebayInventoryReplenishmentManagementHubRouter);
+  app.use('/api/ebay-seller-analytics-management-hub', ebaySellerAnalyticsManagementHubRouter);
+  app.use('/api/ebay-product-comparison-management-hub', ebayProductComparisonManagementHubRouter);
+  // Phase 1196-1200
+  app.use('/api/ebay-listing-keyword-management-hub', ebayListingKeywordManagementHubRouter);
+  app.use('/api/ebay-order-notification-tracking-hub', ebayOrderNotificationTrackingHubRouter);
+  app.use('/api/ebay-inventory-optimization-management-hub', ebayInventoryOptimizationManagementHubRouter);
+  app.use('/api/ebay-seller-certification-tracking-hub', ebaySellerCertificationTrackingHubRouter);
+  app.use('/api/ebay-product-media-tracking-hub', ebayProductMediaTrackingHubRouter);
+  // Phase 1201-1205
+  app.use('/api/ebay-listing-visibility-management-hub', ebayListingVisibilityManagementHubRouter);
+  app.use('/api/ebay-order-workflow-tracking-hub', ebayOrderWorkflowTrackingHubRouter);
+  app.use('/api/ebay-inventory-audit-tracking-hub', ebayInventoryAuditTrackingHubRouter);
+  app.use('/api/ebay-seller-partnership-tracking-hub', ebaySellerPartnershipTrackingHubRouter);
+  app.use('/api/ebay-product-classification-management-hub', ebayProductClassificationManagementHubRouter);
+  // Phase 1206-1210
+  app.use('/api/ebay-listing-testing-management-hub', ebayListingTestingManagementHubRouter);
+  app.use('/api/ebay-order-priority-tracking-hub', ebayOrderPriorityTrackingHubRouter);
+  app.use('/api/ebay-inventory-staging-tracking-hub', ebayInventoryStagingTrackingHubRouter);
+  app.use('/api/ebay-seller-engagement-management-hub', ebaySellerEngagementManagementHubRouter);
+  app.use('/api/ebay-product-enrichment-management-hub', ebayProductEnrichmentManagementHubRouter);
 }
