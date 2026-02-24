@@ -367,6 +367,24 @@ import ebayListingBulkImporterRouter from './ebay-listing-bulk-importer';
 import ebayOrderSplitShipperRouter from './ebay-order-split-shipper';
 import ebaySellerComplianceCheckerProRouter from './ebay-seller-compliance-checker-pro';
 import ebayProductWeightCalculatorRouter from './ebay-product-weight-calculator';
+// Phase 471-475
+import ebaySmartInventoryForecasterProRouter from './ebay-smart-inventory-forecaster-pro';
+import ebayListingRevenueOptimizerRouter from './ebay-listing-revenue-optimizer';
+import ebayOrderFulfillmentTrackerProRouter from './ebay-order-fulfillment-tracker-pro';
+import ebayProductCatalogSynchronizerRouter from './ebay-product-catalog-synchronizer';
+import ebaySellerAnalyticsHubRouter from './ebay-seller-analytics-hub';
+// Phase 476-480
+import ebayShippingRateNegotiatorRouter from './ebay-shipping-rate-negotiator';
+import ebayInventoryAllocationEngineRouter from './ebay-inventory-allocation-engine';
+import ebayListingQualityAssuranceRouter from './ebay-listing-quality-assurance';
+import ebayOrderReturnPredictorRouter from './ebay-order-return-predictor';
+import ebaySellerReputationManagerRouter from './ebay-seller-reputation-manager';
+// Phase 481-485
+import ebayProductPricingIntelligenceRouter from './ebay-product-pricing-intelligence';
+import ebayListingVisibilityBoosterRouter from './ebay-listing-visibility-booster';
+import ebayOrderTrackingDashboardProRouter from './ebay-order-tracking-dashboard-pro';
+import ebayInventoryCostAnalyzerRouter from './ebay-inventory-cost-analyzer';
+import ebaySellerPerformanceScorecardRouter from './ebay-seller-performance-scorecard';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -754,4 +772,22 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-order-split-shipper', ebayOrderSplitShipperRouter);
   app.use('/api/ebay-seller-compliance-checker-pro', ebaySellerComplianceCheckerProRouter);
   app.use('/api/ebay-product-weight-calculator', ebayProductWeightCalculatorRouter);
+  // Phase 471-475
+  app.use('/api/ebay-smart-inventory-forecaster-pro', ebaySmartInventoryForecasterProRouter);
+  app.use('/api/ebay-listing-revenue-optimizer', ebayListingRevenueOptimizerRouter);
+  app.use('/api/ebay-order-fulfillment-tracker-pro', ebayOrderFulfillmentTrackerProRouter);
+  app.use('/api/ebay-product-catalog-synchronizer', ebayProductCatalogSynchronizerRouter);
+  app.use('/api/ebay-seller-analytics-hub', ebaySellerAnalyticsHubRouter);
+  // Phase 476-480
+  app.use('/api/ebay-shipping-rate-negotiator', ebayShippingRateNegotiatorRouter);
+  app.use('/api/ebay-inventory-allocation-engine', ebayInventoryAllocationEngineRouter);
+  app.use('/api/ebay-listing-quality-assurance', ebayListingQualityAssuranceRouter);
+  app.use('/api/ebay-order-return-predictor', ebayOrderReturnPredictorRouter);
+  app.use('/api/ebay-seller-reputation-manager', ebaySellerReputationManagerRouter);
+  // Phase 481-485
+  app.use('/api/ebay-product-pricing-intelligence', ebayProductPricingIntelligenceRouter);
+  app.use('/api/ebay-listing-visibility-booster', ebayListingVisibilityBoosterRouter);
+  app.use('/api/ebay-order-tracking-dashboard-pro', ebayOrderTrackingDashboardProRouter);
+  app.use('/api/ebay-inventory-cost-analyzer', ebayInventoryCostAnalyzerRouter);
+  app.use('/api/ebay-seller-performance-scorecard', ebaySellerPerformanceScorecardRouter);
 }
