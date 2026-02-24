@@ -54,18 +54,18 @@ router.get('/warehouses/:id/allocation', (_req: Request, res: Response) =>
   res.json({ section: 'warehouses', action: 'allocation' })
 );
 
-// Strategies (4)
-router.get('/strategies', (_req: Request, res: Response) =>
-  res.json({ section: 'strategies', action: 'list' })
+// Routes (4)
+router.get('/routes', (_req: Request, res: Response) =>
+  res.json({ section: 'routes', action: 'list' })
 );
-router.get('/strategies/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'strategies', action: 'detail' })
+router.get('/routes/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'routes', action: 'detail' })
 );
-router.post('/strategies', (_req: Request, res: Response) =>
-  res.json({ section: 'strategies', action: 'create' })
+router.post('/routes', (_req: Request, res: Response) =>
+  res.json({ section: 'routes', action: 'create' })
 );
-router.post('/strategies/:id/apply', (_req: Request, res: Response) =>
-  res.json({ section: 'strategies', action: 'apply' })
+router.post('/routes/:id/apply', (_req: Request, res: Response) =>
+  res.json({ section: 'routes', action: 'apply' })
 );
 
 // Analytics (3)
@@ -102,4 +102,3 @@ router.post('/sync', (_req: Request, res: Response) =>
 );
 
 export default router;
-

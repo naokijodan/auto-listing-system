@@ -505,6 +505,12 @@ import ebayOrderDisputeResolutionRouter from './ebay-order-dispute-resolution';
 import ebayInventoryDemandForecasterProRouter from './ebay-inventory-demand-forecaster-pro';
 import ebaySellerReputationOptimizerRouter from './ebay-seller-reputation-optimizer';
 import ebayProductAuthenticationServiceRouter from './ebay-product-authentication-service';
+// Phase 581-585
+import ebayListingAbTestEngineRouter from './ebay-listing-ab-test-engine';
+import ebayOrderFulfillmentOptimizerRouter from './ebay-order-fulfillment-optimizer';
+import ebayInventoryMultiWarehouseManagerRouter from './ebay-inventory-multi-warehouse-manager';
+import ebaySellerFinancialDashboardRouter from './ebay-seller-financial-dashboard';
+import ebayProductSourcingNetworkRouter from './ebay-product-sourcing-network';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1030,4 +1036,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-demand-forecaster-pro', ebayInventoryDemandForecasterProRouter);
   app.use('/api/ebay-seller-reputation-optimizer', ebaySellerReputationOptimizerRouter);
   app.use('/api/ebay-product-authentication-service', ebayProductAuthenticationServiceRouter);
+  // Phase 581-585
+  app.use('/api/ebay-listing-ab-test-engine', ebayListingAbTestEngineRouter);
+  app.use('/api/ebay-order-fulfillment-optimizer', ebayOrderFulfillmentOptimizerRouter);
+  app.use('/api/ebay-inventory-multi-warehouse-manager', ebayInventoryMultiWarehouseManagerRouter);
+  app.use('/api/ebay-seller-financial-dashboard', ebaySellerFinancialDashboardRouter);
+  app.use('/api/ebay-product-sourcing-network', ebayProductSourcingNetworkRouter);
 }

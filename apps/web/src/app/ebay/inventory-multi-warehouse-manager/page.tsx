@@ -2,28 +2,28 @@
 
 import { useEffect, useState } from "react";
 
-type TabKey = "dashboard" | "finances" | "reports" | "taxes" | "analytics" | "settings";
+type TabKey = "dashboard" | "inventory" | "warehouses" | "transfers" | "analytics" | "settings";
 
 const LABELS: Record<TabKey, string> = {
   dashboard: "ダッシュボード",
-  finances: "財務",
-  reports: "レポート",
-  taxes: "税金",
+  inventory: "在庫",
+  warehouses: "倉庫",
+  transfers: "移管",
   analytics: "分析",
   settings: "設定",
 };
 
-const BASE = "/api/ebay-seller-financial-dashboard";
+const BASE = "/api/ebay-inventory-multi-warehouse-manager";
 const ENDPOINTS: Record<TabKey, string> = {
   dashboard: `${BASE}/dashboard`,
-  finances: `${BASE}/finances`,
-  reports: `${BASE}/reports`,
-  taxes: `${BASE}/taxes`,
+  inventory: `${BASE}/inventory`,
+  warehouses: `${BASE}/warehouses`,
+  transfers: `${BASE}/transfers`,
   analytics: `${BASE}/analytics`,
   settings: `${BASE}/settings`,
 };
 
-export default function SellerFinancialDashboardPage() {
+export default function InventoryMultiWarehouseManagerPage() {
   const [active, setActive] = useState<TabKey>("dashboard");
   const [data, setData] = useState<unknown>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -54,8 +54,8 @@ export default function SellerFinancialDashboardPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-violet-600">セラー財務ダッシュボード</h1>
-        <p className="text-sm text-gray-500">売上・費用・税金の可視化</p>
+        <h1 className="text-2xl font-bold text-amber-600">在庫マルチ倉庫管理</h1>
+        <p className="text-sm text-gray-500">複数倉庫の在庫最適化と移管</p>
       </header>
 
       <nav className="border-b">
@@ -65,7 +65,7 @@ export default function SellerFinancialDashboardPage() {
               <button
                 className={`px-3 py-2 text-sm rounded-t border transition-colors ${
                   active === k
-                    ? "bg-violet-50 text-violet-700 border-violet-200"
+                    ? "bg-amber-50 text-amber-700 border-amber-200"
                     : "bg-white text-gray-600 hover:bg-gray-50 border-transparent"
                 }`}
                 onClick={() => setActive(k)}

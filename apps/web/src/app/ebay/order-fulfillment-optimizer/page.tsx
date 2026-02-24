@@ -2,13 +2,13 @@
 
 import React, { useEffect, useState } from 'react'
 
-type TabKey = 'dashboard' | 'orders' | 'warehouses' | 'strategies' | 'analytics' | 'settings'
+type TabKey = 'dashboard' | 'orders' | 'warehouses' | 'routes' | 'analytics' | 'settings'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'dashboard', label: 'ダッシュボード' },
   { key: 'orders', label: '注文' },
   { key: 'warehouses', label: '倉庫' },
-  { key: 'strategies', label: '戦略' },
+  { key: 'routes', label: 'ルート' },
   { key: 'analytics', label: '分析' },
   { key: 'settings', label: '設定' },
 ]
@@ -23,8 +23,8 @@ function endpointForTab(tab: TabKey): string {
       return '/orders'
     case 'warehouses':
       return '/warehouses'
-    case 'strategies':
-      return '/strategies'
+    case 'routes':
+      return '/routes'
     case 'analytics':
       return '/analytics'
     case 'settings':
@@ -66,13 +66,13 @@ export default function OrderFulfillmentOptimizerPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-emerald-600">注文フルフィルメント最適化</h1>
+      <h1 className="text-2xl font-bold text-sky-600">注文フルフィルメント最適化</h1>
       <div className="mt-4 flex gap-2 border-b">
         {TABS.map((t) => (
           <button
             key={t.key}
             className={`px-3 py-2 text-sm border-b-2 -mb-px ${
-              activeTab === t.key ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-600 hover:text-gray-900'
+              activeTab === t.key ? 'border-sky-600 text-sky-600' : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
             onClick={() => setActiveTab(t.key)}
           >
@@ -91,4 +91,3 @@ export default function OrderFulfillmentOptimizerPage() {
     </div>
   )
 }
-
