@@ -1093,6 +1093,90 @@ import ebayOrderClaimAutomationRouter from './ebay-order-claim-automation';
 import ebayInventoryWarehousingAutomationRouter from './ebay-inventory-warehousing-automation';
 import ebaySellerNetworkingAutomationRouter from './ebay-seller-networking-automation';
 import ebayProductArchivingAutomationRouter from './ebay-product-archiving-automation';
+// Phase 1071-1075
+import ebayListingDynamicPricingPlatformRouter from './ebay-listing-dynamic-pricing-platform';
+import ebayOrderReturnsProcessingPlatformRouter from './ebay-order-returns-processing-platform';
+import ebayInventoryDemandSensingPlatformRouter from './ebay-inventory-demand-sensing-platform';
+import ebaySellerGrowthAnalyticsPlatformRouter from './ebay-seller-growth-analytics-platform';
+import ebayProductCatalogSyncPlatformRouter from './ebay-product-catalog-sync-platform';
+// Phase 1076-1080
+import ebayListingAudienceInsightPlatformRouter from './ebay-listing-audience-insight-platform';
+import ebayOrderPaymentProcessingPlatformRouter from './ebay-order-payment-processing-platform';
+import ebayInventoryStockBalancingPlatformRouter from './ebay-inventory-stock-balancing-platform';
+import ebaySellerBrandManagementPlatformRouter from './ebay-seller-brand-management-platform';
+import ebayProductReviewAnalyticsPlatformRouter from './ebay-product-review-analytics-platform';
+// Phase 1081-1085
+import ebayListingCrossBorderPlatformRouter from './ebay-listing-cross-border-platform';
+import ebayOrderLogisticsTrackingPlatformRouter from './ebay-order-logistics-tracking-platform';
+import ebayInventoryWarehouseSyncPlatformRouter from './ebay-inventory-warehouse-sync-platform';
+import ebaySellerComplianceMonitoringPlatformRouter from './ebay-seller-compliance-monitoring-platform';
+import ebayProductVariantManagementPlatformRouter from './ebay-product-variant-management-platform';
+// Phase 1086-1090
+import ebayListingSeasonalStrategyPlatformRouter from './ebay-listing-seasonal-strategy-platform';
+import ebayOrderDisputeHandlingPlatformRouter from './ebay-order-dispute-handling-platform';
+import ebayInventoryProcurementPlanningPlatformRouter from './ebay-inventory-procurement-planning-platform';
+import ebaySellerRevenueTrackingPlatformRouter from './ebay-seller-revenue-tracking-platform';
+import ebayProductQualityControlPlatformRouter from './ebay-product-quality-control-platform';
+// Phase 1091-1095
+import ebayListingCompetitorMonitoringPlatformRouter from './ebay-listing-competitor-monitoring-platform';
+import ebayOrderBulkProcessingPlatformRouter from './ebay-order-bulk-processing-platform';
+import ebayInventoryExpiryManagementPlatformRouter from './ebay-inventory-expiry-management-platform';
+import ebaySellerTrainingResourcePlatformRouter from './ebay-seller-training-resource-platform';
+import ebayProductLifecycleTrackingPlatformRouter from './ebay-product-lifecycle-tracking-platform';
+// Phase 1096-1100
+import ebayListingSeoEnhancementPlatformRouter from './ebay-listing-seo-enhancement-platform';
+import ebayOrderCustomerServicePlatformRouter from './ebay-order-customer-service-platform';
+import ebayInventoryCycleCountingPlatformRouter from './ebay-inventory-cycle-counting-platform';
+import ebaySellerFeedbackAnalysisPlatformRouter from './ebay-seller-feedback-analysis-platform';
+import ebayProductSourcingNetworkPlatformRouter from './ebay-product-sourcing-network-platform';
+// Phase 1101-1105
+import ebayListingImageOptimizationPlatformRouter from './ebay-listing-image-optimization-platform';
+import ebayOrderFulfillmentRoutingPlatformRouter from './ebay-order-fulfillment-routing-platform';
+import ebayInventorySafetyStockPlatformRouter from './ebay-inventory-safety-stock-platform';
+import ebaySellerPerformanceTrackingPlatformRouter from './ebay-seller-performance-tracking-platform';
+import ebayProductBundlingStrategyPlatformRouter from './ebay-product-bundling-strategy-platform';
+// Phase 1106-1110
+import ebayListingPromotionManagementPlatformRouter from './ebay-listing-promotion-management-platform';
+import ebayOrderShippingOptimizationPlatformRouter from './ebay-order-shipping-optimization-platform';
+import ebayInventoryAllocationPlanningPlatformRouter from './ebay-inventory-allocation-planning-platform';
+import ebaySellerMarketplaceExpansionPlatformRouter from './ebay-seller-marketplace-expansion-platform';
+import ebayProductAuthenticationServicePlatformRouter from './ebay-product-authentication-service-platform';
+// Phase 1111-1115
+import ebayListingConversionTrackingPlatformRouter from './ebay-listing-conversion-tracking-platform';
+import ebayOrderInvoiceManagementPlatformRouter from './ebay-order-invoice-management-platform';
+import ebayInventoryDamageTrackingPlatformRouter from './ebay-inventory-damage-tracking-platform';
+import ebaySellerCashFlowPlatformRouter from './ebay-seller-cash-flow-platform';
+import ebayProductPricingStrategyPlatformRouter from './ebay-product-pricing-strategy-platform';
+// Phase 1116-1120
+import ebayListingTemplateManagementPlatformRouter from './ebay-listing-template-management-platform';
+import ebayOrderEscalationHandlingPlatformRouter from './ebay-order-escalation-handling-platform';
+import ebayInventoryLocationTrackingPlatformRouter from './ebay-inventory-location-tracking-platform';
+import ebaySellerCollaborationPlatformRouter from './ebay-seller-collaboration-platform';
+import ebayProductDescriptionGeneratorPlatformRouter from './ebay-product-description-generator-platform';
+// Phase 1121-1125
+import ebayListingSchedulingManagementPlatformRouter from './ebay-listing-scheduling-management-platform';
+import ebayOrderStatusTrackingPlatformRouter from './ebay-order-status-tracking-platform';
+import ebayInventoryReplenishmentPlanningPlatformRouter from './ebay-inventory-replenishment-planning-platform';
+import ebaySellerAnalyticsDashboardPlatformRouter from './ebay-seller-analytics-dashboard-platform';
+import ebayProductComparisonEnginePlatformRouter from './ebay-product-comparison-engine-platform';
+// Phase 1126-1130
+import ebayListingKeywordResearchPlatformRouter from './ebay-listing-keyword-research-platform';
+import ebayOrderNotificationManagementPlatformRouter from './ebay-order-notification-management-platform';
+import ebayInventoryOptimizationEnginePlatformRouter from './ebay-inventory-optimization-engine-platform';
+import ebaySellerCertificationManagementPlatformRouter from './ebay-seller-certification-management-platform';
+import ebayProductMediaManagementPlatformRouter from './ebay-product-media-management-platform';
+// Phase 1131-1135
+import ebayListingVisibilityTrackingPlatformRouter from './ebay-listing-visibility-tracking-platform';
+import ebayOrderWorkflowManagementPlatformRouter from './ebay-order-workflow-management-platform';
+import ebayInventoryAuditManagementPlatformRouter from './ebay-inventory-audit-management-platform';
+import ebaySellerPartnershipManagementPlatformRouter from './ebay-seller-partnership-management-platform';
+import ebayProductClassificationEnginePlatformRouter from './ebay-product-classification-engine-platform';
+// Phase 1136-1140
+import ebayListingAbTestingPlatformRouter from './ebay-listing-ab-testing-platform';
+import ebayOrderPriorityManagementPlatformRouter from './ebay-order-priority-management-platform';
+import ebayInventoryStagingManagementPlatformRouter from './ebay-inventory-staging-management-platform';
+import ebaySellerEngagementTrackingPlatformRouter from './ebay-seller-engagement-tracking-platform';
+import ebayProductEnrichmentEnginePlatformRouter from './ebay-product-enrichment-engine-platform';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -2206,4 +2290,88 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-warehousing-automation', ebayInventoryWarehousingAutomationRouter);
   app.use('/api/ebay-seller-networking-automation', ebaySellerNetworkingAutomationRouter);
   app.use('/api/ebay-product-archiving-automation', ebayProductArchivingAutomationRouter);
+  // Phase 1071-1075
+  app.use('/api/ebay-listing-dynamic-pricing-platform', ebayListingDynamicPricingPlatformRouter);
+  app.use('/api/ebay-order-returns-processing-platform', ebayOrderReturnsProcessingPlatformRouter);
+  app.use('/api/ebay-inventory-demand-sensing-platform', ebayInventoryDemandSensingPlatformRouter);
+  app.use('/api/ebay-seller-growth-analytics-platform', ebaySellerGrowthAnalyticsPlatformRouter);
+  app.use('/api/ebay-product-catalog-sync-platform', ebayProductCatalogSyncPlatformRouter);
+  // Phase 1076-1080
+  app.use('/api/ebay-listing-audience-insight-platform', ebayListingAudienceInsightPlatformRouter);
+  app.use('/api/ebay-order-payment-processing-platform', ebayOrderPaymentProcessingPlatformRouter);
+  app.use('/api/ebay-inventory-stock-balancing-platform', ebayInventoryStockBalancingPlatformRouter);
+  app.use('/api/ebay-seller-brand-management-platform', ebaySellerBrandManagementPlatformRouter);
+  app.use('/api/ebay-product-review-analytics-platform', ebayProductReviewAnalyticsPlatformRouter);
+  // Phase 1081-1085
+  app.use('/api/ebay-listing-cross-border-platform', ebayListingCrossBorderPlatformRouter);
+  app.use('/api/ebay-order-logistics-tracking-platform', ebayOrderLogisticsTrackingPlatformRouter);
+  app.use('/api/ebay-inventory-warehouse-sync-platform', ebayInventoryWarehouseSyncPlatformRouter);
+  app.use('/api/ebay-seller-compliance-monitoring-platform', ebaySellerComplianceMonitoringPlatformRouter);
+  app.use('/api/ebay-product-variant-management-platform', ebayProductVariantManagementPlatformRouter);
+  // Phase 1086-1090
+  app.use('/api/ebay-listing-seasonal-strategy-platform', ebayListingSeasonalStrategyPlatformRouter);
+  app.use('/api/ebay-order-dispute-handling-platform', ebayOrderDisputeHandlingPlatformRouter);
+  app.use('/api/ebay-inventory-procurement-planning-platform', ebayInventoryProcurementPlanningPlatformRouter);
+  app.use('/api/ebay-seller-revenue-tracking-platform', ebaySellerRevenueTrackingPlatformRouter);
+  app.use('/api/ebay-product-quality-control-platform', ebayProductQualityControlPlatformRouter);
+  // Phase 1091-1095
+  app.use('/api/ebay-listing-competitor-monitoring-platform', ebayListingCompetitorMonitoringPlatformRouter);
+  app.use('/api/ebay-order-bulk-processing-platform', ebayOrderBulkProcessingPlatformRouter);
+  app.use('/api/ebay-inventory-expiry-management-platform', ebayInventoryExpiryManagementPlatformRouter);
+  app.use('/api/ebay-seller-training-resource-platform', ebaySellerTrainingResourcePlatformRouter);
+  app.use('/api/ebay-product-lifecycle-tracking-platform', ebayProductLifecycleTrackingPlatformRouter);
+  // Phase 1096-1100
+  app.use('/api/ebay-listing-seo-enhancement-platform', ebayListingSeoEnhancementPlatformRouter);
+  app.use('/api/ebay-order-customer-service-platform', ebayOrderCustomerServicePlatformRouter);
+  app.use('/api/ebay-inventory-cycle-counting-platform', ebayInventoryCycleCountingPlatformRouter);
+  app.use('/api/ebay-seller-feedback-analysis-platform', ebaySellerFeedbackAnalysisPlatformRouter);
+  app.use('/api/ebay-product-sourcing-network-platform', ebayProductSourcingNetworkPlatformRouter);
+  // Phase 1101-1105
+  app.use('/api/ebay-listing-image-optimization-platform', ebayListingImageOptimizationPlatformRouter);
+  app.use('/api/ebay-order-fulfillment-routing-platform', ebayOrderFulfillmentRoutingPlatformRouter);
+  app.use('/api/ebay-inventory-safety-stock-platform', ebayInventorySafetyStockPlatformRouter);
+  app.use('/api/ebay-seller-performance-tracking-platform', ebaySellerPerformanceTrackingPlatformRouter);
+  app.use('/api/ebay-product-bundling-strategy-platform', ebayProductBundlingStrategyPlatformRouter);
+  // Phase 1106-1110
+  app.use('/api/ebay-listing-promotion-management-platform', ebayListingPromotionManagementPlatformRouter);
+  app.use('/api/ebay-order-shipping-optimization-platform', ebayOrderShippingOptimizationPlatformRouter);
+  app.use('/api/ebay-inventory-allocation-planning-platform', ebayInventoryAllocationPlanningPlatformRouter);
+  app.use('/api/ebay-seller-marketplace-expansion-platform', ebaySellerMarketplaceExpansionPlatformRouter);
+  app.use('/api/ebay-product-authentication-service-platform', ebayProductAuthenticationServicePlatformRouter);
+  // Phase 1111-1115
+  app.use('/api/ebay-listing-conversion-tracking-platform', ebayListingConversionTrackingPlatformRouter);
+  app.use('/api/ebay-order-invoice-management-platform', ebayOrderInvoiceManagementPlatformRouter);
+  app.use('/api/ebay-inventory-damage-tracking-platform', ebayInventoryDamageTrackingPlatformRouter);
+  app.use('/api/ebay-seller-cash-flow-platform', ebaySellerCashFlowPlatformRouter);
+  app.use('/api/ebay-product-pricing-strategy-platform', ebayProductPricingStrategyPlatformRouter);
+  // Phase 1116-1120
+  app.use('/api/ebay-listing-template-management-platform', ebayListingTemplateManagementPlatformRouter);
+  app.use('/api/ebay-order-escalation-handling-platform', ebayOrderEscalationHandlingPlatformRouter);
+  app.use('/api/ebay-inventory-location-tracking-platform', ebayInventoryLocationTrackingPlatformRouter);
+  app.use('/api/ebay-seller-collaboration-platform', ebaySellerCollaborationPlatformRouter);
+  app.use('/api/ebay-product-description-generator-platform', ebayProductDescriptionGeneratorPlatformRouter);
+  // Phase 1121-1125
+  app.use('/api/ebay-listing-scheduling-management-platform', ebayListingSchedulingManagementPlatformRouter);
+  app.use('/api/ebay-order-status-tracking-platform', ebayOrderStatusTrackingPlatformRouter);
+  app.use('/api/ebay-inventory-replenishment-planning-platform', ebayInventoryReplenishmentPlanningPlatformRouter);
+  app.use('/api/ebay-seller-analytics-dashboard-platform', ebaySellerAnalyticsDashboardPlatformRouter);
+  app.use('/api/ebay-product-comparison-engine-platform', ebayProductComparisonEnginePlatformRouter);
+  // Phase 1126-1130
+  app.use('/api/ebay-listing-keyword-research-platform', ebayListingKeywordResearchPlatformRouter);
+  app.use('/api/ebay-order-notification-management-platform', ebayOrderNotificationManagementPlatformRouter);
+  app.use('/api/ebay-inventory-optimization-engine-platform', ebayInventoryOptimizationEnginePlatformRouter);
+  app.use('/api/ebay-seller-certification-management-platform', ebaySellerCertificationManagementPlatformRouter);
+  app.use('/api/ebay-product-media-management-platform', ebayProductMediaManagementPlatformRouter);
+  // Phase 1131-1135
+  app.use('/api/ebay-listing-visibility-tracking-platform', ebayListingVisibilityTrackingPlatformRouter);
+  app.use('/api/ebay-order-workflow-management-platform', ebayOrderWorkflowManagementPlatformRouter);
+  app.use('/api/ebay-inventory-audit-management-platform', ebayInventoryAuditManagementPlatformRouter);
+  app.use('/api/ebay-seller-partnership-management-platform', ebaySellerPartnershipManagementPlatformRouter);
+  app.use('/api/ebay-product-classification-engine-platform', ebayProductClassificationEnginePlatformRouter);
+  // Phase 1136-1140
+  app.use('/api/ebay-listing-ab-testing-platform', ebayListingAbTestingPlatformRouter);
+  app.use('/api/ebay-order-priority-management-platform', ebayOrderPriorityManagementPlatformRouter);
+  app.use('/api/ebay-inventory-staging-management-platform', ebayInventoryStagingManagementPlatformRouter);
+  app.use('/api/ebay-seller-engagement-tracking-platform', ebaySellerEngagementTrackingPlatformRouter);
+  app.use('/api/ebay-product-enrichment-engine-platform', ebayProductEnrichmentEnginePlatformRouter);
 }
