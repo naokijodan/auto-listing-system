@@ -565,6 +565,12 @@ import ebayOrderPackagingOptimizerRouter from './ebay-order-packaging-optimizer'
 import ebayInventorySerialTrackerRouter from './ebay-inventory-serial-tracker';
 import ebaySellerCashFlowManagerRouter from './ebay-seller-cash-flow-manager';
 import ebayProductBundleBuilderProRouter from './ebay-product-bundle-builder-pro';
+// Phase 631-635
+import ebayListingPriceElasticityAnalyzerRouter from './ebay-listing-price-elasticity-analyzer';
+import ebayOrderGiftWrappingServiceRouter from './ebay-order-gift-wrapping-service';
+import ebayInventoryLocationOptimizerRouter from './ebay-inventory-location-optimizer';
+import ebaySellerDataExportHubRouter from './ebay-seller-data-export-hub';
+import ebayProductRecallManagerRouter from './ebay-product-recall-manager';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1150,4 +1156,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-serial-tracker', ebayInventorySerialTrackerRouter);
   app.use('/api/ebay-seller-cash-flow-manager', ebaySellerCashFlowManagerRouter);
   app.use('/api/ebay-product-bundle-builder-pro', ebayProductBundleBuilderProRouter);
+  // Phase 631-635
+  app.use('/api/ebay-listing-price-elasticity-analyzer', ebayListingPriceElasticityAnalyzerRouter);
+  app.use('/api/ebay-order-gift-wrapping-service', ebayOrderGiftWrappingServiceRouter);
+  app.use('/api/ebay-inventory-location-optimizer', ebayInventoryLocationOptimizerRouter);
+  app.use('/api/ebay-seller-data-export-hub', ebaySellerDataExportHubRouter);
+  app.use('/api/ebay-product-recall-manager', ebayProductRecallManagerRouter);
 }
