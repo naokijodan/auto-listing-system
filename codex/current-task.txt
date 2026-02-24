@@ -1,112 +1,112 @@
-Phase 396-400のeBay機能ファイルを生成してください。
+Phase 426-430のeBay機能ファイルを生成してください。
 
 出力先: すべて直接指定パスに書き込んでください。
 
-## Phase 396: Abandoned Cart Recovery（カート放棄回復）
-テーマカラー: indigo-600
+## Phase 426: Order Gift Wrapper（注文ギフトラッパー）
+テーマカラー: orange-600
 
-### ファイル1: apps/api/src/routes/ebay-abandoned-cart-recovery.ts
+### ファイル1: apps/api/src/routes/ebay-order-gift-wrapper.ts
 Express Router 28エンドポイント、スタブ形式。
 セクション:
-- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/abandoned, /dashboard/recovered, /dashboard/revenue-impact
-- Carts (6): list, detail, send-reminder, bulk-remind, mark-recovered, archive
-- Campaigns (4): list, detail, create, update
-- Templates (4): list, detail, create, update
-- Analytics (3): analytics, analytics/recovery-rate, analytics/revenue-recovered
+- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/wrapped, /dashboard/revenue
+- GiftOrders (6): list, detail, create, update, wrap, bulk-wrap
+- Options (4): list, detail, create, update
+- Messages (4): list, detail, create, update
+- Analytics (3): analytics, analytics/gift-rate, analytics/revenue-impact
 - Settings (2): GET/PUT
 - Utilities (4): health, export, import, sync
 各: `(_req: Request, res: Response) => res.json({ section: 'xxx', action: 'yyy' })`
 `import { Router } from 'express'; import type { Request, Response } from 'express'; const router = Router(); export default router;`
 
-### ファイル2: apps/web/src/app/ebay/abandoned-cart-recovery/page.tsx
-6タブ: dashboard/carts/campaigns/templates/analytics/settings
-日本語: ダッシュボード/カート/キャンペーン/テンプレート/分析/設定
-コンポーネント: AbandonedCartRecoveryPage, タイトル: 「カート放棄回復」text-indigo-600
-API: /api/ebay-abandoned-cart-recovery/
+### ファイル2: apps/web/src/app/ebay/order-gift-wrapper/page.tsx
+6タブ: dashboard/gift-orders/options/messages/analytics/settings
+日本語: ダッシュボード/ギフト注文/オプション/メッセージ/分析/設定
+コンポーネント: OrderGiftWrapperPage, タイトル: 「注文ギフトラッパー」text-orange-600
+API: /api/ebay-order-gift-wrapper/
 
 ---
 
-## Phase 397: Cross-Promotion Engine（クロスプロモーションエンジン）
-テーマカラー: orange-600
+## Phase 427: Inventory Count Scheduler（棚卸スケジューラー）
+テーマカラー: pink-600
 
-### ファイル3: apps/api/src/routes/ebay-cross-promotion-engine.ts
+### ファイル3: apps/api/src/routes/ebay-inventory-count-scheduler.ts
 セクション:
-- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/active, /dashboard/performance, /dashboard/recommendations
-- Promotions (6): list, detail, create, update, activate, deactivate
-- Rules (4): list, detail, create, update
-- Products (4): list, detail, pair, unpair
-- Analytics (3): analytics, analytics/conversion-lift, analytics/revenue-impact
+- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/upcoming, /dashboard/in-progress, /dashboard/completed
+- Counts (6): list, detail, create, start, submit, approve
+- Schedules (4): list, detail, create, update
+- Discrepancies (4): list, detail, resolve, adjust
+- Analytics (3): analytics, analytics/accuracy, analytics/variance
 - Settings (2): GET/PUT
 - Utilities (4): health, export, import, sync
 
-### ファイル4: apps/web/src/app/ebay/cross-promotion-engine/page.tsx
-6タブ: dashboard/promotions/rules/products/analytics/settings
-日本語: ダッシュボード/プロモーション/ルール/商品/分析/設定
-コンポーネント: CrossPromotionEnginePage, タイトル: 「クロスプロモーションエンジン」text-orange-600
-API: /api/ebay-cross-promotion-engine/
+### ファイル4: apps/web/src/app/ebay/inventory-count-scheduler/page.tsx
+6タブ: dashboard/counts/schedules/discrepancies/analytics/settings
+日本語: ダッシュボード/棚卸/スケジュール/差異/分析/設定
+コンポーネント: InventoryCountSchedulerPage, タイトル: 「棚卸スケジューラー」text-pink-600
+API: /api/ebay-inventory-count-scheduler/
 
 ---
 
-## Phase 398: Seller Benchmarking（セラーベンチマーキング）
-テーマカラー: pink-600
+## Phase 428: Seller Onboarding Wizard（セラーオンボーディングウィザード）
+テーマカラー: slate-600
 
-### ファイル5: apps/api/src/routes/ebay-seller-benchmarking.ts
+### ファイル5: apps/api/src/routes/ebay-seller-onboarding-wizard.ts
 セクション:
-- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/ranking, /dashboard/peers, /dashboard/gaps
-- Benchmarks (6): list, detail, create, update, run, compare
-- Peers (4): list, detail, add, remove
-- Metrics (4): list, detail, history, targets
-- Analytics (3): analytics, analytics/ranking-trend, analytics/improvement-areas
+- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/progress, /dashboard/pending-steps, /dashboard/completed-steps
+- Steps (6): list, detail, create, update, complete, skip
+- Checklists (4): list, detail, create, update
+- Resources (4): list, detail, create, bookmark
+- Analytics (3): analytics, analytics/completion-rate, analytics/time-to-complete
+- Settings (2): GET/PUT
+- Utilities (4): health, export, import, reset
+
+### ファイル6: apps/web/src/app/ebay/seller-onboarding-wizard/page.tsx
+6タブ: dashboard/steps/checklists/resources/analytics/settings
+日本語: ダッシュボード/ステップ/チェックリスト/リソース/分析/設定
+コンポーネント: SellerOnboardingWizardPage, タイトル: 「セラーオンボーディングウィザード」text-slate-600
+API: /api/ebay-seller-onboarding-wizard/
+
+---
+
+## Phase 429: Listing Impression Tracker（出品インプレッショントラッカー）
+テーマカラー: red-600
+
+### ファイル7: apps/api/src/routes/ebay-listing-impression-tracker.ts
+セクション:
+- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/top-impressions, /dashboard/low-impressions, /dashboard/trends
+- Impressions (6): list, detail, history, compare, by-keyword, by-category
+- Listings (4): list, detail, optimize, bulk-optimize
+- Keywords (4): list, detail, track, remove
+- Analytics (3): analytics, analytics/impression-to-click, analytics/visibility-score
 - Settings (2): GET/PUT
 - Utilities (4): health, export, import, refresh
 
-### ファイル6: apps/web/src/app/ebay/seller-benchmarking/page.tsx
-6タブ: dashboard/benchmarks/peers/metrics/analytics/settings
-日本語: ダッシュボード/ベンチマーク/ピア/指標/分析/設定
-コンポーネント: SellerBenchmarkingPage, タイトル: 「セラーベンチマーキング」text-pink-600
-API: /api/ebay-seller-benchmarking/
+### ファイル8: apps/web/src/app/ebay/listing-impression-tracker/page.tsx
+6タブ: dashboard/impressions/listings/keywords/analytics/settings
+日本語: ダッシュボード/インプレッション/出品/キーワード/分析/設定
+コンポーネント: ListingImpressionTrackerPage, タイトル: 「出品インプレッショントラッカー」text-red-600
+API: /api/ebay-listing-impression-tracker/
 
 ---
 
-## Phase 399: Inventory Transfer Manager（在庫移動管理）
-テーマカラー: slate-600
+## Phase 430: Automated Repricing Bot（自動価格調整ボット）
+テーマカラー: fuchsia-600
 
-### ファイル7: apps/api/src/routes/ebay-inventory-transfer-manager.ts
+### ファイル9: apps/api/src/routes/ebay-automated-repricing-bot.ts
 セクション:
-- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/pending, /dashboard/in-transit, /dashboard/completed
-- Transfers (6): list, detail, create, approve, ship, receive
-- Warehouses (4): list, detail, stock-levels, capacity
-- Routes (4): list, detail, create, update
-- Analytics (3): analytics, analytics/transfer-time, analytics/cost-analysis
+- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/active-bots, /dashboard/price-changes, /dashboard/win-rate
+- Bots (6): list, detail, create, update, activate, deactivate
+- Strategies (4): list, detail, create, update
+- History (4): list, detail, rollback, compare
+- Analytics (3): analytics, analytics/bot-performance, analytics/revenue-impact
 - Settings (2): GET/PUT
 - Utilities (4): health, export, import, sync
 
-### ファイル8: apps/web/src/app/ebay/inventory-transfer-manager/page.tsx
-6タブ: dashboard/transfers/warehouses/routes/analytics/settings
-日本語: ダッシュボード/移動/倉庫/ルート/分析/設定
-コンポーネント: InventoryTransferManagerPage, タイトル: 「在庫移動管理」text-slate-600
-API: /api/ebay-inventory-transfer-manager/
-
----
-
-## Phase 400: AI Product Description Generator（AI商品説明ジェネレーター）
-テーマカラー: red-600
-
-### ファイル9: apps/api/src/routes/ebay-ai-product-description-generator.ts
-セクション:
-- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/generated, /dashboard/quality-score, /dashboard/ab-results
-- Descriptions (6): list, detail, generate, regenerate, bulk-generate, approve
-- Templates (4): list, detail, create, update
-- Styles (4): list, detail, create, update
-- Analytics (3): analytics, analytics/conversion-impact, analytics/quality-metrics
-- Settings (2): GET/PUT
-- Utilities (4): health, export, import, sync
-
-### ファイル10: apps/web/src/app/ebay/ai-product-description-generator/page.tsx
-6タブ: dashboard/descriptions/templates/styles/analytics/settings
-日本語: ダッシュボード/説明文/テンプレート/スタイル/分析/設定
-コンポーネント: AiProductDescriptionGeneratorPage, タイトル: 「AI商品説明ジェネレーター」text-red-600
-API: /api/ebay-ai-product-description-generator/
+### ファイル10: apps/web/src/app/ebay/automated-repricing-bot/page.tsx
+6タブ: dashboard/bots/strategies/history/analytics/settings
+日本語: ダッシュボード/ボット/戦略/履歴/分析/設定
+コンポーネント: AutomatedRepricingBotPage, タイトル: 「自動価格調整ボット」text-fuchsia-600
+API: /api/ebay-automated-repricing-bot/
 
 ---
 
