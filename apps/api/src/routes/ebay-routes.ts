@@ -595,6 +595,12 @@ import ebayOrderSignatureConfirmationRouter from './ebay-order-signature-confirm
 import ebayInventoryDispositionManagerRouter from './ebay-inventory-disposition-manager';
 import ebaySellerMilestoneTrackerRouter from './ebay-seller-milestone-tracker';
 import ebayProductAuthenticityVerifierRouter from './ebay-product-authenticity-verifier';
+// Phase 656-660
+import ebayListingVoiceSearchOptimizerRouter from './ebay-listing-voice-search-optimizer';
+import ebayOrderConsolidationEngineRouter from './ebay-order-consolidation-engine';
+import ebayInventoryAbcAnalyzerRouter from './ebay-inventory-abc-analyzer';
+import ebaySellerReviewResponseBotRouter from './ebay-seller-review-response-bot';
+import ebayProductHazmatComplianceRouter from './ebay-product-hazmat-compliance';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1210,4 +1216,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-disposition-manager', ebayInventoryDispositionManagerRouter);
   app.use('/api/ebay-seller-milestone-tracker', ebaySellerMilestoneTrackerRouter);
   app.use('/api/ebay-product-authenticity-verifier', ebayProductAuthenticityVerifierRouter);
+  // Phase 656-660
+  app.use('/api/ebay-listing-voice-search-optimizer', ebayListingVoiceSearchOptimizerRouter);
+  app.use('/api/ebay-order-consolidation-engine', ebayOrderConsolidationEngineRouter);
+  app.use('/api/ebay-inventory-abc-analyzer', ebayInventoryAbcAnalyzerRouter);
+  app.use('/api/ebay-seller-review-response-bot', ebaySellerReviewResponseBotRouter);
+  app.use('/api/ebay-product-hazmat-compliance', ebayProductHazmatComplianceRouter);
 }
