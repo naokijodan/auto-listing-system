@@ -511,6 +511,12 @@ import ebayOrderFulfillmentOptimizerRouter from './ebay-order-fulfillment-optimi
 import ebayInventoryMultiWarehouseManagerRouter from './ebay-inventory-multi-warehouse-manager';
 import ebaySellerFinancialDashboardRouter from './ebay-seller-financial-dashboard';
 import ebayProductSourcingNetworkRouter from './ebay-product-sourcing-network';
+// Phase 586-590
+import ebayListingSmartRepricerRouter from './ebay-listing-smart-repricer';
+import ebayOrderCustomsDeclarationRouter from './ebay-order-customs-declaration';
+import ebayInventoryAgingTrackerRouter from './ebay-inventory-aging-tracker';
+import ebaySellerCompetitorIntelligenceRouter from './ebay-seller-competitor-intelligence';
+import ebayProductReviewAggregatorRouter from './ebay-product-review-aggregator';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1042,4 +1048,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-multi-warehouse-manager', ebayInventoryMultiWarehouseManagerRouter);
   app.use('/api/ebay-seller-financial-dashboard', ebaySellerFinancialDashboardRouter);
   app.use('/api/ebay-product-sourcing-network', ebayProductSourcingNetworkRouter);
+  // Phase 586-590
+  app.use('/api/ebay-listing-smart-repricer', ebayListingSmartRepricerRouter);
+  app.use('/api/ebay-order-customs-declaration', ebayOrderCustomsDeclarationRouter);
+  app.use('/api/ebay-inventory-aging-tracker', ebayInventoryAgingTrackerRouter);
+  app.use('/api/ebay-seller-competitor-intelligence', ebaySellerCompetitorIntelligenceRouter);
+  app.use('/api/ebay-product-review-aggregator', ebayProductReviewAggregatorRouter);
 }

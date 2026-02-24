@@ -4,13 +4,13 @@ import { useEffect, useState } from 'react';
 
 type ApiResponse = { section: string; action: string };
 
-const API_BASE = '/api/ebay-product-review-aggregator/';
+const API_BASE = '/api/ebay-seller-competitor-intelligence/';
 
 const TABS: { label: string; section: string; action: string }[] = [
   { label: 'ダッシュボード', section: 'dashboard', action: 'summary' },
-  { label: 'レビュー', section: 'reviews', action: 'list' },
-  { label: '感情分析', section: 'sentiments', action: 'overview' },
-  { label: '返信', section: 'responses', action: 'templates' },
+  { label: '競合', section: 'competitors', action: 'list' },
+  { label: 'ベンチマーク', section: 'benchmarks', action: 'price' },
+  { label: 'アラート', section: 'alerts', action: 'list' },
   { label: '分析', section: 'analytics', action: 'overview' },
   { label: '設定', section: 'settings', action: 'get' },
 ];
@@ -39,7 +39,7 @@ export default function Page() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold text-slate-600">商品レビュー集約ツール</h1>
+      <h1 className="text-2xl font-semibold text-pink-600">セラー競合インテリジェンス</h1>
       <div className="mt-4 flex gap-2 border-b">
         {TABS.map((t, i) => (
           <button
@@ -47,8 +47,8 @@ export default function Page() {
             onClick={() => setActive(i)}
             className={`px-3 py-2 text-sm ${
               i === active
-                ? 'border-b-2 border-slate-600 text-slate-600'
-                : 'text-gray-600 hover:text-slate-600'
+                ? 'border-b-2 border-pink-600 text-pink-600'
+                : 'text-gray-600 hover:text-pink-600'
             }`}
           >
             {t.label}

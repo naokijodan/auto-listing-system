@@ -1,49 +1,53 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 
+// 在庫エイジングトラッカー (テーマカラー: orange-600)
 const router = Router();
 
-// Dashboard (5)
-router.get('/dashboard', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'overview' }));
-router.get('/dashboard/summary', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'summary' }));
-router.get('/dashboard/aging-buckets', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'aging-buckets' }));
-router.get('/dashboard/at-risk', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'at-risk' }));
-router.get('/dashboard/stale', (_req: Request, res: Response) => res.json({ section: 'dashboard', action: 'stale' }));
+const handle = (section: string, action: string) => (_req: Request, res: Response) =>
+  res.json({ section, action });
 
-// Items (6)
-router.get('/items/list', (_req: Request, res: Response) => res.json({ section: 'items', action: 'list' }));
-router.get('/items/detail', (_req: Request, res: Response) => res.json({ section: 'items', action: 'detail' }));
-router.get('/items/age-history', (_req: Request, res: Response) => res.json({ section: 'items', action: 'age-history' }));
-router.post('/items/markdown', (_req: Request, res: Response) => res.json({ section: 'items', action: 'markdown' }));
-router.post('/items/bulk-markdown', (_req: Request, res: Response) => res.json({ section: 'items', action: 'bulk-markdown' }));
-router.post('/items/liquidate', (_req: Request, res: Response) => res.json({ section: 'items', action: 'liquidate' }));
+// dashboard (5)
+router.get('/dashboard/summary', handle('dashboard', 'summary'));
+router.get('/dashboard/metrics', handle('dashboard', 'metrics'));
+router.get('/dashboard/status', handle('dashboard', 'status'));
+router.get('/dashboard/recent', handle('dashboard', 'recent'));
+router.get('/dashboard/performance', handle('dashboard', 'performance'));
 
-// Buckets (4)
-router.get('/buckets/list', (_req: Request, res: Response) => res.json({ section: 'buckets', action: 'list' }));
-router.get('/buckets/detail', (_req: Request, res: Response) => res.json({ section: 'buckets', action: 'detail' }));
-router.post('/buckets/create', (_req: Request, res: Response) => res.json({ section: 'buckets', action: 'create' }));
-router.put('/buckets/update', (_req: Request, res: Response) => res.json({ section: 'buckets', action: 'update' }));
+// products (6)
+router.get('/products/list', handle('products', 'list'));
+router.get('/products/aging', handle('products', 'aging'));
+router.get('/products/slow', handle('products', 'slow'));
+router.get('/products/replenish', handle('products', 'replenish'));
+router.get('/products/markdown', handle('products', 'markdown'));
+router.get('/products/export', handle('products', 'export'));
 
-// Actions (4)
-router.get('/actions/list', (_req: Request, res: Response) => res.json({ section: 'actions', action: 'list' }));
-router.get('/actions/detail', (_req: Request, res: Response) => res.json({ section: 'actions', action: 'detail' }));
-router.post('/actions/create', (_req: Request, res: Response) => res.json({ section: 'actions', action: 'create' }));
-router.post('/actions/execute', (_req: Request, res: Response) => res.json({ section: 'actions', action: 'execute' }));
+// categories (4)
+router.get('/categories/list', handle('categories', 'list'));
+router.get('/categories/aging', handle('categories', 'aging'));
+router.get('/categories/slow', handle('categories', 'slow'));
+router.get('/categories/heatmap', handle('categories', 'heatmap'));
 
-// Analytics (3)
-router.get('/analytics', (_req: Request, res: Response) => res.json({ section: 'analytics', action: 'overview' }));
-router.get('/analytics/aging-trend', (_req: Request, res: Response) => res.json({ section: 'analytics', action: 'aging-trend' }));
-router.get('/analytics/holding-cost', (_req: Request, res: Response) => res.json({ section: 'analytics', action: 'holding-cost' }));
+// alerts (4)
+router.get('/alerts/list', handle('alerts', 'list'));
+router.get('/alerts/create', handle('alerts', 'create'));
+router.get('/alerts/resolve', handle('alerts', 'resolve'));
+router.get('/alerts/snooze', handle('alerts', 'snooze'));
 
-// Settings (2)
-router.get('/settings', (_req: Request, res: Response) => res.json({ section: 'settings', action: 'get' }));
-router.put('/settings', (_req: Request, res: Response) => res.json({ section: 'settings', action: 'put' }));
+// analytics (3)
+router.get('/analytics/overview', handle('analytics', 'overview'));
+router.get('/analytics/trends', handle('analytics', 'trends'));
+router.get('/analytics/forecast', handle('analytics', 'forecast'));
 
-// Utilities (4)
-router.get('/health', (_req: Request, res: Response) => res.json({ section: 'utilities', action: 'health' }));
-router.post('/export', (_req: Request, res: Response) => res.json({ section: 'utilities', action: 'export' }));
-router.post('/import', (_req: Request, res: Response) => res.json({ section: 'utilities', action: 'import' }));
-router.post('/refresh', (_req: Request, res: Response) => res.json({ section: 'utilities', action: 'refresh' }));
+// settings (2)
+router.get('/settings/get', handle('settings', 'get'));
+router.get('/settings/update', handle('settings', 'update'));
+
+// utilities (4)
+router.get('/utilities/health', handle('utilities', 'health'));
+router.get('/utilities/ping', handle('utilities', 'ping'));
+router.get('/utilities/export', handle('utilities', 'export'));
+router.get('/utilities/import', handle('utilities', 'import'));
 
 export default router;
 

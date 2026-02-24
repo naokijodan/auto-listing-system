@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 
-// 商品レビュー集約ツール (テーマカラー: slate-600)
+// セラー競合インテリジェンス (テーマカラー: pink-600)
 const router = Router();
 
 const handle = (section: string, action: string) => (_req: Request, res: Response) =>
@@ -14,25 +14,25 @@ router.get('/dashboard/status', handle('dashboard', 'status'));
 router.get('/dashboard/recent', handle('dashboard', 'recent'));
 router.get('/dashboard/performance', handle('dashboard', 'performance'));
 
-// reviews (6)
-router.get('/reviews/list', handle('reviews', 'list'));
-router.get('/reviews/fetch', handle('reviews', 'fetch'));
-router.get('/reviews/filter', handle('reviews', 'filter'));
-router.get('/reviews/aggregate', handle('reviews', 'aggregate'));
-router.get('/reviews/highlight', handle('reviews', 'highlight'));
-router.get('/reviews/export', handle('reviews', 'export'));
+// competitors (6)
+router.get('/competitors/list', handle('competitors', 'list'));
+router.get('/competitors/track', handle('competitors', 'track'));
+router.get('/competitors/untrack', handle('competitors', 'untrack'));
+router.get('/competitors/compare', handle('competitors', 'compare'));
+router.get('/competitors/insights', handle('competitors', 'insights'));
+router.get('/competitors/alerts', handle('competitors', 'alerts'));
 
-// sentiments (4)
-router.get('/sentiments/overview', handle('sentiments', 'overview'));
-router.get('/sentiments/trends', handle('sentiments', 'trends'));
-router.get('/sentiments/keywords', handle('sentiments', 'keywords'));
-router.get('/sentiments/compare', handle('sentiments', 'compare'));
+// benchmarks (4)
+router.get('/benchmarks/price', handle('benchmarks', 'price'));
+router.get('/benchmarks/shipping', handle('benchmarks', 'shipping'));
+router.get('/benchmarks/rating', handle('benchmarks', 'rating'));
+router.get('/benchmarks/velocity', handle('benchmarks', 'velocity'));
 
-// responses (4)
-router.get('/responses/templates', handle('responses', 'templates'));
-router.get('/responses/suggest', handle('responses', 'suggest'));
-router.get('/responses/send', handle('responses', 'send'));
-router.get('/responses/history', handle('responses', 'history'));
+// alerts (4)
+router.get('/alerts/list', handle('alerts', 'list'));
+router.get('/alerts/create', handle('alerts', 'create'));
+router.get('/alerts/resolve', handle('alerts', 'resolve'));
+router.get('/alerts/snooze', handle('alerts', 'snooze'));
 
 // analytics (3)
 router.get('/analytics/overview', handle('analytics', 'overview'));

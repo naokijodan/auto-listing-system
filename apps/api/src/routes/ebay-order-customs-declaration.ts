@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 
-// 商品レビュー集約ツール (テーマカラー: slate-600)
+// 注文税関申告管理 (テーマカラー: indigo-600)
 const router = Router();
 
 const handle = (section: string, action: string) => (_req: Request, res: Response) =>
@@ -14,25 +14,25 @@ router.get('/dashboard/status', handle('dashboard', 'status'));
 router.get('/dashboard/recent', handle('dashboard', 'recent'));
 router.get('/dashboard/performance', handle('dashboard', 'performance'));
 
-// reviews (6)
-router.get('/reviews/list', handle('reviews', 'list'));
-router.get('/reviews/fetch', handle('reviews', 'fetch'));
-router.get('/reviews/filter', handle('reviews', 'filter'));
-router.get('/reviews/aggregate', handle('reviews', 'aggregate'));
-router.get('/reviews/highlight', handle('reviews', 'highlight'));
-router.get('/reviews/export', handle('reviews', 'export'));
+// declarations (6)
+router.get('/declarations/list', handle('declarations', 'list'));
+router.get('/declarations/create', handle('declarations', 'create'));
+router.get('/declarations/update', handle('declarations', 'update'));
+router.get('/declarations/delete', handle('declarations', 'delete'));
+router.get('/declarations/submit', handle('declarations', 'submit'));
+router.get('/declarations/validate', handle('declarations', 'validate'));
 
-// sentiments (4)
-router.get('/sentiments/overview', handle('sentiments', 'overview'));
-router.get('/sentiments/trends', handle('sentiments', 'trends'));
-router.get('/sentiments/keywords', handle('sentiments', 'keywords'));
-router.get('/sentiments/compare', handle('sentiments', 'compare'));
+// documents (4)
+router.get('/documents/list', handle('documents', 'list'));
+router.get('/documents/upload', handle('documents', 'upload'));
+router.get('/documents/download', handle('documents', 'download'));
+router.get('/documents/verify', handle('documents', 'verify'));
 
-// responses (4)
-router.get('/responses/templates', handle('responses', 'templates'));
-router.get('/responses/suggest', handle('responses', 'suggest'));
-router.get('/responses/send', handle('responses', 'send'));
-router.get('/responses/history', handle('responses', 'history'));
+// regulations (4)
+router.get('/regulations/list', handle('regulations', 'list'));
+router.get('/regulations/check', handle('regulations', 'check'));
+router.get('/regulations/alerts', handle('regulations', 'alerts'));
+router.get('/regulations/updates', handle('regulations', 'updates'));
 
 // analytics (3)
 router.get('/analytics/overview', handle('analytics', 'overview'));

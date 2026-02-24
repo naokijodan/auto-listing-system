@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 
-// 商品レビュー集約ツール (テーマカラー: slate-600)
+// 出品スマートリプライサー (テーマカラー: teal-600)
 const router = Router();
 
 const handle = (section: string, action: string) => (_req: Request, res: Response) =>
@@ -14,25 +14,25 @@ router.get('/dashboard/status', handle('dashboard', 'status'));
 router.get('/dashboard/recent', handle('dashboard', 'recent'));
 router.get('/dashboard/performance', handle('dashboard', 'performance'));
 
-// reviews (6)
-router.get('/reviews/list', handle('reviews', 'list'));
-router.get('/reviews/fetch', handle('reviews', 'fetch'));
-router.get('/reviews/filter', handle('reviews', 'filter'));
-router.get('/reviews/aggregate', handle('reviews', 'aggregate'));
-router.get('/reviews/highlight', handle('reviews', 'highlight'));
-router.get('/reviews/export', handle('reviews', 'export'));
+// rules (6)
+router.get('/rules/list', handle('rules', 'list'));
+router.get('/rules/create', handle('rules', 'create'));
+router.get('/rules/update', handle('rules', 'update'));
+router.get('/rules/delete', handle('rules', 'delete'));
+router.get('/rules/enable', handle('rules', 'enable'));
+router.get('/rules/disable', handle('rules', 'disable'));
 
-// sentiments (4)
-router.get('/sentiments/overview', handle('sentiments', 'overview'));
-router.get('/sentiments/trends', handle('sentiments', 'trends'));
-router.get('/sentiments/keywords', handle('sentiments', 'keywords'));
-router.get('/sentiments/compare', handle('sentiments', 'compare'));
+// competitors (4)
+router.get('/competitors/list', handle('competitors', 'list'));
+router.get('/competitors/track', handle('competitors', 'track'));
+router.get('/competitors/untrack', handle('competitors', 'untrack'));
+router.get('/competitors/insights', handle('competitors', 'insights'));
 
-// responses (4)
-router.get('/responses/templates', handle('responses', 'templates'));
-router.get('/responses/suggest', handle('responses', 'suggest'));
-router.get('/responses/send', handle('responses', 'send'));
-router.get('/responses/history', handle('responses', 'history'));
+// history (4)
+router.get('/history/price', handle('history', 'price'));
+router.get('/history/sales', handle('history', 'sales'));
+router.get('/history/events', handle('history', 'events'));
+router.get('/history/logs', handle('history', 'logs'));
 
 // analytics (3)
 router.get('/analytics/overview', handle('analytics', 'overview'));
