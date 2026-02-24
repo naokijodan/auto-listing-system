@@ -325,6 +325,12 @@ import ebayProductTagManagerRouter from './ebay-product-tag-manager';
 import ebayOrderRiskScorerRouter from './ebay-order-risk-scorer';
 import ebayListingFreshnessMonitorRouter from './ebay-listing-freshness-monitor';
 import ebayCarrierPerformanceTrackerRouter from './ebay-carrier-performance-tracker';
+// Phase 436-440
+import ebayInventoryShrinkageTrackerRouter from './ebay-inventory-shrinkage-tracker';
+import ebaySellerReputationGuardRouter from './ebay-seller-reputation-guard';
+import ebayListingConversionOptimizerRouter from './ebay-listing-conversion-optimizer';
+import ebayOrderRoutingEngineRouter from './ebay-order-routing-engine';
+import ebayProductReviewAggregatorRouter from './ebay-product-review-aggregator';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -670,4 +676,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-order-risk-scorer', ebayOrderRiskScorerRouter);
   app.use('/api/ebay-listing-freshness-monitor', ebayListingFreshnessMonitorRouter);
   app.use('/api/ebay-carrier-performance-tracker', ebayCarrierPerformanceTrackerRouter);
+  // Phase 436-440
+  app.use('/api/ebay-inventory-shrinkage-tracker', ebayInventoryShrinkageTrackerRouter);
+  app.use('/api/ebay-seller-reputation-guard', ebaySellerReputationGuardRouter);
+  app.use('/api/ebay-listing-conversion-optimizer', ebayListingConversionOptimizerRouter);
+  app.use('/api/ebay-order-routing-engine', ebayOrderRoutingEngineRouter);
+  app.use('/api/ebay-product-review-aggregator', ebayProductReviewAggregatorRouter);
 }
