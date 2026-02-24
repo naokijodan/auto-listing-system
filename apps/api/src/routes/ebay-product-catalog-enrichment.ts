@@ -18,17 +18,17 @@ router.post('/products/bulk-enrich', (_req: Request, res: Response) => res.json(
 router.post('/products/validate/:id', (_req: Request, res: Response) => res.json({ section: 'products', action: 'validate' }));
 router.post('/products/revert/:id', (_req: Request, res: Response) => res.json({ section: 'products', action: 'revert' }));
 
-// Templates (4)
-router.get('/templates/list', (_req: Request, res: Response) => res.json({ section: 'templates', action: 'list' }));
-router.get('/templates/detail/:id', (_req: Request, res: Response) => res.json({ section: 'templates', action: 'detail' }));
-router.post('/templates/create', (_req: Request, res: Response) => res.json({ section: 'templates', action: 'create' }));
-router.post('/templates/apply/:id', (_req: Request, res: Response) => res.json({ section: 'templates', action: 'apply' }));
+// Catalog (4)
+router.get('/catalog/list', (_req: Request, res: Response) => res.json({ section: 'catalog', action: 'list' }));
+router.get('/catalog/detail/:id', (_req: Request, res: Response) => res.json({ section: 'catalog', action: 'detail' }));
+router.post('/catalog/create', (_req: Request, res: Response) => res.json({ section: 'catalog', action: 'create' }));
+router.post('/catalog/apply/:id', (_req: Request, res: Response) => res.json({ section: 'catalog', action: 'apply' }));
 
-// Sources (4)
-router.get('/sources/list', (_req: Request, res: Response) => res.json({ section: 'sources', action: 'list' }));
-router.get('/sources/detail/:id', (_req: Request, res: Response) => res.json({ section: 'sources', action: 'detail' }));
-router.post('/sources/configure/:id', (_req: Request, res: Response) => res.json({ section: 'sources', action: 'configure' }));
-router.post('/sources/test/:id', (_req: Request, res: Response) => res.json({ section: 'sources', action: 'test' }));
+// Enrichment (4)
+router.get('/enrichment/list', (_req: Request, res: Response) => res.json({ section: 'enrichment', action: 'list' }));
+router.get('/enrichment/detail/:id', (_req: Request, res: Response) => res.json({ section: 'enrichment', action: 'detail' }));
+router.post('/enrichment/configure/:id', (_req: Request, res: Response) => res.json({ section: 'enrichment', action: 'configure' }));
+router.post('/enrichment/test/:id', (_req: Request, res: Response) => res.json({ section: 'enrichment', action: 'test' }));
 
 // Analytics (3)
 router.get('/analytics', (_req: Request, res: Response) => res.json({ section: 'analytics', action: 'analytics' }));
@@ -46,4 +46,3 @@ router.post('/import', (_req: Request, res: Response) => res.json({ section: 'ut
 router.post('/sync', (_req: Request, res: Response) => res.json({ section: 'utilities', action: 'sync' }));
 
 export default router;
-

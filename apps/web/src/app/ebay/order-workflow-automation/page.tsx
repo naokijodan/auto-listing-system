@@ -2,20 +2,20 @@
 
 import React, { useEffect, useState } from 'react'
 
-type TabKey = 'dashboard' | 'listings' | 'seasons' | 'campaigns' | 'analytics' | 'settings'
+type TabKey = 'dashboard' | 'orders' | 'workflows' | 'triggers' | 'analytics' | 'settings'
 
 const TABS: { key: TabKey; label: string; path: string }[] = [
   { key: 'dashboard', label: 'ダッシュボード', path: 'dashboard' },
-  { key: 'listings', label: '出品', path: 'listings' },
-  { key: 'seasons', label: 'シーズン', path: 'seasons' },
-  { key: 'campaigns', label: 'キャンペーン', path: 'campaigns' },
+  { key: 'orders', label: '注文', path: 'orders' },
+  { key: 'workflows', label: 'ワークフロー', path: 'workflows' },
+  { key: 'triggers', label: 'トリガー', path: 'triggers' },
   { key: 'analytics', label: '分析', path: 'analytics' },
   { key: 'settings', label: '設定', path: 'settings' },
 ]
 
-const API_BASE = '/api/ebay-listing-seasonal-optimizer/'
+const API_BASE = '/api/ebay-order-workflow-automation/'
 
-export default function ListingSeasonalOptimizerPage() {
+export default function OrderWorkflowAutomationPage() {
   const [active, setActive] = useState<TabKey>('dashboard')
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState<boolean>(false)
@@ -45,7 +45,7 @@ export default function ListingSeasonalOptimizerPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold text-green-600">出品シーズナルオプティマイザー</h1>
+      <h1 className="text-2xl font-semibold text-blue-600">注文ワークフロー自動化</h1>
       <div className="flex gap-2 border-b pb-2">
         {TABS.map((t) => (
           <button
@@ -53,7 +53,7 @@ export default function ListingSeasonalOptimizerPage() {
             onClick={() => setActive(t.key)}
             className={`px-3 py-1.5 rounded-t-md text-sm ${
               active === t.key
-                ? 'bg-green-50 text-green-700 border border-b-0 border-green-200'
+                ? 'bg-blue-50 text-blue-700 border border-b-0 border-blue-200'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -63,7 +63,7 @@ export default function ListingSeasonalOptimizerPage() {
       </div>
 
       <div className="rounded-md border p-4 bg-white">
-        <div className="mb-3 text-sm text-gray-600">API: {API_BASE}{active}</div>
+        <div className="mb-3 text-sm text-gray-600">API: {API_BASE}{TABS.find(t => t.key === active)?.path}</div>
         {loading && <div className="text-gray-500">読み込み中…</div>}
         {error && <div className="text-red-600">エラー: {error}</div>}
         {!loading && !error && (
@@ -73,3 +73,4 @@ export default function ListingSeasonalOptimizerPage() {
     </div>
   )
 }
+

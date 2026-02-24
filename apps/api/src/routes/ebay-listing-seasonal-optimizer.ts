@@ -20,7 +20,27 @@ router.get('/dashboard/calendar', (_req: Request, res: Response) =>
   res.json({ section: 'dashboard', action: 'calendar' })
 );
 
-// Seasons (6)
+// Listings (6)
+router.get('/listings', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'list' })
+);
+router.get('/listings/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'detail' })
+);
+router.post('/listings', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'create' })
+);
+router.put('/listings/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'update' })
+);
+router.delete('/listings/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'delete' })
+);
+router.post('/listings/:id/schedule', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'schedule' })
+);
+
+// Seasons (4)
 router.get('/seasons', (_req: Request, res: Response) =>
   res.json({ section: 'seasons', action: 'list' })
 );
@@ -30,42 +50,22 @@ router.get('/seasons/:id', (_req: Request, res: Response) =>
 router.post('/seasons', (_req: Request, res: Response) =>
   res.json({ section: 'seasons', action: 'create' })
 );
-router.post('/seasons/:id/activate', (_req: Request, res: Response) =>
-  res.json({ section: 'seasons', action: 'activate' })
-);
-router.post('/seasons/:id/deactivate', (_req: Request, res: Response) =>
-  res.json({ section: 'seasons', action: 'deactivate' })
-);
-router.get('/seasons/:id/history', (_req: Request, res: Response) =>
-  res.json({ section: 'seasons', action: 'history' })
+router.put('/seasons/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'seasons', action: 'update' })
 );
 
-// Products (4)
-router.get('/products', (_req: Request, res: Response) =>
-  res.json({ section: 'products', action: 'list' })
+// Campaigns (4)
+router.get('/campaigns', (_req: Request, res: Response) =>
+  res.json({ section: 'campaigns', action: 'list' })
 );
-router.get('/products/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'products', action: 'detail' })
+router.get('/campaigns/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'campaigns', action: 'detail' })
 );
-router.post('/products/:id/tag', (_req: Request, res: Response) =>
-  res.json({ section: 'products', action: 'tag' })
+router.post('/campaigns', (_req: Request, res: Response) =>
+  res.json({ section: 'campaigns', action: 'create' })
 );
-router.post('/products/bulk-tag', (_req: Request, res: Response) =>
-  res.json({ section: 'products', action: 'bulk-tag' })
-);
-
-// Strategies (4)
-router.get('/strategies', (_req: Request, res: Response) =>
-  res.json({ section: 'strategies', action: 'list' })
-);
-router.get('/strategies/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'strategies', action: 'detail' })
-);
-router.post('/strategies', (_req: Request, res: Response) =>
-  res.json({ section: 'strategies', action: 'create' })
-);
-router.put('/strategies/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'strategies', action: 'update' })
+router.put('/campaigns/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'campaigns', action: 'update' })
 );
 
 // Analytics (3)
@@ -102,4 +102,3 @@ router.post('/sync', (_req: Request, res: Response) =>
 );
 
 export default router;
-

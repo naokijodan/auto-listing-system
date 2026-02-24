@@ -649,6 +649,12 @@ import ebayOrderTrackingHubRouter from './ebay-order-tracking-hub';
 import ebayInventoryMultiLocationSyncRouter from './ebay-inventory-multi-location-sync';
 import ebaySellerComplianceMonitorRouter from './ebay-seller-compliance-monitor';
 import ebayProductAiPhotoEnhancerRouter from './ebay-product-ai-photo-enhancer';
+// Phase 701-705
+import ebayListingSeasonalOptimizerRouter from './ebay-listing-seasonal-optimizer';
+import ebayOrderWorkflowAutomationRouter from './ebay-order-workflow-automation';
+import ebayInventoryExpiryTrackerRouter from './ebay-inventory-expiry-tracker';
+import ebaySellerTaxManagerRouter from './ebay-seller-tax-manager';
+import ebayProductCatalogEnrichmentRouter from './ebay-product-catalog-enrichment';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1318,4 +1324,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-multi-location-sync', ebayInventoryMultiLocationSyncRouter);
   app.use('/api/ebay-seller-compliance-monitor', ebaySellerComplianceMonitorRouter);
   app.use('/api/ebay-product-ai-photo-enhancer', ebayProductAiPhotoEnhancerRouter);
+  // Phase 701-705
+  app.use('/api/ebay-listing-seasonal-optimizer', ebayListingSeasonalOptimizerRouter);
+  app.use('/api/ebay-order-workflow-automation', ebayOrderWorkflowAutomationRouter);
+  app.use('/api/ebay-inventory-expiry-tracker', ebayInventoryExpiryTrackerRouter);
+  app.use('/api/ebay-seller-tax-manager', ebaySellerTaxManagerRouter);
+  app.use('/api/ebay-product-catalog-enrichment', ebayProductCatalogEnrichmentRouter);
 }
