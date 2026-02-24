@@ -715,6 +715,18 @@ import ebayOrderShipmentTrackerProRouter from './ebay-order-shipment-tracker-pro
 import ebayInventoryWasteReducerRouter from './ebay-inventory-waste-reducer';
 import ebaySellerPartnershipHubRouter from './ebay-seller-partnership-hub';
 import ebayProductRecommendationEngineRouter from './ebay-product-recommendation-engine';
+// Phase 756-760
+import ebayListingAudienceInsightsRouter from './ebay-listing-audience-insights';
+import ebayOrderWarehouseRoutingRouter from './ebay-order-warehouse-routing';
+import ebayInventoryQualityGateRouter from './ebay-inventory-quality-gate';
+import ebaySellerMentorshipProgramRouter from './ebay-seller-mentorship-program';
+import ebayProductArchiveManagerRouter from './ebay-product-archive-manager';
+// Phase 761-765
+import ebayListingFlashSaleManagerRouter from './ebay-listing-flash-sale-manager';
+import ebayOrderCustomsBrokerRouter from './ebay-order-customs-broker';
+import ebayInventoryRfidTrackerRouter from './ebay-inventory-rfid-tracker';
+import ebaySellerAnalyticsStudioRouter from './ebay-seller-analytics-studio';
+import ebayProductBarcodeGeneratorRouter from './ebay-product-barcode-generator';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1450,4 +1462,16 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-waste-reducer', ebayInventoryWasteReducerRouter);
   app.use('/api/ebay-seller-partnership-hub', ebaySellerPartnershipHubRouter);
   app.use('/api/ebay-product-recommendation-engine', ebayProductRecommendationEngineRouter);
+  // Phase 756-760
+  app.use('/api/ebay-listing-audience-insights', ebayListingAudienceInsightsRouter);
+  app.use('/api/ebay-order-warehouse-routing', ebayOrderWarehouseRoutingRouter);
+  app.use('/api/ebay-inventory-quality-gate', ebayInventoryQualityGateRouter);
+  app.use('/api/ebay-seller-mentorship-program', ebaySellerMentorshipProgramRouter);
+  app.use('/api/ebay-product-archive-manager', ebayProductArchiveManagerRouter);
+  // Phase 761-765
+  app.use('/api/ebay-listing-flash-sale-manager', ebayListingFlashSaleManagerRouter);
+  app.use('/api/ebay-order-customs-broker', ebayOrderCustomsBrokerRouter);
+  app.use('/api/ebay-inventory-rfid-tracker', ebayInventoryRfidTrackerRouter);
+  app.use('/api/ebay-seller-analytics-studio', ebaySellerAnalyticsStudioRouter);
+  app.use('/api/ebay-product-barcode-generator', ebayProductBarcodeGeneratorRouter);
 }
