@@ -309,6 +309,11 @@ import ebayProfitMarginCalculatorRouter from './ebay-profit-margin-calculator';
 import ebayListingRotationSchedulerRouter from './ebay-listing-rotation-scheduler';
 import ebayCustomerFeedbackLoopRouter from './ebay-customer-feedback-loop';
 import ebaySmartInventoryAllocatorRouter from './ebay-smart-inventory-allocator';
+import ebayWarehousePickingOptimizerRouter from './ebay-warehouse-picking-optimizer';
+import ebayProductLifecycleManagerRouter from './ebay-product-lifecycle-manager';
+import ebaySellerTaxReportGeneratorRouter from './ebay-seller-tax-report-generator';
+import ebayListingQualityScorerProRouter from './ebay-listing-quality-scorer-pro';
+import ebayMultiAccountManagerRouter from './ebay-multi-account-manager';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -636,4 +641,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-seller-goal-tracker', ebaySellerGoalTrackerRouter);
   app.use('/api/ebay-price-comparison-engine', ebayPriceComparisonEngineRouter);
   app.use('/api/ebay-bulk-description-updater', ebayBulkDescriptionUpdaterRouter);
+  // Phase 421-425
+  app.use('/api/ebay-warehouse-picking-optimizer', ebayWarehousePickingOptimizerRouter);
+  app.use('/api/ebay-product-lifecycle-manager', ebayProductLifecycleManagerRouter);
+  app.use('/api/ebay-seller-tax-report-generator', ebaySellerTaxReportGeneratorRouter);
+  app.use('/api/ebay-listing-quality-scorer-pro', ebayListingQualityScorerProRouter);
+  app.use('/api/ebay-multi-account-manager', ebayMultiAccountManagerRouter);
 }
