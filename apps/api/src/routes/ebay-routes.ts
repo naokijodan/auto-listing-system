@@ -541,6 +541,12 @@ import ebayOrderMultiCarrierManagerRouter from './ebay-order-multi-carrier-manag
 import ebayInventorySupplierPortalRouter from './ebay-inventory-supplier-portal';
 import ebaySellerMarketIntelligenceRouter from './ebay-seller-market-intelligence';
 import ebayProductDigitalAssetManagerRouter from './ebay-product-digital-asset-manager';
+// Phase 611-615
+import ebayListingDynamicContentRouter from './ebay-listing-dynamic-content';
+import ebayOrderCustomLabelerRouter from './ebay-order-custom-labeler';
+import ebayInventoryCycleCounterRouter from './ebay-inventory-cycle-counter';
+import ebaySellerWorkspaceManagerRouter from './ebay-seller-workspace-manager';
+import ebayProductEcoSustainabilityRouter from './ebay-product-eco-sustainability';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1102,4 +1108,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-supplier-portal', ebayInventorySupplierPortalRouter);
   app.use('/api/ebay-seller-market-intelligence', ebaySellerMarketIntelligenceRouter);
   app.use('/api/ebay-product-digital-asset-manager', ebayProductDigitalAssetManagerRouter);
+  // Phase 611-615
+  app.use('/api/ebay-listing-dynamic-content', ebayListingDynamicContentRouter);
+  app.use('/api/ebay-order-custom-labeler', ebayOrderCustomLabelerRouter);
+  app.use('/api/ebay-inventory-cycle-counter', ebayInventoryCycleCounterRouter);
+  app.use('/api/ebay-seller-workspace-manager', ebaySellerWorkspaceManagerRouter);
+  app.use('/api/ebay-product-eco-sustainability', ebayProductEcoSustainabilityRouter);
 }
