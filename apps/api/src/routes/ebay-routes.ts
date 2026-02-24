@@ -523,6 +523,12 @@ import ebayOrderSplitShipmentManagerRouter from './ebay-order-split-shipment-man
 import ebayInventoryLotTrackingRouter from './ebay-inventory-lot-tracking';
 import ebaySellerAutomationHubRouter from './ebay-seller-automation-hub';
 import ebayProductComplianceCheckerRouter from './ebay-product-compliance-checker';
+// Phase 596-600
+import ebayListingStorefrontOptimizerRouter from './ebay-listing-storefront-optimizer';
+import ebayOrderInvoiceGeneratorRouter from './ebay-order-invoice-generator';
+import ebayInventoryRealtimeDashboardRouter from './ebay-inventory-realtime-dashboard';
+import ebaySellerBusinessIntelligenceRouter from './ebay-seller-business-intelligence';
+import ebayProductMarketResearchRouter from './ebay-product-market-research';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1066,4 +1072,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-lot-tracking', ebayInventoryLotTrackingRouter);
   app.use('/api/ebay-seller-automation-hub', ebaySellerAutomationHubRouter);
   app.use('/api/ebay-product-compliance-checker', ebayProductComplianceCheckerRouter);
+  // Phase 596-600
+  app.use('/api/ebay-listing-storefront-optimizer', ebayListingStorefrontOptimizerRouter);
+  app.use('/api/ebay-order-invoice-generator', ebayOrderInvoiceGeneratorRouter);
+  app.use('/api/ebay-inventory-realtime-dashboard', ebayInventoryRealtimeDashboardRouter);
+  app.use('/api/ebay-seller-business-intelligence', ebaySellerBusinessIntelligenceRouter);
+  app.use('/api/ebay-product-market-research', ebayProductMarketResearchRouter);
 }
