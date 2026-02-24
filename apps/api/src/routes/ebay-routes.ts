@@ -1345,6 +1345,90 @@ import ebayOrderEscalationRoutingEngineRouter from './ebay-order-escalation-rout
 import ebayInventoryOptimizationPlanningEngineRouter from './ebay-inventory-optimization-planning-engine';
 import ebaySellerMarketplaceExpansionEngineRouter from './ebay-seller-marketplace-expansion-engine';
 import ebayProductQualityInspectionEngineRouter from './ebay-product-quality-inspection-engine';
+// Phase 1281-1285
+import ebayListingSmartRankingSystemRouter from './ebay-listing-smart-ranking-system';
+import ebayOrderAutomatedDispatchSystemRouter from './ebay-order-automated-dispatch-system';
+import ebayInventoryPredictiveAnalyticsSystemRouter from './ebay-inventory-predictive-analytics-system';
+import ebaySellerLoyaltyRewardsSystemRouter from './ebay-seller-loyalty-rewards-system';
+import ebayProductDataEnrichmentSystemRouter from './ebay-product-data-enrichment-system';
+// Phase 1286-1290
+import ebayListingPriceMonitorSystemRouter from './ebay-listing-price-monitor-system';
+import ebayOrderBatchProcessingSystemRouter from './ebay-order-batch-processing-system';
+import ebayInventoryThresholdAlertSystemRouter from './ebay-inventory-threshold-alert-system';
+import ebaySellerAccountHealthSystemRouter from './ebay-seller-account-health-system';
+import ebayProductTagManagementSystemRouter from './ebay-product-tag-management-system';
+// Phase 1291-1295
+import ebayListingCategoryOptimizerSystemRouter from './ebay-listing-category-optimizer-system';
+import ebayOrderSplitMergeSystemRouter from './ebay-order-split-merge-system';
+import ebayInventoryMultiWarehouseSystemRouter from './ebay-inventory-multi-warehouse-system';
+import ebaySellerDisputeResolutionSystemRouter from './ebay-seller-dispute-resolution-system';
+import ebayProductImageEnhancementSystemRouter from './ebay-product-image-enhancement-system';
+// Phase 1296-1300
+import ebayListingBulkEditorSystemRouter from './ebay-listing-bulk-editor-system';
+import ebayOrderCustomsDeclarationSystemRouter from './ebay-order-customs-declaration-system';
+import ebayInventorySerialTrackingSystemRouter from './ebay-inventory-serial-tracking-system';
+import ebaySellerPayoutManagementSystemRouter from './ebay-seller-payout-management-system';
+import ebayProductWeightDimensionSystemRouter from './ebay-product-weight-dimension-system';
+// Phase 1301-1305
+import ebayListingDraftManagementSystemRouter from './ebay-listing-draft-management-system';
+import ebayOrderGiftWrappingSystemRouter from './ebay-order-gift-wrapping-system';
+import ebayInventoryLotTrackingSystemRouter from './ebay-inventory-lot-tracking-system';
+import ebaySellerTaxComplianceSystemRouter from './ebay-seller-tax-compliance-system';
+import ebayProductConditionGradingSystemRouter from './ebay-product-condition-grading-system';
+// Phase 1306-1310
+import ebayListingFeeCalculatorSystemRouter from './ebay-listing-fee-calculator-system';
+import ebayOrderAddressValidationSystemRouter from './ebay-order-address-validation-system';
+import ebayInventoryBarcodeScanningSystemRouter from './ebay-inventory-barcode-scanning-system';
+import ebaySellerMarketingCampaignSystemRouter from './ebay-seller-marketing-campaign-system';
+import ebayProductCompatibilityCheckSystemRouter from './ebay-product-compatibility-check-system';
+// Phase 1311-1315
+import ebayListingVariationBuilderSystemRouter from './ebay-listing-variation-builder-system';
+import ebayOrderCarrierSelectionSystemRouter from './ebay-order-carrier-selection-system';
+import ebayInventoryReceivingInspectionSystemRouter from './ebay-inventory-receiving-inspection-system';
+import ebaySellerStoreCustomizationSystemRouter from './ebay-seller-store-customization-system';
+import ebayProductSpecificationManagerSystemRouter from './ebay-product-specification-manager-system';
+// Phase 1316-1320
+import ebayListingInternationalShippingSystemRouter from './ebay-listing-international-shipping-system';
+import ebayOrderLabelGenerationSystemRouter from './ebay-order-label-generation-system';
+import ebayInventoryPickPackSystemRouter from './ebay-inventory-pick-pack-system';
+import ebaySellerPromotionSchedulerSystemRouter from './ebay-seller-promotion-scheduler-system';
+import ebayProductCrossReferenceSystemRouter from './ebay-product-cross-reference-system';
+// Phase 1321-1325
+import ebayListingReservePriceSystemRouter from './ebay-listing-reserve-price-system';
+import ebayOrderTrackingUpdateSystemRouter from './ebay-order-tracking-update-system';
+import ebayInventoryTransferRequestSystemRouter from './ebay-inventory-transfer-request-system';
+import ebaySellerReviewResponseSystemRouter from './ebay-seller-review-response-system';
+import ebayProductRecallManagementSystemRouter from './ebay-product-recall-management-system';
+// Phase 1326-1330
+import ebayListingGalleryOptimizerSystemRouter from './ebay-listing-gallery-optimizer-system';
+import ebayOrderCancellationHandlerSystemRouter from './ebay-order-cancellation-handler-system';
+import ebayInventoryStockTakeSystemRouter from './ebay-inventory-stock-take-system';
+import ebaySellerSubscriptionBillingSystemRouter from './ebay-seller-subscription-billing-system';
+import ebayProductCertificationTrackerSystemRouter from './ebay-product-certification-tracker-system';
+// Phase 1331-1335
+import ebayListingMobilePreviewSystemRouter from './ebay-listing-mobile-preview-system';
+import ebayOrderPartialShipmentSystemRouter from './ebay-order-partial-shipment-system';
+import ebayInventoryContainerTrackingSystemRouter from './ebay-inventory-container-tracking-system';
+import ebaySellerTeamPermissionSystemRouter from './ebay-seller-team-permission-system';
+import ebayProductHazmatComplianceSystemRouter from './ebay-product-hazmat-compliance-system';
+// Phase 1336-1340
+import ebayListingTitleOptimizerSystemRouter from './ebay-listing-title-optimizer-system';
+import ebayOrderDeliveryConfirmationSystemRouter from './ebay-order-delivery-confirmation-system';
+import ebayInventoryShelfAssignmentSystemRouter from './ebay-inventory-shelf-assignment-system';
+import ebaySellerInvoiceManagementSystemRouter from './ebay-seller-invoice-management-system';
+import ebayProductOriginVerificationSystemRouter from './ebay-product-origin-verification-system';
+// Phase 1341-1345
+import ebayListingItemSpecificsSystemRouter from './ebay-listing-item-specifics-system';
+import ebayOrderReplacementProcessingSystemRouter from './ebay-order-replacement-processing-system';
+import ebayInventoryMinMaxPlanningSystemRouter from './ebay-inventory-min-max-planning-system';
+import ebaySellerPerformanceDashboardSystemRouter from './ebay-seller-performance-dashboard-system';
+import ebayProductMaterialCompositionSystemRouter from './ebay-product-material-composition-system';
+// Phase 1346-1350
+import ebayListingPromotedPlacementSystemRouter from './ebay-listing-promoted-placement-system';
+import ebayOrderSignatureConfirmationSystemRouter from './ebay-order-signature-confirmation-system';
+import ebayInventoryVendorManagedSystemRouter from './ebay-inventory-vendor-managed-system';
+import ebaySellerFinancialReportingSystemRouter from './ebay-seller-financial-reporting-system';
+import ebayProductSustainabilityRatingSystemRouter from './ebay-product-sustainability-rating-system';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -2710,4 +2794,88 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-optimization-planning-engine', ebayInventoryOptimizationPlanningEngineRouter);
   app.use('/api/ebay-seller-marketplace-expansion-engine', ebaySellerMarketplaceExpansionEngineRouter);
   app.use('/api/ebay-product-quality-inspection-engine', ebayProductQualityInspectionEngineRouter);
+  // Phase 1281-1285
+  app.use('/api/ebay-listing-smart-ranking-system', ebayListingSmartRankingSystemRouter);
+  app.use('/api/ebay-order-automated-dispatch-system', ebayOrderAutomatedDispatchSystemRouter);
+  app.use('/api/ebay-inventory-predictive-analytics-system', ebayInventoryPredictiveAnalyticsSystemRouter);
+  app.use('/api/ebay-seller-loyalty-rewards-system', ebaySellerLoyaltyRewardsSystemRouter);
+  app.use('/api/ebay-product-data-enrichment-system', ebayProductDataEnrichmentSystemRouter);
+  // Phase 1286-1290
+  app.use('/api/ebay-listing-price-monitor-system', ebayListingPriceMonitorSystemRouter);
+  app.use('/api/ebay-order-batch-processing-system', ebayOrderBatchProcessingSystemRouter);
+  app.use('/api/ebay-inventory-threshold-alert-system', ebayInventoryThresholdAlertSystemRouter);
+  app.use('/api/ebay-seller-account-health-system', ebaySellerAccountHealthSystemRouter);
+  app.use('/api/ebay-product-tag-management-system', ebayProductTagManagementSystemRouter);
+  // Phase 1291-1295
+  app.use('/api/ebay-listing-category-optimizer-system', ebayListingCategoryOptimizerSystemRouter);
+  app.use('/api/ebay-order-split-merge-system', ebayOrderSplitMergeSystemRouter);
+  app.use('/api/ebay-inventory-multi-warehouse-system', ebayInventoryMultiWarehouseSystemRouter);
+  app.use('/api/ebay-seller-dispute-resolution-system', ebaySellerDisputeResolutionSystemRouter);
+  app.use('/api/ebay-product-image-enhancement-system', ebayProductImageEnhancementSystemRouter);
+  // Phase 1296-1300
+  app.use('/api/ebay-listing-bulk-editor-system', ebayListingBulkEditorSystemRouter);
+  app.use('/api/ebay-order-customs-declaration-system', ebayOrderCustomsDeclarationSystemRouter);
+  app.use('/api/ebay-inventory-serial-tracking-system', ebayInventorySerialTrackingSystemRouter);
+  app.use('/api/ebay-seller-payout-management-system', ebaySellerPayoutManagementSystemRouter);
+  app.use('/api/ebay-product-weight-dimension-system', ebayProductWeightDimensionSystemRouter);
+  // Phase 1301-1305
+  app.use('/api/ebay-listing-draft-management-system', ebayListingDraftManagementSystemRouter);
+  app.use('/api/ebay-order-gift-wrapping-system', ebayOrderGiftWrappingSystemRouter);
+  app.use('/api/ebay-inventory-lot-tracking-system', ebayInventoryLotTrackingSystemRouter);
+  app.use('/api/ebay-seller-tax-compliance-system', ebaySellerTaxComplianceSystemRouter);
+  app.use('/api/ebay-product-condition-grading-system', ebayProductConditionGradingSystemRouter);
+  // Phase 1306-1310
+  app.use('/api/ebay-listing-fee-calculator-system', ebayListingFeeCalculatorSystemRouter);
+  app.use('/api/ebay-order-address-validation-system', ebayOrderAddressValidationSystemRouter);
+  app.use('/api/ebay-inventory-barcode-scanning-system', ebayInventoryBarcodeScanningSystemRouter);
+  app.use('/api/ebay-seller-marketing-campaign-system', ebaySellerMarketingCampaignSystemRouter);
+  app.use('/api/ebay-product-compatibility-check-system', ebayProductCompatibilityCheckSystemRouter);
+  // Phase 1311-1315
+  app.use('/api/ebay-listing-variation-builder-system', ebayListingVariationBuilderSystemRouter);
+  app.use('/api/ebay-order-carrier-selection-system', ebayOrderCarrierSelectionSystemRouter);
+  app.use('/api/ebay-inventory-receiving-inspection-system', ebayInventoryReceivingInspectionSystemRouter);
+  app.use('/api/ebay-seller-store-customization-system', ebaySellerStoreCustomizationSystemRouter);
+  app.use('/api/ebay-product-specification-manager-system', ebayProductSpecificationManagerSystemRouter);
+  // Phase 1316-1320
+  app.use('/api/ebay-listing-international-shipping-system', ebayListingInternationalShippingSystemRouter);
+  app.use('/api/ebay-order-label-generation-system', ebayOrderLabelGenerationSystemRouter);
+  app.use('/api/ebay-inventory-pick-pack-system', ebayInventoryPickPackSystemRouter);
+  app.use('/api/ebay-seller-promotion-scheduler-system', ebaySellerPromotionSchedulerSystemRouter);
+  app.use('/api/ebay-product-cross-reference-system', ebayProductCrossReferenceSystemRouter);
+  // Phase 1321-1325
+  app.use('/api/ebay-listing-reserve-price-system', ebayListingReservePriceSystemRouter);
+  app.use('/api/ebay-order-tracking-update-system', ebayOrderTrackingUpdateSystemRouter);
+  app.use('/api/ebay-inventory-transfer-request-system', ebayInventoryTransferRequestSystemRouter);
+  app.use('/api/ebay-seller-review-response-system', ebaySellerReviewResponseSystemRouter);
+  app.use('/api/ebay-product-recall-management-system', ebayProductRecallManagementSystemRouter);
+  // Phase 1326-1330
+  app.use('/api/ebay-listing-gallery-optimizer-system', ebayListingGalleryOptimizerSystemRouter);
+  app.use('/api/ebay-order-cancellation-handler-system', ebayOrderCancellationHandlerSystemRouter);
+  app.use('/api/ebay-inventory-stock-take-system', ebayInventoryStockTakeSystemRouter);
+  app.use('/api/ebay-seller-subscription-billing-system', ebaySellerSubscriptionBillingSystemRouter);
+  app.use('/api/ebay-product-certification-tracker-system', ebayProductCertificationTrackerSystemRouter);
+  // Phase 1331-1335
+  app.use('/api/ebay-listing-mobile-preview-system', ebayListingMobilePreviewSystemRouter);
+  app.use('/api/ebay-order-partial-shipment-system', ebayOrderPartialShipmentSystemRouter);
+  app.use('/api/ebay-inventory-container-tracking-system', ebayInventoryContainerTrackingSystemRouter);
+  app.use('/api/ebay-seller-team-permission-system', ebaySellerTeamPermissionSystemRouter);
+  app.use('/api/ebay-product-hazmat-compliance-system', ebayProductHazmatComplianceSystemRouter);
+  // Phase 1336-1340
+  app.use('/api/ebay-listing-title-optimizer-system', ebayListingTitleOptimizerSystemRouter);
+  app.use('/api/ebay-order-delivery-confirmation-system', ebayOrderDeliveryConfirmationSystemRouter);
+  app.use('/api/ebay-inventory-shelf-assignment-system', ebayInventoryShelfAssignmentSystemRouter);
+  app.use('/api/ebay-seller-invoice-management-system', ebaySellerInvoiceManagementSystemRouter);
+  app.use('/api/ebay-product-origin-verification-system', ebayProductOriginVerificationSystemRouter);
+  // Phase 1341-1345
+  app.use('/api/ebay-listing-item-specifics-system', ebayListingItemSpecificsSystemRouter);
+  app.use('/api/ebay-order-replacement-processing-system', ebayOrderReplacementProcessingSystemRouter);
+  app.use('/api/ebay-inventory-min-max-planning-system', ebayInventoryMinMaxPlanningSystemRouter);
+  app.use('/api/ebay-seller-performance-dashboard-system', ebaySellerPerformanceDashboardSystemRouter);
+  app.use('/api/ebay-product-material-composition-system', ebayProductMaterialCompositionSystemRouter);
+  // Phase 1346-1350
+  app.use('/api/ebay-listing-promoted-placement-system', ebayListingPromotedPlacementSystemRouter);
+  app.use('/api/ebay-order-signature-confirmation-system', ebayOrderSignatureConfirmationSystemRouter);
+  app.use('/api/ebay-inventory-vendor-managed-system', ebayInventoryVendorManagedSystemRouter);
+  app.use('/api/ebay-seller-financial-reporting-system', ebaySellerFinancialReportingSystemRouter);
+  app.use('/api/ebay-product-sustainability-rating-system', ebayProductSustainabilityRatingSystemRouter);
 }
