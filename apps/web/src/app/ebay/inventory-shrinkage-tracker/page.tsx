@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-type TabKey = "dashboard" | "incidents" | "causes" | "prevention" | "analytics" | "settings";
+type TabKey = "dashboard" | "inventory" | "shrinkage" | "investigations" | "analytics" | "settings";
 
 const LABELS: Record<TabKey, string> = {
   dashboard: "ダッシュボード",
-  incidents: "インシデント",
-  causes: "原因",
-  prevention: "防止",
+  inventory: "在庫",
+  shrinkage: "減耗",
+  investigations: "調査",
   analytics: "分析",
   settings: "設定",
 };
@@ -16,9 +16,9 @@ const LABELS: Record<TabKey, string> = {
 const BASE = "/api/ebay-inventory-shrinkage-tracker";
 const ENDPOINTS: Record<TabKey, string> = {
   dashboard: `${BASE}/dashboard`,
-  incidents: `${BASE}/incidents/list`,
-  causes: `${BASE}/causes/list`,
-  prevention: `${BASE}/prevention/list`,
+  inventory: `${BASE}/inventory`,
+  shrinkage: `${BASE}/shrinkage`,
+  investigations: `${BASE}/investigations`,
   analytics: `${BASE}/analytics`,
   settings: `${BASE}/settings`,
 };
@@ -54,7 +54,7 @@ export default function InventoryShrinkageTrackerPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-lime-600">在庫ロストラッカー</h1>
+        <h1 className="text-2xl font-bold text-cyan-600">在庫減耗トラッカー</h1>
         <p className="text-sm text-gray-500">Inventory Shrinkage Tracker</p>
       </header>
 
@@ -65,7 +65,7 @@ export default function InventoryShrinkageTrackerPage() {
               <button
                 className={`px-3 py-2 text-sm rounded-t border transition-colors ${
                   active === k
-                    ? "bg-lime-50 text-lime-700 border-lime-200"
+                    ? "bg-cyan-50 text-cyan-700 border-cyan-200"
                     : "bg-white text-gray-600 hover:bg-gray-50 border-transparent"
                 }`}
                 onClick={() => setActive(k)}
@@ -87,4 +87,3 @@ export default function InventoryShrinkageTrackerPage() {
     </div>
   );
 }
-

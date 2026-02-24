@@ -2,29 +2,29 @@
 
 import React, { useEffect, useState } from 'react';
 
-type TabKey = 'dashboard' | 'listings' | 'schedules' | 'queues' | 'analytics' | 'settings';
+type TabKey = 'dashboard' | 'products' | 'imports' | 'exports' | 'analytics' | 'settings';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'dashboard', label: 'ダッシュボード' },
-  { key: 'listings', label: '出品' },
-  { key: 'schedules', label: 'スケジュール' },
-  { key: 'queues', label: 'キュー' },
+  { key: 'products', label: '商品' },
+  { key: 'imports', label: 'インポート' },
+  { key: 'exports', label: 'エクスポート' },
   { key: 'analytics', label: '分析' },
   { key: 'settings', label: '設定' },
 ];
 
-const API_BASE = '/api/ebay-listing-bulk-scheduler';
+const API_BASE = '/api/ebay-product-import-export';
 
 function endpointForTab(tab: TabKey): string {
   switch (tab) {
     case 'dashboard':
       return `${API_BASE}/dashboard`;
-    case 'listings':
-      return `${API_BASE}/listings`;
-    case 'schedules':
-      return `${API_BASE}/schedules`;
-    case 'queues':
-      return `${API_BASE}/queues`;
+    case 'products':
+      return `${API_BASE}/products`;
+    case 'imports':
+      return `${API_BASE}/imports`;
+    case 'exports':
+      return `${API_BASE}/exports`;
     case 'analytics':
       return `${API_BASE}/analytics`;
     case 'settings':
@@ -34,7 +34,7 @@ function endpointForTab(tab: TabKey): string {
   }
 }
 
-export default function ListingBulkSchedulerPage() {
+export default function ProductImportExportPage() {
   const [active, setActive] = useState<TabKey>('dashboard');
   const [data, setData] = useState<unknown>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -63,7 +63,7 @@ export default function ListingBulkSchedulerPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-yellow-600">出品一括スケジューラー</h1>
+      <h1 className="text-2xl font-bold text-emerald-600">商品インポート・エクスポート</h1>
 
       <nav className="flex gap-4 border-b pb-2">
         {TABS.map((t) => (
@@ -72,8 +72,8 @@ export default function ListingBulkSchedulerPage() {
             onClick={() => setActive(t.key)}
             className={`px-2 py-1 -mb-[2px] border-b-2 transition-colors ${
               active === t.key
-                ? 'border-yellow-600 text-yellow-600'
-                : 'border-transparent text-gray-600 hover:text-yellow-600'
+                ? 'border-emerald-600 text-emerald-600'
+                : 'border-transparent text-gray-600 hover:text-emerald-600'
             }`}
           >
             {t.label}
@@ -86,7 +86,7 @@ export default function ListingBulkSchedulerPage() {
           <span className="text-sm text-gray-500">API: {endpointForTab(active)}</span>
           <button
             onClick={fetchData}
-            className="px-3 py-1 text-sm bg-yellow-600 text-white rounded"
+            className="px-3 py-1 text-sm bg-emerald-600 text-white rounded"
           >
             再読み込み
           </button>
@@ -102,3 +102,4 @@ export default function ListingBulkSchedulerPage() {
     </div>
   );
 }
+

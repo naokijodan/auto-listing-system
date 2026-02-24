@@ -2,75 +2,76 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 
 const router = Router();
+// Theme: cyan-600
 
-// Dashboard (5)
+// ========== Dashboard (5) ==========
 router.get('/dashboard', (_req: Request, res: Response) =>
-  res.json({ section: 'dashboard', action: 'dashboard' })
+  res.json({ section: 'dashboard', action: 'overview' })
 );
 router.get('/dashboard/summary', (_req: Request, res: Response) =>
   res.json({ section: 'dashboard', action: 'summary' })
 );
-router.get('/dashboard/incidents', (_req: Request, res: Response) =>
-  res.json({ section: 'dashboard', action: 'incidents' })
-);
 router.get('/dashboard/trends', (_req: Request, res: Response) =>
   res.json({ section: 'dashboard', action: 'trends' })
 );
-router.get('/dashboard/prevention', (_req: Request, res: Response) =>
-  res.json({ section: 'dashboard', action: 'prevention' })
+router.get('/dashboard/alerts', (_req: Request, res: Response) =>
+  res.json({ section: 'dashboard', action: 'alerts' })
+);
+router.get('/dashboard/stats', (_req: Request, res: Response) =>
+  res.json({ section: 'dashboard', action: 'stats' })
 );
 
-// Incidents (6)
-router.get('/incidents/list', (_req: Request, res: Response) =>
-  res.json({ section: 'incidents', action: 'list' })
+// ========== Inventory (6) ==========
+router.get('/inventory', (_req: Request, res: Response) =>
+  res.json({ section: 'inventory', action: 'list' })
 );
-router.get('/incidents/detail/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'incidents', action: 'detail' })
+router.get('/inventory/:sku', (_req: Request, res: Response) =>
+  res.json({ section: 'inventory', action: 'detail' })
 );
-router.post('/incidents/create', (_req: Request, res: Response) =>
-  res.json({ section: 'incidents', action: 'create' })
+router.post('/inventory/audit', (_req: Request, res: Response) =>
+  res.json({ section: 'inventory', action: 'audit' })
 );
-router.post('/incidents/investigate/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'incidents', action: 'investigate' })
+router.post('/inventory/adjust', (_req: Request, res: Response) =>
+  res.json({ section: 'inventory', action: 'adjust' })
 );
-router.post('/incidents/resolve/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'incidents', action: 'resolve' })
+router.get('/inventory/discrepancies', (_req: Request, res: Response) =>
+  res.json({ section: 'inventory', action: 'discrepancies' })
 );
-router.post('/incidents/bulk-update', (_req: Request, res: Response) =>
-  res.json({ section: 'incidents', action: 'bulk-update' })
-);
-
-// Causes (4)
-router.get('/causes/list', (_req: Request, res: Response) =>
-  res.json({ section: 'causes', action: 'list' })
-);
-router.get('/causes/detail/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'causes', action: 'detail' })
-);
-router.post('/causes/create', (_req: Request, res: Response) =>
-  res.json({ section: 'causes', action: 'create' })
-);
-router.put('/causes/update/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'causes', action: 'update' })
+router.post('/inventory/reconcile', (_req: Request, res: Response) =>
+  res.json({ section: 'inventory', action: 'reconcile' })
 );
 
-// Prevention (4)
-router.get('/prevention/list', (_req: Request, res: Response) =>
-  res.json({ section: 'prevention', action: 'list' })
+// ========== Shrinkage (4) ==========
+router.get('/shrinkage', (_req: Request, res: Response) =>
+  res.json({ section: 'shrinkage', action: 'overview' })
 );
-router.get('/prevention/detail/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'prevention', action: 'detail' })
+router.get('/shrinkage/causes', (_req: Request, res: Response) =>
+  res.json({ section: 'shrinkage', action: 'causes' })
 );
-router.post('/prevention/create', (_req: Request, res: Response) =>
-  res.json({ section: 'prevention', action: 'create' })
+router.get('/shrinkage/trends', (_req: Request, res: Response) =>
+  res.json({ section: 'shrinkage', action: 'trends' })
 );
-router.post('/prevention/apply', (_req: Request, res: Response) =>
-  res.json({ section: 'prevention', action: 'apply' })
+router.post('/shrinkage/mitigate', (_req: Request, res: Response) =>
+  res.json({ section: 'shrinkage', action: 'mitigate' })
 );
 
-// Analytics (3)
+// ========== Investigations (4) ==========
+router.get('/investigations', (_req: Request, res: Response) =>
+  res.json({ section: 'investigations', action: 'list' })
+);
+router.get('/investigations/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'investigations', action: 'detail' })
+);
+router.post('/investigations', (_req: Request, res: Response) =>
+  res.json({ section: 'investigations', action: 'create' })
+);
+router.post('/investigations/:id/resolve', (_req: Request, res: Response) =>
+  res.json({ section: 'investigations', action: 'resolve' })
+);
+
+// ========== Analytics (3) ==========
 router.get('/analytics', (_req: Request, res: Response) =>
-  res.json({ section: 'analytics', action: 'analytics' })
+  res.json({ section: 'analytics', action: 'overview' })
 );
 router.get('/analytics/shrinkage-rate', (_req: Request, res: Response) =>
   res.json({ section: 'analytics', action: 'shrinkage-rate' })
@@ -79,19 +80,19 @@ router.get('/analytics/cost-impact', (_req: Request, res: Response) =>
   res.json({ section: 'analytics', action: 'cost-impact' })
 );
 
-// Settings (2)
+// ========== Settings (2) ==========
 router.get('/settings', (_req: Request, res: Response) =>
   res.json({ section: 'settings', action: 'get' })
 );
 router.put('/settings', (_req: Request, res: Response) =>
-  res.json({ section: 'settings', action: 'put' })
+  res.json({ section: 'settings', action: 'update' })
 );
 
-// Utilities (4)
+// ========== Utilities (4) ==========
 router.get('/health', (_req: Request, res: Response) =>
   res.json({ section: 'utilities', action: 'health' })
 );
-router.get('/export', (_req: Request, res: Response) =>
+router.post('/export', (_req: Request, res: Response) =>
   res.json({ section: 'utilities', action: 'export' })
 );
 router.post('/import', (_req: Request, res: Response) =>
@@ -102,4 +103,3 @@ router.post('/sync', (_req: Request, res: Response) =>
 );
 
 export default router;
-

@@ -2,25 +2,46 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 
 const router = Router();
+// Theme: yellow-600
 
-// Dashboard (5)
+// ========== Dashboard (5) ==========
 router.get('/dashboard', (_req: Request, res: Response) =>
-  res.json({ section: 'dashboard', action: 'dashboard' })
+  res.json({ section: 'dashboard', action: 'overview' })
 );
 router.get('/dashboard/summary', (_req: Request, res: Response) =>
   res.json({ section: 'dashboard', action: 'summary' })
 );
-router.get('/dashboard/scheduled', (_req: Request, res: Response) =>
-  res.json({ section: 'dashboard', action: 'scheduled' })
+router.get('/dashboard/activity', (_req: Request, res: Response) =>
+  res.json({ section: 'dashboard', action: 'activity' })
 );
-router.get('/dashboard/completed', (_req: Request, res: Response) =>
-  res.json({ section: 'dashboard', action: 'completed' })
+router.get('/dashboard/status', (_req: Request, res: Response) =>
+  res.json({ section: 'dashboard', action: 'status' })
 );
-router.get('/dashboard/failed', (_req: Request, res: Response) =>
-  res.json({ section: 'dashboard', action: 'failed' })
+router.get('/dashboard/stats', (_req: Request, res: Response) =>
+  res.json({ section: 'dashboard', action: 'stats' })
 );
 
-// Schedules (6)
+// ========== Listings (6) ==========
+router.get('/listings', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'list' })
+);
+router.get('/listings/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'detail' })
+);
+router.post('/listings', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'create' })
+);
+router.put('/listings/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'update' })
+);
+router.post('/listings/:id/activate', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'activate' })
+);
+router.post('/listings/:id/deactivate', (_req: Request, res: Response) =>
+  res.json({ section: 'listings', action: 'deactivate' })
+);
+
+// ========== Schedules (4) ==========
 router.get('/schedules', (_req: Request, res: Response) =>
   res.json({ section: 'schedules', action: 'list' })
 );
@@ -33,61 +54,41 @@ router.post('/schedules', (_req: Request, res: Response) =>
 router.put('/schedules/:id', (_req: Request, res: Response) =>
   res.json({ section: 'schedules', action: 'update' })
 );
-router.post('/schedules/:id/cancel', (_req: Request, res: Response) =>
-  res.json({ section: 'schedules', action: 'cancel' })
+
+// ========== Queues (4) ==========
+router.get('/queues', (_req: Request, res: Response) =>
+  res.json({ section: 'queues', action: 'list' })
 );
-router.get('/schedules/:id/history', (_req: Request, res: Response) =>
-  res.json({ section: 'schedules', action: 'history' })
+router.get('/queues/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'queues', action: 'detail' })
+);
+router.post('/queues/:id/retry', (_req: Request, res: Response) =>
+  res.json({ section: 'queues', action: 'retry' })
+);
+router.post('/queues/:id/cancel', (_req: Request, res: Response) =>
+  res.json({ section: 'queues', action: 'cancel' })
 );
 
-// Batches (4)
-router.get('/batches', (_req: Request, res: Response) =>
-  res.json({ section: 'batches', action: 'list' })
-);
-router.get('/batches/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'batches', action: 'detail' })
-);
-router.post('/batches', (_req: Request, res: Response) =>
-  res.json({ section: 'batches', action: 'create' })
-);
-router.post('/batches/:id/execute', (_req: Request, res: Response) =>
-  res.json({ section: 'batches', action: 'execute' })
-);
-
-// Templates (4)
-router.get('/templates', (_req: Request, res: Response) =>
-  res.json({ section: 'templates', action: 'list' })
-);
-router.get('/templates/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'templates', action: 'detail' })
-);
-router.post('/templates', (_req: Request, res: Response) =>
-  res.json({ section: 'templates', action: 'create' })
-);
-router.post('/templates/:id/apply', (_req: Request, res: Response) =>
-  res.json({ section: 'templates', action: 'apply' })
-);
-
-// Analytics (3)
+// ========== Analytics (3) ==========
 router.get('/analytics', (_req: Request, res: Response) =>
-  res.json({ section: 'analytics', action: 'analytics' })
+  res.json({ section: 'analytics', action: 'overview' })
 );
-router.get('/analytics/schedule-performance', (_req: Request, res: Response) =>
-  res.json({ section: 'analytics', action: 'schedule-performance' })
+router.get('/analytics/performance', (_req: Request, res: Response) =>
+  res.json({ section: 'analytics', action: 'performance' })
 );
-router.get('/analytics/optimal-timing', (_req: Request, res: Response) =>
-  res.json({ section: 'analytics', action: 'optimal-timing' })
+router.get('/analytics/throughput', (_req: Request, res: Response) =>
+  res.json({ section: 'analytics', action: 'throughput' })
 );
 
-// Settings (2)
+// ========== Settings (2) ==========
 router.get('/settings', (_req: Request, res: Response) =>
   res.json({ section: 'settings', action: 'get' })
 );
 router.put('/settings', (_req: Request, res: Response) =>
-  res.json({ section: 'settings', action: 'put' })
+  res.json({ section: 'settings', action: 'update' })
 );
 
-// Utilities (4)
+// ========== Utilities (4) ==========
 router.get('/health', (_req: Request, res: Response) =>
   res.json({ section: 'utilities', action: 'health' })
 );
