@@ -613,6 +613,12 @@ import ebayOrderMultiCurrencyProcessorRouter from './ebay-order-multi-currency-p
 import ebayInventoryKittingManagerRouter from './ebay-inventory-kitting-manager';
 import ebaySellerSeasonalPlannerRouter from './ebay-seller-seasonal-planner';
 import ebayProductMaterialTrackerRouter from './ebay-product-material-tracker';
+// Phase 671-675
+import ebayListingAiContentOptimizerRouter from './ebay-listing-ai-content-optimizer';
+import ebayOrderIntelligentRoutingRouter from './ebay-order-intelligent-routing';
+import ebayInventorySmartAllocationRouter from './ebay-inventory-smart-allocation';
+import ebaySellerPerformanceBenchmarkRouter from './ebay-seller-performance-benchmark';
+import ebayProductTrendScouterRouter from './ebay-product-trend-scouter';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1246,4 +1252,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-kitting-manager', ebayInventoryKittingManagerRouter);
   app.use('/api/ebay-seller-seasonal-planner', ebaySellerSeasonalPlannerRouter);
   app.use('/api/ebay-product-material-tracker', ebayProductMaterialTrackerRouter);
+  // Phase 671-675
+  app.use('/api/ebay-listing-ai-content-optimizer', ebayListingAiContentOptimizerRouter);
+  app.use('/api/ebay-order-intelligent-routing', ebayOrderIntelligentRoutingRouter);
+  app.use('/api/ebay-inventory-smart-allocation', ebayInventorySmartAllocationRouter);
+  app.use('/api/ebay-seller-performance-benchmark', ebaySellerPerformanceBenchmarkRouter);
+  app.use('/api/ebay-product-trend-scouter', ebayProductTrendScouterRouter);
 }
