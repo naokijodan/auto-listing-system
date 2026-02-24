@@ -1009,6 +1009,90 @@ import ebayOrderWorkflowIntelligenceRouter from './ebay-order-workflow-intellige
 import ebayInventoryStagingIntelligenceRouter from './ebay-inventory-staging-intelligence';
 import ebaySellerPerformanceIntelligenceRouter from './ebay-seller-performance-intelligence';
 import ebayProductClassificationIntelligenceRouter from './ebay-product-classification-intelligence';
+// Phase 1001-1005
+import ebayListingSmartPlacementAutomationRouter from './ebay-listing-smart-placement-automation';
+import ebayOrderRoutingAutomationRouter from './ebay-order-routing-automation';
+import ebayInventoryBalancingAutomationRouter from './ebay-inventory-balancing-automation';
+import ebaySellerOnboardingAutomationRouter from './ebay-seller-onboarding-automation';
+import ebayProductCategorizationAutomationRouter from './ebay-product-categorization-automation';
+// Phase 1006-1010
+import ebayListingPricingAutomationRouter from './ebay-listing-pricing-automation';
+import ebayOrderTrackingAutomationRouter from './ebay-order-tracking-automation';
+import ebayInventoryReorderAutomationRouter from './ebay-inventory-reorder-automation';
+import ebaySellerMetricsAutomationRouter from './ebay-seller-metrics-automation';
+import ebayProductEnrichmentAutomationRouter from './ebay-product-enrichment-automation';
+// Phase 1011-1015
+import ebayListingSyndicationAutomationRouter from './ebay-listing-syndication-automation';
+import ebayOrderFulfillmentAutomationRouter from './ebay-order-fulfillment-automation';
+import ebayInventoryAlertAutomationRouter from './ebay-inventory-alert-automation';
+import ebaySellerCommunicationAutomationRouter from './ebay-seller-communication-automation';
+import ebayProductValidationAutomationRouter from './ebay-product-validation-automation';
+// Phase 1016-1020
+import ebayListingTemplateAutomationRouter from './ebay-listing-template-automation';
+import ebayOrderRefundAutomationRouter from './ebay-order-refund-automation';
+import ebayInventoryTransferAutomationRouter from './ebay-inventory-transfer-automation';
+import ebaySellerComplianceAutomationRouter from './ebay-seller-compliance-automation';
+import ebayProductListingAutomationRouter from './ebay-product-listing-automation';
+// Phase 1021-1025
+import ebayListingMarketingAutomationRouter from './ebay-listing-marketing-automation';
+import ebayOrderInvoiceAutomationRouter from './ebay-order-invoice-automation';
+import ebayInventoryCountAutomationRouter from './ebay-inventory-count-automation';
+import ebaySellerReportingAutomationRouter from './ebay-seller-reporting-automation';
+import ebayProductPhotoAutomationRouter from './ebay-product-photo-automation';
+// Phase 1026-1030
+import ebayListingOptimizerAutomationRouter from './ebay-listing-optimizer-automation';
+import ebayOrderShippingAutomationRouter from './ebay-order-shipping-automation';
+import ebayInventoryForecastingAutomationRouter from './ebay-inventory-forecasting-automation';
+import ebaySellerAnalyticsAutomationRouter from './ebay-seller-analytics-automation';
+import ebayProductDescriptionAutomationRouter from './ebay-product-description-automation';
+// Phase 1031-1035
+import ebayListingRenewalAutomationRouter from './ebay-listing-renewal-automation';
+import ebayOrderConfirmationAutomationRouter from './ebay-order-confirmation-automation';
+import ebayInventoryLocationAutomationRouter from './ebay-inventory-location-automation';
+import ebaySellerInsightAutomationRouter from './ebay-seller-insight-automation';
+import ebayProductComparisonAutomationRouter from './ebay-product-comparison-automation';
+// Phase 1036-1040
+import ebayListingSchedulingAutomationRouter from './ebay-listing-scheduling-automation';
+import ebayOrderDispatchAutomationRouter from './ebay-order-dispatch-automation';
+import ebayInventoryAuditAutomationRouter from './ebay-inventory-audit-automation';
+import ebaySellerPerformanceAutomationRouter from './ebay-seller-performance-automation';
+import ebayProductMappingAutomationRouter from './ebay-product-mapping-automation';
+// Phase 1041-1045
+import ebayListingKeywordAutomationRouter from './ebay-listing-keyword-automation';
+import ebayOrderStatusAutomationRouter from './ebay-order-status-automation';
+import ebayInventorySafetyAutomationRouter from './ebay-inventory-safety-automation';
+import ebaySellerGradingAutomationRouter from './ebay-seller-grading-automation';
+import ebayProductTaggingAutomationRouter from './ebay-product-tagging-automation';
+// Phase 1046-1050
+import ebayListingEnhancementAutomationRouter from './ebay-listing-enhancement-automation';
+import ebayOrderPriorityAutomationRouter from './ebay-order-priority-automation';
+import ebayInventoryPickingAutomationRouter from './ebay-inventory-picking-automation';
+import ebaySellerDashboardAutomationRouter from './ebay-seller-dashboard-automation';
+import ebayProductQualityAutomationRouter from './ebay-product-quality-automation';
+// Phase 1051-1055
+import ebayListingVisibilityAutomationRouter from './ebay-listing-visibility-automation';
+import ebayOrderAllocationAutomationRouter from './ebay-order-allocation-automation';
+import ebayInventoryOptimizationAutomationRouter from './ebay-inventory-optimization-automation';
+import ebaySellerEngagementAutomationRouter from './ebay-seller-engagement-automation';
+import ebayProductPricingAutomationRouter from './ebay-product-pricing-automation';
+// Phase 1056-1060
+import ebayListingContentAutomationRouter from './ebay-listing-content-automation';
+import ebayOrderNotificationAutomationRouter from './ebay-order-notification-automation';
+import ebayInventoryReportingAutomationRouter from './ebay-inventory-reporting-automation';
+import ebaySellerOptimizationAutomationRouter from './ebay-seller-optimization-automation';
+import ebayProductDiscoveryAutomationRouter from './ebay-product-discovery-automation';
+// Phase 1061-1065
+import ebayListingRotationAutomationRouter from './ebay-listing-rotation-automation';
+import ebayOrderBatchingAutomationRouter from './ebay-order-batching-automation';
+import ebayInventoryLabelingAutomationRouter from './ebay-inventory-labeling-automation';
+import ebaySellerBenchmarkAutomationRouter from './ebay-seller-benchmark-automation';
+import ebayProductSortingAutomationRouter from './ebay-product-sorting-automation';
+// Phase 1066-1070
+import ebayListingFeedbackAutomationRouter from './ebay-listing-feedback-automation';
+import ebayOrderClaimAutomationRouter from './ebay-order-claim-automation';
+import ebayInventoryWarehousingAutomationRouter from './ebay-inventory-warehousing-automation';
+import ebaySellerNetworkingAutomationRouter from './ebay-seller-networking-automation';
+import ebayProductArchivingAutomationRouter from './ebay-product-archiving-automation';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -2038,4 +2122,88 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-staging-intelligence', ebayInventoryStagingIntelligenceRouter);
   app.use('/api/ebay-seller-performance-intelligence', ebaySellerPerformanceIntelligenceRouter);
   app.use('/api/ebay-product-classification-intelligence', ebayProductClassificationIntelligenceRouter);
+  // Phase 1001-1005
+  app.use('/api/ebay-listing-smart-placement-automation', ebayListingSmartPlacementAutomationRouter);
+  app.use('/api/ebay-order-routing-automation', ebayOrderRoutingAutomationRouter);
+  app.use('/api/ebay-inventory-balancing-automation', ebayInventoryBalancingAutomationRouter);
+  app.use('/api/ebay-seller-onboarding-automation', ebaySellerOnboardingAutomationRouter);
+  app.use('/api/ebay-product-categorization-automation', ebayProductCategorizationAutomationRouter);
+  // Phase 1006-1010
+  app.use('/api/ebay-listing-pricing-automation', ebayListingPricingAutomationRouter);
+  app.use('/api/ebay-order-tracking-automation', ebayOrderTrackingAutomationRouter);
+  app.use('/api/ebay-inventory-reorder-automation', ebayInventoryReorderAutomationRouter);
+  app.use('/api/ebay-seller-metrics-automation', ebaySellerMetricsAutomationRouter);
+  app.use('/api/ebay-product-enrichment-automation', ebayProductEnrichmentAutomationRouter);
+  // Phase 1011-1015
+  app.use('/api/ebay-listing-syndication-automation', ebayListingSyndicationAutomationRouter);
+  app.use('/api/ebay-order-fulfillment-automation', ebayOrderFulfillmentAutomationRouter);
+  app.use('/api/ebay-inventory-alert-automation', ebayInventoryAlertAutomationRouter);
+  app.use('/api/ebay-seller-communication-automation', ebaySellerCommunicationAutomationRouter);
+  app.use('/api/ebay-product-validation-automation', ebayProductValidationAutomationRouter);
+  // Phase 1016-1020
+  app.use('/api/ebay-listing-template-automation', ebayListingTemplateAutomationRouter);
+  app.use('/api/ebay-order-refund-automation', ebayOrderRefundAutomationRouter);
+  app.use('/api/ebay-inventory-transfer-automation', ebayInventoryTransferAutomationRouter);
+  app.use('/api/ebay-seller-compliance-automation', ebaySellerComplianceAutomationRouter);
+  app.use('/api/ebay-product-listing-automation', ebayProductListingAutomationRouter);
+  // Phase 1021-1025
+  app.use('/api/ebay-listing-marketing-automation', ebayListingMarketingAutomationRouter);
+  app.use('/api/ebay-order-invoice-automation', ebayOrderInvoiceAutomationRouter);
+  app.use('/api/ebay-inventory-count-automation', ebayInventoryCountAutomationRouter);
+  app.use('/api/ebay-seller-reporting-automation', ebaySellerReportingAutomationRouter);
+  app.use('/api/ebay-product-photo-automation', ebayProductPhotoAutomationRouter);
+  // Phase 1026-1030
+  app.use('/api/ebay-listing-optimizer-automation', ebayListingOptimizerAutomationRouter);
+  app.use('/api/ebay-order-shipping-automation', ebayOrderShippingAutomationRouter);
+  app.use('/api/ebay-inventory-forecasting-automation', ebayInventoryForecastingAutomationRouter);
+  app.use('/api/ebay-seller-analytics-automation', ebaySellerAnalyticsAutomationRouter);
+  app.use('/api/ebay-product-description-automation', ebayProductDescriptionAutomationRouter);
+  // Phase 1031-1035
+  app.use('/api/ebay-listing-renewal-automation', ebayListingRenewalAutomationRouter);
+  app.use('/api/ebay-order-confirmation-automation', ebayOrderConfirmationAutomationRouter);
+  app.use('/api/ebay-inventory-location-automation', ebayInventoryLocationAutomationRouter);
+  app.use('/api/ebay-seller-insight-automation', ebaySellerInsightAutomationRouter);
+  app.use('/api/ebay-product-comparison-automation', ebayProductComparisonAutomationRouter);
+  // Phase 1036-1040
+  app.use('/api/ebay-listing-scheduling-automation', ebayListingSchedulingAutomationRouter);
+  app.use('/api/ebay-order-dispatch-automation', ebayOrderDispatchAutomationRouter);
+  app.use('/api/ebay-inventory-audit-automation', ebayInventoryAuditAutomationRouter);
+  app.use('/api/ebay-seller-performance-automation', ebaySellerPerformanceAutomationRouter);
+  app.use('/api/ebay-product-mapping-automation', ebayProductMappingAutomationRouter);
+  // Phase 1041-1045
+  app.use('/api/ebay-listing-keyword-automation', ebayListingKeywordAutomationRouter);
+  app.use('/api/ebay-order-status-automation', ebayOrderStatusAutomationRouter);
+  app.use('/api/ebay-inventory-safety-automation', ebayInventorySafetyAutomationRouter);
+  app.use('/api/ebay-seller-grading-automation', ebaySellerGradingAutomationRouter);
+  app.use('/api/ebay-product-tagging-automation', ebayProductTaggingAutomationRouter);
+  // Phase 1046-1050
+  app.use('/api/ebay-listing-enhancement-automation', ebayListingEnhancementAutomationRouter);
+  app.use('/api/ebay-order-priority-automation', ebayOrderPriorityAutomationRouter);
+  app.use('/api/ebay-inventory-picking-automation', ebayInventoryPickingAutomationRouter);
+  app.use('/api/ebay-seller-dashboard-automation', ebaySellerDashboardAutomationRouter);
+  app.use('/api/ebay-product-quality-automation', ebayProductQualityAutomationRouter);
+  // Phase 1051-1055
+  app.use('/api/ebay-listing-visibility-automation', ebayListingVisibilityAutomationRouter);
+  app.use('/api/ebay-order-allocation-automation', ebayOrderAllocationAutomationRouter);
+  app.use('/api/ebay-inventory-optimization-automation', ebayInventoryOptimizationAutomationRouter);
+  app.use('/api/ebay-seller-engagement-automation', ebaySellerEngagementAutomationRouter);
+  app.use('/api/ebay-product-pricing-automation', ebayProductPricingAutomationRouter);
+  // Phase 1056-1060
+  app.use('/api/ebay-listing-content-automation', ebayListingContentAutomationRouter);
+  app.use('/api/ebay-order-notification-automation', ebayOrderNotificationAutomationRouter);
+  app.use('/api/ebay-inventory-reporting-automation', ebayInventoryReportingAutomationRouter);
+  app.use('/api/ebay-seller-optimization-automation', ebaySellerOptimizationAutomationRouter);
+  app.use('/api/ebay-product-discovery-automation', ebayProductDiscoveryAutomationRouter);
+  // Phase 1061-1065
+  app.use('/api/ebay-listing-rotation-automation', ebayListingRotationAutomationRouter);
+  app.use('/api/ebay-order-batching-automation', ebayOrderBatchingAutomationRouter);
+  app.use('/api/ebay-inventory-labeling-automation', ebayInventoryLabelingAutomationRouter);
+  app.use('/api/ebay-seller-benchmark-automation', ebaySellerBenchmarkAutomationRouter);
+  app.use('/api/ebay-product-sorting-automation', ebayProductSortingAutomationRouter);
+  // Phase 1066-1070
+  app.use('/api/ebay-listing-feedback-automation', ebayListingFeedbackAutomationRouter);
+  app.use('/api/ebay-order-claim-automation', ebayOrderClaimAutomationRouter);
+  app.use('/api/ebay-inventory-warehousing-automation', ebayInventoryWarehousingAutomationRouter);
+  app.use('/api/ebay-seller-networking-automation', ebaySellerNetworkingAutomationRouter);
+  app.use('/api/ebay-product-archiving-automation', ebayProductArchivingAutomationRouter);
 }
