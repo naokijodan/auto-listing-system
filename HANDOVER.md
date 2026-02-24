@@ -3,9 +3,9 @@
 ## 最終更新
 
 **日付**: 2026-02-24
-**Phase**: v3.0 Social Commerce Edition — Phase 595完了
+**Phase**: v3.0 Social Commerce Edition — Phase 670完了
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: 00dbac9
+**最新コミット**: f4139a6
 
 ---
 
@@ -53,9 +53,9 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 | タスク | 内容 | 開始Phase |
 |--------|------|-----------|
-| **eBay Phase 596+** | eBay機能の継続開発（Phase 596から） | Phase 596 |
+| **eBay Phase 671+** | eBay機能の継続開発（Phase 671から） | Phase 671 |
 
-**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 596から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
+**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 671から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
 
 **パターン**: 5 Phase単位でCodexに委託 → ebay-routes.ts更新 → git commit → 5バッチ（25-30 Phase）でpush → HANDOVER.md更新 → Obsidianノート
 
@@ -252,52 +252,109 @@ APIエラーハンドリングを統一するミドルウェアを生成して�
 
 ---
 
-## 今回のセッションで完了したPhase（521-570）
+## 今回のセッションで完了したPhase（596-670）
 
 | Phase | 機能名 | API | テーマ |
 |-------|--------|-----|--------|
-| 521 | 出品品質検査ツール | ebay-listing-quality-inspector | green-600 |
-| 522 | 注文配送見積ツール | ebay-order-delivery-estimator | blue-600 |
-| 523 | 在庫需要分析ツール | ebay-inventory-demand-analyzer | yellow-600 |
-| 524 | セラーアカウントヘルス | ebay-seller-account-health | purple-600 |
-| 525 | 商品市場適合分析 | ebay-product-market-fit-analyzer | cyan-600 |
-| 526 | 出品ローカライゼーションエンジン | ebay-listing-localization-engine | lime-600 |
-| 527 | 注文返金処理ツール | ebay-order-refund-processor | emerald-600 |
-| 528 | 在庫同期ダッシュボード | ebay-inventory-sync-dashboard | sky-600 |
-| 529 | セラーKPIトラッカー | ebay-seller-kpi-tracker | amber-600 |
-| 530 | 商品説明生成Pro | ebay-product-description-generator-pro | violet-600 |
-| 531 | 出品スケジュール最適化 | ebay-listing-schedule-optimizer | rose-600 |
-| 532 | 注文優先ルーター | ebay-order-priority-router | teal-600 |
-| 533 | 在庫回転率分析 | ebay-inventory-turnover-analyzer | indigo-600 |
-| 534 | セラー利益ダッシュボード | ebay-seller-profit-dashboard | orange-600 |
-| 535 | 商品トレンドスポッター | ebay-product-trend-spotter | pink-600 |
-| 536 | 出品手数料最適化 | ebay-listing-fee-optimizer | slate-600 |
-| 537 | 注文クレーム管理 | ebay-order-claims-manager | red-600 |
-| 538 | 在庫価値トラッカー | ebay-inventory-value-tracker | fuchsia-600 |
-| 539 | セラー成長分析 | ebay-seller-growth-analytics | green-600 |
-| 540 | 商品インポートウィザード | ebay-product-import-wizard | blue-600 |
-| 541 | 出品コンプライアンスモニター | ebay-listing-compliance-monitor | yellow-600 |
-| 542 | 注文配送追跡Pro | ebay-order-shipping-tracker-pro | purple-600 |
-| 543 | 在庫アラートセンター | ebay-inventory-alert-center | cyan-600 |
-| 544 | セラーマーケティングハブ | ebay-seller-marketing-hub | lime-600 |
-| 545 | 商品カテゴリナビゲーター | ebay-product-category-navigator | emerald-600 |
-| 546 | 出品テンプレート管理Pro | ebay-listing-template-manager-pro | sky-600 |
-| 547 | 注文分析ダッシュボードPro | ebay-order-analytics-dashboard-pro | amber-600 |
-| 548 | 在庫予測エンジン | ebay-inventory-forecasting-engine | violet-600 |
-| 549 | セラーコンプライアンスセンター | ebay-seller-compliance-center | rose-600 |
-| 550 | 商品競合分析ツール | ebay-product-competitive-analyzer | teal-600 |
-| 551 | 出品一括スケジューラー | ebay-listing-bulk-scheduler | indigo-600 |
-| 552 | 注文決済ゲートウェイ | ebay-order-payment-gateway | orange-600 |
-| 553 | 在庫一括更新ツール | ebay-inventory-batch-updater | pink-600 |
-| 554 | セラーフィードバック分析 | ebay-seller-feedback-analyzer | slate-600 |
-| 555 | 商品価格戦略 | ebay-product-pricing-strategy | red-600 |
-| 556 | 出品画像強化Pro | ebay-listing-image-enhancer-pro | fuchsia-600 |
-| 557 | 注文自動化エンジン | ebay-order-automation-engine | green-600 |
-| 558 | 在庫最適化スイート | ebay-inventory-optimization-suite | blue-600 |
-| 559 | セラーパフォーマンスインサイト | ebay-seller-performance-insights | yellow-600 |
-| 560 | 商品ソーシングインテリジェンス | ebay-product-sourcing-intelligence | purple-600 |
-| 561 | 出品コンバージョントラッカー | ebay-listing-conversion-tracker | cyan-600 |
-| 562 | 注文カスタマーサービスハブ | ebay-order-customer-service-hub | lime-600 |
+| 596 | 出品ストアフロント最適化 | ebay-listing-storefront-optimizer | purple-600 |
+| 597 | 注文インボイスジェネレーター | ebay-order-invoice-generator | cyan-600 |
+| 598 | 在庫リアルタイムダッシュボード | ebay-inventory-realtime-dashboard | lime-600 |
+| 599 | セラービジネスインテリジェンス | ebay-seller-business-intelligence | emerald-600 |
+| 600 | 商品マーケットリサーチ | ebay-product-market-research | sky-600 |
+| 601 | 出品ビジュアルマーチャンダイジング | ebay-listing-visual-merchandising | amber-600 |
+| 602 | 注文サプライチェーン管理 | ebay-order-supply-chain-manager | violet-600 |
+| 603 | 在庫スマートリバランサー | ebay-inventory-smart-rebalancer | rose-600 |
+| 604 | セラーAIアドバイザー | ebay-seller-ai-advisor | teal-600 |
+| 605 | 商品クロスボーダーツール | ebay-product-cross-border-tool | indigo-600 |
+| 606 | 出品パフォーマンスプレディクター | ebay-listing-performance-predictor | orange-600 |
+| 607 | 注文マルチキャリアマネージャー | ebay-order-multi-carrier-manager | pink-600 |
+| 608 | 在庫サプライヤーポータル | ebay-inventory-supplier-portal | slate-600 |
+| 609 | セラーマーケットインテリジェンス | ebay-seller-market-intelligence | red-600 |
+| 610 | 商品デジタルアセット管理 | ebay-product-digital-asset-manager | fuchsia-600 |
+| 611 | 出品ダイナミックコンテンツ | ebay-listing-dynamic-content | green-600 |
+| 612 | 注文カスタムラベラー | ebay-order-custom-labeler | blue-600 |
+| 613 | 在庫サイクルカウンター | ebay-inventory-cycle-counter | yellow-600 |
+| 614 | セラーワークスペース管理 | ebay-seller-workspace-manager | purple-600 |
+| 615 | 商品エコサステナビリティ | ebay-product-eco-sustainability | cyan-600 |
+| 616 | 出品マルチフォーマット | ebay-listing-multi-format | lime-600 |
+| 617 | 注文レシート管理 | ebay-order-receipt-manager | emerald-600 |
+| 618 | 在庫品質検査 | ebay-inventory-quality-inspection | sky-600 |
+| 619 | セラーコラボレーションツール | ebay-seller-collaboration-tool | amber-600 |
+| 620 | 商品サブスクリプション管理 | ebay-product-subscription-manager | violet-600 |
+| 621 | 出品オーディエンスターゲティング | ebay-listing-audience-targeting | rose-600 |
+| 622 | 注文配送スケジューラー | ebay-order-delivery-scheduler | teal-600 |
+| 623 | 在庫ダメージトラッカー | ebay-inventory-damage-tracker | indigo-600 |
+| 624 | セラートレーニングハブ | ebay-seller-training-hub | orange-600 |
+| 625 | 商品保証管理 | ebay-product-warranty-manager | pink-600 |
+| 626 | 出品スマートカテゴライザーPro | ebay-listing-smart-categorizer-pro | slate-600 |
+| 627 | 注文梱包最適化 | ebay-order-packaging-optimizer | red-600 |
+| 628 | 在庫シリアルトラッカー | ebay-inventory-serial-tracker | fuchsia-600 |
+| 629 | セラーキャッシュフロー管理 | ebay-seller-cash-flow-manager | green-600 |
+| 630 | 商品バンドルビルダーPro | ebay-product-bundle-builder-pro | blue-600 |
+| 631 | 出品価格弾力性分析 | ebay-listing-price-elasticity-analyzer | yellow-600 |
+| 632 | 注文ギフトラッピングサービス | ebay-order-gift-wrapping-service | purple-600 |
+| 633 | 在庫ロケーション最適化 | ebay-inventory-location-optimizer | cyan-600 |
+| 634 | セラーデータエクスポートハブ | ebay-seller-data-export-hub | lime-600 |
+| 635 | 商品リコール管理 | ebay-product-recall-manager | emerald-600 |
+| 636 | 出品ウォーターマークジェネレーター | ebay-listing-watermark-generator | sky-600 |
+| 637 | 注文住所バリデーター | ebay-order-address-validator | amber-600 |
+| 638 | 在庫返品プロセッサー | ebay-inventory-return-processor | violet-600 |
+| 639 | セラー通知センターPro | ebay-seller-notification-center-pro | rose-600 |
+| 640 | 商品認証トラッカー | ebay-product-certification-tracker | teal-600 |
+| 641 | 出品アージェンシーブースター | ebay-listing-urgency-booster | indigo-600 |
+| 642 | 注文保険管理 | ebay-order-insurance-manager | orange-600 |
+| 643 | 在庫ベンダースコアカード | ebay-inventory-vendor-scorecard | pink-600 |
+| 644 | セラーAPI統合ハブ | ebay-seller-api-integration-hub | slate-600 |
+| 645 | 商品カスタム属性 | ebay-product-custom-attributes | red-600 |
+| 646 | 出品ソーシャルプルーフエンジン | ebay-listing-social-proof-engine | fuchsia-600 |
+| 647 | 注文優先キュー | ebay-order-priority-queue | green-600 |
+| 648 | 在庫シェルフライフ管理 | ebay-inventory-shelf-life-manager | blue-600 |
+| 649 | セラーホリデープランナー | ebay-seller-holiday-planner | yellow-600 |
+| 650 | 商品サイズチャート管理 | ebay-product-size-chart-manager | purple-600 |
+| 651 | 出品トラストバッジ管理 | ebay-listing-trust-badge-manager | cyan-600 |
+| 652 | 注文署名確認 | ebay-order-signature-confirmation | lime-600 |
+| 653 | 在庫ディスポジション管理 | ebay-inventory-disposition-manager | emerald-600 |
+| 654 | セラーマイルストーントラッカー | ebay-seller-milestone-tracker | sky-600 |
+| 655 | 商品真贋判定ツール | ebay-product-authenticity-verifier | amber-600 |
+| 656 | 出品音声検索最適化 | ebay-listing-voice-search-optimizer | violet-600 |
+| 657 | 注文統合エンジン | ebay-order-consolidation-engine | rose-600 |
+| 658 | 在庫ABC分析 | ebay-inventory-abc-analyzer | teal-600 |
+| 659 | セラーレビュー返信Bot | ebay-seller-review-response-bot | indigo-600 |
+| 660 | 商品危険物コンプライアンス | ebay-product-hazmat-compliance | orange-600 |
+| 661 | 出品モバイル最適化 | ebay-listing-mobile-optimizer | pink-600 |
+| 662 | 注文ドロップシップコーディネーター | ebay-order-dropship-coordinator | slate-600 |
+| 663 | 在庫クロスドック管理 | ebay-inventory-cross-dock-manager | red-600 |
+| 664 | セラー利益計算機Pro | ebay-seller-profit-calculator-pro | fuchsia-600 |
+| 665 | 商品動画管理 | ebay-product-video-manager | green-600 |
+| 666 | 出品カウントダウンタイマー | ebay-listing-countdown-timer | blue-600 |
+| 667 | 注文マルチ通貨プロセッサー | ebay-order-multi-currency-processor | yellow-600 |
+| 668 | 在庫キッティング管理 | ebay-inventory-kitting-manager | purple-600 |
+| 669 | セラーシーズナルプランナー | ebay-seller-seasonal-planner | cyan-600 |
+| 670 | 商品素材トラッカー | ebay-product-material-tracker | lime-600 |
+
+**Git履歴**:
+- f4139a6 Phase 666-670
+- a6323c1 Phase 661-665
+- 58f0a2e Phase 656-660
+- f4a49d1 Phase 651-655
+- 0fafd9d Phase 646-650
+- d5d8c8b Phase 641-645
+- 4641c10 Phase 636-640
+- 628c515 Phase 631-635
+- 94b90c1 Phase 626-630
+- a68dac4 Phase 621-625
+- 760b1ee Phase 616-620
+- c6dfb92 Phase 611-615
+- 8ceaf75 Phase 606-610
+- 3b80bca Phase 601-605
+- a6b1151 Phase 596-600
+
+---
+
+## 前回のセッションで完了したPhase（521-595）
+
+| Phase | 機能名 | API | テーマ |
+|-------|--------|-----|--------|
 | 563 | 在庫調達プランナー | ebay-inventory-procurement-planner | emerald-600 |
 | 564 | セラー売上最適化 | ebay-seller-revenue-optimizer | sky-600 |
 | 565 | 商品ライフサイクルトラッカー | ebay-product-lifecycle-tracker | amber-600 |
