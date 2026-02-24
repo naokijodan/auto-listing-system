@@ -259,6 +259,11 @@ import ebayProductSourcingAssistantRouter from './ebay-product-sourcing-assistan
 import ebayWarrantyManagerRouter from './ebay-warranty-manager';
 import ebayInventoryValuationToolRouter from './ebay-inventory-valuation-tool';
 import ebayCrossBorderTaxCalculatorRouter from './ebay-cross-border-tax-calculator';
+import ebayItemSpecificsManagerRouter from './ebay-item-specifics-manager';
+import ebayListingAnalyticsProRouter from './ebay-listing-analytics-pro';
+import ebayPaymentReconciliationRouter from './ebay-payment-reconciliation';
+import ebayDynamicPricingEngineRouter from './ebay-dynamic-pricing-engine';
+import ebayCatalogManagementRouter from './ebay-catalog-management';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -526,4 +531,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-warranty-manager', ebayWarrantyManagerRouter);
   app.use('/api/ebay-inventory-valuation-tool', ebayInventoryValuationToolRouter);
   app.use('/api/ebay-cross-border-tax-calculator', ebayCrossBorderTaxCalculatorRouter);
+  // Phase 371-375
+  app.use('/api/ebay-item-specifics-manager', ebayItemSpecificsManagerRouter);
+  app.use('/api/ebay-listing-analytics-pro', ebayListingAnalyticsProRouter);
+  app.use('/api/ebay-payment-reconciliation', ebayPaymentReconciliationRouter);
+  app.use('/api/ebay-dynamic-pricing-engine', ebayDynamicPricingEngineRouter);
+  app.use('/api/ebay-catalog-management', ebayCatalogManagementRouter);
 }
