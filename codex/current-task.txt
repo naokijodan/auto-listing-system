@@ -1,119 +1,42 @@
-Phase 436-440のeBay機能ファイルを生成してください。
+Phase 726-730のeBay機能ファイルを生成。直接指定パスに書き込む。
 
-出力先: すべて直接指定パスに書き込んでください。
-
-## Phase 436: Inventory Shrinkage Tracker（在庫ロストラッカー）
-テーマカラー: lime-600
-
-### ファイル1: apps/api/src/routes/ebay-inventory-shrinkage-tracker.ts
-Express Router 28エンドポイント、スタブ形式。
-セクション:
-- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/incidents, /dashboard/trends, /dashboard/prevention
-- Incidents (6): list, detail, create, investigate, resolve, bulk-update
-- Causes (4): list, detail, create, update
-- Prevention (4): list, detail, create, apply
-- Analytics (3): analytics, analytics/shrinkage-rate, analytics/cost-impact
-- Settings (2): GET/PUT
-- Utilities (4): health, export, import, sync
-各: `(_req: Request, res: Response) => res.json({ section: 'xxx', action: 'yyy' })`
+## Phase 726: apps/api/src/routes/ebay-listing-cross-platform-sync.ts
+出品クロスプラットフォーム同期, テーマカラー: sky-600
+28スタブ: dashboard(5), listings(6), platforms(4), sync(4), analytics(3), settings(2), utilities(4)
 `import { Router } from 'express'; import type { Request, Response } from 'express'; const router = Router(); export default router;`
+各: `(_req: Request, res: Response) => res.json({ section, action })`
 
-### ファイル2: apps/web/src/app/ebay/inventory-shrinkage-tracker/page.tsx
-6タブ: dashboard/incidents/causes/prevention/analytics/settings
-日本語: ダッシュボード/インシデント/原因/防止/分析/設定
-コンポーネント: InventoryShrinkageTrackerPage, タイトル: 「在庫ロストラッカー」text-lime-600
-API: /api/ebay-inventory-shrinkage-tracker/
+## Phase 726 UI: apps/web/src/app/ebay/listing-cross-platform-sync/page.tsx
+6タブ(ダッシュボード/出品/プラットフォーム/同期/分析/設定), text-sky-600, API=/api/ebay-listing-cross-platform-sync/
+'use client', fetch+useState+useEffect
 
----
+## Phase 727: apps/api/src/routes/ebay-order-payment-reconciler.ts
+注文支払い照合, テーマカラー: amber-600
+28スタブ: dashboard(5), orders(6), payments(4), reconciliation(4), analytics(3), settings(2), utilities(4)
 
-## Phase 437: Seller Reputation Guard（セラー評判ガード）
-テーマカラー: emerald-600
+## Phase 727 UI: apps/web/src/app/ebay/order-payment-reconciler/page.tsx
+6タブ(ダッシュボード/注文/支払い/照合/分析/設定), text-amber-600, API=/api/ebay-order-payment-reconciler/
 
-### ファイル3: apps/api/src/routes/ebay-seller-reputation-guard.ts
-セクション:
-- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/score, /dashboard/threats, /dashboard/improvements
-- Reputation (6): list, detail, monitor, improve, alert, history
-- Reviews (4): list, detail, respond, flag
-- Alerts (4): list, detail, create, dismiss
-- Analytics (3): analytics, analytics/score-trend, analytics/impact-analysis
-- Settings (2): GET/PUT
-- Utilities (4): health, export, import, sync
+## Phase 728: apps/api/src/routes/ebay-inventory-receiving-dock.ts
+在庫入荷ドック管理, テーマカラー: violet-600
+28スタブ: dashboard(5), inventory(6), receiving(4), inspections(4), analytics(3), settings(2), utilities(4)
 
-### ファイル4: apps/web/src/app/ebay/seller-reputation-guard/page.tsx
-6タブ: dashboard/reputation/reviews/alerts/analytics/settings
-日本語: ダッシュボード/評判/レビュー/アラート/分析/設定
-コンポーネント: SellerReputationGuardPage, タイトル: 「セラー評判ガード」text-emerald-600
-API: /api/ebay-seller-reputation-guard/
+## Phase 728 UI: apps/web/src/app/ebay/inventory-receiving-dock/page.tsx
+6タブ(ダッシュボード/在庫/入荷/検品/分析/設定), text-violet-600, API=/api/ebay-inventory-receiving-dock/
 
----
+## Phase 729: apps/api/src/routes/ebay-seller-knowledge-base.ts
+セラーナレッジベース, テーマカラー: rose-600
+28スタブ: dashboard(5), sellers(6), articles(4), categories(4), analytics(3), settings(2), utilities(4)
 
-## Phase 438: Listing Conversion Optimizer（出品コンバージョン最適化）
-テーマカラー: sky-600
+## Phase 729 UI: apps/web/src/app/ebay/seller-knowledge-base/page.tsx
+6タブ(ダッシュボード/セラー/記事/カテゴリ/分析/設定), text-rose-600, API=/api/ebay-seller-knowledge-base/
 
-### ファイル5: apps/api/src/routes/ebay-listing-conversion-optimizer.ts
-セクション:
-- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/top-converters, /dashboard/low-converters, /dashboard/recommendations
-- Listings (6): list, detail, analyze, optimize, bulk-optimize, history
-- Tests (4): list, detail, create, results
-- Recommendations (4): list, detail, apply, bulk-apply
-- Analytics (3): analytics, analytics/conversion-funnel, analytics/revenue-lift
-- Settings (2): GET/PUT
-- Utilities (4): health, export, import, refresh
+## Phase 730: apps/api/src/routes/ebay-product-lifecycle-manager.ts
+商品ライフサイクル管理, テーマカラー: teal-600
+28スタブ: dashboard(5), products(6), lifecycle(4), stages(4), analytics(3), settings(2), utilities(4)
 
-### ファイル6: apps/web/src/app/ebay/listing-conversion-optimizer/page.tsx
-6タブ: dashboard/listings/tests/recommendations/analytics/settings
-日本語: ダッシュボード/出品/テスト/推奨/分析/設定
-コンポーネント: ListingConversionOptimizerPage, タイトル: 「出品コンバージョン最適化」text-sky-600
-API: /api/ebay-listing-conversion-optimizer/
+## Phase 730 UI: apps/web/src/app/ebay/product-lifecycle-manager/page.tsx
+6タブ(ダッシュボード/商品/ライフサイクル/ステージ/分析/設定), text-teal-600, API=/api/ebay-product-lifecycle-manager/
 
----
-
-## Phase 439: Order Routing Engine（注文ルーティングエンジン）
-テーマカラー: amber-600
-
-### ファイル7: apps/api/src/routes/ebay-order-routing-engine.ts
-セクション:
-- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/routed, /dashboard/pending, /dashboard/exceptions
-- Routes (6): list, detail, create, update, activate, deactivate
-- Warehouses (4): list, detail, capacity, availability
-- Rules (4): list, detail, create, update
-- Analytics (3): analytics, analytics/routing-efficiency, analytics/cost-savings
-- Settings (2): GET/PUT
-- Utilities (4): health, export, import, sync
-
-### ファイル8: apps/web/src/app/ebay/order-routing-engine/page.tsx
-6タブ: dashboard/routes/warehouses/rules/analytics/settings
-日本語: ダッシュボード/ルート/倉庫/ルール/分析/設定
-コンポーネント: OrderRoutingEnginePage, タイトル: 「注文ルーティングエンジン」text-amber-600
-API: /api/ebay-order-routing-engine/
-
----
-
-## Phase 440: Product Review Aggregator（商品レビュー集約）
-テーマカラー: violet-600
-
-### ファイル9: apps/api/src/routes/ebay-product-review-aggregator.ts
-セクション:
-- Dashboard (5): /dashboard, /dashboard/summary, /dashboard/recent, /dashboard/sentiment, /dashboard/top-reviewed
-- Reviews (6): list, detail, aggregate, respond, flag, bulk-respond
-- Products (4): list, detail, review-summary, comparison
-- Sentiment (4): list, detail, analyze, trends
-- Analytics (3): analytics, analytics/rating-distribution, analytics/sentiment-trend
-- Settings (2): GET/PUT
-- Utilities (4): health, export, import, sync
-
-### ファイル10: apps/web/src/app/ebay/product-review-aggregator/page.tsx
-6タブ: dashboard/reviews/products/sentiment/analytics/settings
-日本語: ダッシュボード/レビュー/商品/感情分析/分析/設定
-コンポーネント: ProductReviewAggregatorPage, タイトル: 「商品レビュー集約」text-violet-600
-API: /api/ebay-product-review-aggregator/
-
----
-
-## ルール
-- TypeScript strict mode、express型
-- UI: 'use client', useState/useEffect使用, Tailwindクラスでスタイリング
-- APIファイル: `import { Router } from 'express'; import type { Request, Response } from 'express'; const router = Router(); ... export default router;`
-- UIファイル: useSWRではなくfetch+useState+useEffect
-- ファイルは直接指定パスに書き込む
-- ebay-routes.tsにimportとapp.use登録を追加すること
+ルール: TypeScript strict, express型, UI='use client'+fetch+useState+useEffect, 日本語ラベル
+ebay-routes.tsは編集しないでください。
