@@ -1513,6 +1513,90 @@ import ebayOrderShippingRateModuleRouter from './ebay-order-shipping-rate-module
 import ebayInventoryStockValuationModuleRouter from './ebay-inventory-stock-valuation-module';
 import ebaySellerSalesForecastModuleRouter from './ebay-seller-sales-forecast-module';
 import ebayProductCustomsCodeModuleRouter from './ebay-product-customs-code-module';
+// Phase 1421-1425
+import ebayListingAutopilotPricingServiceRouter from './ebay-listing-autopilot-pricing-service';
+import ebayOrderWarehouseRoutingServiceRouter from './ebay-order-warehouse-routing-service';
+import ebayInventoryDemandIntelligenceServiceRouter from './ebay-inventory-demand-intelligence-service';
+import ebaySellerAccountOptimizationServiceRouter from './ebay-seller-account-optimization-service';
+import ebayProductDataValidationServiceRouter from './ebay-product-data-validation-service';
+// Phase 1426-1430
+import ebayListingFlashSaleServiceRouter from './ebay-listing-flash-sale-service';
+import ebayOrderConsolidationPackingServiceRouter from './ebay-order-consolidation-packing-service';
+import ebayInventorySafetyBufferServiceRouter from './ebay-inventory-safety-buffer-service';
+import ebaySellerTaxAutomationServiceRouter from './ebay-seller-tax-automation-service';
+import ebayProductImageRecognitionServiceRouter from './ebay-product-image-recognition-service';
+// Phase 1431-1435
+import ebayListingSmartCategoryServiceRouter from './ebay-listing-smart-category-service';
+import ebayOrderDeliverySchedulingServiceRouter from './ebay-order-delivery-scheduling-service';
+import ebayInventoryVendorManagementServiceRouter from './ebay-inventory-vendor-management-service';
+import ebaySellerReviewAnalyticsServiceRouter from './ebay-seller-review-analytics-service';
+import ebayProductSpecificationExtractionServiceRouter from './ebay-product-specification-extraction-service';
+// Phase 1436-1440
+import ebayListingPriceSuggestionServiceRouter from './ebay-listing-price-suggestion-service';
+import ebayOrderReturnsProcessingServiceRouter from './ebay-order-returns-processing-service';
+import ebayInventoryStockAlertServiceRouter from './ebay-inventory-stock-alert-service';
+import ebaySellerPaymentProcessingServiceRouter from './ebay-seller-payment-processing-service';
+import ebayProductComplianceCheckingServiceRouter from './ebay-product-compliance-checking-service';
+// Phase 1441-1445
+import ebayListingTitleGenerationServiceRouter from './ebay-listing-title-generation-service';
+import ebayOrderLabelPrintingServiceRouter from './ebay-order-label-printing-service';
+import ebayInventoryLocationTrackingServiceRouter from './ebay-inventory-location-tracking-service';
+import ebaySellerDashboardReportingServiceRouter from './ebay-seller-dashboard-reporting-service';
+import ebayProductWeightEstimationServiceRouter from './ebay-product-weight-estimation-service';
+// Phase 1446-1450
+import ebayListingDescriptionBuilderServiceRouter from './ebay-listing-description-builder-service';
+import ebayOrderCustomsProcessingServiceRouter from './ebay-order-customs-processing-service';
+import ebayInventoryPickingOptimizationServiceRouter from './ebay-inventory-picking-optimization-service';
+import ebaySellerMarketingAutomationServiceRouter from './ebay-seller-marketing-automation-service';
+import ebayProductCatalogImportServiceRouter from './ebay-product-catalog-import-service';
+// Phase 1451-1455
+import ebayListingVariationPricingServiceRouter from './ebay-listing-variation-pricing-service';
+import ebayOrderNotificationDeliveryServiceRouter from './ebay-order-notification-delivery-service';
+import ebayInventoryContainerManagementServiceRouter from './ebay-inventory-container-management-service';
+import ebaySellerSubscriptionManagementServiceRouter from './ebay-seller-subscription-management-service';
+import ebayProductBrandVerificationServiceRouter from './ebay-product-brand-verification-service';
+// Phase 1456-1460
+import ebayListingPromotedListingServiceRouter from './ebay-listing-promoted-listing-service';
+import ebayOrderPartialRefundServiceRouter from './ebay-order-partial-refund-service';
+import ebayInventoryTransferAutomationServiceRouter from './ebay-inventory-transfer-automation-service';
+import ebaySellerCompetitorTrackingServiceRouter from './ebay-seller-competitor-tracking-service';
+import ebayProductDimensionValidationServiceRouter from './ebay-product-dimension-validation-service';
+// Phase 1461-1465
+import ebayListingMobileOptimizationServiceRouter from './ebay-listing-mobile-optimization-service';
+import ebayOrderSignatureTrackingServiceRouter from './ebay-order-signature-tracking-service';
+import ebayInventoryExpiryNotificationServiceRouter from './ebay-inventory-expiry-notification-service';
+import ebaySellerTeamManagementServiceRouter from './ebay-seller-team-management-service';
+import ebayProductMaterialTrackingServiceRouter from './ebay-product-material-tracking-service';
+// Phase 1466-1470
+import ebayListingGalleryManagementServiceRouter from './ebay-listing-gallery-management-service';
+import ebayOrderCancellationProcessingServiceRouter from './ebay-order-cancellation-processing-service';
+import ebayInventoryStockReconciliationServiceRouter from './ebay-inventory-stock-reconciliation-service';
+import ebaySellerFinancialAnalyticsServiceRouter from './ebay-seller-financial-analytics-service';
+import ebayProductOriginTrackingServiceRouter from './ebay-product-origin-tracking-service';
+// Phase 1471-1475
+import ebayListingItemConditionServiceRouter from './ebay-listing-item-condition-service';
+import ebayOrderReplacementShippingServiceRouter from './ebay-order-replacement-shipping-service';
+import ebayInventoryMinMaxAutomationServiceRouter from './ebay-inventory-min-max-automation-service';
+import ebaySellerPerformanceScoringServiceRouter from './ebay-seller-performance-scoring-service';
+import ebayProductCompositionAnalysisServiceRouter from './ebay-product-composition-analysis-service';
+// Phase 1476-1480
+import ebayListingPromotedAdsServiceRouter from './ebay-listing-promoted-ads-service';
+import ebayOrderInsuranceProcessingServiceRouter from './ebay-order-insurance-processing-service';
+import ebayInventoryVendorScoringServiceRouter from './ebay-inventory-vendor-scoring-service';
+import ebaySellerComplianceDashboardServiceRouter from './ebay-seller-compliance-dashboard-service';
+import ebayProductPackagingOptimizationServiceRouter from './ebay-product-packaging-optimization-service';
+// Phase 1481-1485
+import ebayListingOutOfStockAlertServiceRouter from './ebay-listing-out-of-stock-alert-service';
+import ebayOrderMultiCarrierServiceRouter from './ebay-order-multi-carrier-service';
+import ebayInventoryCycleSchedulingServiceRouter from './ebay-inventory-cycle-scheduling-service';
+import ebaySellerRevenueDashboardServiceRouter from './ebay-seller-revenue-dashboard-service';
+import ebayProductWarrantyManagementServiceRouter from './ebay-product-warranty-management-service';
+// Phase 1486-1490
+import ebayListingHolidaySchedulingServiceRouter from './ebay-listing-holiday-scheduling-service';
+import ebayOrderBackorderNotificationServiceRouter from './ebay-order-backorder-notification-service';
+import ebayInventoryShelfManagementServiceRouter from './ebay-inventory-shelf-management-service';
+import ebaySellerTrendAnalysisServiceRouter from './ebay-seller-trend-analysis-service';
+import ebayProductSkuManagementServiceRouter from './ebay-product-sku-management-service';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -3046,4 +3130,88 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-stock-valuation-module', ebayInventoryStockValuationModuleRouter);
   app.use('/api/ebay-seller-sales-forecast-module', ebaySellerSalesForecastModuleRouter);
   app.use('/api/ebay-product-customs-code-module', ebayProductCustomsCodeModuleRouter);
+  // Phase 1421-1425
+  app.use('/api/ebay-listing-autopilot-pricing-service', ebayListingAutopilotPricingServiceRouter);
+  app.use('/api/ebay-order-warehouse-routing-service', ebayOrderWarehouseRoutingServiceRouter);
+  app.use('/api/ebay-inventory-demand-intelligence-service', ebayInventoryDemandIntelligenceServiceRouter);
+  app.use('/api/ebay-seller-account-optimization-service', ebaySellerAccountOptimizationServiceRouter);
+  app.use('/api/ebay-product-data-validation-service', ebayProductDataValidationServiceRouter);
+  // Phase 1426-1430
+  app.use('/api/ebay-listing-flash-sale-service', ebayListingFlashSaleServiceRouter);
+  app.use('/api/ebay-order-consolidation-packing-service', ebayOrderConsolidationPackingServiceRouter);
+  app.use('/api/ebay-inventory-safety-buffer-service', ebayInventorySafetyBufferServiceRouter);
+  app.use('/api/ebay-seller-tax-automation-service', ebaySellerTaxAutomationServiceRouter);
+  app.use('/api/ebay-product-image-recognition-service', ebayProductImageRecognitionServiceRouter);
+  // Phase 1431-1435
+  app.use('/api/ebay-listing-smart-category-service', ebayListingSmartCategoryServiceRouter);
+  app.use('/api/ebay-order-delivery-scheduling-service', ebayOrderDeliverySchedulingServiceRouter);
+  app.use('/api/ebay-inventory-vendor-management-service', ebayInventoryVendorManagementServiceRouter);
+  app.use('/api/ebay-seller-review-analytics-service', ebaySellerReviewAnalyticsServiceRouter);
+  app.use('/api/ebay-product-specification-extraction-service', ebayProductSpecificationExtractionServiceRouter);
+  // Phase 1436-1440
+  app.use('/api/ebay-listing-price-suggestion-service', ebayListingPriceSuggestionServiceRouter);
+  app.use('/api/ebay-order-returns-processing-service', ebayOrderReturnsProcessingServiceRouter);
+  app.use('/api/ebay-inventory-stock-alert-service', ebayInventoryStockAlertServiceRouter);
+  app.use('/api/ebay-seller-payment-processing-service', ebaySellerPaymentProcessingServiceRouter);
+  app.use('/api/ebay-product-compliance-checking-service', ebayProductComplianceCheckingServiceRouter);
+  // Phase 1441-1445
+  app.use('/api/ebay-listing-title-generation-service', ebayListingTitleGenerationServiceRouter);
+  app.use('/api/ebay-order-label-printing-service', ebayOrderLabelPrintingServiceRouter);
+  app.use('/api/ebay-inventory-location-tracking-service', ebayInventoryLocationTrackingServiceRouter);
+  app.use('/api/ebay-seller-dashboard-reporting-service', ebaySellerDashboardReportingServiceRouter);
+  app.use('/api/ebay-product-weight-estimation-service', ebayProductWeightEstimationServiceRouter);
+  // Phase 1446-1450
+  app.use('/api/ebay-listing-description-builder-service', ebayListingDescriptionBuilderServiceRouter);
+  app.use('/api/ebay-order-customs-processing-service', ebayOrderCustomsProcessingServiceRouter);
+  app.use('/api/ebay-inventory-picking-optimization-service', ebayInventoryPickingOptimizationServiceRouter);
+  app.use('/api/ebay-seller-marketing-automation-service', ebaySellerMarketingAutomationServiceRouter);
+  app.use('/api/ebay-product-catalog-import-service', ebayProductCatalogImportServiceRouter);
+  // Phase 1451-1455
+  app.use('/api/ebay-listing-variation-pricing-service', ebayListingVariationPricingServiceRouter);
+  app.use('/api/ebay-order-notification-delivery-service', ebayOrderNotificationDeliveryServiceRouter);
+  app.use('/api/ebay-inventory-container-management-service', ebayInventoryContainerManagementServiceRouter);
+  app.use('/api/ebay-seller-subscription-management-service', ebaySellerSubscriptionManagementServiceRouter);
+  app.use('/api/ebay-product-brand-verification-service', ebayProductBrandVerificationServiceRouter);
+  // Phase 1456-1460
+  app.use('/api/ebay-listing-promoted-listing-service', ebayListingPromotedListingServiceRouter);
+  app.use('/api/ebay-order-partial-refund-service', ebayOrderPartialRefundServiceRouter);
+  app.use('/api/ebay-inventory-transfer-automation-service', ebayInventoryTransferAutomationServiceRouter);
+  app.use('/api/ebay-seller-competitor-tracking-service', ebaySellerCompetitorTrackingServiceRouter);
+  app.use('/api/ebay-product-dimension-validation-service', ebayProductDimensionValidationServiceRouter);
+  // Phase 1461-1465
+  app.use('/api/ebay-listing-mobile-optimization-service', ebayListingMobileOptimizationServiceRouter);
+  app.use('/api/ebay-order-signature-tracking-service', ebayOrderSignatureTrackingServiceRouter);
+  app.use('/api/ebay-inventory-expiry-notification-service', ebayInventoryExpiryNotificationServiceRouter);
+  app.use('/api/ebay-seller-team-management-service', ebaySellerTeamManagementServiceRouter);
+  app.use('/api/ebay-product-material-tracking-service', ebayProductMaterialTrackingServiceRouter);
+  // Phase 1466-1470
+  app.use('/api/ebay-listing-gallery-management-service', ebayListingGalleryManagementServiceRouter);
+  app.use('/api/ebay-order-cancellation-processing-service', ebayOrderCancellationProcessingServiceRouter);
+  app.use('/api/ebay-inventory-stock-reconciliation-service', ebayInventoryStockReconciliationServiceRouter);
+  app.use('/api/ebay-seller-financial-analytics-service', ebaySellerFinancialAnalyticsServiceRouter);
+  app.use('/api/ebay-product-origin-tracking-service', ebayProductOriginTrackingServiceRouter);
+  // Phase 1471-1475
+  app.use('/api/ebay-listing-item-condition-service', ebayListingItemConditionServiceRouter);
+  app.use('/api/ebay-order-replacement-shipping-service', ebayOrderReplacementShippingServiceRouter);
+  app.use('/api/ebay-inventory-min-max-automation-service', ebayInventoryMinMaxAutomationServiceRouter);
+  app.use('/api/ebay-seller-performance-scoring-service', ebaySellerPerformanceScoringServiceRouter);
+  app.use('/api/ebay-product-composition-analysis-service', ebayProductCompositionAnalysisServiceRouter);
+  // Phase 1476-1480
+  app.use('/api/ebay-listing-promoted-ads-service', ebayListingPromotedAdsServiceRouter);
+  app.use('/api/ebay-order-insurance-processing-service', ebayOrderInsuranceProcessingServiceRouter);
+  app.use('/api/ebay-inventory-vendor-scoring-service', ebayInventoryVendorScoringServiceRouter);
+  app.use('/api/ebay-seller-compliance-dashboard-service', ebaySellerComplianceDashboardServiceRouter);
+  app.use('/api/ebay-product-packaging-optimization-service', ebayProductPackagingOptimizationServiceRouter);
+  // Phase 1481-1485
+  app.use('/api/ebay-listing-out-of-stock-alert-service', ebayListingOutOfStockAlertServiceRouter);
+  app.use('/api/ebay-order-multi-carrier-service', ebayOrderMultiCarrierServiceRouter);
+  app.use('/api/ebay-inventory-cycle-scheduling-service', ebayInventoryCycleSchedulingServiceRouter);
+  app.use('/api/ebay-seller-revenue-dashboard-service', ebaySellerRevenueDashboardServiceRouter);
+  app.use('/api/ebay-product-warranty-management-service', ebayProductWarrantyManagementServiceRouter);
+  // Phase 1486-1490
+  app.use('/api/ebay-listing-holiday-scheduling-service', ebayListingHolidaySchedulingServiceRouter);
+  app.use('/api/ebay-order-backorder-notification-service', ebayOrderBackorderNotificationServiceRouter);
+  app.use('/api/ebay-inventory-shelf-management-service', ebayInventoryShelfManagementServiceRouter);
+  app.use('/api/ebay-seller-trend-analysis-service', ebaySellerTrendAnalysisServiceRouter);
+  app.use('/api/ebay-product-sku-management-service', ebayProductSkuManagementServiceRouter);
 }
