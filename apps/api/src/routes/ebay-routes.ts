@@ -403,6 +403,24 @@ import ebayListingCrossSellEngineRouter from './ebay-listing-cross-sell-engine';
 import ebayOrderFraudDetectorRouter from './ebay-order-fraud-detector';
 import ebayProductSourcingMarketplaceRouter from './ebay-product-sourcing-marketplace';
 import ebaySellerGrowthPlannerRouter from './ebay-seller-growth-planner';
+// Phase 501-505
+import ebayAutomatedListingRefresherRouter from './ebay-automated-listing-refresher';
+import ebayInventoryDeadStockManagerRouter from './ebay-inventory-dead-stock-manager';
+import ebayListingKeywordOptimizerProRouter from './ebay-listing-keyword-optimizer-pro';
+import ebayOrderWorkflowAutomatorRouter from './ebay-order-workflow-automator';
+import ebaySellerMarketplaceExpansionRouter from './ebay-seller-marketplace-expansion';
+// Phase 506-510
+import ebayProductConditionCertifierRouter from './ebay-product-condition-certifier';
+import ebayListingPriceHistoryTrackerRouter from './ebay-listing-price-history-tracker';
+import ebayOrderLogisticsCoordinatorRouter from './ebay-order-logistics-coordinator';
+import ebayInventoryReorderAutomatorRouter from './ebay-inventory-reorder-automator';
+import ebaySellerBrandBuilderRouter from './ebay-seller-brand-builder';
+// Phase 511-515
+import ebayBulkListingDeactivatorRouter from './ebay-bulk-listing-deactivator';
+import ebayOrderCustomerFeedbackAnalyzerRouter from './ebay-order-customer-feedback-analyzer';
+import ebayInventoryMultiLocationTrackerRouter from './ebay-inventory-multi-location-tracker';
+import ebayListingSmartCategorizerRouter from './ebay-listing-smart-categorizer';
+import ebaySellerRevenueMaximizerRouter from './ebay-seller-revenue-maximizer';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -826,4 +844,22 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-order-fraud-detector', ebayOrderFraudDetectorRouter);
   app.use('/api/ebay-product-sourcing-marketplace', ebayProductSourcingMarketplaceRouter);
   app.use('/api/ebay-seller-growth-planner', ebaySellerGrowthPlannerRouter);
+  // Phase 501-505
+  app.use('/api/ebay-automated-listing-refresher', ebayAutomatedListingRefresherRouter);
+  app.use('/api/ebay-inventory-dead-stock-manager', ebayInventoryDeadStockManagerRouter);
+  app.use('/api/ebay-listing-keyword-optimizer-pro', ebayListingKeywordOptimizerProRouter);
+  app.use('/api/ebay-order-workflow-automator', ebayOrderWorkflowAutomatorRouter);
+  app.use('/api/ebay-seller-marketplace-expansion', ebaySellerMarketplaceExpansionRouter);
+  // Phase 506-510
+  app.use('/api/ebay-product-condition-certifier', ebayProductConditionCertifierRouter);
+  app.use('/api/ebay-listing-price-history-tracker', ebayListingPriceHistoryTrackerRouter);
+  app.use('/api/ebay-order-logistics-coordinator', ebayOrderLogisticsCoordinatorRouter);
+  app.use('/api/ebay-inventory-reorder-automator', ebayInventoryReorderAutomatorRouter);
+  app.use('/api/ebay-seller-brand-builder', ebaySellerBrandBuilderRouter);
+  // Phase 511-515
+  app.use('/api/ebay-bulk-listing-deactivator', ebayBulkListingDeactivatorRouter);
+  app.use('/api/ebay-order-customer-feedback-analyzer', ebayOrderCustomerFeedbackAnalyzerRouter);
+  app.use('/api/ebay-inventory-multi-location-tracker', ebayInventoryMultiLocationTrackerRouter);
+  app.use('/api/ebay-listing-smart-categorizer', ebayListingSmartCategorizerRouter);
+  app.use('/api/ebay-seller-revenue-maximizer', ebaySellerRevenueMaximizerRouter);
 }
