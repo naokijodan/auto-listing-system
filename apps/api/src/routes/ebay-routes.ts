@@ -439,6 +439,12 @@ import ebayOrderRefundProcessorRouter from './ebay-order-refund-processor';
 import ebayInventorySyncDashboardRouter from './ebay-inventory-sync-dashboard';
 import ebaySellerKpiTrackerRouter from './ebay-seller-kpi-tracker';
 import ebayProductDescriptionGeneratorProRouter from './ebay-product-description-generator-pro';
+// Phase 531-535
+import ebayListingScheduleOptimizerRouter from './ebay-listing-schedule-optimizer';
+import ebayOrderPriorityRouterRouter from './ebay-order-priority-router';
+import ebayInventoryTurnoverAnalyzerRouter from './ebay-inventory-turnover-analyzer';
+import ebaySellerProfitDashboardRouter from './ebay-seller-profit-dashboard';
+import ebayProductTrendSpotterRouter from './ebay-product-trend-spotter';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -898,4 +904,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-sync-dashboard', ebayInventorySyncDashboardRouter);
   app.use('/api/ebay-seller-kpi-tracker', ebaySellerKpiTrackerRouter);
   app.use('/api/ebay-product-description-generator-pro', ebayProductDescriptionGeneratorProRouter);
+  // Phase 531-535
+  app.use('/api/ebay-listing-schedule-optimizer', ebayListingScheduleOptimizerRouter);
+  app.use('/api/ebay-order-priority-router', ebayOrderPriorityRouterRouter);
+  app.use('/api/ebay-inventory-turnover-analyzer', ebayInventoryTurnoverAnalyzerRouter);
+  app.use('/api/ebay-seller-profit-dashboard', ebaySellerProfitDashboardRouter);
+  app.use('/api/ebay-product-trend-spotter', ebayProductTrendSpotterRouter);
 }
