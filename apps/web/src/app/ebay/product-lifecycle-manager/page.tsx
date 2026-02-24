@@ -2,25 +2,25 @@
 
 import { useEffect, useState } from "react";
 
-type TabKey = "dashboard" | "products" | "stages" | "rules" | "analytics" | "settings";
+type TabKey = "dashboard" | "products" | "lifecycle" | "stages" | "analytics" | "settings";
 
 const LABELS: Record<TabKey, string> = {
   dashboard: "ダッシュボード",
   products: "商品",
+  lifecycle: "ライフサイクル",
   stages: "ステージ",
-  rules: "ルール",
   analytics: "分析",
   settings: "設定",
 };
 
-const BASE = "/api/ebay-product-lifecycle-manager";
+const BASE = "/api/ebay-product-lifecycle-manager/";
 const ENDPOINTS: Record<TabKey, string> = {
-  dashboard: `${BASE}/dashboard`,
-  products: `${BASE}/products`,
-  stages: `${BASE}/stages`,
-  rules: `${BASE}/rules`,
-  analytics: `${BASE}/analytics`,
-  settings: `${BASE}/settings`,
+  dashboard: `${BASE}dashboard`,
+  products: `${BASE}products`,
+  lifecycle: `${BASE}lifecycle`,
+  stages: `${BASE}stages`,
+  analytics: `${BASE}analytics`,
+  settings: `${BASE}settings`,
 };
 
 export default function ProductLifecycleManagerPage() {
@@ -54,7 +54,7 @@ export default function ProductLifecycleManagerPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-violet-600">商品ライフサイクル管理</h1>
+        <h1 className="text-2xl font-bold text-teal-600">商品ライフサイクル管理</h1>
         <p className="text-sm text-gray-500">Product Lifecycle Manager</p>
       </header>
 
@@ -65,7 +65,7 @@ export default function ProductLifecycleManagerPage() {
               <button
                 className={`px-3 py-2 text-sm rounded-t border transition-colors ${
                   active === k
-                    ? "bg-violet-50 text-violet-700 border-violet-200"
+                    ? "bg-teal-50 text-teal-700 border-teal-200"
                     : "bg-white text-gray-600 hover:bg-gray-50 border-transparent"
                 }`}
                 onClick={() => setActive(k)}
@@ -87,4 +87,3 @@ export default function ProductLifecycleManagerPage() {
     </div>
   );
 }
-

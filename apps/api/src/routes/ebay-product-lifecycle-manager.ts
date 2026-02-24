@@ -18,17 +18,17 @@ router.put('/products/:id', (_req: Request, res: Response) => res.json({ section
 router.post('/products/:id/transition', (_req: Request, res: Response) => res.json({ section: 'products', action: 'transition' }));
 router.post('/products/:id/archive', (_req: Request, res: Response) => res.json({ section: 'products', action: 'archive' }));
 
+// Lifecycle (4)
+router.get('/lifecycle', (_req: Request, res: Response) => res.json({ section: 'lifecycle', action: 'list' }));
+router.get('/lifecycle/:id', (_req: Request, res: Response) => res.json({ section: 'lifecycle', action: 'detail' }));
+router.post('/lifecycle', (_req: Request, res: Response) => res.json({ section: 'lifecycle', action: 'create' }));
+router.put('/lifecycle/:id', (_req: Request, res: Response) => res.json({ section: 'lifecycle', action: 'update' }));
+
 // Stages (4)
 router.get('/stages', (_req: Request, res: Response) => res.json({ section: 'stages', action: 'list' }));
 router.get('/stages/:id', (_req: Request, res: Response) => res.json({ section: 'stages', action: 'detail' }));
 router.post('/stages', (_req: Request, res: Response) => res.json({ section: 'stages', action: 'create' }));
 router.put('/stages/:id', (_req: Request, res: Response) => res.json({ section: 'stages', action: 'update' }));
-
-// Rules (4)
-router.get('/rules', (_req: Request, res: Response) => res.json({ section: 'rules', action: 'list' }));
-router.get('/rules/:id', (_req: Request, res: Response) => res.json({ section: 'rules', action: 'detail' }));
-router.post('/rules', (_req: Request, res: Response) => res.json({ section: 'rules', action: 'create' }));
-router.put('/rules/:id', (_req: Request, res: Response) => res.json({ section: 'rules', action: 'update' }));
 
 // Analytics (3)
 router.get('/analytics', (_req: Request, res: Response) => res.json({ section: 'analytics', action: 'analytics' }));
@@ -46,4 +46,3 @@ router.post('/import', (_req: Request, res: Response) => res.json({ section: 'ut
 router.post('/sync', (_req: Request, res: Response) => res.json({ section: 'utilities', action: 'sync' }));
 
 export default router;
-

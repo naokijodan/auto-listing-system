@@ -2,13 +2,13 @@
 
 import React, { useEffect, useState } from 'react'
 
-type TabKey = 'dashboard' | 'reconciliations' | 'payments' | 'discrepancies' | 'analytics' | 'settings'
+type TabKey = 'dashboard' | 'orders' | 'payments' | 'reconciliation' | 'analytics' | 'settings'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'dashboard', label: 'ダッシュボード' },
-  { key: 'reconciliations', label: '照合' },
-  { key: 'payments', label: '決済' },
-  { key: 'discrepancies', label: '差異' },
+  { key: 'orders', label: '注文' },
+  { key: 'payments', label: '支払い' },
+  { key: 'reconciliation', label: '照合' },
   { key: 'analytics', label: '分析' },
   { key: 'settings', label: '設定' },
 ]
@@ -32,15 +32,15 @@ export default function OrderPaymentReconcilerPage() {
           switch (active) {
             case 'dashboard':
               return 'dashboard'
-            case 'reconciliations':
-              return 'reconciliations'
+            case 'orders':
+              return 'orders'
             case 'payments':
               return 'payments'
-            case 'discrepancies':
-              return 'discrepancies'
-            case 'analytics':
+            case 'reconciliation':
+              return 'reconciliation'
+              case 'analytics':
               return 'analytics'
-            case 'settings':
+              case 'settings':
               return 'settings'
           }
         })()
@@ -60,7 +60,7 @@ export default function OrderPaymentReconcilerPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold text-violet-600">注文決済照合ツール</h1>
+      <h1 className="text-2xl font-semibold text-amber-600">注文支払い照合</h1>
       <div className="flex gap-2 border-b pb-2">
         {TABS.map((t) => (
           <button
@@ -68,7 +68,7 @@ export default function OrderPaymentReconcilerPage() {
             onClick={() => setActive(t.key)}
             className={`px-3 py-1.5 rounded-t-md text-sm ${
               active === t.key
-                ? 'bg-violet-50 text-violet-700 border border-b-0 border-violet-200'
+                ? 'bg-amber-50 text-amber-700 border border-b-0 border-amber-200'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
@@ -88,4 +88,3 @@ export default function OrderPaymentReconcilerPage() {
     </div>
   )
 }
-

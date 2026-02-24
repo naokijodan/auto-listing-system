@@ -20,24 +20,24 @@ router.get('/dashboard/discrepancies', (_req: Request, res: Response) =>
   res.json({ section: 'dashboard', action: 'discrepancies' })
 );
 
-// Reconciliations (6)
-router.get('/reconciliations', (_req: Request, res: Response) =>
-  res.json({ section: 'reconciliations', action: 'list' })
+// Orders (6)
+router.get('/orders', (_req: Request, res: Response) =>
+  res.json({ section: 'orders', action: 'list' })
 );
-router.get('/reconciliations/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'reconciliations', action: 'detail' })
+router.get('/orders/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'orders', action: 'detail' })
 );
-router.post('/reconciliations/run', (_req: Request, res: Response) =>
-  res.json({ section: 'reconciliations', action: 'run' })
+router.post('/orders', (_req: Request, res: Response) =>
+  res.json({ section: 'orders', action: 'create' })
 );
-router.post('/reconciliations/auto', (_req: Request, res: Response) =>
-  res.json({ section: 'reconciliations', action: 'auto-reconcile' })
+router.put('/orders/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'orders', action: 'update' })
 );
-router.post('/reconciliations/bulk', (_req: Request, res: Response) =>
-  res.json({ section: 'reconciliations', action: 'bulk-reconcile' })
+router.post('/orders/:id/cancel', (_req: Request, res: Response) =>
+  res.json({ section: 'orders', action: 'cancel' })
 );
-router.get('/reconciliations/:id/history', (_req: Request, res: Response) =>
-  res.json({ section: 'reconciliations', action: 'history' })
+router.get('/orders/:id/history', (_req: Request, res: Response) =>
+  res.json({ section: 'orders', action: 'history' })
 );
 
 // Payments (4)
@@ -54,18 +54,18 @@ router.post('/payments/:id/unmatch', (_req: Request, res: Response) =>
   res.json({ section: 'payments', action: 'unmatch' })
 );
 
-// Discrepancies (4)
-router.get('/discrepancies', (_req: Request, res: Response) =>
-  res.json({ section: 'discrepancies', action: 'list' })
+// Reconciliation (4)
+router.get('/reconciliation', (_req: Request, res: Response) =>
+  res.json({ section: 'reconciliation', action: 'overview' })
 );
-router.get('/discrepancies/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'discrepancies', action: 'detail' })
+router.get('/reconciliation/discrepancies', (_req: Request, res: Response) =>
+  res.json({ section: 'reconciliation', action: 'discrepancies' })
 );
-router.post('/discrepancies/:id/resolve', (_req: Request, res: Response) =>
-  res.json({ section: 'discrepancies', action: 'resolve' })
+router.post('/reconciliation/resolve', (_req: Request, res: Response) =>
+  res.json({ section: 'reconciliation', action: 'resolve' })
 );
-router.post('/discrepancies/:id/escalate', (_req: Request, res: Response) =>
-  res.json({ section: 'discrepancies', action: 'escalate' })
+router.post('/reconciliation/rerun', (_req: Request, res: Response) =>
+  res.json({ section: 'reconciliation', action: 'rerun' })
 );
 
 // Analytics (3)
@@ -102,4 +102,3 @@ router.post('/sync', (_req: Request, res: Response) =>
 );
 
 export default router;
-

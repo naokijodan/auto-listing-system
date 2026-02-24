@@ -679,6 +679,12 @@ import ebayOrderLogisticsOptimizerRouter from './ebay-order-logistics-optimizer'
 import ebayInventoryShrinkageTrackerRouter from './ebay-inventory-shrinkage-tracker';
 import ebaySellerCrmHubRouter from './ebay-seller-crm-hub';
 import ebayProductImportExportRouter from './ebay-product-import-export';
+// Phase 726-730
+import ebayListingCrossPlatformSyncRouter from './ebay-listing-cross-platform-sync';
+import ebayOrderPaymentReconcilerRouter from './ebay-order-payment-reconciler';
+import ebayInventoryReceivingDockRouter from './ebay-inventory-receiving-dock';
+import ebaySellerKnowledgeBaseRouter from './ebay-seller-knowledge-base';
+import ebayProductLifecycleManagerRouter from './ebay-product-lifecycle-manager';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1378,4 +1384,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-shrinkage-tracker', ebayInventoryShrinkageTrackerRouter);
   app.use('/api/ebay-seller-crm-hub', ebaySellerCrmHubRouter);
   app.use('/api/ebay-product-import-export', ebayProductImportExportRouter);
+  // Phase 726-730
+  app.use('/api/ebay-listing-cross-platform-sync', ebayListingCrossPlatformSyncRouter);
+  app.use('/api/ebay-order-payment-reconciler', ebayOrderPaymentReconcilerRouter);
+  app.use('/api/ebay-inventory-receiving-dock', ebayInventoryReceivingDockRouter);
+  app.use('/api/ebay-seller-knowledge-base', ebaySellerKnowledgeBaseRouter);
+  app.use('/api/ebay-product-lifecycle-manager', ebayProductLifecycleManagerRouter);
 }
