@@ -3,9 +3,9 @@
 ## 最終更新
 
 **日付**: 2026-02-24
-**Phase**: v3.0 Social Commerce Edition — Phase 570完了
+**Phase**: v3.0 Social Commerce Edition — Phase 595完了
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: b6a6652
+**最新コミット**: 00dbac9
 
 ---
 
@@ -53,9 +53,9 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 | タスク | 内容 | 開始Phase |
 |--------|------|-----------|
-| **eBay Phase 571+** | eBay機能の継続開発（Phase 571から） | Phase 571 |
+| **eBay Phase 596+** | eBay機能の継続開発（Phase 596から） | Phase 596 |
 
-**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 571から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
+**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 596から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
 
 **パターン**: 5 Phase単位でCodexに委託 → ebay-routes.ts更新 → git commit → 5バッチ（25-30 Phase）でpush → HANDOVER.md更新 → Obsidianノート
 
@@ -306,8 +306,38 @@ APIエラーハンドリングを統一するミドルウェアを生成して�
 | 568 | 在庫安全在庫計算機 | ebay-inventory-safety-stock-calculator | teal-600 |
 | 569 | セラー分析スイート | ebay-seller-analytics-suite | indigo-600 |
 | 570 | 商品品質保証 | ebay-product-quality-assurance | orange-600 |
+| 571 | 出品マーケットプレイスインサイト | ebay-listing-marketplace-insights | pink-600 |
+| 572 | 注文配送コスト最適化 | ebay-order-shipping-cost-optimizer | slate-600 |
+| 573 | 在庫チャネル配分マネージャー | ebay-inventory-channel-allocator | red-600 |
+| 574 | セラーリスク管理ダッシュボード | ebay-seller-risk-management | fuchsia-600 |
+| 575 | 商品バリエーション管理Pro | ebay-product-variation-manager-pro | green-600 |
+| 576 | 出品ダイナミックバンドラー | ebay-listing-dynamic-bundler | blue-600 |
+| 577 | 注文紛争解決エンジン | ebay-order-dispute-resolution | yellow-600 |
+| 578 | 在庫需要予測Pro | ebay-inventory-demand-forecaster-pro | purple-600 |
+| 579 | セラー評判最適化ツール | ebay-seller-reputation-optimizer | cyan-600 |
+| 580 | 商品認証サービス | ebay-product-authentication-service | lime-600 |
+| 581 | 出品ABテストエンジン | ebay-listing-ab-test-engine | emerald-600 |
+| 582 | 注文フルフィルメント最適化 | ebay-order-fulfillment-optimizer | sky-600 |
+| 583 | 在庫マルチ倉庫管理 | ebay-inventory-multi-warehouse-manager | amber-600 |
+| 584 | セラー財務ダッシュボード | ebay-seller-financial-dashboard | violet-600 |
+| 585 | 商品ソーシングネットワーク | ebay-product-sourcing-network | rose-600 |
+| 586 | 出品スマートリプライサー | ebay-listing-smart-repricer | teal-600 |
+| 587 | 注文税関申告管理 | ebay-order-customs-declaration | indigo-600 |
+| 588 | 在庫エイジングトラッカー | ebay-inventory-aging-tracker | orange-600 |
+| 589 | セラー競合インテリジェンス | ebay-seller-competitor-intelligence | pink-600 |
+| 590 | 商品レビュー集約ツール | ebay-product-review-aggregator | slate-600 |
+| 591 | 出品ジオターゲティング | ebay-listing-geo-targeting | red-600 |
+| 592 | 注文分割配送管理 | ebay-order-split-shipment-manager | fuchsia-600 |
+| 593 | 在庫ロット追跡システム | ebay-inventory-lot-tracking | green-600 |
+| 594 | セラーオートメーションハブ | ebay-seller-automation-hub | blue-600 |
+| 595 | 商品コンプライアンスチェッカー | ebay-product-compliance-checker | yellow-600 |
 
 **Git履歴**:
+- 00dbac9 Phase 591-595
+- 7325e21 Phase 586-590
+- c5a3af2 Phase 581-585
+- 96a79a6 Phase 576-580
+- 2538f28 Phase 571-575
 - b6a6652 Phase 566-570
 - e0922d8 Phase 561-565
 - 63759cb Phase 556-560
