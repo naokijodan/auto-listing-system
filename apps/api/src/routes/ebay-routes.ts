@@ -269,6 +269,11 @@ import ebaySupplierScorecardRouter from './ebay-supplier-scorecard';
 import ebayDemandForecasterRouter from './ebay-demand-forecaster';
 import ebayMultiCurrencyManagerRouter from './ebay-multi-currency-manager';
 import ebayListingComplianceCheckerRouter from './ebay-listing-compliance-checker';
+import ebayOrderPriorityManagerRouter from './ebay-order-priority-manager';
+import ebayPhotoEnhancementStudioRouter from './ebay-photo-enhancement-studio';
+import ebaySalesChannelManagerRouter from './ebay-sales-channel-manager';
+import ebayBuyerBehaviorAnalyticsRouter from './ebay-buyer-behavior-analytics';
+import ebayInventoryAgingTrackerRouter from './ebay-inventory-aging-tracker';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -548,4 +553,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-demand-forecaster', ebayDemandForecasterRouter);
   app.use('/api/ebay-multi-currency-manager', ebayMultiCurrencyManagerRouter);
   app.use('/api/ebay-listing-compliance-checker', ebayListingComplianceCheckerRouter);
+  // Phase 381-385
+  app.use('/api/ebay-order-priority-manager', ebayOrderPriorityManagerRouter);
+  app.use('/api/ebay-photo-enhancement-studio', ebayPhotoEnhancementStudioRouter);
+  app.use('/api/ebay-sales-channel-manager', ebaySalesChannelManagerRouter);
+  app.use('/api/ebay-buyer-behavior-analytics', ebayBuyerBehaviorAnalyticsRouter);
+  app.use('/api/ebay-inventory-aging-tracker', ebayInventoryAgingTrackerRouter);
 }
