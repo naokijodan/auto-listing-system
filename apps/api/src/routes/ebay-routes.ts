@@ -264,6 +264,11 @@ import ebayListingAnalyticsProRouter from './ebay-listing-analytics-pro';
 import ebayPaymentReconciliationRouter from './ebay-payment-reconciliation';
 import ebayDynamicPricingEngineRouter from './ebay-dynamic-pricing-engine';
 import ebayCatalogManagementRouter from './ebay-catalog-management';
+import ebayShippingTrackerProRouter from './ebay-shipping-tracker-pro';
+import ebaySupplierScorecardRouter from './ebay-supplier-scorecard';
+import ebayDemandForecasterRouter from './ebay-demand-forecaster';
+import ebayMultiCurrencyManagerRouter from './ebay-multi-currency-manager';
+import ebayListingComplianceCheckerRouter from './ebay-listing-compliance-checker';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -537,4 +542,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-payment-reconciliation', ebayPaymentReconciliationRouter);
   app.use('/api/ebay-dynamic-pricing-engine', ebayDynamicPricingEngineRouter);
   app.use('/api/ebay-catalog-management', ebayCatalogManagementRouter);
+  // Phase 376-380
+  app.use('/api/ebay-shipping-tracker-pro', ebayShippingTrackerProRouter);
+  app.use('/api/ebay-supplier-scorecard', ebaySupplierScorecardRouter);
+  app.use('/api/ebay-demand-forecaster', ebayDemandForecasterRouter);
+  app.use('/api/ebay-multi-currency-manager', ebayMultiCurrencyManagerRouter);
+  app.use('/api/ebay-listing-compliance-checker', ebayListingComplianceCheckerRouter);
 }
