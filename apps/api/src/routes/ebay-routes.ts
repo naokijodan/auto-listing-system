@@ -865,6 +865,66 @@ import ebayOrderShippingIntelligenceRouter from './ebay-order-shipping-intellige
 import ebayInventoryReceivingOptimizerRouter from './ebay-inventory-receiving-optimizer';
 import ebaySellerDashboardProRouter from './ebay-seller-dashboard-pro';
 import ebayProductCompetitionAnalyzerRouter from './ebay-product-competition-analyzer';
+// Phase 881-885
+import ebayListingSmartBundlerProRouter from './ebay-listing-smart-bundler-pro';
+import ebayOrderMultiChannelSyncRouter from './ebay-order-multi-channel-sync';
+import ebayInventoryAutoReorderAiRouter from './ebay-inventory-auto-reorder-ai';
+import ebaySellerTaxIntelligenceRouter from './ebay-seller-tax-intelligence';
+import ebayProductImageAiOptimizerRouter from './ebay-product-image-ai-optimizer';
+// Phase 886-890
+import ebayListingDynamicPricingAiRouter from './ebay-listing-dynamic-pricing-ai';
+import ebayOrderCustomerJourneyRouter from './ebay-order-customer-journey';
+import ebayInventoryLotManagementRouter from './ebay-inventory-lot-management';
+import ebaySellerProfitIntelligenceRouter from './ebay-seller-profit-intelligence';
+import ebayProductTrendIntelligenceRouter from './ebay-product-trend-intelligence';
+// Phase 891-895
+import ebayListingAudienceBuilderRouter from './ebay-listing-audience-builder';
+import ebayOrderReturnPreventionRouter from './ebay-order-return-prevention';
+import ebayInventorySafetyOptimizerRouter from './ebay-inventory-safety-optimizer';
+import ebaySellerWorkflowBuilderRouter from './ebay-seller-workflow-builder';
+import ebayProductSpecAiGeneratorRouter from './ebay-product-spec-ai-generator';
+// Phase 896-900
+import ebayListingSeoAiOptimizerRouter from './ebay-listing-seo-ai-optimizer';
+import ebayOrderDeliveryOptimizerProRouter from './ebay-order-delivery-optimizer-pro';
+import ebayInventoryTransferIntelligenceRouter from './ebay-inventory-transfer-intelligence';
+import ebaySellerBenchmarkSuiteRouter from './ebay-seller-benchmark-suite';
+import ebayProductCategoryIntelligenceRouter from './ebay-product-category-intelligence';
+// Phase 901-905
+import ebayListingUrgencyOptimizerRouter from './ebay-listing-urgency-optimizer';
+import ebayOrderBatchIntelligenceRouter from './ebay-order-batch-intelligence';
+import ebayInventoryBinOptimizerRouter from './ebay-inventory-bin-optimizer';
+import ebaySellerCrmIntelligenceRouter from './ebay-seller-crm-intelligence';
+import ebayProductSourcingOptimizerRouter from './ebay-product-sourcing-optimizer';
+// Phase 906-910
+import ebayListingGeoIntelligenceRouter from './ebay-listing-geo-intelligence';
+import ebayOrderRefundOptimizerRouter from './ebay-order-refund-optimizer';
+import ebayInventoryExpiryIntelligenceRouter from './ebay-inventory-expiry-intelligence';
+import ebaySellerSocialOptimizerRouter from './ebay-seller-social-optimizer';
+import ebayProductBundleIntelligenceRouter from './ebay-product-bundle-intelligence';
+// Phase 911-915
+import ebayListingTrustOptimizerRouter from './ebay-listing-trust-optimizer';
+import ebayOrderSignatureIntelligenceRouter from './ebay-order-signature-intelligence';
+import ebayInventoryDispositionOptimizerRouter from './ebay-inventory-disposition-optimizer';
+import ebaySellerMilestoneIntelligenceRouter from './ebay-seller-milestone-intelligence';
+import ebayProductAuthIntelligenceRouter from './ebay-product-auth-intelligence';
+// Phase 916-920
+import ebayListingVoiceCommerceRouter from './ebay-listing-voice-commerce';
+import ebayOrderConsolidationOptimizerRouter from './ebay-order-consolidation-optimizer';
+import ebayInventoryAbcIntelligenceRouter from './ebay-inventory-abc-intelligence';
+import ebaySellerReviewIntelligenceRouter from './ebay-seller-review-intelligence';
+import ebayProductHazmatIntelligenceRouter from './ebay-product-hazmat-intelligence';
+// Phase 921-925
+import ebayListingMobileIntelligenceRouter from './ebay-listing-mobile-intelligence';
+import ebayOrderDropshipIntelligenceRouter from './ebay-order-dropship-intelligence';
+import ebayInventoryCrossDockOptimizerRouter from './ebay-inventory-cross-dock-optimizer';
+import ebaySellerProfitAnalyticsProRouter from './ebay-seller-profit-analytics-pro';
+import ebayProductVideoIntelligenceRouter from './ebay-product-video-intelligence';
+// Phase 926-930
+import ebayListingCountdownIntelligenceRouter from './ebay-listing-countdown-intelligence';
+import ebayOrderCurrencyIntelligenceRouter from './ebay-order-currency-intelligence';
+import ebayInventoryKittingOptimizerRouter from './ebay-inventory-kitting-optimizer';
+import ebaySellerSeasonalIntelligenceRouter from './ebay-seller-seasonal-intelligence';
+import ebayProductMaterialIntelligenceRouter from './ebay-product-material-intelligence';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1750,4 +1810,64 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-receiving-optimizer', ebayInventoryReceivingOptimizerRouter);
   app.use('/api/ebay-seller-dashboard-pro', ebaySellerDashboardProRouter);
   app.use('/api/ebay-product-competition-analyzer', ebayProductCompetitionAnalyzerRouter);
+  // Phase 881-885
+  app.use('/api/ebay-listing-smart-bundler-pro', ebayListingSmartBundlerProRouter);
+  app.use('/api/ebay-order-multi-channel-sync', ebayOrderMultiChannelSyncRouter);
+  app.use('/api/ebay-inventory-auto-reorder-ai', ebayInventoryAutoReorderAiRouter);
+  app.use('/api/ebay-seller-tax-intelligence', ebaySellerTaxIntelligenceRouter);
+  app.use('/api/ebay-product-image-ai-optimizer', ebayProductImageAiOptimizerRouter);
+  // Phase 886-890
+  app.use('/api/ebay-listing-dynamic-pricing-ai', ebayListingDynamicPricingAiRouter);
+  app.use('/api/ebay-order-customer-journey', ebayOrderCustomerJourneyRouter);
+  app.use('/api/ebay-inventory-lot-management', ebayInventoryLotManagementRouter);
+  app.use('/api/ebay-seller-profit-intelligence', ebaySellerProfitIntelligenceRouter);
+  app.use('/api/ebay-product-trend-intelligence', ebayProductTrendIntelligenceRouter);
+  // Phase 891-895
+  app.use('/api/ebay-listing-audience-builder', ebayListingAudienceBuilderRouter);
+  app.use('/api/ebay-order-return-prevention', ebayOrderReturnPreventionRouter);
+  app.use('/api/ebay-inventory-safety-optimizer', ebayInventorySafetyOptimizerRouter);
+  app.use('/api/ebay-seller-workflow-builder', ebaySellerWorkflowBuilderRouter);
+  app.use('/api/ebay-product-spec-ai-generator', ebayProductSpecAiGeneratorRouter);
+  // Phase 896-900
+  app.use('/api/ebay-listing-seo-ai-optimizer', ebayListingSeoAiOptimizerRouter);
+  app.use('/api/ebay-order-delivery-optimizer-pro', ebayOrderDeliveryOptimizerProRouter);
+  app.use('/api/ebay-inventory-transfer-intelligence', ebayInventoryTransferIntelligenceRouter);
+  app.use('/api/ebay-seller-benchmark-suite', ebaySellerBenchmarkSuiteRouter);
+  app.use('/api/ebay-product-category-intelligence', ebayProductCategoryIntelligenceRouter);
+  // Phase 901-905
+  app.use('/api/ebay-listing-urgency-optimizer', ebayListingUrgencyOptimizerRouter);
+  app.use('/api/ebay-order-batch-intelligence', ebayOrderBatchIntelligenceRouter);
+  app.use('/api/ebay-inventory-bin-optimizer', ebayInventoryBinOptimizerRouter);
+  app.use('/api/ebay-seller-crm-intelligence', ebaySellerCrmIntelligenceRouter);
+  app.use('/api/ebay-product-sourcing-optimizer', ebayProductSourcingOptimizerRouter);
+  // Phase 906-910
+  app.use('/api/ebay-listing-geo-intelligence', ebayListingGeoIntelligenceRouter);
+  app.use('/api/ebay-order-refund-optimizer', ebayOrderRefundOptimizerRouter);
+  app.use('/api/ebay-inventory-expiry-intelligence', ebayInventoryExpiryIntelligenceRouter);
+  app.use('/api/ebay-seller-social-optimizer', ebaySellerSocialOptimizerRouter);
+  app.use('/api/ebay-product-bundle-intelligence', ebayProductBundleIntelligenceRouter);
+  // Phase 911-915
+  app.use('/api/ebay-listing-trust-optimizer', ebayListingTrustOptimizerRouter);
+  app.use('/api/ebay-order-signature-intelligence', ebayOrderSignatureIntelligenceRouter);
+  app.use('/api/ebay-inventory-disposition-optimizer', ebayInventoryDispositionOptimizerRouter);
+  app.use('/api/ebay-seller-milestone-intelligence', ebaySellerMilestoneIntelligenceRouter);
+  app.use('/api/ebay-product-auth-intelligence', ebayProductAuthIntelligenceRouter);
+  // Phase 916-920
+  app.use('/api/ebay-listing-voice-commerce', ebayListingVoiceCommerceRouter);
+  app.use('/api/ebay-order-consolidation-optimizer', ebayOrderConsolidationOptimizerRouter);
+  app.use('/api/ebay-inventory-abc-intelligence', ebayInventoryAbcIntelligenceRouter);
+  app.use('/api/ebay-seller-review-intelligence', ebaySellerReviewIntelligenceRouter);
+  app.use('/api/ebay-product-hazmat-intelligence', ebayProductHazmatIntelligenceRouter);
+  // Phase 921-925
+  app.use('/api/ebay-listing-mobile-intelligence', ebayListingMobileIntelligenceRouter);
+  app.use('/api/ebay-order-dropship-intelligence', ebayOrderDropshipIntelligenceRouter);
+  app.use('/api/ebay-inventory-cross-dock-optimizer', ebayInventoryCrossDockOptimizerRouter);
+  app.use('/api/ebay-seller-profit-analytics-pro', ebaySellerProfitAnalyticsProRouter);
+  app.use('/api/ebay-product-video-intelligence', ebayProductVideoIntelligenceRouter);
+  // Phase 926-930
+  app.use('/api/ebay-listing-countdown-intelligence', ebayListingCountdownIntelligenceRouter);
+  app.use('/api/ebay-order-currency-intelligence', ebayOrderCurrencyIntelligenceRouter);
+  app.use('/api/ebay-inventory-kitting-optimizer', ebayInventoryKittingOptimizerRouter);
+  app.use('/api/ebay-seller-seasonal-intelligence', ebaySellerSeasonalIntelligenceRouter);
+  app.use('/api/ebay-product-material-intelligence', ebayProductMaterialIntelligenceRouter);
 }
