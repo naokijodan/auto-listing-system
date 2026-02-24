@@ -2,13 +2,13 @@
 
 import React, { useEffect, useState } from 'react'
 
-type TabKey = 'dashboard' | 'plans' | 'milestones' | 'strategies' | 'analytics' | 'settings'
+type TabKey = 'dashboard' | 'sellers' | 'growth' | 'milestones' | 'analytics' | 'settings'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'dashboard', label: 'ダッシュボード' },
-  { key: 'plans', label: 'プラン' },
+  { key: 'sellers', label: 'セラー' },
+  { key: 'growth', label: '成長' },
   { key: 'milestones', label: 'マイルストーン' },
-  { key: 'strategies', label: '戦略' },
   { key: 'analytics', label: '分析' },
   { key: 'settings', label: '設定' },
 ]
@@ -19,12 +19,12 @@ function pathFor(tab: TabKey): string {
   switch (tab) {
     case 'dashboard':
       return '/dashboard'
-    case 'plans':
-      return '/plans'
+    case 'sellers':
+      return '/sellers'
+    case 'growth':
+      return '/growth/plans'
     case 'milestones':
       return '/milestones'
-    case 'strategies':
-      return '/strategies'
     case 'analytics':
       return '/analytics'
     case 'settings':
@@ -64,14 +64,14 @@ export default function SellerGrowthPlannerPage(): JSX.Element {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4 text-slate-600">セラー成長プランナー</h1>
+      <h1 className="text-2xl font-semibold mb-4 text-emerald-600">セラーグロースプランナー</h1>
       <div className="flex gap-2 border-b mb-4">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => setActive(t.key)}
             className={`px-3 py-2 text-sm rounded-t ${
-              active === t.key ? 'bg-slate-50 text-slate-700 border border-b-0 border-slate-200' : 'text-gray-600 hover:text-gray-800'
+              active === t.key ? 'bg-emerald-50 text-emerald-700 border border-b-0 border-emerald-200' : 'text-gray-600 hover:text-emerald-700'
             }`}
           >
             {t.label}
@@ -89,4 +89,3 @@ export default function SellerGrowthPlannerPage(): JSX.Element {
     </div>
   )
 }
-
