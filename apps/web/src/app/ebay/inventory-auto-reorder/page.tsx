@@ -2,28 +2,28 @@
 
 import { useEffect, useState } from "react";
 
-type TabKey = "dashboard" | "orders" | "risks" | "scoring" | "analytics" | "settings";
+type TabKey = "dashboard" | "inventory" | "reorders" | "suppliers" | "analytics" | "settings";
 
 const LABELS: Record<TabKey, string> = {
   dashboard: "ダッシュボード",
-  orders: "注文",
-  risks: "リスク",
-  scoring: "スコアリング",
+  inventory: "在庫",
+  reorders: "自動発注",
+  suppliers: "サプライヤー",
   analytics: "分析",
   settings: "設定",
 };
 
-const BASE = "/api/ebay-order-risk-scorer";
+const BASE = "/api/ebay-inventory-auto-reorder";
 const ENDPOINTS: Record<TabKey, string> = {
   dashboard: `${BASE}/dashboard`,
-  orders: `${BASE}/orders/list`,
-  risks: `${BASE}/risks/list`,
-  scoring: `${BASE}/scoring/overview`,
+  inventory: `${BASE}/inventory/list`,
+  reorders: `${BASE}/reorders/list`,
+  suppliers: `${BASE}/suppliers/list`,
   analytics: `${BASE}/analytics`,
   settings: `${BASE}/settings`,
 };
 
-export default function OrderRiskScorerPage() {
+export default function InventoryAutoReorderPage() {
   const [active, setActive] = useState<TabKey>("dashboard");
   const [data, setData] = useState<unknown>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -54,8 +54,8 @@ export default function OrderRiskScorerPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <header>
-        <h1 className="text-2xl font-bold text-fuchsia-600">注文リスクスコアラー</h1>
-        <p className="text-sm text-gray-500">Order Risk Scorer</p>
+        <h1 className="text-2xl font-bold text-green-600">在庫自動発注システム</h1>
+        <p className="text-sm text-gray-500">Inventory Auto Reorder</p>
       </header>
 
       <nav className="border-b">
@@ -65,7 +65,7 @@ export default function OrderRiskScorerPage() {
               <button
                 className={`px-3 py-2 text-sm rounded-t border transition-colors ${
                   active === k
-                    ? "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200"
+                    ? "bg-green-50 text-green-700 border-green-200"
                     : "bg-white text-gray-600 hover:bg-gray-50 border-transparent"
                 }`}
                 onClick={() => setActive(k)}
@@ -87,3 +87,4 @@ export default function OrderRiskScorerPage() {
     </div>
   );
 }
+

@@ -40,32 +40,32 @@ router.post('/orders/unflag/:id', (_req: Request, res: Response) =>
   res.json({ section: 'orders', action: 'unflag' })
 );
 
-// Rules (4)
-router.get('/rules/list', (_req: Request, res: Response) =>
-  res.json({ section: 'rules', action: 'list' })
+// Risks (4)
+router.get('/risks/list', (_req: Request, res: Response) =>
+  res.json({ section: 'risks', action: 'list' })
 );
-router.get('/rules/detail/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'rules', action: 'detail' })
+router.get('/risks/detail/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'risks', action: 'detail' })
 );
-router.post('/rules/create', (_req: Request, res: Response) =>
-  res.json({ section: 'rules', action: 'create' })
+router.post('/risks/mitigate/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'risks', action: 'mitigate' })
 );
-router.put('/rules/update/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'rules', action: 'update' })
+router.get('/risks/export', (_req: Request, res: Response) =>
+  res.json({ section: 'risks', action: 'export' })
 );
 
-// History (4)
-router.get('/history/list', (_req: Request, res: Response) =>
-  res.json({ section: 'history', action: 'list' })
+// Scoring (4)
+router.get('/scoring/overview', (_req: Request, res: Response) =>
+  res.json({ section: 'scoring', action: 'overview' })
 );
-router.get('/history/detail/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'history', action: 'detail' })
+router.get('/scoring/model/:id', (_req: Request, res: Response) =>
+  res.json({ section: 'scoring', action: 'model' })
 );
-router.post('/history/review/:id', (_req: Request, res: Response) =>
-  res.json({ section: 'history', action: 'review' })
+router.post('/scoring/retrain', (_req: Request, res: Response) =>
+  res.json({ section: 'scoring', action: 'retrain' })
 );
-router.get('/history/export', (_req: Request, res: Response) =>
-  res.json({ section: 'history', action: 'export' })
+router.post('/scoring/thresholds', (_req: Request, res: Response) =>
+  res.json({ section: 'scoring', action: 'thresholds' })
 );
 
 // Analytics (3)
@@ -102,4 +102,3 @@ router.post('/sync', (_req: Request, res: Response) =>
 );
 
 export default router;
-
