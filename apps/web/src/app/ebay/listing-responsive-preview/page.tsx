@@ -4,23 +4,21 @@ import { useEffect, useState } from 'react'
 
 type ApiData = { section: string; action: string } | { error: string }
 
-type TabKey = 'dashboard' | 'sellers' | 'feedbacks' | 'trends' | 'analytics' | 'settings'
-
-const TABS: { key: TabKey; label: string; path: string }[] = [
+const TABS = [
   { key: 'dashboard', label: 'ダッシュボード', path: 'dashboard' },
-  { key: 'sellers', label: 'セラー', path: 'sellers' },
-  { key: 'feedbacks', label: 'フィードバック', path: 'feedbacks' },
-  { key: 'trends', label: 'トレンド', path: 'trends' },
+  { key: 'listings', label: '出品', path: 'listings' },
+  { key: 'previews', label: 'プレビュー', path: 'previews' },
+  { key: 'devices', label: 'デバイス', path: 'devices' },
   { key: 'analytics', label: '分析', path: 'analytics' },
   { key: 'settings', label: '設定', path: 'settings' },
 ]
 
-const API_BASE = '/api/ebay-seller-feedback-analyzer/'
+const API_BASE = '/api/ebay-listing-responsive-preview/'
 
-export default function SellerFeedbackAnalyzerPage() {
-  const [active, setActive] = useState<TabKey>('dashboard')
-  const [data, setData] = useState<ApiData | null>(null)
+export default function ListingResponsivePreviewPage() {
+  const [active, setActive] = useState(TABS[0].key)
   const [loading, setLoading] = useState(false)
+  const [data, setData] = useState<ApiData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,7 +38,7 @@ export default function SellerFeedbackAnalyzerPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold text-yellow-600">セラーフィードバックアナライザー</h1>
+      <h1 className="text-2xl font-semibold text-fuchsia-600">出品レスポンシブプレビュー</h1>
 
       <div className="flex gap-2 flex-wrap">
         {TABS.map(t => (
@@ -48,7 +46,7 @@ export default function SellerFeedbackAnalyzerPage() {
             key={t.key}
             onClick={() => setActive(t.key)}
             className={`px-3 py-1.5 rounded border text-sm ${
-              active === t.key ? 'bg-yellow-100 border-yellow-300 text-yellow-700' : 'hover:bg-yellow-50 border-yellow-200 text-yellow-600'
+              active === t.key ? 'bg-fuchsia-100 border-fuchsia-300 text-fuchsia-700' : 'hover:bg-fuchsia-50 border-fuchsia-200 text-fuchsia-600'
             }`}
           >
             {t.label}
@@ -56,14 +54,15 @@ export default function SellerFeedbackAnalyzerPage() {
         ))}
       </div>
 
-      <div className="rounded border border-yellow-200 p-4">
-        <div className="text-xs text-yellow-500 mb-2">API: {API_BASE}{TABS.find(t => t.key === active)?.path}</div>
-        {loading && <div className="text-yellow-600">読み込み中...</div>}
+      <div className="rounded border border-fuchsia-200 p-4">
+        <div className="text-xs text-fuchsia-500 mb-2">API: {API_BASE}{TABS.find(t => t.key === active)?.path}</div>
+        {loading && <div className="text-fuchsia-500">読み込み中...</div>}
         {error && <div className="text-red-600">エラー: {error}</div>}
         {!loading && !error && (
-          <pre className="text-sm text-yellow-700 whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
+          <pre className="text-sm text-fuchsia-700 whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
         )}
       </div>
     </div>
   )
 }
+

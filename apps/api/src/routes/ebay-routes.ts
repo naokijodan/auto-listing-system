@@ -691,6 +691,12 @@ import ebayOrderStatusOrchestratorRouter from './ebay-order-status-orchestrator'
 import ebayInventoryReplenishmentAiRouter from './ebay-inventory-replenishment-ai';
 import ebaySellerDashboardCustomizerRouter from './ebay-seller-dashboard-customizer';
 import ebayProductTagManagerRouter from './ebay-product-tag-manager';
+// Phase 736-740
+import ebayListingResponsivePreviewRouter from './ebay-listing-responsive-preview';
+import ebayOrderDeliveryTrackerProRouter from './ebay-order-delivery-tracker-pro';
+import ebayInventorySupplierNegotiatorRouter from './ebay-inventory-supplier-negotiator';
+import ebaySellerFeedbackAnalyzerRouter from './ebay-seller-feedback-analyzer';
+import ebayProductMultiChannelHubRouter from './ebay-product-multi-channel-hub';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1402,4 +1408,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-replenishment-ai', ebayInventoryReplenishmentAiRouter);
   app.use('/api/ebay-seller-dashboard-customizer', ebaySellerDashboardCustomizerRouter);
   app.use('/api/ebay-product-tag-manager', ebayProductTagManagerRouter);
+  // Phase 736-740
+  app.use('/api/ebay-listing-responsive-preview', ebayListingResponsivePreviewRouter);
+  app.use('/api/ebay-order-delivery-tracker-pro', ebayOrderDeliveryTrackerProRouter);
+  app.use('/api/ebay-inventory-supplier-negotiator', ebayInventorySupplierNegotiatorRouter);
+  app.use('/api/ebay-seller-feedback-analyzer', ebaySellerFeedbackAnalyzerRouter);
+  app.use('/api/ebay-product-multi-channel-hub', ebayProductMultiChannelHubRouter);
 }
