@@ -6,16 +6,16 @@ type ApiData = Record<string, unknown>
 
 const TABS = [
   { key: 'dashboard', label: 'ダッシュボード', path: 'dashboard' },
-  { key: 'inventory', label: '在庫', path: 'inventory/list' },
-  { key: 'warehouses', label: '倉庫', path: 'warehouses/list' },
-  { key: 'optimization', label: '最適化', path: 'optimization/recommendations' },
+  { key: 'sellers', label: 'セラー', path: 'sellers/list' },
+  { key: 'marketing', label: 'マーケティング', path: 'marketing/strategies' },
+  { key: 'campaigns', label: 'キャンペーン', path: 'campaigns/list' },
   { key: 'analytics', label: '分析', path: 'analytics' },
   { key: 'settings', label: '設定', path: 'settings' },
 ]
 
-const API_BASE = '/api/ebay-inventory-warehouse-optimizer/'
+const API_BASE = '/api/ebay-seller-marketing-suite/'
 
-export default function InventoryWarehouseOptimizerPage() {
+export default function SellerMarketingSuitePage() {
   const [active, setActive] = useState<string>('dashboard')
   const [data, setData] = useState<ApiData | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
@@ -49,7 +49,7 @@ export default function InventoryWarehouseOptimizerPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold text-indigo-600">在庫倉庫最適化</h1>
+      <h1 className="text-2xl font-semibold text-orange-600">セラーマーケティングスイート</h1>
 
       <nav className="flex gap-4 border-b">
         {TABS.map((t) => (
@@ -59,7 +59,7 @@ export default function InventoryWarehouseOptimizerPage() {
             className={
               'py-2 -mb-px border-b-2 transition-colors ' +
               (active === t.key
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-orange-600 text-orange-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900')
             }
           >
@@ -73,7 +73,7 @@ export default function InventoryWarehouseOptimizerPage() {
           <h2 className="text-lg font-medium">API</h2>
           <button
             onClick={() => void fetchData()}
-            className="px-3 py-1.5 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
+            className="px-3 py-1.5 text-sm rounded bg-orange-600 text-white hover:bg-orange-700"
           >
             再読み込み
           </button>
