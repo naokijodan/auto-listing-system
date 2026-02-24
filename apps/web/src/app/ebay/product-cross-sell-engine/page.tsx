@@ -6,16 +6,16 @@ type ApiResponse = { section: string; action: string } | Record<string, unknown>
 
 const tabs = [
   { key: 'dashboard', label: 'ダッシュボード', endpoint: 'dashboard' },
-  { key: 'orders', label: '注文', endpoint: 'detections' },
-  { key: 'fraud', label: '不正', endpoint: 'patterns' },
-  { key: 'detection', label: '検知', endpoint: 'rules' },
+  { key: 'products', label: '商品', endpoint: 'products' },
+  { key: 'crosssell', label: 'クロスセル', endpoint: 'crosssell' },
+  { key: 'recommendations', label: 'レコメンド', endpoint: 'recommendations' },
   { key: 'analytics', label: '分析', endpoint: 'analytics' },
   { key: 'settings', label: '設定', endpoint: 'settings' },
 ] as const;
 
-const apiBase = '/api/ebay-order-fraud-detector/';
+const apiBase = '/api/ebay-product-cross-sell-engine/';
 
-export default function OrderFraudDetectorPage(): JSX.Element {
+export default function ProductCrossSellEnginePage(): JSX.Element {
   const [active, setActive] = useState<typeof tabs[number]['key']>('dashboard');
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -40,8 +40,8 @@ export default function OrderFraudDetectorPage(): JSX.Element {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-violet-600">注文フロード検知</h1>
-        <p className="text-gray-500 text-sm">Order Fraud Detector</p>
+        <h1 className="text-2xl font-bold text-indigo-600">商品クロスセルエンジン</h1>
+        <p className="text-gray-500 text-sm">Product Cross-Sell Engine</p>
       </div>
 
       <div className="flex gap-2 border-b pb-2">
@@ -52,7 +52,7 @@ export default function OrderFraudDetectorPage(): JSX.Element {
             className={
               'px-3 py-1 rounded-t text-sm ' +
               (active === t.key
-                ? 'bg-violet-600 text-white'
+                ? 'bg-indigo-600 text-white'
                 : 'bg-gray-100 hover:bg-gray-200')
             }
           >
@@ -63,7 +63,7 @@ export default function OrderFraudDetectorPage(): JSX.Element {
 
       <div className="min-h-[160px] rounded border p-4 bg-white">
         {loading && <div className="text-gray-500">読み込み中...</div>}
-        {error && <div className="text-violet-600">エラーが発生しました: {error}</div>}
+        {error && <div className="text-indigo-600">エラーが発生しました: {error}</div>}
         {!loading && !error && (
           <pre className="text-xs whitespace-pre-wrap break-all">{JSON.stringify(data, null, 2)}</pre>
         )}
