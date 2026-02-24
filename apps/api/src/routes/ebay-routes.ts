@@ -1838,6 +1838,78 @@ import ebayInventoryDistributionPlanningSuiteRouter from './ebay-inventory-distr
 import ebaySellerRevenueOptimizationSuiteRouter from './ebay-seller-revenue-optimization-suite';
 import ebayProductEnrichmentPipelineSuiteRouter from './ebay-product-enrichment-pipeline-suite';
 
+// Phase 1701-1770 (Studio series)
+import ebayListingSmartMerchandisingStudioRouter from './ebay-listing-smart-merchandising-studio';
+import ebayOrderFulfillmentCenterStudioRouter from './ebay-order-fulfillment-center-studio';
+import ebayInventoryDemandPlanningStudioRouter from './ebay-inventory-demand-planning-studio';
+import ebaySellerBrandManagementStudioRouter from './ebay-seller-brand-management-studio';
+import ebayProductCatalogEnrichmentStudioRouter from './ebay-product-catalog-enrichment-studio';
+import ebayListingConversionAnalyticsStudioRouter from './ebay-listing-conversion-analytics-studio';
+import ebayOrderLogisticsOptimizationStudioRouter from './ebay-order-logistics-optimization-studio';
+import ebayInventoryWarehouseAnalyticsStudioRouter from './ebay-inventory-warehouse-analytics-studio';
+import ebaySellerPerformanceTrackingStudioRouter from './ebay-seller-performance-tracking-studio';
+import ebayProductPricingStrategyStudioRouter from './ebay-product-pricing-strategy-studio';
+import ebayListingSeoManagementStudioRouter from './ebay-listing-seo-management-studio';
+import ebayOrderReturnsAnalyticsStudioRouter from './ebay-order-returns-analytics-studio';
+import ebayInventoryStockOptimizationStudioRouter from './ebay-inventory-stock-optimization-studio';
+import ebaySellerCustomerInsightsStudioRouter from './ebay-seller-customer-insights-studio';
+import ebayProductImageManagementStudioRouter from './ebay-product-image-management-studio';
+import ebayListingTemplateBuilderStudioRouter from './ebay-listing-template-builder-studio';
+import ebayOrderPaymentAnalyticsStudioRouter from './ebay-order-payment-analytics-studio';
+import ebayInventorySupplierAnalyticsStudioRouter from './ebay-inventory-supplier-analytics-studio';
+import ebaySellerComplianceDashboardStudioRouter from './ebay-seller-compliance-dashboard-studio';
+import ebayProductDescriptionOptimizationStudioRouter from './ebay-product-description-optimization-studio';
+import ebayListingCompetitiveIntelligenceStudioRouter from './ebay-listing-competitive-intelligence-studio';
+import ebayOrderDisputeAnalyticsStudioRouter from './ebay-order-dispute-analytics-studio';
+import ebayInventoryQualityManagementStudioRouter from './ebay-inventory-quality-management-studio';
+import ebaySellerFinancialAnalyticsStudioRouter from './ebay-seller-financial-analytics-studio';
+import ebayProductVariantAnalyticsStudioRouter from './ebay-product-variant-analytics-studio';
+import ebayListingMarketIntelligenceStudioRouter from './ebay-listing-market-intelligence-studio';
+import ebayOrderBatchAnalyticsStudioRouter from './ebay-order-batch-analytics-studio';
+import ebayInventoryTransferAnalyticsStudioRouter from './ebay-inventory-transfer-analytics-studio';
+import ebaySellerGrowthAnalyticsStudioRouter from './ebay-seller-growth-analytics-studio';
+import ebayProductReviewAnalyticsStudioRouter from './ebay-product-review-analytics-studio';
+import ebayListingInternationalAnalyticsStudioRouter from './ebay-listing-international-analytics-studio';
+import ebayOrderCustomerAnalyticsStudioRouter from './ebay-order-customer-analytics-studio';
+import ebayInventoryAllocationAnalyticsStudioRouter from './ebay-inventory-allocation-analytics-studio';
+import ebaySellerMarketingAnalyticsStudioRouter from './ebay-seller-marketing-analytics-studio';
+import ebayProductSourcingAnalyticsStudioRouter from './ebay-product-sourcing-analytics-studio';
+import ebayListingAnalyticsOptimizationStudioRouter from './ebay-listing-analytics-optimization-studio';
+import ebayOrderInvoiceAnalyticsStudioRouter from './ebay-order-invoice-analytics-studio';
+import ebayInventoryExpirationAnalyticsStudioRouter from './ebay-inventory-expiration-analytics-studio';
+import ebaySellerTrainingAnalyticsStudioRouter from './ebay-seller-training-analytics-studio';
+import ebayProductAuthenticationAnalyticsStudioRouter from './ebay-product-authentication-analytics-studio';
+import ebayListingPromotionAnalyticsStudioRouter from './ebay-listing-promotion-analytics-studio';
+import ebayOrderConsolidationAnalyticsStudioRouter from './ebay-order-consolidation-analytics-studio';
+import ebayInventorySafetyAnalyticsStudioRouter from './ebay-inventory-safety-analytics-studio';
+import ebaySellerFeedbackAnalyticsStudioRouter from './ebay-seller-feedback-analytics-studio';
+import ebayProductCrossListingAnalyticsStudioRouter from './ebay-product-cross-listing-analytics-studio';
+import ebayListingSchedulingAnalyticsStudioRouter from './ebay-listing-scheduling-analytics-studio';
+import ebayOrderWorkflowAnalyticsStudioRouter from './ebay-order-workflow-analytics-studio';
+import ebayInventoryOptimizationAnalyticsStudioRouter from './ebay-inventory-optimization-analytics-studio';
+import ebaySellerDataIntelligenceStudioRouter from './ebay-seller-data-intelligence-studio';
+import ebayProductTrendIntelligenceStudioRouter from './ebay-product-trend-intelligence-studio';
+import ebayListingQualityMonitoringStudioRouter from './ebay-listing-quality-monitoring-studio';
+import ebayOrderPriorityAnalyticsStudioRouter from './ebay-order-priority-analytics-studio';
+import ebayInventoryAuditAnalyticsStudioRouter from './ebay-inventory-audit-analytics-studio';
+import ebaySellerPartnershipAnalyticsStudioRouter from './ebay-seller-partnership-analytics-studio';
+import ebayProductLifecycleAnalyticsStudioRouter from './ebay-product-lifecycle-analytics-studio';
+import ebayListingPersonalizationAnalyticsStudioRouter from './ebay-listing-personalization-analytics-studio';
+import ebayOrderNotificationAnalyticsStudioRouter from './ebay-order-notification-analytics-studio';
+import ebayInventoryReplenishmentAnalyticsStudioRouter from './ebay-inventory-replenishment-analytics-studio';
+import ebaySellerCertificationAnalyticsStudioRouter from './ebay-seller-certification-analytics-studio';
+import ebayProductComplianceAnalyticsStudioRouter from './ebay-product-compliance-analytics-studio';
+import ebayListingVisibilityAnalyticsStudioRouter from './ebay-listing-visibility-analytics-studio';
+import ebayOrderEscalationAnalyticsStudioRouter from './ebay-order-escalation-analytics-studio';
+import ebayInventoryDistributionAnalyticsStudioRouter from './ebay-inventory-distribution-analytics-studio';
+import ebaySellerRevenueAnalyticsStudioRouter from './ebay-seller-revenue-analytics-studio';
+import ebayProductEnrichmentAnalyticsStudioRouter from './ebay-product-enrichment-analytics-studio';
+import ebayListingPerformanceMonitoringStudioRouter from './ebay-listing-performance-monitoring-studio';
+import ebayOrderExperienceAnalyticsStudioRouter from './ebay-order-experience-analytics-studio';
+import ebayInventoryVelocityAnalyticsStudioRouter from './ebay-inventory-velocity-analytics-studio';
+import ebaySellerOnboardingAnalyticsStudioRouter from './ebay-seller-onboarding-analytics-studio';
+import ebayProductMediaManagementStudioRouter from './ebay-product-media-management-studio';
+
 export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay', ebayAuthRouter);
   app.use('/api/ebay-listings', ebayListingsRouter);
@@ -3705,4 +3777,88 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-distribution-planning-suite', ebayInventoryDistributionPlanningSuiteRouter);
   app.use('/api/ebay-seller-revenue-optimization-suite', ebaySellerRevenueOptimizationSuiteRouter);
   app.use('/api/ebay-product-enrichment-pipeline-suite', ebayProductEnrichmentPipelineSuiteRouter);
+  // Phase 1701-1705
+  app.use('/api/ebay-listing-smart-merchandising-studio', ebayListingSmartMerchandisingStudioRouter);
+  app.use('/api/ebay-order-fulfillment-center-studio', ebayOrderFulfillmentCenterStudioRouter);
+  app.use('/api/ebay-inventory-demand-planning-studio', ebayInventoryDemandPlanningStudioRouter);
+  app.use('/api/ebay-seller-brand-management-studio', ebaySellerBrandManagementStudioRouter);
+  app.use('/api/ebay-product-catalog-enrichment-studio', ebayProductCatalogEnrichmentStudioRouter);
+  // Phase 1706-1710
+  app.use('/api/ebay-listing-conversion-analytics-studio', ebayListingConversionAnalyticsStudioRouter);
+  app.use('/api/ebay-order-logistics-optimization-studio', ebayOrderLogisticsOptimizationStudioRouter);
+  app.use('/api/ebay-inventory-warehouse-analytics-studio', ebayInventoryWarehouseAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-performance-tracking-studio', ebaySellerPerformanceTrackingStudioRouter);
+  app.use('/api/ebay-product-pricing-strategy-studio', ebayProductPricingStrategyStudioRouter);
+  // Phase 1711-1715
+  app.use('/api/ebay-listing-seo-management-studio', ebayListingSeoManagementStudioRouter);
+  app.use('/api/ebay-order-returns-analytics-studio', ebayOrderReturnsAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-stock-optimization-studio', ebayInventoryStockOptimizationStudioRouter);
+  app.use('/api/ebay-seller-customer-insights-studio', ebaySellerCustomerInsightsStudioRouter);
+  app.use('/api/ebay-product-image-management-studio', ebayProductImageManagementStudioRouter);
+  // Phase 1716-1720
+  app.use('/api/ebay-listing-template-builder-studio', ebayListingTemplateBuilderStudioRouter);
+  app.use('/api/ebay-order-payment-analytics-studio', ebayOrderPaymentAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-supplier-analytics-studio', ebayInventorySupplierAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-compliance-dashboard-studio', ebaySellerComplianceDashboardStudioRouter);
+  app.use('/api/ebay-product-description-optimization-studio', ebayProductDescriptionOptimizationStudioRouter);
+  // Phase 1721-1725
+  app.use('/api/ebay-listing-competitive-intelligence-studio', ebayListingCompetitiveIntelligenceStudioRouter);
+  app.use('/api/ebay-order-dispute-analytics-studio', ebayOrderDisputeAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-quality-management-studio', ebayInventoryQualityManagementStudioRouter);
+  app.use('/api/ebay-seller-financial-analytics-studio', ebaySellerFinancialAnalyticsStudioRouter);
+  app.use('/api/ebay-product-variant-analytics-studio', ebayProductVariantAnalyticsStudioRouter);
+  // Phase 1726-1730
+  app.use('/api/ebay-listing-market-intelligence-studio', ebayListingMarketIntelligenceStudioRouter);
+  app.use('/api/ebay-order-batch-analytics-studio', ebayOrderBatchAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-transfer-analytics-studio', ebayInventoryTransferAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-growth-analytics-studio', ebaySellerGrowthAnalyticsStudioRouter);
+  app.use('/api/ebay-product-review-analytics-studio', ebayProductReviewAnalyticsStudioRouter);
+  // Phase 1731-1735
+  app.use('/api/ebay-listing-international-analytics-studio', ebayListingInternationalAnalyticsStudioRouter);
+  app.use('/api/ebay-order-customer-analytics-studio', ebayOrderCustomerAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-allocation-analytics-studio', ebayInventoryAllocationAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-marketing-analytics-studio', ebaySellerMarketingAnalyticsStudioRouter);
+  app.use('/api/ebay-product-sourcing-analytics-studio', ebayProductSourcingAnalyticsStudioRouter);
+  // Phase 1736-1740
+  app.use('/api/ebay-listing-analytics-optimization-studio', ebayListingAnalyticsOptimizationStudioRouter);
+  app.use('/api/ebay-order-invoice-analytics-studio', ebayOrderInvoiceAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-expiration-analytics-studio', ebayInventoryExpirationAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-training-analytics-studio', ebaySellerTrainingAnalyticsStudioRouter);
+  app.use('/api/ebay-product-authentication-analytics-studio', ebayProductAuthenticationAnalyticsStudioRouter);
+  // Phase 1741-1745
+  app.use('/api/ebay-listing-promotion-analytics-studio', ebayListingPromotionAnalyticsStudioRouter);
+  app.use('/api/ebay-order-consolidation-analytics-studio', ebayOrderConsolidationAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-safety-analytics-studio', ebayInventorySafetyAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-feedback-analytics-studio', ebaySellerFeedbackAnalyticsStudioRouter);
+  app.use('/api/ebay-product-cross-listing-analytics-studio', ebayProductCrossListingAnalyticsStudioRouter);
+  // Phase 1746-1750
+  app.use('/api/ebay-listing-scheduling-analytics-studio', ebayListingSchedulingAnalyticsStudioRouter);
+  app.use('/api/ebay-order-workflow-analytics-studio', ebayOrderWorkflowAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-optimization-analytics-studio', ebayInventoryOptimizationAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-data-intelligence-studio', ebaySellerDataIntelligenceStudioRouter);
+  app.use('/api/ebay-product-trend-intelligence-studio', ebayProductTrendIntelligenceStudioRouter);
+  // Phase 1751-1755
+  app.use('/api/ebay-listing-quality-monitoring-studio', ebayListingQualityMonitoringStudioRouter);
+  app.use('/api/ebay-order-priority-analytics-studio', ebayOrderPriorityAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-audit-analytics-studio', ebayInventoryAuditAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-partnership-analytics-studio', ebaySellerPartnershipAnalyticsStudioRouter);
+  app.use('/api/ebay-product-lifecycle-analytics-studio', ebayProductLifecycleAnalyticsStudioRouter);
+  // Phase 1756-1760
+  app.use('/api/ebay-listing-personalization-analytics-studio', ebayListingPersonalizationAnalyticsStudioRouter);
+  app.use('/api/ebay-order-notification-analytics-studio', ebayOrderNotificationAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-replenishment-analytics-studio', ebayInventoryReplenishmentAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-certification-analytics-studio', ebaySellerCertificationAnalyticsStudioRouter);
+  app.use('/api/ebay-product-compliance-analytics-studio', ebayProductComplianceAnalyticsStudioRouter);
+  // Phase 1761-1765
+  app.use('/api/ebay-listing-visibility-analytics-studio', ebayListingVisibilityAnalyticsStudioRouter);
+  app.use('/api/ebay-order-escalation-analytics-studio', ebayOrderEscalationAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-distribution-analytics-studio', ebayInventoryDistributionAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-revenue-analytics-studio', ebaySellerRevenueAnalyticsStudioRouter);
+  app.use('/api/ebay-product-enrichment-analytics-studio', ebayProductEnrichmentAnalyticsStudioRouter);
+  // Phase 1766-1770
+  app.use('/api/ebay-listing-performance-monitoring-studio', ebayListingPerformanceMonitoringStudioRouter);
+  app.use('/api/ebay-order-experience-analytics-studio', ebayOrderExperienceAnalyticsStudioRouter);
+  app.use('/api/ebay-inventory-velocity-analytics-studio', ebayInventoryVelocityAnalyticsStudioRouter);
+  app.use('/api/ebay-seller-onboarding-analytics-studio', ebaySellerOnboardingAnalyticsStudioRouter);
+  app.use('/api/ebay-product-media-management-studio', ebayProductMediaManagementStudioRouter);
 }
