@@ -361,6 +361,12 @@ import ebayListingCategoryAdvisorRouter from './ebay-listing-category-advisor';
 import ebaySellerPayoutTrackerRouter from './ebay-seller-payout-tracker';
 import ebayProductCrossReferenceToolRouter from './ebay-product-cross-reference-tool';
 import ebayListingPromotionSchedulerRouter from './ebay-listing-promotion-scheduler';
+// Phase 466-470
+import ebayInventoryBarcodeScannerRouter from './ebay-inventory-barcode-scanner';
+import ebayListingBulkImporterRouter from './ebay-listing-bulk-importer';
+import ebayOrderSplitShipperRouter from './ebay-order-split-shipper';
+import ebaySellerComplianceCheckerProRouter from './ebay-seller-compliance-checker-pro';
+import ebayProductWeightCalculatorRouter from './ebay-product-weight-calculator';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -742,4 +748,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-seller-payout-tracker', ebaySellerPayoutTrackerRouter);
   app.use('/api/ebay-product-cross-reference-tool', ebayProductCrossReferenceToolRouter);
   app.use('/api/ebay-listing-promotion-scheduler', ebayListingPromotionSchedulerRouter);
+  // Phase 466-470
+  app.use('/api/ebay-inventory-barcode-scanner', ebayInventoryBarcodeScannerRouter);
+  app.use('/api/ebay-listing-bulk-importer', ebayListingBulkImporterRouter);
+  app.use('/api/ebay-order-split-shipper', ebayOrderSplitShipperRouter);
+  app.use('/api/ebay-seller-compliance-checker-pro', ebaySellerComplianceCheckerProRouter);
+  app.use('/api/ebay-product-weight-calculator', ebayProductWeightCalculatorRouter);
 }
