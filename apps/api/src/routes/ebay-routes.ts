@@ -349,6 +349,12 @@ import ebayCompetitorPriceAlertRouter from './ebay-competitor-price-alert';
 import ebayShippingCostSplitterRouter from './ebay-shipping-cost-splitter';
 import ebayProductConditionGraderRouter from './ebay-product-condition-grader';
 import ebayOrderFulfillmentOptimizerRouter from './ebay-order-fulfillment-optimizer';
+// Phase 456-460
+import ebayListingImageAiOptimizerRouter from './ebay-listing-image-ai-optimizer';
+import ebayBuyerLoyaltyProgramRouter from './ebay-buyer-loyalty-program';
+import ebayInventoryDemandPlannerRouter from './ebay-inventory-demand-planner';
+import ebayListingTranslationHubRouter from './ebay-listing-translation-hub';
+import ebaySellerFinancialDashboardRouter from './ebay-seller-financial-dashboard';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -718,4 +724,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-shipping-cost-splitter', ebayShippingCostSplitterRouter);
   app.use('/api/ebay-product-condition-grader', ebayProductConditionGraderRouter);
   app.use('/api/ebay-order-fulfillment-optimizer', ebayOrderFulfillmentOptimizerRouter);
+  // Phase 456-460
+  app.use('/api/ebay-listing-image-ai-optimizer', ebayListingImageAiOptimizerRouter);
+  app.use('/api/ebay-buyer-loyalty-program', ebayBuyerLoyaltyProgramRouter);
+  app.use('/api/ebay-inventory-demand-planner', ebayInventoryDemandPlannerRouter);
+  app.use('/api/ebay-listing-translation-hub', ebayListingTranslationHubRouter);
+  app.use('/api/ebay-seller-financial-dashboard', ebaySellerFinancialDashboardRouter);
 }
