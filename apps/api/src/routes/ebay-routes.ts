@@ -274,6 +274,11 @@ import ebayPhotoEnhancementStudioRouter from './ebay-photo-enhancement-studio';
 import ebaySalesChannelManagerRouter from './ebay-sales-channel-manager';
 import ebayBuyerBehaviorAnalyticsRouter from './ebay-buyer-behavior-analytics';
 import ebayInventoryAgingTrackerRouter from './ebay-inventory-aging-tracker';
+import ebayCouponManagerRouter from './ebay-coupon-manager';
+import ebayListingMigrationToolRouter from './ebay-listing-migration-tool';
+import ebaySellerNotificationCenterRouter from './ebay-seller-notification-center';
+import ebayProductVariationManagerRouter from './ebay-product-variation-manager';
+import ebayRevenueForecasterRouter from './ebay-revenue-forecaster';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -559,4 +564,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-sales-channel-manager', ebaySalesChannelManagerRouter);
   app.use('/api/ebay-buyer-behavior-analytics', ebayBuyerBehaviorAnalyticsRouter);
   app.use('/api/ebay-inventory-aging-tracker', ebayInventoryAgingTrackerRouter);
+  // Phase 386-390
+  app.use('/api/ebay-coupon-manager', ebayCouponManagerRouter);
+  app.use('/api/ebay-listing-migration-tool', ebayListingMigrationToolRouter);
+  app.use('/api/ebay-seller-notification-center', ebaySellerNotificationCenterRouter);
+  app.use('/api/ebay-product-variation-manager', ebayProductVariationManagerRouter);
+  app.use('/api/ebay-revenue-forecaster', ebayRevenueForecasterRouter);
 }
