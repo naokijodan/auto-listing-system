@@ -343,6 +343,12 @@ import ebayListingHealthMonitorProRouter from './ebay-listing-health-monitor-pro
 import ebayOrderDeliveryTrackerRouter from './ebay-order-delivery-tracker';
 import ebayProductCatalogEnrichmentRouter from './ebay-product-catalog-enrichment';
 import ebaySellerPerformanceOptimizerRouter from './ebay-seller-performance-optimizer';
+// Phase 451-455
+import ebayReturnLabelGeneratorRouter from './ebay-return-label-generator';
+import ebayCompetitorPriceAlertRouter from './ebay-competitor-price-alert';
+import ebayShippingCostSplitterRouter from './ebay-shipping-cost-splitter';
+import ebayProductConditionGraderRouter from './ebay-product-condition-grader';
+import ebayOrderFulfillmentOptimizerRouter from './ebay-order-fulfillment-optimizer';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -706,4 +712,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-order-delivery-tracker', ebayOrderDeliveryTrackerRouter);
   app.use('/api/ebay-product-catalog-enrichment', ebayProductCatalogEnrichmentRouter);
   app.use('/api/ebay-seller-performance-optimizer', ebaySellerPerformanceOptimizerRouter);
+  // Phase 451-455
+  app.use('/api/ebay-return-label-generator', ebayReturnLabelGeneratorRouter);
+  app.use('/api/ebay-competitor-price-alert', ebayCompetitorPriceAlertRouter);
+  app.use('/api/ebay-shipping-cost-splitter', ebayShippingCostSplitterRouter);
+  app.use('/api/ebay-product-condition-grader', ebayProductConditionGraderRouter);
+  app.use('/api/ebay-order-fulfillment-optimizer', ebayOrderFulfillmentOptimizerRouter);
 }
