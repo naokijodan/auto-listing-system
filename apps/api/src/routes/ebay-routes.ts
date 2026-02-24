@@ -319,6 +319,12 @@ import ebayInventoryCountSchedulerRouter from './ebay-inventory-count-scheduler'
 import ebaySellerOnboardingWizardRouter from './ebay-seller-onboarding-wizard';
 import ebayListingImpressionTrackerRouter from './ebay-listing-impression-tracker';
 import ebayAutomatedRepricingBotRouter from './ebay-automated-repricing-bot';
+// Phase 431-435
+import ebayShippingZoneManagerRouter from './ebay-shipping-zone-manager';
+import ebayProductTagManagerRouter from './ebay-product-tag-manager';
+import ebayOrderRiskScorerRouter from './ebay-order-risk-scorer';
+import ebayListingFreshnessMonitorRouter from './ebay-listing-freshness-monitor';
+import ebayCarrierPerformanceTrackerRouter from './ebay-carrier-performance-tracker';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -658,4 +664,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-seller-onboarding-wizard', ebaySellerOnboardingWizardRouter);
   app.use('/api/ebay-listing-impression-tracker', ebayListingImpressionTrackerRouter);
   app.use('/api/ebay-automated-repricing-bot', ebayAutomatedRepricingBotRouter);
+  // Phase 431-435
+  app.use('/api/ebay-shipping-zone-manager', ebayShippingZoneManagerRouter);
+  app.use('/api/ebay-product-tag-manager', ebayProductTagManagerRouter);
+  app.use('/api/ebay-order-risk-scorer', ebayOrderRiskScorerRouter);
+  app.use('/api/ebay-listing-freshness-monitor', ebayListingFreshnessMonitorRouter);
+  app.use('/api/ebay-carrier-performance-tracker', ebayCarrierPerformanceTrackerRouter);
 }
