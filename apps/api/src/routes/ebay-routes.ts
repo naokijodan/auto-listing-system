@@ -601,6 +601,12 @@ import ebayOrderConsolidationEngineRouter from './ebay-order-consolidation-engin
 import ebayInventoryAbcAnalyzerRouter from './ebay-inventory-abc-analyzer';
 import ebaySellerReviewResponseBotRouter from './ebay-seller-review-response-bot';
 import ebayProductHazmatComplianceRouter from './ebay-product-hazmat-compliance';
+// Phase 661-665
+import ebayListingMobileOptimizerRouter from './ebay-listing-mobile-optimizer';
+import ebayOrderDropshipCoordinatorRouter from './ebay-order-dropship-coordinator';
+import ebayInventoryCrossDockManagerRouter from './ebay-inventory-cross-dock-manager';
+import ebaySellerProfitCalculatorProRouter from './ebay-seller-profit-calculator-pro';
+import ebayProductVideoManagerRouter from './ebay-product-video-manager';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1222,4 +1228,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-abc-analyzer', ebayInventoryAbcAnalyzerRouter);
   app.use('/api/ebay-seller-review-response-bot', ebaySellerReviewResponseBotRouter);
   app.use('/api/ebay-product-hazmat-compliance', ebayProductHazmatComplianceRouter);
+  // Phase 661-665
+  app.use('/api/ebay-listing-mobile-optimizer', ebayListingMobileOptimizerRouter);
+  app.use('/api/ebay-order-dropship-coordinator', ebayOrderDropshipCoordinatorRouter);
+  app.use('/api/ebay-inventory-cross-dock-manager', ebayInventoryCrossDockManagerRouter);
+  app.use('/api/ebay-seller-profit-calculator-pro', ebaySellerProfitCalculatorProRouter);
+  app.use('/api/ebay-product-video-manager', ebayProductVideoManagerRouter);
 }
