@@ -5,7 +5,7 @@
 **日付**: 2026-02-24
 **Phase**: v3.0 Social Commerce Edition — Phase 470完了
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: 66a25c3
+**最新コミット**: 339217e
 
 ---
 
@@ -39,6 +39,16 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 ---
 
 ## 🚀 次のセッションで実行すること
+
+### 優先度S: eBay機能開発の継続
+
+| タスク | 内容 | 開始Phase |
+|--------|------|-----------|
+| **eBay Phase 471+** | eBay機能の継続開発（Phase 471から） | Phase 471 |
+
+**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 471から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
+
+**パターン**: 5 Phase単位でCodexに委託 → ebay-routes.ts更新 → git commit → 5バッチ（25-30 Phase）でpush → HANDOVER.md更新 → Obsidianノート
 
 ### 優先度A: 外部認証（ユーザー操作が必要）
 
