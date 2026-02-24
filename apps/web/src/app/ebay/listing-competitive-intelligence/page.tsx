@@ -6,14 +6,14 @@ type ApiResponse = { section: string; action: string };
 
 const TABS = [
   { key: "dashboard", label: "ダッシュボード", path: "dashboard/summary" },
-  { key: "products", label: "商品", path: "views/summary" },
-  { key: "materials", label: "素材", path: "media/summary" },
-  { key: "sourcing", label: "調達", path: "renders/summary" },
+  { key: "listings", label: "出品", path: "views/summary" },
+  { key: "media", label: "メディア", path: "media/summary" },
+  { key: "layouts", label: "レイアウト", path: "renders/summary" },
   { key: "analytics", label: "分析", path: "analytics/overview" },
   { key: "settings", label: "設定", path: "settings" },
 ] as const;
 
-const API_BASE = "/api/ebay-product-pricing-intelligence/";
+const API_BASE = "/api/ebay-listing-competitive-intelligence/";
 
 export default function Page() {
   const [active, setActive] = useState<(typeof TABS)[number]["key"]>("dashboard");
@@ -41,10 +41,10 @@ export default function Page() {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold text-lime-600">商品プライシングインテリジェンス</h1>
+      <h1 className="text-2xl font-semibold text-blue-600">出品コンペティティブインテリジェンス</h1>
       <div className="flex gap-2 flex-wrap">
         {TABS.map((tab) => (
-          <button key={tab.key} onClick={() => setActive(tab.key)} className={`px-3 py-1 rounded border text-sm ${active === tab.key ? "bg-lime-50 border-lime-600 text-lime-600" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>{tab.label}</button>
+          <button key={tab.key} onClick={() => setActive(tab.key)} className={`px-3 py-1 rounded border text-sm ${active === tab.key ? "bg-blue-50 border-blue-600 text-blue-600" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>{tab.label}</button>
         ))}
       </div>
       <div className="rounded border p-4">
