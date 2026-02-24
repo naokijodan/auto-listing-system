@@ -157,6 +157,11 @@ import ebayMultiCurrencyRouter from './ebay-multi-currency';
 import ebayShippingLabelRouter from './ebay-shipping-label';
 import ebayPriceHistoryRouter from './ebay-price-history';
 import ebayInventorySyncHubRouter from './ebay-inventory-sync-hub';
+import ebayListingAbTestManagerRouter from './ebay-listing-ab-test-manager';
+import ebayReturnsDashboardProRouter from './ebay-returns-dashboard-pro';
+import ebayInventorySnapshotToolRouter from './ebay-inventory-snapshot-tool';
+import ebayShippingInsuranceManagerRouter from './ebay-shipping-insurance-manager';
+import ebayListingExpiryTrackerRouter from './ebay-listing-expiry-tracker';
 import ebayReturnLabelRouter from './ebay-return-label';
 import ebayFeedbackResponseRouter from './ebay-feedback-response';
 import ebaySalesPerformanceRouter from './ebay-sales-performance';
@@ -614,4 +619,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-listing-rotation-scheduler', ebayListingRotationSchedulerRouter);
   app.use('/api/ebay-customer-feedback-loop', ebayCustomerFeedbackLoopRouter);
   app.use('/api/ebay-smart-inventory-allocator', ebaySmartInventoryAllocatorRouter);
+  // Phase 411-415
+  app.use('/api/ebay-listing-ab-test-manager', ebayListingAbTestManagerRouter);
+  app.use('/api/ebay-returns-dashboard-pro', ebayReturnsDashboardProRouter);
+  app.use('/api/ebay-inventory-snapshot-tool', ebayInventorySnapshotToolRouter);
+  app.use('/api/ebay-shipping-insurance-manager', ebayShippingInsuranceManagerRouter);
+  app.use('/api/ebay-listing-expiry-tracker', ebayListingExpiryTrackerRouter);
 }
