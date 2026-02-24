@@ -535,6 +535,12 @@ import ebayOrderSupplyChainManagerRouter from './ebay-order-supply-chain-manager
 import ebayInventorySmartRebalancerRouter from './ebay-inventory-smart-rebalancer';
 import ebaySellerAiAdvisorRouter from './ebay-seller-ai-advisor';
 import ebayProductCrossBorderToolRouter from './ebay-product-cross-border-tool';
+// Phase 606-610
+import ebayListingPerformancePredictorRouter from './ebay-listing-performance-predictor';
+import ebayOrderMultiCarrierManagerRouter from './ebay-order-multi-carrier-manager';
+import ebayInventorySupplierPortalRouter from './ebay-inventory-supplier-portal';
+import ebaySellerMarketIntelligenceRouter from './ebay-seller-market-intelligence';
+import ebayProductDigitalAssetManagerRouter from './ebay-product-digital-asset-manager';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1090,4 +1096,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-smart-rebalancer', ebayInventorySmartRebalancerRouter);
   app.use('/api/ebay-seller-ai-advisor', ebaySellerAiAdvisorRouter);
   app.use('/api/ebay-product-cross-border-tool', ebayProductCrossBorderToolRouter);
+  // Phase 606-610
+  app.use('/api/ebay-listing-performance-predictor', ebayListingPerformancePredictorRouter);
+  app.use('/api/ebay-order-multi-carrier-manager', ebayOrderMultiCarrierManagerRouter);
+  app.use('/api/ebay-inventory-supplier-portal', ebayInventorySupplierPortalRouter);
+  app.use('/api/ebay-seller-market-intelligence', ebaySellerMarketIntelligenceRouter);
+  app.use('/api/ebay-product-digital-asset-manager', ebayProductDigitalAssetManagerRouter);
 }
