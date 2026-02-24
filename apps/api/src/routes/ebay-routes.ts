@@ -451,6 +451,12 @@ import ebayOrderClaimsManagerRouter from './ebay-order-claims-manager';
 import ebayInventoryValueTrackerRouter from './ebay-inventory-value-tracker';
 import ebaySellerGrowthAnalyticsRouter from './ebay-seller-growth-analytics';
 import ebayProductImportWizardRouter from './ebay-product-import-wizard';
+// Phase 541-545
+import ebayListingComplianceMonitorRouter from './ebay-listing-compliance-monitor';
+import ebayOrderShippingTrackerProRouter from './ebay-order-shipping-tracker-pro';
+import ebayInventoryAlertCenterRouter from './ebay-inventory-alert-center';
+import ebaySellerMarketingHubRouter from './ebay-seller-marketing-hub';
+import ebayProductCategoryNavigatorRouter from './ebay-product-category-navigator';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -922,4 +928,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-value-tracker', ebayInventoryValueTrackerRouter);
   app.use('/api/ebay-seller-growth-analytics', ebaySellerGrowthAnalyticsRouter);
   app.use('/api/ebay-product-import-wizard', ebayProductImportWizardRouter);
+  // Phase 541-545
+  app.use('/api/ebay-listing-compliance-monitor', ebayListingComplianceMonitorRouter);
+  app.use('/api/ebay-order-shipping-tracker-pro', ebayOrderShippingTrackerProRouter);
+  app.use('/api/ebay-inventory-alert-center', ebayInventoryAlertCenterRouter);
+  app.use('/api/ebay-seller-marketing-hub', ebaySellerMarketingHubRouter);
+  app.use('/api/ebay-product-category-navigator', ebayProductCategoryNavigatorRouter);
 }
