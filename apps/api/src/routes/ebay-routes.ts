@@ -2345,6 +2345,77 @@ import ebayInventoryVelocityManagementPrimeRouter from './ebay-inventory-velocit
 import ebaySellerOnboardingManagementPrimeRouter from './ebay-seller-onboarding-management-prime';
 import ebayProductMediaManagementPrimeRouter from './ebay-product-media-management-prime';
 
+import ebayListingIntelligenceManagementEliteRouter from './ebay-listing-intelligence-management-elite';
+import ebayOrderAutomationManagementEliteRouter from './ebay-order-automation-management-elite';
+import ebayInventoryForecastingManagementEliteRouter from './ebay-inventory-forecasting-management-elite';
+import ebaySellerAnalyticsManagementEliteRouter from './ebay-seller-analytics-management-elite';
+import ebayProductOptimizationManagementEliteRouter from './ebay-product-optimization-management-elite';
+import ebayListingDynamicPricingEliteRouter from './ebay-listing-dynamic-pricing-elite';
+import ebayOrderTrackingManagementEliteRouter from './ebay-order-tracking-management-elite';
+import ebayInventorySyncManagementEliteRouter from './ebay-inventory-sync-management-elite';
+import ebaySellerReputationManagementEliteRouter from './ebay-seller-reputation-management-elite';
+import ebayProductBundleManagementEliteRouter from './ebay-product-bundle-management-elite';
+import ebayListingAbTestingEliteRouter from './ebay-listing-ab-testing-elite';
+import ebayOrderRefundManagementEliteRouter from './ebay-order-refund-management-elite';
+import ebayInventoryAlertManagementEliteRouter from './ebay-inventory-alert-management-elite';
+import ebaySellerDashboardManagementEliteRouter from './ebay-seller-dashboard-management-elite';
+import ebayProductCategoryManagementEliteRouter from './ebay-product-category-management-elite';
+import ebayListingTemplateOptimizationEliteRouter from './ebay-listing-template-optimization-elite';
+import ebayOrderShippingManagementEliteRouter from './ebay-order-shipping-management-elite';
+import ebayInventoryRestockManagementEliteRouter from './ebay-inventory-restock-management-elite';
+import ebaySellerCommunicationManagementEliteRouter from './ebay-seller-communication-management-elite';
+import ebayProductImageOptimizationEliteRouter from './ebay-product-image-optimization-elite';
+import ebayListingKeywordManagementEliteRouter from './ebay-listing-keyword-management-elite';
+import ebayOrderCancellationManagementEliteRouter from './ebay-order-cancellation-management-elite';
+import ebayInventoryLocationManagementEliteRouter from './ebay-inventory-location-management-elite';
+import ebaySellerPolicyManagementEliteRouter from './ebay-seller-policy-management-elite';
+import ebayProductSpecificationManagementEliteRouter from './ebay-product-specification-management-elite';
+import ebayListingCrossBorderEliteRouter from './ebay-listing-cross-border-elite';
+import ebayOrderBulkManagementEliteRouter from './ebay-order-bulk-management-elite';
+import ebayInventoryCycleCountEliteRouter from './ebay-inventory-cycle-count-elite';
+import ebaySellerTaxManagementEliteRouter from './ebay-seller-tax-management-elite';
+import ebayProductConditionManagementEliteRouter from './ebay-product-condition-management-elite';
+import ebayListingSeasonalManagementEliteRouter from './ebay-listing-seasonal-management-elite';
+import ebayOrderWarrantyManagementEliteRouter from './ebay-order-warranty-management-elite';
+import ebayInventoryShelfManagementEliteRouter from './ebay-inventory-shelf-management-elite';
+import ebaySellerIntegrationManagementEliteRouter from './ebay-seller-integration-management-elite';
+import ebayProductBarcodeManagementEliteRouter from './ebay-product-barcode-management-elite';
+import ebayListingCompetitorAnalysisEliteRouter from './ebay-listing-competitor-analysis-elite';
+import ebayOrderPaymentProcessingEliteRouter from './ebay-order-payment-processing-elite';
+import ebayInventoryBatchManagementEliteRouter from './ebay-inventory-batch-management-elite';
+import ebaySellerAccountManagementEliteRouter from './ebay-seller-account-management-elite';
+import ebayProductLabelManagementEliteRouter from './ebay-product-label-management-elite';
+import ebayListingPerformanceTrackingEliteRouter from './ebay-listing-performance-tracking-elite';
+import ebayOrderDeliveryManagementEliteRouter from './ebay-order-delivery-management-elite';
+import ebayInventoryMovementManagementEliteRouter from './ebay-inventory-movement-management-elite';
+import ebaySellerComplianceTrackingEliteRouter from './ebay-seller-compliance-tracking-elite';
+import ebayProductWarrantyManagementEliteRouter from './ebay-product-warranty-management-elite';
+import ebayListingGeoTargetingEliteRouter from './ebay-listing-geo-targeting-elite';
+import ebayOrderFeedbackManagementEliteRouter from './ebay-order-feedback-management-elite';
+import ebayInventoryCostManagementEliteRouter from './ebay-inventory-cost-management-elite';
+import ebaySellerReportingManagementEliteRouter from './ebay-seller-reporting-management-elite';
+import ebayProductReviewAnalysisEliteRouter from './ebay-product-review-analysis-elite';
+import ebayListingAutomationWorkflowEliteRouter from './ebay-listing-automation-workflow-elite';
+import ebayOrderArchiveManagementEliteRouter from './ebay-order-archive-management-elite';
+import ebayInventoryValuationManagementEliteRouter from './ebay-inventory-valuation-management-elite';
+import ebaySellerSubscriptionManagementEliteRouter from './ebay-seller-subscription-management-elite';
+import ebayProductCatalogSyncEliteRouter from './ebay-product-catalog-sync-elite';
+import ebayListingSplitTestingEliteRouter from './ebay-listing-split-testing-elite';
+import ebayOrderStatusManagementEliteRouter from './ebay-order-status-management-elite';
+import ebayInventoryThresholdManagementEliteRouter from './ebay-inventory-threshold-management-elite';
+import ebaySellerNotificationManagementEliteRouter from './ebay-seller-notification-management-elite';
+import ebayProductPricingStrategyEliteRouter from './ebay-product-pricing-strategy-elite';
+import ebayListingRecommendationEliteRouter from './ebay-listing-recommendation-elite';
+import ebayOrderDisputeResolutionEliteRouter from './ebay-order-dispute-resolution-elite';
+import ebayInventoryDemandPlanningEliteRouter from './ebay-inventory-demand-planning-elite';
+import ebaySellerPerformanceTrackingEliteRouter from './ebay-seller-performance-tracking-elite';
+import ebayProductSearchOptimizationEliteRouter from './ebay-product-search-optimization-elite';
+import ebayListingMarketAnalysisEliteRouter from './ebay-listing-market-analysis-elite';
+import ebayOrderLogisticsOptimizationEliteRouter from './ebay-order-logistics-optimization-elite';
+import ebayInventorySupplyChainEliteRouter from './ebay-inventory-supply-chain-elite';
+import ebaySellerGrowthAnalyticsEliteRouter from './ebay-seller-growth-analytics-elite';
+import ebayProductDataManagementEliteRouter from './ebay-product-data-management-elite';
+
 export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay', ebayAuthRouter);
   app.use('/api/ebay-listings', ebayListingsRouter);
@@ -4800,4 +4871,101 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-velocity-management-prime', ebayInventoryVelocityManagementPrimeRouter);
   app.use('/api/ebay-seller-onboarding-management-prime', ebaySellerOnboardingManagementPrimeRouter);
   app.use('/api/ebay-product-media-management-prime', ebayProductMediaManagementPrimeRouter);
+  // Phase 2191-2195
+  app.use('/api/ebay-listing-intelligence-management-elite', ebayListingIntelligenceManagementEliteRouter);
+  app.use('/api/ebay-order-automation-management-elite', ebayOrderAutomationManagementEliteRouter);
+  app.use('/api/ebay-inventory-forecasting-management-elite', ebayInventoryForecastingManagementEliteRouter);
+  app.use('/api/ebay-seller-analytics-management-elite', ebaySellerAnalyticsManagementEliteRouter);
+  app.use('/api/ebay-product-optimization-management-elite', ebayProductOptimizationManagementEliteRouter);
+  
+  // Phase 2196-2200
+  app.use('/api/ebay-listing-dynamic-pricing-elite', ebayListingDynamicPricingEliteRouter);
+  app.use('/api/ebay-order-tracking-management-elite', ebayOrderTrackingManagementEliteRouter);
+  app.use('/api/ebay-inventory-sync-management-elite', ebayInventorySyncManagementEliteRouter);
+  app.use('/api/ebay-seller-reputation-management-elite', ebaySellerReputationManagementEliteRouter);
+  app.use('/api/ebay-product-bundle-management-elite', ebayProductBundleManagementEliteRouter);
+  
+  // Phase 2201-2205
+  app.use('/api/ebay-listing-ab-testing-elite', ebayListingAbTestingEliteRouter);
+  app.use('/api/ebay-order-refund-management-elite', ebayOrderRefundManagementEliteRouter);
+  app.use('/api/ebay-inventory-alert-management-elite', ebayInventoryAlertManagementEliteRouter);
+  app.use('/api/ebay-seller-dashboard-management-elite', ebaySellerDashboardManagementEliteRouter);
+  app.use('/api/ebay-product-category-management-elite', ebayProductCategoryManagementEliteRouter);
+  
+  // Phase 2206-2210
+  app.use('/api/ebay-listing-template-optimization-elite', ebayListingTemplateOptimizationEliteRouter);
+  app.use('/api/ebay-order-shipping-management-elite', ebayOrderShippingManagementEliteRouter);
+  app.use('/api/ebay-inventory-restock-management-elite', ebayInventoryRestockManagementEliteRouter);
+  app.use('/api/ebay-seller-communication-management-elite', ebaySellerCommunicationManagementEliteRouter);
+  app.use('/api/ebay-product-image-optimization-elite', ebayProductImageOptimizationEliteRouter);
+  
+  // Phase 2211-2215
+  app.use('/api/ebay-listing-keyword-management-elite', ebayListingKeywordManagementEliteRouter);
+  app.use('/api/ebay-order-cancellation-management-elite', ebayOrderCancellationManagementEliteRouter);
+  app.use('/api/ebay-inventory-location-management-elite', ebayInventoryLocationManagementEliteRouter);
+  app.use('/api/ebay-seller-policy-management-elite', ebaySellerPolicyManagementEliteRouter);
+  app.use('/api/ebay-product-specification-management-elite', ebayProductSpecificationManagementEliteRouter);
+  
+  // Phase 2216-2220
+  app.use('/api/ebay-listing-cross-border-elite', ebayListingCrossBorderEliteRouter);
+  app.use('/api/ebay-order-bulk-management-elite', ebayOrderBulkManagementEliteRouter);
+  app.use('/api/ebay-inventory-cycle-count-elite', ebayInventoryCycleCountEliteRouter);
+  app.use('/api/ebay-seller-tax-management-elite', ebaySellerTaxManagementEliteRouter);
+  app.use('/api/ebay-product-condition-management-elite', ebayProductConditionManagementEliteRouter);
+  
+  // Phase 2221-2225
+  app.use('/api/ebay-listing-seasonal-management-elite', ebayListingSeasonalManagementEliteRouter);
+  app.use('/api/ebay-order-warranty-management-elite', ebayOrderWarrantyManagementEliteRouter);
+  app.use('/api/ebay-inventory-shelf-management-elite', ebayInventoryShelfManagementEliteRouter);
+  app.use('/api/ebay-seller-integration-management-elite', ebaySellerIntegrationManagementEliteRouter);
+  app.use('/api/ebay-product-barcode-management-elite', ebayProductBarcodeManagementEliteRouter);
+  
+  // Phase 2226-2230
+  app.use('/api/ebay-listing-competitor-analysis-elite', ebayListingCompetitorAnalysisEliteRouter);
+  app.use('/api/ebay-order-payment-processing-elite', ebayOrderPaymentProcessingEliteRouter);
+  app.use('/api/ebay-inventory-batch-management-elite', ebayInventoryBatchManagementEliteRouter);
+  app.use('/api/ebay-seller-account-management-elite', ebaySellerAccountManagementEliteRouter);
+  app.use('/api/ebay-product-label-management-elite', ebayProductLabelManagementEliteRouter);
+  
+  // Phase 2231-2235
+  app.use('/api/ebay-listing-performance-tracking-elite', ebayListingPerformanceTrackingEliteRouter);
+  app.use('/api/ebay-order-delivery-management-elite', ebayOrderDeliveryManagementEliteRouter);
+  app.use('/api/ebay-inventory-movement-management-elite', ebayInventoryMovementManagementEliteRouter);
+  app.use('/api/ebay-seller-compliance-tracking-elite', ebaySellerComplianceTrackingEliteRouter);
+  app.use('/api/ebay-product-warranty-management-elite', ebayProductWarrantyManagementEliteRouter);
+  
+  // Phase 2236-2240
+  app.use('/api/ebay-listing-geo-targeting-elite', ebayListingGeoTargetingEliteRouter);
+  app.use('/api/ebay-order-feedback-management-elite', ebayOrderFeedbackManagementEliteRouter);
+  app.use('/api/ebay-inventory-cost-management-elite', ebayInventoryCostManagementEliteRouter);
+  app.use('/api/ebay-seller-reporting-management-elite', ebaySellerReportingManagementEliteRouter);
+  app.use('/api/ebay-product-review-analysis-elite', ebayProductReviewAnalysisEliteRouter);
+  
+  // Phase 2241-2245
+  app.use('/api/ebay-listing-automation-workflow-elite', ebayListingAutomationWorkflowEliteRouter);
+  app.use('/api/ebay-order-archive-management-elite', ebayOrderArchiveManagementEliteRouter);
+  app.use('/api/ebay-inventory-valuation-management-elite', ebayInventoryValuationManagementEliteRouter);
+  app.use('/api/ebay-seller-subscription-management-elite', ebaySellerSubscriptionManagementEliteRouter);
+  app.use('/api/ebay-product-catalog-sync-elite', ebayProductCatalogSyncEliteRouter);
+  
+  // Phase 2246-2250
+  app.use('/api/ebay-listing-split-testing-elite', ebayListingSplitTestingEliteRouter);
+  app.use('/api/ebay-order-status-management-elite', ebayOrderStatusManagementEliteRouter);
+  app.use('/api/ebay-inventory-threshold-management-elite', ebayInventoryThresholdManagementEliteRouter);
+  app.use('/api/ebay-seller-notification-management-elite', ebaySellerNotificationManagementEliteRouter);
+  app.use('/api/ebay-product-pricing-strategy-elite', ebayProductPricingStrategyEliteRouter);
+  
+  // Phase 2251-2255
+  app.use('/api/ebay-listing-recommendation-elite', ebayListingRecommendationEliteRouter);
+  app.use('/api/ebay-order-dispute-resolution-elite', ebayOrderDisputeResolutionEliteRouter);
+  app.use('/api/ebay-inventory-demand-planning-elite', ebayInventoryDemandPlanningEliteRouter);
+  app.use('/api/ebay-seller-performance-tracking-elite', ebaySellerPerformanceTrackingEliteRouter);
+  app.use('/api/ebay-product-search-optimization-elite', ebayProductSearchOptimizationEliteRouter);
+  
+  // Phase 2256-2260
+  app.use('/api/ebay-listing-market-analysis-elite', ebayListingMarketAnalysisEliteRouter);
+  app.use('/api/ebay-order-logistics-optimization-elite', ebayOrderLogisticsOptimizationEliteRouter);
+  app.use('/api/ebay-inventory-supply-chain-elite', ebayInventorySupplyChainEliteRouter);
+  app.use('/api/ebay-seller-growth-analytics-elite', ebaySellerGrowthAnalyticsEliteRouter);
+  app.use('/api/ebay-product-data-management-elite', ebayProductDataManagementEliteRouter);
 }
