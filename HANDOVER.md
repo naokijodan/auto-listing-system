@@ -3,9 +3,9 @@
 ## 最終更新
 
 **日付**: 2026-02-24
-**Phase**: v3.0 Social Commerce Edition — Phase 370完了
+**Phase**: v3.0 Social Commerce Edition — Phase 400完了
 **担当**: Claude（オーケストレーター）+ Codex（コード生成）
-**最新コミット**: 50c70d2
+**最新コミット**: 2349111
 
 ---
 
@@ -233,7 +233,52 @@ APIエラーハンドリングを統一するミドルウェアを生成して�
 
 ---
 
-## 今回のセッションで完了したPhase（313-352）
+## 今回のセッションで完了したPhase（371-400）
+
+| Phase | 機能名 | API | テーマ |
+|-------|--------|-----|--------|
+| 371 | アイテムスペシフィクス管理 | ebay-item-specifics-manager | emerald-600 |
+| 372 | 出品分析Pro | ebay-listing-analytics-pro | sky-600 |
+| 373 | 決済照合 | ebay-payment-reconciliation | amber-600 |
+| 374 | ダイナミックプライシング | ebay-dynamic-pricing-engine | violet-600 |
+| 375 | カタログ管理 | ebay-catalog-management | rose-600 |
+| 376 | 配送追跡Pro | ebay-shipping-tracker-pro | teal-600 |
+| 377 | サプライヤースコアカード | ebay-supplier-scorecard | indigo-600 |
+| 378 | 需要予測 | ebay-demand-forecaster | orange-600 |
+| 379 | マルチ通貨管理 | ebay-multi-currency-manager | pink-600 |
+| 380 | 出品コンプライアンスチェッカー | ebay-listing-compliance-checker | slate-600 |
+| 381 | 注文優先度管理 | ebay-order-priority-manager | red-600 |
+| 382 | 写真補正スタジオ | ebay-photo-enhancement-studio | fuchsia-600 |
+| 383 | 販売チャネル管理 | ebay-sales-channel-manager | green-600 |
+| 384 | バイヤー行動分析 | ebay-buyer-behavior-analytics | blue-600 |
+| 385 | 在庫経過日数トラッカー | ebay-inventory-aging-tracker | yellow-600 |
+| 386 | クーポン管理 | ebay-coupon-manager | purple-600 |
+| 387 | 出品移行ツール | ebay-listing-migration-tool | cyan-600 |
+| 388 | セラー通知センター | ebay-seller-notification-center | lime-600 |
+| 389 | 商品バリエーション管理 | ebay-product-variation-manager | emerald-600 |
+| 390 | 収益予測 | ebay-revenue-forecaster | sky-600 |
+| 391 | 一括画像アップローダー | ebay-bulk-image-uploader | amber-600 |
+| 392 | カスタムレポートビルダー | ebay-custom-report-builder | violet-600 |
+| 393 | 梱包管理 | ebay-packaging-manager | green-600 |
+| 394 | マーケットプレイス手数料最適化 | ebay-marketplace-fee-optimizer | rose-600 |
+| 395 | セラーコンプライアンスダッシュボード | ebay-seller-compliance-dashboard | teal-600 |
+| 396 | カート放棄回復 | ebay-abandoned-cart-recovery | indigo-600 |
+| 397 | クロスプロモーションエンジン | ebay-cross-promotion-engine | orange-600 |
+| 398 | セラーベンチマーキング | ebay-seller-benchmarking | pink-600 |
+| 399 | 在庫移動管理 | ebay-inventory-transfer-manager | slate-600 |
+| 400 | AI商品説明ジェネレーター | ebay-ai-product-description-generator | red-600 |
+
+**Git履歴**:
+- 2349111 Phase 396-400
+- c2c16af Phase 391-395
+- 4c95c85 Phase 386-390
+- 6103459 Phase 381-385
+- 37e9654 Phase 376-380
+- bfd5288 Phase 371-375
+
+---
+
+## 前回のセッションで完了したPhase（313-370）
 
 | Phase | 機能名 | API | テーマ |
 |-------|--------|-----|--------|
