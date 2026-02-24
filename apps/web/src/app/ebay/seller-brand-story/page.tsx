@@ -6,9 +6,9 @@ type ApiData = { section: string; action: string } | Record<string, unknown>;
 
 const TABS = [
   { key: 'dashboard', label: 'ダッシュボード' },
-  { key: 'orders', label: '注文' },
-  { key: 'batches', label: 'バッチ' },
-  { key: 'queues', label: 'キュー' },
+  { key: 'sellers', label: 'セラー' },
+  { key: 'stories', label: 'ストーリー' },
+  { key: 'branding', label: 'ブランディング' },
   { key: 'analytics', label: '分析' },
   { key: 'settings', label: '設定' },
 ] as const;
@@ -17,12 +17,12 @@ const endpointFor = (key: typeof TABS[number]['key']): string => {
   switch (key) {
     case 'dashboard':
       return 'dashboard';
-    case 'orders':
-      return 'orders';
-    case 'batches':
-      return 'batches';
-    case 'queues':
-      return 'queues';
+    case 'sellers':
+      return 'sellers';
+    case 'stories':
+      return 'stories';
+    case 'branding':
+      return 'branding';
     case 'analytics':
       return 'analytics';
     case 'settings':
@@ -32,9 +32,9 @@ const endpointFor = (key: typeof TABS[number]['key']): string => {
   }
 };
 
-const BASE_API = '/api/ebay-order-batch-processor/';
+const BASE_API = '/api/ebay-seller-brand-story/';
 
-export default function OrderBatchProcessorPage() {
+export default function SellerBrandStoryPage() {
   const [active, setActive] = useState<typeof TABS[number]['key']>('dashboard');
   const [data, setData] = useState<ApiData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -64,7 +64,7 @@ export default function OrderBatchProcessorPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold text-indigo-600">注文バッチプロセッサー</h1>
+      <h1 className="text-2xl font-bold text-pink-600">セラーブランドストーリー</h1>
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex gap-6" aria-label="Tabs">
           {TABS.map((t) => (
@@ -73,7 +73,7 @@ export default function OrderBatchProcessorPage() {
               onClick={() => setActive(t.key)}
               className={`whitespace-nowrap py-2 border-b-2 text-sm font-medium transition-colors ${
                 active === t.key
-                  ? 'border-indigo-600 text-indigo-600'
+                  ? 'border-pink-600 text-pink-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
