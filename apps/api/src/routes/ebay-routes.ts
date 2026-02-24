@@ -697,6 +697,12 @@ import ebayOrderDeliveryTrackerProRouter from './ebay-order-delivery-tracker-pro
 import ebayInventorySupplierNegotiatorRouter from './ebay-inventory-supplier-negotiator';
 import ebaySellerFeedbackAnalyzerRouter from './ebay-seller-feedback-analyzer';
 import ebayProductMultiChannelHubRouter from './ebay-product-multi-channel-hub';
+// Phase 741-745
+import ebayListingSmartBundlerRouter from './ebay-listing-smart-bundler';
+import ebayOrderClaimResolverRouter from './ebay-order-claim-resolver';
+import ebayInventoryDemandSensingRouter from './ebay-inventory-demand-sensing';
+import ebaySellerGoalTrackerRouter from './ebay-seller-goal-tracker';
+import ebayProductConditionInspectorRouter from './ebay-product-condition-inspector';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1414,4 +1420,10 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-supplier-negotiator', ebayInventorySupplierNegotiatorRouter);
   app.use('/api/ebay-seller-feedback-analyzer', ebaySellerFeedbackAnalyzerRouter);
   app.use('/api/ebay-product-multi-channel-hub', ebayProductMultiChannelHubRouter);
+  // Phase 741-745
+  app.use('/api/ebay-listing-smart-bundler', ebayListingSmartBundlerRouter);
+  app.use('/api/ebay-order-claim-resolver', ebayOrderClaimResolverRouter);
+  app.use('/api/ebay-inventory-demand-sensing', ebayInventoryDemandSensingRouter);
+  app.use('/api/ebay-seller-goal-tracker', ebaySellerGoalTrackerRouter);
+  app.use('/api/ebay-product-condition-inspector', ebayProductConditionInspectorRouter);
 }
