@@ -727,6 +727,18 @@ import ebayOrderCustomsBrokerRouter from './ebay-order-customs-broker';
 import ebayInventoryRfidTrackerRouter from './ebay-inventory-rfid-tracker';
 import ebaySellerAnalyticsStudioRouter from './ebay-seller-analytics-studio';
 import ebayProductBarcodeGeneratorRouter from './ebay-product-barcode-generator';
+// Phase 766-770
+import ebayListingAbTestingSuiteRouter from './ebay-listing-ab-testing-suite';
+import ebayOrderReturnLabelPrinterRouter from './ebay-order-return-label-printer';
+import ebayInventoryCyclePlannerRouter from './ebay-inventory-cycle-planner';
+import ebaySellerLoyaltyProgramRouter from './ebay-seller-loyalty-program';
+import ebayProductSpecSheetGeneratorRouter from './ebay-product-spec-sheet-generator';
+// Phase 771-775
+import ebayListingSmartDescriptionProRouter from './ebay-listing-smart-description-pro';
+import ebayOrderBulkLabelGeneratorRouter from './ebay-order-bulk-label-generator';
+import ebayInventoryStockTransferHubRouter from './ebay-inventory-stock-transfer-hub';
+import ebaySellerProfitOptimizerRouter from './ebay-seller-profit-optimizer';
+import ebayProductComplianceCheckerProRouter from './ebay-product-compliance-checker-pro';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -1474,4 +1486,16 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-rfid-tracker', ebayInventoryRfidTrackerRouter);
   app.use('/api/ebay-seller-analytics-studio', ebaySellerAnalyticsStudioRouter);
   app.use('/api/ebay-product-barcode-generator', ebayProductBarcodeGeneratorRouter);
+  // Phase 766-770
+  app.use('/api/ebay-listing-ab-testing-suite', ebayListingAbTestingSuiteRouter);
+  app.use('/api/ebay-order-return-label-printer', ebayOrderReturnLabelPrinterRouter);
+  app.use('/api/ebay-inventory-cycle-planner', ebayInventoryCyclePlannerRouter);
+  app.use('/api/ebay-seller-loyalty-program', ebaySellerLoyaltyProgramRouter);
+  app.use('/api/ebay-product-spec-sheet-generator', ebayProductSpecSheetGeneratorRouter);
+  // Phase 771-775
+  app.use('/api/ebay-listing-smart-description-pro', ebayListingSmartDescriptionProRouter);
+  app.use('/api/ebay-order-bulk-label-generator', ebayOrderBulkLabelGeneratorRouter);
+  app.use('/api/ebay-inventory-stock-transfer-hub', ebayInventoryStockTransferHubRouter);
+  app.use('/api/ebay-seller-profit-optimizer', ebaySellerProfitOptimizerRouter);
+  app.use('/api/ebay-product-compliance-checker-pro', ebayProductComplianceCheckerProRouter);
 }
