@@ -1261,6 +1261,90 @@ import ebayOrderPriorityTrackingHubRouter from './ebay-order-priority-tracking-h
 import ebayInventoryStagingTrackingHubRouter from './ebay-inventory-staging-tracking-hub';
 import ebaySellerEngagementManagementHubRouter from './ebay-seller-engagement-management-hub';
 import ebayProductEnrichmentManagementHubRouter from './ebay-product-enrichment-management-hub';
+// Phase 1211-1215
+import ebayListingPerformanceOptimizationEngineRouter from './ebay-listing-performance-optimization-engine';
+import ebayOrderFulfillmentAutomationEngineRouter from './ebay-order-fulfillment-automation-engine';
+import ebayInventoryDemandForecastingEngineRouter from './ebay-inventory-demand-forecasting-engine';
+import ebaySellerGrowthAccelerationEngineRouter from './ebay-seller-growth-acceleration-engine';
+import ebayProductCatalogEnrichmentEngineRouter from './ebay-product-catalog-enrichment-engine';
+// Phase 1216-1220
+import ebayListingDynamicPricingEngineRouter from './ebay-listing-dynamic-pricing-engine';
+import ebayOrderTrackingIntelligenceEngineRouter from './ebay-order-tracking-intelligence-engine';
+import ebayInventoryReplenishmentPlanningEngineRouter from './ebay-inventory-replenishment-planning-engine';
+import ebaySellerAnalyticsReportingEngineRouter from './ebay-seller-analytics-reporting-engine';
+import ebayProductMatchingRecommendationEngineRouter from './ebay-product-matching-recommendation-engine';
+// Phase 1221-1225
+import ebayListingQualityScoringEngineRouter from './ebay-listing-quality-scoring-engine';
+import ebayOrderRoutingOptimizationEngineRouter from './ebay-order-routing-optimization-engine';
+import ebayInventoryAllocationPlanningEngineRouter from './ebay-inventory-allocation-planning-engine';
+import ebaySellerComplianceMonitoringEngineRouter from './ebay-seller-compliance-monitoring-engine';
+import ebayProductClassificationTaggingEngineRouter from './ebay-product-classification-tagging-engine';
+// Phase 1226-1230
+import ebayListingTemplateGenerationEngineRouter from './ebay-listing-template-generation-engine';
+import ebayOrderConsolidationProcessingEngineRouter from './ebay-order-consolidation-processing-engine';
+import ebayInventoryCycleCountingEngineRouter from './ebay-inventory-cycle-counting-engine';
+import ebaySellerFeedbackAnalysisEngineRouter from './ebay-seller-feedback-analysis-engine';
+import ebayProductVariantGenerationEngineRouter from './ebay-product-variant-generation-engine';
+// Phase 1231-1235
+import ebayListingSeoOptimizationEngineRouter from './ebay-listing-seo-optimization-engine';
+import ebayOrderDisputeHandlingEngineRouter from './ebay-order-dispute-handling-engine';
+import ebayInventoryExpiryPredictionEngineRouter from './ebay-inventory-expiry-prediction-engine';
+import ebaySellerRevenueForecastingEngineRouter from './ebay-seller-revenue-forecasting-engine';
+import ebayProductBundlingOptimizationEngineRouter from './ebay-product-bundling-optimization-engine';
+// Phase 1236-1240
+import ebayListingImageProcessingEngineRouter from './ebay-listing-image-processing-engine';
+import ebayOrderPaymentReconciliationEngineRouter from './ebay-order-payment-reconciliation-engine';
+import ebayInventoryWarehouseRoutingEngineRouter from './ebay-inventory-warehouse-routing-engine';
+import ebaySellerBrandMonitoringEngineRouter from './ebay-seller-brand-monitoring-engine';
+import ebayProductReviewAggregationEngineRouter from './ebay-product-review-aggregation-engine';
+// Phase 1241-1245
+import ebayListingAudienceSegmentationEngineRouter from './ebay-listing-audience-segmentation-engine';
+import ebayOrderShippingCalculationEngineRouter from './ebay-order-shipping-calculation-engine';
+import ebayInventorySafetyStockEngineRouter from './ebay-inventory-safety-stock-engine';
+import ebaySellerPerformanceBenchmarkingEngineRouter from './ebay-seller-performance-benchmarking-engine';
+import ebayProductPricingIntelligenceEngineRouter from './ebay-product-pricing-intelligence-engine';
+// Phase 1246-1250
+import ebayListingCompetitiveAnalysisEngineRouter from './ebay-listing-competitive-analysis-engine';
+import ebayOrderReturnProcessingEngineRouter from './ebay-order-return-processing-engine';
+import ebayInventoryProcurementOptimizationEngineRouter from './ebay-inventory-procurement-optimization-engine';
+import ebaySellerTrainingRecommendationEngineRouter from './ebay-seller-training-recommendation-engine';
+import ebayProductLifecycleTrackingEngineRouter from './ebay-product-lifecycle-tracking-engine';
+// Phase 1251-1255
+import ebayListingCrossPromotionEngineRouter from './ebay-listing-cross-promotion-engine';
+import ebayOrderCustomerCommunicationEngineRouter from './ebay-order-customer-communication-engine';
+import ebayInventoryDamageAssessmentEngineRouter from './ebay-inventory-damage-assessment-engine';
+import ebaySellerCashFlowAnalysisEngineRouter from './ebay-seller-cash-flow-analysis-engine';
+import ebayProductDescriptionGenerationEngineRouter from './ebay-product-description-generation-engine';
+// Phase 1256-1260
+import ebayListingConversionTrackingEngineRouter from './ebay-listing-conversion-tracking-engine';
+import ebayOrderInvoiceGenerationEngineRouter from './ebay-order-invoice-generation-engine';
+import ebayInventoryLocationOptimizationEngineRouter from './ebay-inventory-location-optimization-engine';
+import ebaySellerCollaborationWorkflowEngineRouter from './ebay-seller-collaboration-workflow-engine';
+import ebayProductMediaOptimizationEngineRouter from './ebay-product-media-optimization-engine';
+// Phase 1261-1265
+import ebayListingSchedulingOptimizationEngineRouter from './ebay-listing-scheduling-optimization-engine';
+import ebayOrderStatusNotificationEngineRouter from './ebay-order-status-notification-engine';
+import ebayInventoryAuditComplianceEngineRouter from './ebay-inventory-audit-compliance-engine';
+import ebaySellerPartnershipManagementEngineRouter from './ebay-seller-partnership-management-engine';
+import ebayProductComparisonAnalysisEngineRouter from './ebay-product-comparison-analysis-engine';
+// Phase 1266-1270
+import ebayListingKeywordOptimizationEngineRouter from './ebay-listing-keyword-optimization-engine';
+import ebayOrderPriorityRoutingEngineRouter from './ebay-order-priority-routing-engine';
+import ebayInventoryStagingManagementEngineRouter from './ebay-inventory-staging-management-engine';
+import ebaySellerEngagementScoringEngineRouter from './ebay-seller-engagement-scoring-engine';
+import ebayProductAuthenticationVerificationEngineRouter from './ebay-product-authentication-verification-engine';
+// Phase 1271-1275
+import ebayListingVisibilityBoostingEngineRouter from './ebay-listing-visibility-boosting-engine';
+import ebayOrderWorkflowAutomationEngineRouter from './ebay-order-workflow-automation-engine';
+import ebayInventoryTransferCoordinationEngineRouter from './ebay-inventory-transfer-coordination-engine';
+import ebaySellerCertificationManagementEngineRouter from './ebay-seller-certification-management-engine';
+import ebayProductSourcingIntelligenceEngineRouter from './ebay-product-sourcing-intelligence-engine';
+// Phase 1276-1280
+import ebayListingTestingAbEngineRouter from './ebay-listing-testing-ab-engine';
+import ebayOrderEscalationRoutingEngineRouter from './ebay-order-escalation-routing-engine';
+import ebayInventoryOptimizationPlanningEngineRouter from './ebay-inventory-optimization-planning-engine';
+import ebaySellerMarketplaceExpansionEngineRouter from './ebay-seller-marketplace-expansion-engine';
+import ebayProductQualityInspectionEngineRouter from './ebay-product-quality-inspection-engine';
 
 
 export function registerEbayRoutes(app: Express): void {
@@ -2542,4 +2626,88 @@ export function registerEbayRoutes(app: Express): void {
   app.use('/api/ebay-inventory-staging-tracking-hub', ebayInventoryStagingTrackingHubRouter);
   app.use('/api/ebay-seller-engagement-management-hub', ebaySellerEngagementManagementHubRouter);
   app.use('/api/ebay-product-enrichment-management-hub', ebayProductEnrichmentManagementHubRouter);
+  // Phase 1211-1215
+  app.use('/api/ebay-listing-performance-optimization-engine', ebayListingPerformanceOptimizationEngineRouter);
+  app.use('/api/ebay-order-fulfillment-automation-engine', ebayOrderFulfillmentAutomationEngineRouter);
+  app.use('/api/ebay-inventory-demand-forecasting-engine', ebayInventoryDemandForecastingEngineRouter);
+  app.use('/api/ebay-seller-growth-acceleration-engine', ebaySellerGrowthAccelerationEngineRouter);
+  app.use('/api/ebay-product-catalog-enrichment-engine', ebayProductCatalogEnrichmentEngineRouter);
+  // Phase 1216-1220
+  app.use('/api/ebay-listing-dynamic-pricing-engine', ebayListingDynamicPricingEngineRouter);
+  app.use('/api/ebay-order-tracking-intelligence-engine', ebayOrderTrackingIntelligenceEngineRouter);
+  app.use('/api/ebay-inventory-replenishment-planning-engine', ebayInventoryReplenishmentPlanningEngineRouter);
+  app.use('/api/ebay-seller-analytics-reporting-engine', ebaySellerAnalyticsReportingEngineRouter);
+  app.use('/api/ebay-product-matching-recommendation-engine', ebayProductMatchingRecommendationEngineRouter);
+  // Phase 1221-1225
+  app.use('/api/ebay-listing-quality-scoring-engine', ebayListingQualityScoringEngineRouter);
+  app.use('/api/ebay-order-routing-optimization-engine', ebayOrderRoutingOptimizationEngineRouter);
+  app.use('/api/ebay-inventory-allocation-planning-engine', ebayInventoryAllocationPlanningEngineRouter);
+  app.use('/api/ebay-seller-compliance-monitoring-engine', ebaySellerComplianceMonitoringEngineRouter);
+  app.use('/api/ebay-product-classification-tagging-engine', ebayProductClassificationTaggingEngineRouter);
+  // Phase 1226-1230
+  app.use('/api/ebay-listing-template-generation-engine', ebayListingTemplateGenerationEngineRouter);
+  app.use('/api/ebay-order-consolidation-processing-engine', ebayOrderConsolidationProcessingEngineRouter);
+  app.use('/api/ebay-inventory-cycle-counting-engine', ebayInventoryCycleCountingEngineRouter);
+  app.use('/api/ebay-seller-feedback-analysis-engine', ebaySellerFeedbackAnalysisEngineRouter);
+  app.use('/api/ebay-product-variant-generation-engine', ebayProductVariantGenerationEngineRouter);
+  // Phase 1231-1235
+  app.use('/api/ebay-listing-seo-optimization-engine', ebayListingSeoOptimizationEngineRouter);
+  app.use('/api/ebay-order-dispute-handling-engine', ebayOrderDisputeHandlingEngineRouter);
+  app.use('/api/ebay-inventory-expiry-prediction-engine', ebayInventoryExpiryPredictionEngineRouter);
+  app.use('/api/ebay-seller-revenue-forecasting-engine', ebaySellerRevenueForecastingEngineRouter);
+  app.use('/api/ebay-product-bundling-optimization-engine', ebayProductBundlingOptimizationEngineRouter);
+  // Phase 1236-1240
+  app.use('/api/ebay-listing-image-processing-engine', ebayListingImageProcessingEngineRouter);
+  app.use('/api/ebay-order-payment-reconciliation-engine', ebayOrderPaymentReconciliationEngineRouter);
+  app.use('/api/ebay-inventory-warehouse-routing-engine', ebayInventoryWarehouseRoutingEngineRouter);
+  app.use('/api/ebay-seller-brand-monitoring-engine', ebaySellerBrandMonitoringEngineRouter);
+  app.use('/api/ebay-product-review-aggregation-engine', ebayProductReviewAggregationEngineRouter);
+  // Phase 1241-1245
+  app.use('/api/ebay-listing-audience-segmentation-engine', ebayListingAudienceSegmentationEngineRouter);
+  app.use('/api/ebay-order-shipping-calculation-engine', ebayOrderShippingCalculationEngineRouter);
+  app.use('/api/ebay-inventory-safety-stock-engine', ebayInventorySafetyStockEngineRouter);
+  app.use('/api/ebay-seller-performance-benchmarking-engine', ebaySellerPerformanceBenchmarkingEngineRouter);
+  app.use('/api/ebay-product-pricing-intelligence-engine', ebayProductPricingIntelligenceEngineRouter);
+  // Phase 1246-1250
+  app.use('/api/ebay-listing-competitive-analysis-engine', ebayListingCompetitiveAnalysisEngineRouter);
+  app.use('/api/ebay-order-return-processing-engine', ebayOrderReturnProcessingEngineRouter);
+  app.use('/api/ebay-inventory-procurement-optimization-engine', ebayInventoryProcurementOptimizationEngineRouter);
+  app.use('/api/ebay-seller-training-recommendation-engine', ebaySellerTrainingRecommendationEngineRouter);
+  app.use('/api/ebay-product-lifecycle-tracking-engine', ebayProductLifecycleTrackingEngineRouter);
+  // Phase 1251-1255
+  app.use('/api/ebay-listing-cross-promotion-engine', ebayListingCrossPromotionEngineRouter);
+  app.use('/api/ebay-order-customer-communication-engine', ebayOrderCustomerCommunicationEngineRouter);
+  app.use('/api/ebay-inventory-damage-assessment-engine', ebayInventoryDamageAssessmentEngineRouter);
+  app.use('/api/ebay-seller-cash-flow-analysis-engine', ebaySellerCashFlowAnalysisEngineRouter);
+  app.use('/api/ebay-product-description-generation-engine', ebayProductDescriptionGenerationEngineRouter);
+  // Phase 1256-1260
+  app.use('/api/ebay-listing-conversion-tracking-engine', ebayListingConversionTrackingEngineRouter);
+  app.use('/api/ebay-order-invoice-generation-engine', ebayOrderInvoiceGenerationEngineRouter);
+  app.use('/api/ebay-inventory-location-optimization-engine', ebayInventoryLocationOptimizationEngineRouter);
+  app.use('/api/ebay-seller-collaboration-workflow-engine', ebaySellerCollaborationWorkflowEngineRouter);
+  app.use('/api/ebay-product-media-optimization-engine', ebayProductMediaOptimizationEngineRouter);
+  // Phase 1261-1265
+  app.use('/api/ebay-listing-scheduling-optimization-engine', ebayListingSchedulingOptimizationEngineRouter);
+  app.use('/api/ebay-order-status-notification-engine', ebayOrderStatusNotificationEngineRouter);
+  app.use('/api/ebay-inventory-audit-compliance-engine', ebayInventoryAuditComplianceEngineRouter);
+  app.use('/api/ebay-seller-partnership-management-engine', ebaySellerPartnershipManagementEngineRouter);
+  app.use('/api/ebay-product-comparison-analysis-engine', ebayProductComparisonAnalysisEngineRouter);
+  // Phase 1266-1270
+  app.use('/api/ebay-listing-keyword-optimization-engine', ebayListingKeywordOptimizationEngineRouter);
+  app.use('/api/ebay-order-priority-routing-engine', ebayOrderPriorityRoutingEngineRouter);
+  app.use('/api/ebay-inventory-staging-management-engine', ebayInventoryStagingManagementEngineRouter);
+  app.use('/api/ebay-seller-engagement-scoring-engine', ebaySellerEngagementScoringEngineRouter);
+  app.use('/api/ebay-product-authentication-verification-engine', ebayProductAuthenticationVerificationEngineRouter);
+  // Phase 1271-1275
+  app.use('/api/ebay-listing-visibility-boosting-engine', ebayListingVisibilityBoostingEngineRouter);
+  app.use('/api/ebay-order-workflow-automation-engine', ebayOrderWorkflowAutomationEngineRouter);
+  app.use('/api/ebay-inventory-transfer-coordination-engine', ebayInventoryTransferCoordinationEngineRouter);
+  app.use('/api/ebay-seller-certification-management-engine', ebaySellerCertificationManagementEngineRouter);
+  app.use('/api/ebay-product-sourcing-intelligence-engine', ebayProductSourcingIntelligenceEngineRouter);
+  // Phase 1276-1280
+  app.use('/api/ebay-listing-testing-ab-engine', ebayListingTestingAbEngineRouter);
+  app.use('/api/ebay-order-escalation-routing-engine', ebayOrderEscalationRoutingEngineRouter);
+  app.use('/api/ebay-inventory-optimization-planning-engine', ebayInventoryOptimizationPlanningEngineRouter);
+  app.use('/api/ebay-seller-marketplace-expansion-engine', ebaySellerMarketplaceExpansionEngineRouter);
+  app.use('/api/ebay-product-quality-inspection-engine', ebayProductQualityInspectionEngineRouter);
 }
