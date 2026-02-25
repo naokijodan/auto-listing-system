@@ -571,6 +571,47 @@ SERIES_ADJECTIVES = {
         "inter-tropical", "hadley-cell", "jet-stream", "orographic-lift", "convective-burst", "dry-spell",
         "onset-surge", "withdrawal-phase", "monsoon-trough", "low-pressure", "cyclogenesis", "outflow-boundary", "gust-front", "squall-line",
     ],
+    # ===== New series for Phase 10171+ =====
+    "aurora-v2": [
+        "solar-particle", "magnetic-reconnect", "substorm-onset", "oval-shift", "proton-arc", "diffuse-glow",
+        "discrete-arc", "pulsating-patch", "theta-aurora", "cusp-precipitate", "black-aurora", "steve-glow", "polar-rain", "conjugate-point",
+    ],
+    "cascade-v2": [
+        "plunge-pool", "tiered-fall", "mist-rising", "bedrock-carved", "log-jam", "fish-ladder",
+        "spray-zone", "erosion-notch", "hanging-lip", "curtain-fall", "horsetail-drop", "punchbowl", "ribbon-fall", "block-fall",
+    ],
+    "tempest-v2": [
+        "wall-cloud", "mesocyclone", "hook-echo", "bear-cage", "inflow-jet", "flanking-line",
+        "anvil-crawl", "mammatus-hang", "overshooting-top", "bounded-weak", "rear-flank", "forward-flank", "tail-end", "bow-echo",
+    ],
+    "ember-v2": [
+        "smolder-slow", "char-edge", "heat-flux", "radiant-ember", "convection-plume", "fire-whirl",
+        "spot-fire", "crown-fire", "ground-fire", "ladder-fuel", "backburn", "fire-line", "retardant-drop", "burnout-zone",
+    ],
+    "helix-v2": [
+        "double-strand", "base-pair", "codon-read", "anticodon-match", "ribosome-bind", "polymerase-chain",
+        "transcription-start", "translation-frame", "splicing-site", "promoter-region", "enhancer-loop", "silencer-block", "telomere-cap", "centromere-link",
+    ],
+    "nexus-v2": [
+        "hub-central", "spoke-radial", "mesh-complete", "star-topology", "ring-connected", "bus-shared",
+        "tree-branched", "hybrid-mesh", "point-to-point", "multi-drop", "daisy-chain", "backbone-linked", "peer-to-peer", "client-server",
+    ],
+    "prism-v2": [
+        "refraction-angle", "dispersion-spread", "total-internal", "critical-angle", "brewster-angle", "snell-law",
+        "birefringent-split", "dichroic-filter", "achromat-lens", "apochromat-corrected", "fresnel-zone", "abbe-number", "cauchy-equation", "sellmeier-fit",
+    ],
+    "dynamo-v2": [
+        "armature-wound", "field-coil", "commutator-split", "brush-contact", "back-emf", "torque-constant",
+        "speed-constant", "flux-linkage", "reluctance-gap", "hysteresis-loop", "eddy-suppressed", "laminated-core", "series-wound", "shunt-wound",
+    ],
+    "orbit-v2": [
+        "perigee-low", "apogee-high", "inclination-set", "eccentricity-tuned", "epoch-fixed", "mean-anomaly",
+        "true-anomaly", "argument-periapsis", "ascending-node", "hohmann-transfer", "bi-elliptic", "gravity-assist", "lagrange-point", "halo-orbit",
+    ],
+    "crystal-v2": [
+        "lattice-cubic", "unit-cell", "miller-index", "bragg-diffract", "debye-scherrer", "laue-pattern",
+        "point-defect", "line-dislocation", "planar-fault", "grain-boundary", "twinning-plane", "cleavage-face", "habit-form", "polymorphic-transition",
+    ],
 }
 
 
