@@ -694,6 +694,47 @@ SERIES_ADJECTIVES = {
         "spine-sharp", "divide-water", "trail-narrow", "vista-wide", "wind-exposed", "tree-stunted",
         "rock-spine", "saddle-dip", "false-summit-v2", "knife-edge-v2", "scramble-grade", "exposure-high", "weather-side", "lee-sheltered",
     ],
+    # ===== New series for Phase 12271+ =====
+    "citadel": [
+        "keep-fortified", "portcullis-barred", "watchtower-tall", "garrison-strong", "siege-proof", "moat-deep",
+        "battlement-wide", "arrow-loop", "murder-hole", "gatehouse-guarded", "curtain-thick", "dungeon-sealed", "chapel-vaulted", "great-hall",
+    ],
+    "avalanche": [
+        "snow-slab", "trigger-point", "fracture-line", "debris-field", "runout-zone", "crown-face",
+        "stauchwall", "powder-cloud", "wet-slide", "dry-slab", "cornice-drop", "gully-channeled", "deposit-fan", "burial-deep",
+    ],
+    "pangaea": [
+        "supercontinent", "rift-valley", "craton-core", "shield-area", "orogen-belt", "suture-zone",
+        "terrane-docked", "plate-margin", "seafloor-spread", "hotspot-track", "mantle-plume", "lithosphere-thick", "asthenosphere-flow", "isostatic-balance",
+    ],
+    "solaris": [
+        "heliocentric", "corona-mass", "solar-cycle", "sunspot-pair", "flare-class", "prominence-loop",
+        "photosphere-grain", "convection-cell-v2", "radiation-belt", "magnetogram", "irradiance-total", "spectroheliograph", "coronagraph-v2", "ecliptic-plane",
+    ],
+    "labyrinth": [
+        "maze-walled", "dead-end", "passage-narrow", "chamber-hidden", "thread-guided", "minotaur-deep",
+        "turn-blind", "corridor-long", "exit-distant", "branching-path", "loop-back", "false-door", "pit-trap", "torch-lit",
+    ],
+    "tectonic": [
+        "plate-boundary", "convergent-zone", "divergent-rift", "transform-fault", "subduction-angle", "collision-front",
+        "seismic-gap", "stress-field", "strain-rate", "fault-plane", "focal-mechanism", "moment-tensor", "aftershock-sequence", "foreshock-cluster",
+    ],
+    "maelstrom": [
+        "whirlpool-center", "vortex-pull", "spiral-current", "tidal-bore", "eddy-spin", "gyre-vast",
+        "turbulence-zone", "undertow-force", "cavitation-bubble", "standing-wave", "rotor-cell", "shear-layer", "kelvin-helmholtz", "bernoulli-effect",
+    ],
+    "cerberus": [
+        "three-headed", "gate-guardian", "underworld-bound", "chain-linked", "fang-bared", "shadow-lurking",
+        "sentinel-post", "passage-denied", "howl-echoing", "iron-collared", "flame-breathed", "styx-guarding", "hades-loyal", "soul-watcher",
+    ],
+    "colosseum": [
+        "arena-vast", "tier-stacked", "arch-vaulted", "column-ringed", "velarium-shade", "hypogeum-below",
+        "podium-front", "cavea-seated", "ambulacrum-wide", "vomitorium-exit", "travertine-clad", "opus-caementicium", "reticulatum-faced", "spina-central",
+    ],
+    "siberia": [
+        "taiga-endless", "permafrost-bound", "river-frozen", "mammoth-steppe", "diamond-pipe", "gulag-remote",
+        "baikal-deep", "yenisei-flow", "larch-forest", "sable-fur", "frost-cracked-v2", "tundra-edge", "meteor-crater", "aurora-belt",
+    ],
 }
 
 
