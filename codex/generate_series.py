@@ -653,6 +653,47 @@ SERIES_ADJECTIVES = {
         "harpoon-thrown", "whale-road", "kraken-deep", "leviathan-vast", "siren-call", "maelstrom-spun",
         "scylla-guard", "charybdis-pull", "triton-horn", "poseidon-wrath", "amphitrite-calm", "nereid-swift", "thalassic", "pelagic-zone",
     ],
+    # ===== New series for Phase 11571+ =====
+    "kraken": [
+        "tentacle-reach", "ink-cloud", "depth-lurking", "sucker-grip", "beak-crushing", "camouflage-shift",
+        "jet-propelled", "chromatophore", "bioluminescent-lure", "colossal-scale", "mantle-strong", "siphon-blast", "arm-regenerate", "abyssal-hunt",
+    ],
+    "monolith": [
+        "slab-hewn", "obelisk-tall", "megalithic", "dolmen-capped", "menhir-stood", "trilithon-framed",
+        "sarsen-dragged", "lintel-placed", "henge-circled", "cairn-stacked", "stele-carved", "pillar-monumental", "bedrock-rooted", "age-defiant",
+    ],
+    "nomad": [
+        "caravan-led", "steppe-roaming", "yurt-pitched", "trade-route", "oasis-bound", "dune-crossing",
+        "silk-road", "pastoral-drift", "camp-mobile", "horizon-chasing", "star-navigated", "sandstorm-braved", "water-wise", "territory-vast",
+    ],
+    "raptor": [
+        "talon-sharp", "dive-strike", "thermal-soaring", "eyrie-perched", "prey-spotted", "wing-tucked",
+        "beak-hooked", "feather-streamlined", "kill-zone", "territory-claimed", "nest-defended", "dawn-hunter", "dusk-patrol", "sky-sovereign",
+    ],
+    "crucible": [
+        "molten-core", "alloy-fused", "slag-skimmed", "flux-added", "pour-ready", "ingot-cast",
+        "temper-quenched", "anneal-slow", "forge-bright", "crucible-grade", "refractory-lined", "heat-soaked", "melt-point", "reduction-fired",
+    ],
+    "obelisk": [
+        "granite-hewn", "sun-aligned", "hieroglyph-carved", "pyramidion-topped", "quarry-cut", "barge-floated",
+        "temple-placed", "shadow-cast", "solstice-marked", "cartouche-inscribed", "capstone-gilded", "avenue-flanked", "dynasty-raised", "desert-standing",
+    ],
+    "leviathan": [
+        "ocean-spanning", "hull-plated", "keel-deep", "bow-wave", "stern-wake", "ballast-trimmed",
+        "cargo-laden", "bridge-commanded", "engine-room-v2", "propeller-driven", "anchor-set", "bulkhead-sealed", "draft-marked", "tonnage-vast",
+    ],
+    "steppe": [
+        "grass-sea", "horseback-range", "kurgan-mound", "felt-tent", "eagle-hunt", "ferment-brewed",
+        "frost-plain", "black-soil", "wind-corridor", "migration-path", "river-bend", "plateau-edge", "salt-lake", "sky-dome",
+    ],
+    "atoll": [
+        "ring-reef", "lagoon-center", "coral-built-v2", "palm-fringed", "tide-pool", "pass-channel",
+        "motu-island", "coconut-grove", "turquoise-shallow", "barrier-outer", "sand-cay", "bird-colony", "mangrove-inner", "current-swept-v2",
+    ],
+    "ridgeline": [
+        "spine-sharp", "divide-water", "trail-narrow", "vista-wide", "wind-exposed", "tree-stunted",
+        "rock-spine", "saddle-dip", "false-summit-v2", "knife-edge-v2", "scramble-grade", "exposure-high", "weather-side", "lee-sheltered",
+    ],
 }
 
 
