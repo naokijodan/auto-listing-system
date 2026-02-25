@@ -359,6 +359,46 @@ SERIES_ADJECTIVES = {
         "probability-tuned", "entangle-linked", "superposed", "spin-aligned", "wavefunction", "micro-scale",
         "particle-sharp", "uncertainty-aware", "qubit-ready", "state-split", "phase-locked", "field-coupled", "collapse-bound", "tunneling",
     ],
+    "obsidian": [
+        "volcanic-glass", "razor-edged", "mirror-dark", "lava-born", "vitreous", "jet-black",
+        "flint-hard", "silica-rich", "shard-keen", "gloss-smooth", "magma-forged", "tecton-cut", "flow-banded", "perlite",
+    ],
+    "tidal": [
+        "spring-tide", "neap-bound", "lunar-drawn", "ebb-flowing", "surge-mapped", "coast-locked",
+        "wave-carved", "reef-swept", "current-wise", "deep-pull", "swell-driven", "shore-bound", "bay-curved", "lagoon-still",
+    ],
+    "basalt": [
+        "column-formed", "lava-laid", "flood-plain", "pillow-shaped", "vesicular", "porphyritic",
+        "olivine-rich", "pyroxene-dark", "fine-grained", "extrusive", "mafic-dense", "plateau-built", "dike-cut", "sill-spread",
+    ],
+    "sapphire": [
+        "corundum-pure", "blue-deep", "star-formed", "facet-cut", "clarity-graded", "carat-weighed",
+        "padparadscha", "kashmir-hued", "heat-treated", "gem-set", "cabochon-round", "brilliant-cut", "pavilion-angled", "crown-faceted",
+    ],
+    "condor": [
+        "high-soaring", "thermal-riding", "wing-spread", "peak-nesting", "updraft-borne", "ridge-gliding",
+        "canyon-cruising", "alpine-dwelling", "keen-sighted", "cliff-perched", "wind-mastered", "sky-ruling", "range-crossing", "summit-bound",
+    ],
+    "tungsten": [
+        "ultra-dense", "heat-proof", "arc-resistant", "filament-grade", "high-melting", "carbide-hard",
+        "alloy-tough", "sintered", "refractory", "electrode-fit", "ballast-heavy", "tool-steel", "wear-proof", "spark-plug",
+    ],
+    "mangrove": [
+        "root-tangled", "brackish-water", "salt-tolerant", "coast-guarding", "tide-adapted", "prop-rooted",
+        "estuary-bound", "nursery-rich", "canopy-dense", "storm-buffer", "sediment-trap", "carbon-sink", "bio-diverse", "inter-tidal",
+    ],
+    "opal": [
+        "fire-flash", "play-of-color", "silica-gel", "hydrated", "precious-grade", "boulder-set",
+        "black-opal", "white-opal", "crystal-clear", "matrix-held", "doublet-backed", "triplet-capped", "pinfire", "broadflash",
+    ],
+    "falcon": [
+        "stoop-diving", "raptor-swift", "talon-gripped", "prey-locked", "aerie-built", "hover-hunt",
+        "kestrel-keen", "peregrine-fast", "merlin-sized", "gyrfalcon-white", "saker-strong", "lanner-lean", "hobby-agile", "caracara-bold",
+    ],
+    "graphene": [
+        "mono-layer", "hex-lattice", "sp2-bonded", "zero-gap", "ballistic-transport", "flex-strong",
+        "ultra-thin", "high-conduct", "sheet-rolled", "nano-ribbon", "oxide-form", "doped-layer", "edge-state", "dirac-cone",
+    ],
 }
 
 
