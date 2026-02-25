@@ -169,6 +169,56 @@ SERIES_ADJECTIVES = {
         "layered", "hexagonal", "clean-arch", "onion-arch", "vertical-slice",
         "feature-based", "domain-based", "service-based", "component-based",
     ],
+    "cipher": [
+        "zero-trust", "end-to-end", "blockchain", "tokenized", "obfuscated",
+        "decentralized", "verifiable", "trustless", "permissioned", "multi-sig",
+        "zero-knowledge", "homomorphic", "post-quantum", "threshold",
+    ],
+    "helix": [
+        "genomic", "evolutionary-v2", "mutagenic", "phenotypic", "epigenetic",
+        "proteomic", "metabolic", "symbiotic", "biometric", "enzymatic",
+        "catalytic", "polymorphic", "recombinant", "transgenic",
+    ],
+    "orbit": [
+        "orbital", "celestial", "gravitational", "interstellar", "planetary",
+        "asteroidal", "cometary", "galactic", "nebular", "stellar",
+        "pulsar", "quasar-based", "solar", "lunar",
+    ],
+    "matrix": [
+        "tensor", "vectorized", "matrix-based", "scalar", "eigenvalue",
+        "stochastic", "deterministic", "gradient", "bayesian", "markov",
+        "fourier", "laplacian", "gaussian", "poisson",
+    ],
+    "crystal": [
+        "crystalline", "amorphous", "polymeric", "ceramic", "metallic",
+        "composite", "nano-scale", "micro-scale", "macro-scale", "atomic",
+        "molecular", "ionic", "covalent", "quantum-dot",
+    ],
+    "dynamo": [
+        "kinetic", "potential", "thermal", "electromagnetic", "photovoltaic",
+        "piezoelectric", "thermoelectric", "hydroelectric", "geothermal", "nuclear",
+        "fusion-based", "fission-based", "plasma", "superconducting",
+    ],
+    "fusion": [
+        "cross-platform", "multi-tenant", "polyglot", "interoperable", "bridged",
+        "federated-v2", "gateway", "mesh", "sidecar", "proxy-based",
+        "load-balanced", "circuit-breaker", "bulkhead", "retry-based",
+    ],
+    "photon": [
+        "light-speed", "fiber-optic", "holographic", "spectral", "chromatic",
+        "infrared", "ultraviolet", "x-ray", "gamma", "terahertz",
+        "microwave", "radio-freq", "laser", "coherent",
+    ],
+    "quasar": [
+        "high-energy", "ultra-dense", "relativistic", "quantum-field", "string-theory",
+        "dark-matter", "dark-energy", "antimatter", "neutrino", "boson",
+        "fermion", "hadron", "lepton", "photonic",
+    ],
+    "nebula": [
+        "cloud-burst", "fog-computing", "edge-native", "mist-computing", "dew-computing",
+        "ambient", "ubiquitous", "pervasive", "context-aware", "location-aware",
+        "proximity", "geofenced", "beacon", "mesh-networked",
+    ],
 }
 
 
