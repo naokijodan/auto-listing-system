@@ -817,6 +817,47 @@ SERIES_ADJECTIVES = {
         "diamond-cut", "facet-ice", "crystal-ablated", "blue-ice", "serac-spark", "crevasse-glistened",
         "firn-faceted", "rime-jewel", "berg-brilliant", "moraine-gleam", "albedo-high", "icefield-prismatic", "lattice-diamond", "diamond-hard",
     ],
+    # ===== New series for Phase 14371+ =====
+    "malachite-gorge": [
+        "banded-green", "copper-carbonate", "stalactitic-form", "botryoidal-mass", "gorge-veined", "azurite-paired",
+        "lapidary-grade", "matrix-rough", "cabochon-polished", "bull-eye", "silk-banded", "congo-mine", "ural-sourced", "patina-aged",
+    ],
+    "titanium-shelf": [
+        "alloy-light", "corrosion-free", "aerospace-grade", "biocompatible", "anodized-color", "grade-five",
+        "shelf-stable", "oxide-layer", "sponge-refined", "rutile-ore", "ilmenite-source", "kroll-process", "beta-phase", "alpha-structure",
+    ],
+    "obsidian-drift": [
+        "glass-drift", "lava-stream", "edge-razor", "flake-tooled", "snowflake-spec", "mahogany-hued",
+        "rainbow-sheen-v2", "fire-polished", "tear-drop", "flow-banded-v2", "conchoidal-v2", "perlitic-crack", "vitrophyre", "devitrified",
+    ],
+    "rhodium-peak": [
+        "catalyst-pure", "reflective-max", "oxidation-proof", "plating-bright", "group-nine", "rare-extract",
+        "crucible-melt", "acid-resistant", "thermocouple-fit", "spectra-line", "isotope-stable", "alloy-hardened", "electro-deposited", "peak-lustrous",
+    ],
+    "lapis-canyon": [
+        "lazurite-blue", "pyrite-flecked", "calcite-veined", "ultramarine-ground", "afghan-sourced", "canyon-strata",
+        "gilding-grade", "pigment-crushed", "cabochon-domed", "inlay-set", "royal-blue", "celestial-stone", "metamorphic-formed", "lazuward-named",
+    ],
+    "platinum-reef": [
+        "noble-metal", "catalyst-grade", "hallmark-pure", "troy-weighed", "reef-deposited", "placer-found",
+        "nugget-form", "sponge-platinum", "crucible-cast", "acid-proof", "ductile-drawn", "wire-gauge", "thermocouple-pair", "isotope-rich",
+    ],
+    "bismuth-spire": [
+        "rainbow-oxide", "crystal-hopper", "diamagnetic", "pepto-pink", "low-toxicity", "spire-grown",
+        "staircase-crystal", "iridescent-layer", "melt-cast", "alloy-fusible", "cosmetic-grade", "pharmaceutical", "telluride-ore", "geometric-form",
+    ],
+    "tourmaline-cove": [
+        "elbaite-green", "rubellite-pink", "indicolite-blue", "watermelon-slice", "paraiba-neon", "schorl-black",
+        "cove-sheltered", "dravite-brown", "liddicoatite", "piezo-charged", "pyro-electric", "trigonal-prism", "striated-face", "gem-tourmaline",
+    ],
+    "beryllium-ridge": [
+        "emerald-bearing", "aquamarine-tint", "light-alloy", "stiff-modulus", "x-ray-window", "neutron-reflect",
+        "ridge-crystalline", "hexagonal-close", "chrysoberyl-hard", "goshenite-clear", "morganite-peach", "heliodor-gold", "phenakite-rare", "bertrandite-ore",
+    ],
+    "zirconium-vale": [
+        "reactor-clad", "corrosion-shield", "hafnium-free", "oxide-ceramic", "cubic-zirconia", "vale-deposited",
+        "baddeleyite-ore", "zircon-sand", "plasma-sprayed", "thermal-barrier", "prosthetic-grade", "getter-active", "pyrophoric-fine", "alloy-naval",
+    ],
 }
 
 
