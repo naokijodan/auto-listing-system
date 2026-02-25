@@ -776,6 +776,47 @@ SERIES_ADJECTIVES = {
         "ghost-coral", "wraith-lagoon", "specter-atoll", "shade-reef", "mist-barrier", "vanish-shoal",
         "haunt-tide", "ether-reef", "mirage-bank", "shadow-cay", "phantom-pass", "spirit-shelf", "void-reef", "unseen-bar",
     ],
+    # ===== New series for Phase 13671+ =====
+    "iron-canyon": [
+        "iron-veined", "rust-banded", "ore-layered", "anvil-hewn", "canyon-scarped", "gorge-carved",
+        "butte-guarded", "mesa-rimmed", "slot-narrow", "talus-choked", "rim-traced", "cliff-ironbound", "iron-bridge", "redrock-layered",
+    ],
+    "jade-forest": [
+        "jade-polished", "nephrite-green", "verdant-canopy", "moss-draped-v2", "fern-carpeted", "resin-scented",
+        "grove-emerald", "leaf-glossed", "bough-shadowed", "understory-deep", "canopy-filtered", "dew-laden", "stone-lantern", "shrine-hidden",
+    ],
+    "silver-storm": [
+        "argent-squall", "silver-lined", "quicksilver-arc", "cloud-metallic", "sleet-bright", "hail-gleam",
+        "thunder-glint", "lightning-filament", "gale-plated", "squall-polished", "storm-lustrous", "rain-mercurial", "stratus-silvered", "vortex-argent",
+    ],
+    "copper-ridge": [
+        "copper-veined", "patina-green", "verdigris-rimmed", "ridgeback-cast", "spine-coppered", "hogback-formed",
+        "cuesta-tilted", "escarp-copper", "anticline-crest", "faulted-ridge", "knoll-banded", "rim-oxidized", "ore-scarp", "cuprite-capped",
+    ],
+    "amber-coast": [
+        "amber-washed", "resin-cast", "honeyed-shore", "dune-gilded", "beach-ambered", "tideline-gold",
+        "driftwood-glow", "sea-polished", "cove-sunned", "kelp-amber", "surf-warmed", "bay-amberlit", "shell-bright", "sunset-resin",
+    ],
+    "onyx-spire": [
+        "onyx-dark", "jet-gloss", "spire-needled", "needle-steepled", "gothic-risen", "black-faceted",
+        "tower-obscured", "shadow-etched", "night-polished", "pinnacle-onyx", "steeple-inked", "basalt-anchored", "ebon-lustrous", "obsidian-kissed",
+    ],
+    "ruby-depths": [
+        "ruby-lit", "carmine-abyss", "crimson-pressure", "gem-sunken", "trench-rubied", "abyss-ruby",
+        "deep-scarlet", "lode-crimson", "chamber-ruby", "mantle-glow", "vein-jewel", "magma-rouge", "dark-cabochon", "pressure-lucent",
+    ],
+    "bronze-summit": [
+        "bronze-cast", "summit-burnished", "crest-bronzed", "peak-patinaed", "ridge-medaled", "cairn-bronze",
+        "scree-gleaming", "cornice-bronze", "alpine-burnished", "col-bronze", "plateau-bronzed", "spire-burnished", "rock-cast", "summit-verdigris",
+    ],
+    "pearl-harbor": [
+        "pearl-lustrous", "nacre-sheen", "oyster-borne", "quay-calm", "berth-deep", "breakwater-white",
+        "lantern-buoy", "harbor-misted", "dock-polished", "tide-sheltered", "cove-moored", "jetty-lined", "sail-pearl", "marina-quiet",
+    ],
+    "diamond-glacier": [
+        "diamond-cut", "facet-ice", "crystal-ablated", "blue-ice", "serac-spark", "crevasse-glistened",
+        "firn-faceted", "rime-jewel", "berg-brilliant", "moraine-gleam", "albedo-high", "icefield-prismatic", "lattice-diamond", "diamond-hard",
+    ],
 }
 
 

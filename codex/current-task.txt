@@ -1,42 +1,23 @@
-Phase 741-745のeBay機能ファイルを生成。直接指定パスに書き込む。
+codex/generate_series.pyのSERIES_ADJECTIVES辞書に、以下の新しい10シリーズを追加してください。
+各シリーズは14個の形容詞（ケバブケース）を持ちます。既存シリーズと名前が重複しないこと。
 
-## Phase 741: apps/api/src/routes/ebay-listing-smart-bundler.ts
-出品スマートバンドラー, テーマカラー: cyan-600
-28スタブ: dashboard(5), listings(6), bundles(4), recommendations(4), analytics(3), settings(2), utilities(4)
-`import { Router } from 'express'; import type { Request, Response } from 'express'; const router = Router(); export default router;`
-各: `(_req: Request, res: Response) => res.json({ section, action })`
+追加場所: SERIES_ADJECTIVES辞書の末尾（"phantom-reef"の後）に以下のコメントとともに追加：
+# ===== New series for Phase 13671+ =====
 
-## Phase 741 UI: apps/web/src/app/ebay/listing-smart-bundler/page.tsx
-6タブ(ダッシュボード/出品/バンドル/レコメンド/分析/設定), text-cyan-600, API=/api/ebay-listing-smart-bundler/
-'use client', fetch+useState+useEffect
+追加するシリーズ名と形容詞:
 
-## Phase 742: apps/api/src/routes/ebay-order-claim-resolver.ts
-注文クレーム解決エンジン, テーマカラー: lime-600
-28スタブ: dashboard(5), orders(6), claims(4), resolutions(4), analytics(3), settings(2), utilities(4)
+1. "iron-canyon": 鉄と峡谷をテーマに14個の形容詞
+2. "jade-forest": 翡翠と森をテーマに14個の形容詞
+3. "silver-storm": 銀と嵐をテーマに14個の形容詞
+4. "copper-ridge": 銅と尾根をテーマに14個の形容詞
+5. "amber-coast": 琥珀と海岸をテーマに14個の形容詞
+6. "onyx-spire": オニキスと尖塔をテーマに14個の形容詞
+7. "ruby-depths": ルビーと深淵をテーマに14個の形容詞
+8. "bronze-summit": 青銅と頂上をテーマに14個の形容詞
+9. "pearl-harbor": 真珠と港をテーマに14個の形容詞
+10. "diamond-glacier": ダイヤモンドと氷河をテーマに14個の形容詞
 
-## Phase 742 UI: apps/web/src/app/ebay/order-claim-resolver/page.tsx
-6タブ(ダッシュボード/注文/クレーム/解決/分析/設定), text-lime-600, API=/api/ebay-order-claim-resolver/
+形式: 既存シリーズと同じフォーマット。ケバブケース、各14個、リスト形式。
+既存の形容詞との重複は末尾に-v2等を付けて回避。
 
-## Phase 743: apps/api/src/routes/ebay-inventory-demand-sensing.ts
-在庫デマンドセンシング, テーマカラー: emerald-600
-28スタブ: dashboard(5), inventory(6), demands(4), signals(4), analytics(3), settings(2), utilities(4)
-
-## Phase 743 UI: apps/web/src/app/ebay/inventory-demand-sensing/page.tsx
-6タブ(ダッシュボード/在庫/需要/シグナル/分析/設定), text-emerald-600, API=/api/ebay-inventory-demand-sensing/
-
-## Phase 744: apps/api/src/routes/ebay-seller-goal-tracker.ts
-セラーゴールトラッカー, テーマカラー: sky-600
-28スタブ: dashboard(5), sellers(6), goals(4), milestones(4), analytics(3), settings(2), utilities(4)
-
-## Phase 744 UI: apps/web/src/app/ebay/seller-goal-tracker/page.tsx
-6タブ(ダッシュボード/セラー/目標/マイルストーン/分析/設定), text-sky-600, API=/api/ebay-seller-goal-tracker/
-
-## Phase 745: apps/api/src/routes/ebay-product-condition-inspector.ts
-商品コンディションインスペクター, テーマカラー: amber-600
-28スタブ: dashboard(5), products(6), inspections(4), grades(4), analytics(3), settings(2), utilities(4)
-
-## Phase 745 UI: apps/web/src/app/ebay/product-condition-inspector/page.tsx
-6タブ(ダッシュボード/商品/検品/グレード/分析/設定), text-amber-600, API=/api/ebay-product-condition-inspector/
-
-ルール: TypeScript strict, express型, UI='use client'+fetch+useState+useEffect, 日本語ラベル
-ebay-routes.tsは編集しないでください。
+出力先: /Users/naokijodan/Desktop/rakuda/codex/generate_series.py（既存ファイルを編集）
