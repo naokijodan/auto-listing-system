@@ -319,6 +319,46 @@ SERIES_ADJECTIVES = {
         "trichromatic", "tetrachromatic", "hyperspectral", "multispectral", "broadband",
         "narrowband", "wideband", "baseband", "passband",
     ],
+    "sentinel": [
+        "watchful", "warding", "vigilant", "stalwart", "ever-guard", "iron-bound", "hawk-eyed", "gate-keeping",
+        "oath-kept", "shield-ready", "border-wise", "threat-aware", "fortress-bred", "sentry-grade",
+    ],
+    "comet": [
+        "trail-blazing", "swift-arc", "hyper-velocity", "vector-driven", "streak-fast", "orbit-skirting",
+        "tail-lit", "apex-aimed", "glide-true", "sky-rending", "fast-track", "zero-drag", "jet-streamed", "path-cut",
+    ],
+    "titan": [
+        "ironclad", "heavy-forged", "mega-struct", "colossus-built", "steel-milled", "bulk-formed",
+        "power-dense", "load-bearing", "foundry-born", "rigid-frame", "monolith-cast", "factory-grade", "engine-room", "overbuilt",
+    ],
+    "spark": [
+        "ignite-ready", "fresh-lit", "idea-charged", "newly-minted", "start-up", "bold-forged",
+        "invention-primed", "seed-fired", "proto-made", "flash-born", "creative-surge", "draft-cut", "blueprint-bright", "origin-mark",
+    ],
+    "pulse": [
+        "beat-matched", "signal-clean", "rhythm-locked", "heart-timed", "wave-synced", "tempo-true",
+        "metered", "cadence-set", "throb-plain", "tick-driven", "vibe-steady", "cycle-tuned", "frequency-set", "tone-pure",
+    ],
+    "meridian": [
+        "map-aligned", "north-marked", "course-true", "grid-locked", "waypointed", "bearing-set",
+        "chart-ready", "track-lined", "azimuth-fixed", "longitudinal", "latitude-bound", "route-certain", "compass-led", "coordinate-sure",
+    ],
+    "aegis": [
+        "shielded", "barrier-built", "wall-borne", "fortified", "armor-plated", "defense-grade",
+        "bastion-strong", "guard-stitched", "bulwark-set", "rampart-locked", "safe-keep", "counterstrike", "redoubt-ready", "vaulted",
+    ],
+    "catalyst": [
+        "reaction-led", "transformative", "phase-shift", "accelerant", "chain-start", "change-forged",
+        "mix-triggered", "rapid-turn", "conversion-ready", "flux-driven", "mutation-spun", "boost-primed", "shift-fueled", "rate-raised",
+    ],
+    "stratos": [
+        "high-alt", "upper-layer", "sky-stacked", "airborne", "cloud-borne", "thin-air",
+        "jet-level", "altitude-rich", "upper-atmo", "layered-sky", "strata-swept", "lifted", "aero-tier", "roofline",
+    ],
+    "quantum": [
+        "probability-tuned", "entangle-linked", "superposed", "spin-aligned", "wavefunction", "micro-scale",
+        "particle-sharp", "uncertainty-aware", "qubit-ready", "state-split", "phase-locked", "field-coupled", "collapse-bound", "tunneling",
+    ],
 }
 
 
