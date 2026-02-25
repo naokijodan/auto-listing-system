@@ -612,6 +612,47 @@ SERIES_ADJECTIVES = {
         "lattice-cubic", "unit-cell", "miller-index", "bragg-diffract", "debye-scherrer", "laue-pattern",
         "point-defect", "line-dislocation", "planar-fault", "grain-boundary", "twinning-plane", "cleavage-face", "habit-form", "polymorphic-transition",
     ],
+    # ===== New series for Phase 10871+ =====
+    "magma": [
+        "chamber-deep", "viscosity-high", "volatile-rich", "crystal-mush", "dike-injected", "sill-intruded",
+        "plume-driven", "hotspot-fed", "rift-sourced", "partial-melt", "fractionated", "assimilated", "degassed", "eruption-ready",
+    ],
+    "vanguard": [
+        "forward-scout", "advance-guard", "point-lead", "trailhead", "pathfinder-grade", "recon-swift",
+        "spearhead", "outrider", "flank-secure", "column-front", "sortie-bound", "skirmish-ready", "picket-post", "vanguard-elite",
+    ],
+    "pylon": [
+        "tower-mounted", "cable-strung", "steel-lattice", "cross-arm", "insulator-hung", "foundation-deep",
+        "span-wide", "conductor-clad", "grounding-rod", "strain-tower", "angle-turn", "terminal-end", "suspension-hung", "dead-end",
+    ],
+    "apex": [
+        "peak-altitude", "summit-grade", "crest-line", "ridge-top", "pinnacle-set", "crown-point",
+        "high-mark", "zenith-reached", "vertex-placed", "acme-level", "climax-point", "tip-top", "capstone-set", "keystone-locked",
+    ],
+    "meridian-v2": [
+        "prime-line", "antimeridian", "great-circle", "geodetic-datum", "projection-mapped", "graticule-set",
+        "isogonic-line", "agonic-traced", "magnetic-declination", "true-north-v2", "grid-convergence", "transverse-mercator", "utm-zone", "gauss-kruger",
+    ],
+    "tundra-v2": [
+        "polygon-ground", "solifluction-lobe", "frost-boil", "stone-circle", "ice-lens", "needle-ice",
+        "patterned-ground", "cryoturbation", "gelisol-deep", "nivation-hollow", "blockfield", "felsenmeer", "rock-glacier", "protalus-rampart",
+    ],
+    "typhoon-v2": [
+        "super-typhoon", "central-dense", "cloud-top", "dvorak-intensity", "saffir-simpson", "accumulated-cyclone",
+        "power-dissipation", "potential-intensity", "rapid-decay", "extratropical-transition", "fujiwhara-effect", "binary-interaction", "concentric-eyewall", "vortex-rossby",
+    ],
+    "sequoia-v2": [
+        "sierra-grove", "montane-belt", "fire-regime", "seed-cone", "bark-spongy", "buttress-root",
+        "snag-standing", "nurse-log", "mycorrhizal", "understory-shade", "gap-dynamic", "succession-late", "crown-spread", "dbh-massive",
+    ],
+    "bastion-v2": [
+        "trace-italienne", "star-fort", "ravelin-front", "demilune-placed", "tenaille-set", "hornwork-extended",
+        "crownwork-built", "covered-way", "countermine", "caponier-flanked", "embankment-raised", "firing-step", "powder-magazine", "garrison-quartered",
+    ],
+    "trident-v2": [
+        "harpoon-thrown", "whale-road", "kraken-deep", "leviathan-vast", "siren-call", "maelstrom-spun",
+        "scylla-guard", "charybdis-pull", "triton-horn", "poseidon-wrath", "amphitrite-calm", "nereid-swift", "thalassic", "pelagic-zone",
+    ],
 }
 
 
