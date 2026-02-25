@@ -3,9 +3,9 @@
 ## 最終更新
 
 **日付**: 2026-02-25
-**Phase**: v3.0 Social Commerce Edition — Phase 7930完了
+**Phase**: v3.0 Social Commerce Edition — Phase 8630完了
 **担当**: Claude（オーケストレーター）+ Codex/直接生成（コード生成）
-**最新コミット**: 6a8cbdb5
+**最新コミット**: 96d23eff
 
 ---
 
@@ -53,15 +53,17 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 | タスク | 内容 | 開始Phase |
 |--------|------|-----------|
-| **eBay Phase 7931+** | eBay機能の継続開発（Phase 7931から） | Phase 7931 |
+| **eBay Phase 8631+** | eBay機能の継続開発（Phase 8631から） | Phase 8631 |
 
-**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 7931から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
+**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 8631から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
 
 **パターン**: Python generator (codex/generate_series.py) で70 Phase単位で生成 → ebay-routes.ts更新 → git commit → 140 Phase単位でpush → HANDOVER.md更新 → Obsidianノート
 
 **効率化**: `generate_series.py` を作成済み。`python3 codex/generate_series.py <series_name> <start_phase>` で70 Phase一括生成+routes自動更新。
 
-**未使用シリーズ**: generate_series.pyに新規20シリーズ追加済み。うち10シリーズ使用済み（obsidian-v2〜kelvin）。残り10シリーズ（trident〜helios）が利用可能。
+**使用済みシリーズ（全20シリーズ消化済み）**: obsidian-v2, tundra, monsoon, bastion, typhoon, sequoia, compass, anvil, delta-v2, kelvin, trident, bramble, citrine, magnet, glacier-v2, voltage, prairie, garnet, rampart, helios
+
+**次のステップ**: generate_series.pyに新しいシリーズを追加するか、別の開発タスク（INT-1〜6, QP-6〜8等）に移行。
 
 **注意**: Codex CLIがタイムアウトする場合はClaudeが直接生成+サブエージェント並行生成で対応可。
 
