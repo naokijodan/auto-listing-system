@@ -480,6 +480,15 @@ SERIES_ADJECTIVES = {
         "solar-flare", "corona-bright", "prominence-arced", "sunspot-dark", "photon-stream", "plasma-ejected",
         "magnetic-loop", "chromosphere-hot", "convection-zone", "radiation-core", "fusion-powered", "hydrogen-rich", "helium-born", "luminosity-peak",
     ],
+    # ===== New series for Phase 8631+ =====
+    "summit": [
+        "peak-crowned", "ridge-line", "summit-view", "cairn-marked", "switchback-trail", "tree-line",
+        "scree-slope", "col-passage", "saddle-point", "false-peak", "knife-edge", "cornice-hung", "windward-face", "leeward-calm",
+    ],
+    "coral": [
+        "reef-built", "polyp-grown", "lagoon-sheltered", "atoll-ringed", "brain-coral", "staghorn-branched",
+        "fan-spread", "table-flat", "pillar-tall", "elkhorn-wide", "fire-coral", "soft-swayed", "deep-water", "bleach-resistant",
+    ],
 }
 
 
