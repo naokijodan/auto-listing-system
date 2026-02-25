@@ -269,6 +269,56 @@ SERIES_ADJECTIVES = {
         "triboluminescent", "electroluminescent", "cathodoluminescent", "radioluminescent", "sonoluminescent",
         "thermoluminescent", "photoluminescent", "scintillating", "iridescent",
     ],
+    "zenith": [
+        "apex-peak", "stratospheric-v2", "altitudinal", "summit-v2", "pinnacle-v2",
+        "climactic", "culminating", "supreme", "paramount", "preeminent",
+        "transcendental", "elevated", "ascendant", "sovereign",
+    ],
+    "cascade": [
+        "waterfall", "torrent-v2", "downstream", "tributary", "confluent",
+        "meandering", "cascading-v2", "overflowing", "spillway", "cataract",
+        "rapids", "whirlpool", "maelstrom", "undercurrent",
+    ],
+    "horizon": [
+        "panoramic", "wide-angle", "far-reaching", "boundary-v2", "frontier",
+        "peripheral", "vantage", "scenic", "expansive", "limitless",
+        "unbounded", "infinite-v2", "vast", "sweeping",
+    ],
+    "tempest": [
+        "cyclonic", "typhonic", "monsoon", "squall", "gale-force",
+        "hurricane", "tornado", "blizzard", "hailstorm", "downburst",
+        "windshear", "microburst", "supercell", "derecho",
+    ],
+    "mirage": [
+        "illusory", "phantasmal", "holographic-v2", "virtual-v2", "augmented",
+        "simulated", "synthetic-v2", "rendered", "projected", "refracted",
+        "diffracted", "scattered", "polarized", "prismatic",
+    ],
+    "vertex": [
+        "geometric", "topological", "fractal-v2", "tessellated", "polytopal",
+        "geodesic", "hyperbolic", "elliptic", "parabolic", "cylindrical",
+        "spherical", "toroidal", "helical", "spiral-v2",
+    ],
+    "solstice": [
+        "equinoctial", "diurnal", "nocturnal", "circadian", "seasonal-v2",
+        "vernal", "autumnal", "hibernal", "aestival", "solstitial",
+        "lunisolar", "sidereal-v2", "synodic", "tropical-v2",
+    ],
+    "nova": [
+        "supernova-v2", "hypernova", "kilonova", "micronova", "thermonuclear-v2",
+        "detonation", "deflagration", "implosion", "accretion", "ejection",
+        "progenitor", "remnant", "afterglow", "precursor",
+    ],
+    "eclipse": [
+        "penumbral", "umbral", "annular", "total", "partial",
+        "hybrid-v3", "saros", "syzygy", "occultation", "transit-v2",
+        "coronagraph", "limb-darkening", "baily-beads", "diamond-ring",
+    ],
+    "spectrum": [
+        "chromatic-v2", "monochromatic", "polychromatic", "achromatic", "dichroic",
+        "trichromatic", "tetrachromatic", "hyperspectral", "multispectral", "broadband",
+        "narrowband", "wideband", "baseband", "passband",
+    ],
 }
 
 
