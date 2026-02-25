@@ -1,42 +1,42 @@
-Phase 726-730のeBay機能ファイルを生成。直接指定パスに書き込む。
+Phase 741-745のeBay機能ファイルを生成。直接指定パスに書き込む。
 
-## Phase 726: apps/api/src/routes/ebay-listing-cross-platform-sync.ts
-出品クロスプラットフォーム同期, テーマカラー: sky-600
-28スタブ: dashboard(5), listings(6), platforms(4), sync(4), analytics(3), settings(2), utilities(4)
+## Phase 741: apps/api/src/routes/ebay-listing-smart-bundler.ts
+出品スマートバンドラー, テーマカラー: cyan-600
+28スタブ: dashboard(5), listings(6), bundles(4), recommendations(4), analytics(3), settings(2), utilities(4)
 `import { Router } from 'express'; import type { Request, Response } from 'express'; const router = Router(); export default router;`
 各: `(_req: Request, res: Response) => res.json({ section, action })`
 
-## Phase 726 UI: apps/web/src/app/ebay/listing-cross-platform-sync/page.tsx
-6タブ(ダッシュボード/出品/プラットフォーム/同期/分析/設定), text-sky-600, API=/api/ebay-listing-cross-platform-sync/
+## Phase 741 UI: apps/web/src/app/ebay/listing-smart-bundler/page.tsx
+6タブ(ダッシュボード/出品/バンドル/レコメンド/分析/設定), text-cyan-600, API=/api/ebay-listing-smart-bundler/
 'use client', fetch+useState+useEffect
 
-## Phase 727: apps/api/src/routes/ebay-order-payment-reconciler.ts
-注文支払い照合, テーマカラー: amber-600
-28スタブ: dashboard(5), orders(6), payments(4), reconciliation(4), analytics(3), settings(2), utilities(4)
+## Phase 742: apps/api/src/routes/ebay-order-claim-resolver.ts
+注文クレーム解決エンジン, テーマカラー: lime-600
+28スタブ: dashboard(5), orders(6), claims(4), resolutions(4), analytics(3), settings(2), utilities(4)
 
-## Phase 727 UI: apps/web/src/app/ebay/order-payment-reconciler/page.tsx
-6タブ(ダッシュボード/注文/支払い/照合/分析/設定), text-amber-600, API=/api/ebay-order-payment-reconciler/
+## Phase 742 UI: apps/web/src/app/ebay/order-claim-resolver/page.tsx
+6タブ(ダッシュボード/注文/クレーム/解決/分析/設定), text-lime-600, API=/api/ebay-order-claim-resolver/
 
-## Phase 728: apps/api/src/routes/ebay-inventory-receiving-dock.ts
-在庫入荷ドック管理, テーマカラー: violet-600
-28スタブ: dashboard(5), inventory(6), receiving(4), inspections(4), analytics(3), settings(2), utilities(4)
+## Phase 743: apps/api/src/routes/ebay-inventory-demand-sensing.ts
+在庫デマンドセンシング, テーマカラー: emerald-600
+28スタブ: dashboard(5), inventory(6), demands(4), signals(4), analytics(3), settings(2), utilities(4)
 
-## Phase 728 UI: apps/web/src/app/ebay/inventory-receiving-dock/page.tsx
-6タブ(ダッシュボード/在庫/入荷/検品/分析/設定), text-violet-600, API=/api/ebay-inventory-receiving-dock/
+## Phase 743 UI: apps/web/src/app/ebay/inventory-demand-sensing/page.tsx
+6タブ(ダッシュボード/在庫/需要/シグナル/分析/設定), text-emerald-600, API=/api/ebay-inventory-demand-sensing/
 
-## Phase 729: apps/api/src/routes/ebay-seller-knowledge-base.ts
-セラーナレッジベース, テーマカラー: rose-600
-28スタブ: dashboard(5), sellers(6), articles(4), categories(4), analytics(3), settings(2), utilities(4)
+## Phase 744: apps/api/src/routes/ebay-seller-goal-tracker.ts
+セラーゴールトラッカー, テーマカラー: sky-600
+28スタブ: dashboard(5), sellers(6), goals(4), milestones(4), analytics(3), settings(2), utilities(4)
 
-## Phase 729 UI: apps/web/src/app/ebay/seller-knowledge-base/page.tsx
-6タブ(ダッシュボード/セラー/記事/カテゴリ/分析/設定), text-rose-600, API=/api/ebay-seller-knowledge-base/
+## Phase 744 UI: apps/web/src/app/ebay/seller-goal-tracker/page.tsx
+6タブ(ダッシュボード/セラー/目標/マイルストーン/分析/設定), text-sky-600, API=/api/ebay-seller-goal-tracker/
 
-## Phase 730: apps/api/src/routes/ebay-product-lifecycle-manager.ts
-商品ライフサイクル管理, テーマカラー: teal-600
-28スタブ: dashboard(5), products(6), lifecycle(4), stages(4), analytics(3), settings(2), utilities(4)
+## Phase 745: apps/api/src/routes/ebay-product-condition-inspector.ts
+商品コンディションインスペクター, テーマカラー: amber-600
+28スタブ: dashboard(5), products(6), inspections(4), grades(4), analytics(3), settings(2), utilities(4)
 
-## Phase 730 UI: apps/web/src/app/ebay/product-lifecycle-manager/page.tsx
-6タブ(ダッシュボード/商品/ライフサイクル/ステージ/分析/設定), text-teal-600, API=/api/ebay-product-lifecycle-manager/
+## Phase 745 UI: apps/web/src/app/ebay/product-condition-inspector/page.tsx
+6タブ(ダッシュボード/商品/検品/グレード/分析/設定), text-amber-600, API=/api/ebay-product-condition-inspector/
 
 ルール: TypeScript strict, express型, UI='use client'+fetch+useState+useEffect, 日本語ラベル
 ebay-routes.tsは編集しないでください。
