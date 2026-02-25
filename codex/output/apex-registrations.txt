@@ -1,98 +1,70 @@
-// Phase 2331-2335
-app.use('/api/ebay-listing-global-expansion-apex', ebayListingGlobalExpansionApexRouter);
-app.use('/api/ebay-order-fulfillment-center-apex', ebayOrderFulfillmentCenterApexRouter);
-app.use('/api/ebay-inventory-multi-channel-apex', ebayInventoryMultiChannelApexRouter);
-app.use('/api/ebay-seller-verification-management-apex', ebaySellerVerificationManagementApexRouter);
-app.use('/api/ebay-product-discovery-management-apex', ebayProductDiscoveryManagementApexRouter);
-
-// Phase 2336-2340
-app.use('/api/ebay-listing-smart-repricing-apex', ebayListingSmartRepricingApexRouter);
-app.use('/api/ebay-order-return-prevention-apex', ebayOrderReturnPreventionApexRouter);
-app.use('/api/ebay-inventory-demand-sensing-apex', ebayInventoryDemandSensingApexRouter);
-app.use('/api/ebay-seller-tier-management-apex', ebaySellerTierManagementApexRouter);
-app.use('/api/ebay-product-curation-management-apex', ebayProductCurationManagementApexRouter);
-
-// Phase 2341-2345
-app.use('/api/ebay-listing-competitive-intel-apex', ebayListingCompetitiveIntelApexRouter);
-app.use('/api/ebay-order-fraud-detection-apex', ebayOrderFraudDetectionApexRouter);
-app.use('/api/ebay-inventory-network-management-apex', ebayInventoryNetworkManagementApexRouter);
-app.use('/api/ebay-seller-collaboration-management-apex', ebaySellerCollaborationManagementApexRouter);
-app.use('/api/ebay-product-sustainability-management-apex', ebayProductSustainabilityManagementApexRouter);
-
-// Phase 2346-2350
-app.use('/api/ebay-listing-visual-search-apex', ebayListingVisualSearchApexRouter);
-app.use('/api/ebay-order-split-shipment-apex', ebayOrderSplitShipmentApexRouter);
-app.use('/api/ebay-inventory-warehouse-optimization-apex', ebayInventoryWarehouseOptimizationApexRouter);
-app.use('/api/ebay-seller-content-management-apex', ebaySellerContentManagementApexRouter);
-app.use('/api/ebay-product-localization-management-apex', ebayProductLocalizationManagementApexRouter);
-
-// Phase 2351-2355
-app.use('/api/ebay-listing-recommendation-engine-apex', ebayListingRecommendationEngineApexRouter);
-app.use('/api/ebay-order-cost-optimization-apex', ebayOrderCostOptimizationApexRouter);
-app.use('/api/ebay-inventory-space-management-apex', ebayInventorySpaceManagementApexRouter);
-app.use('/api/ebay-seller-payout-management-apex', ebaySellerPayoutManagementApexRouter);
-app.use('/api/ebay-product-translation-management-apex', ebayProductTranslationManagementApexRouter);
-
-// Phase 2356-2360
-app.use('/api/ebay-listing-seasonal-strategy-apex', ebayListingSeasonalStrategyApexRouter);
-app.use('/api/ebay-order-customer-notification-apex', ebayOrderCustomerNotificationApexRouter);
-app.use('/api/ebay-inventory-quality-control-apex', ebayInventoryQualityControlApexRouter);
-app.use('/api/ebay-seller-risk-management-apex', ebaySellerRiskManagementApexRouter);
-app.use('/api/ebay-product-video-management-apex', ebayProductVideoManagementApexRouter);
-
-// Phase 2361-2365
-app.use('/api/ebay-listing-channel-sync-apex', ebayListingChannelSyncApexRouter);
-app.use('/api/ebay-order-automation-workflow-apex', ebayOrderAutomationWorkflowApexRouter);
-app.use('/api/ebay-inventory-reservation-management-apex', ebayInventoryReservationManagementApexRouter);
-app.use('/api/ebay-seller-finance-management-apex', ebaySellerFinanceManagementApexRouter);
-app.use('/api/ebay-product-bundle-strategy-apex', ebayProductBundleStrategyApexRouter);
-
-// Phase 2366-2370
-app.use('/api/ebay-listing-geographic-expansion-apex', ebayListingGeographicExpansionApexRouter);
-app.use('/api/ebay-order-label-management-apex', ebayOrderLabelManagementApexRouter);
-app.use('/api/ebay-inventory-supplier-sync-apex', ebayInventorySupplierSyncApexRouter);
-app.use('/api/ebay-seller-task-management-apex', ebaySellerTaskManagementApexRouter);
-app.use('/api/ebay-product-tagging-management-apex', ebayProductTaggingManagementApexRouter);
-
-// Phase 2371-2375
-app.use('/api/ebay-listing-compliance-management-apex', ebayListingComplianceManagementApexRouter);
-app.use('/api/ebay-order-route-optimization-apex', ebayOrderRouteOptimizationApexRouter);
-app.use('/api/ebay-inventory-waste-management-apex', ebayInventoryWasteManagementApexRouter);
-app.use('/api/ebay-seller-goal-management-apex', ebaySellerGoalManagementApexRouter);
-app.use('/api/ebay-product-version-management-apex', ebayProductVersionManagementApexRouter);
-
-// Phase 2376-2380
-app.use('/api/ebay-listing-tax-management-apex', ebayListingTaxManagementApexRouter);
-app.use('/api/ebay-order-exchange-management-apex', ebayOrderExchangeManagementApexRouter);
-app.use('/api/ebay-inventory-disposition-management-apex', ebayInventoryDispositionManagementApexRouter);
-app.use('/api/ebay-seller-metric-management-apex', ebaySellerMetricManagementApexRouter);
-app.use('/api/ebay-product-weight-management-apex', ebayProductWeightManagementApexRouter);
-
-// Phase 2381-2385
-app.use('/api/ebay-listing-warranty-management-apex', ebayListingWarrantyManagementApexRouter);
-app.use('/api/ebay-order-scheduling-management-apex', ebayOrderSchedulingManagementApexRouter);
-app.use('/api/ebay-inventory-tracking-management-apex', ebayInventoryTrackingManagementApexRouter);
-app.use('/api/ebay-seller-badge-management-apex', ebaySellerBadgeManagementApexRouter);
-app.use('/api/ebay-product-safety-management-apex', ebayProductSafetyManagementApexRouter);
-
-// Phase 2386-2390
-app.use('/api/ebay-listing-discount-management-apex', ebayListingDiscountManagementApexRouter);
-app.use('/api/ebay-order-queue-management-apex', ebayOrderQueueManagementApexRouter);
-app.use('/api/ebay-inventory-purchase-management-apex', ebayInventoryPurchaseManagementApexRouter);
-app.use('/api/ebay-seller-event-tracking-apex', ebaySellerEventTrackingApexRouter);
-app.use('/api/ebay-product-origin-management-apex', ebayProductOriginManagementApexRouter);
-
-// Phase 2391-2395
-app.use('/api/ebay-listing-review-management-apex', ebayListingReviewManagementApexRouter);
-app.use('/api/ebay-order-history-management-apex', ebayOrderHistoryManagementApexRouter);
-app.use('/api/ebay-inventory-planning-management-apex', ebayInventoryPlanningManagementApexRouter);
-app.use('/api/ebay-seller-billing-management-apex', ebaySellerBillingManagementApexRouter);
-app.use('/api/ebay-product-grading-management-apex', ebayProductGradingManagementApexRouter);
-
-// Phase 2396-2400
-app.use('/api/ebay-listing-insight-management-apex', ebayListingInsightManagementApexRouter);
-app.use('/api/ebay-order-experience-tracking-apex', ebayOrderExperienceTrackingApexRouter);
-app.use('/api/ebay-inventory-lifecycle-management-apex', ebayInventoryLifecycleManagementApexRouter);
-app.use('/api/ebay-seller-support-management-apex', ebaySellerSupportManagementApexRouter);
-app.use('/api/ebay-product-classification-management-apex', ebayProductClassificationManagementApexRouter);
-
+  app.use('/api/ebay-listing-peak-altitude-engine-apex', ebayListingPeakAltitudeEngineApexRouter);
+  app.use('/api/ebay-order-peak-altitude-routing-apex', ebayOrderPeakAltitudeRoutingApexRouter);
+  app.use('/api/ebay-inventory-peak-altitude-planning-apex', ebayInventoryPeakAltitudePlanningApexRouter);
+  app.use('/api/ebay-seller-peak-altitude-dashboard-apex', ebaySellerPeakAltitudeDashboardApexRouter);
+  app.use('/api/ebay-product-peak-altitude-analysis-apex', ebayProductPeakAltitudeAnalysisApexRouter);
+  app.use('/api/ebay-listing-summit-grade-engine-apex', ebayListingSummitGradeEngineApexRouter);
+  app.use('/api/ebay-order-summit-grade-routing-apex', ebayOrderSummitGradeRoutingApexRouter);
+  app.use('/api/ebay-inventory-summit-grade-planning-apex', ebayInventorySummitGradePlanningApexRouter);
+  app.use('/api/ebay-seller-summit-grade-dashboard-apex', ebaySellerSummitGradeDashboardApexRouter);
+  app.use('/api/ebay-product-summit-grade-analysis-apex', ebayProductSummitGradeAnalysisApexRouter);
+  app.use('/api/ebay-listing-crest-line-engine-apex', ebayListingCrestLineEngineApexRouter);
+  app.use('/api/ebay-order-crest-line-routing-apex', ebayOrderCrestLineRoutingApexRouter);
+  app.use('/api/ebay-inventory-crest-line-planning-apex', ebayInventoryCrestLinePlanningApexRouter);
+  app.use('/api/ebay-seller-crest-line-dashboard-apex', ebaySellerCrestLineDashboardApexRouter);
+  app.use('/api/ebay-product-crest-line-analysis-apex', ebayProductCrestLineAnalysisApexRouter);
+  app.use('/api/ebay-listing-ridge-top-engine-apex', ebayListingRidgeTopEngineApexRouter);
+  app.use('/api/ebay-order-ridge-top-routing-apex', ebayOrderRidgeTopRoutingApexRouter);
+  app.use('/api/ebay-inventory-ridge-top-planning-apex', ebayInventoryRidgeTopPlanningApexRouter);
+  app.use('/api/ebay-seller-ridge-top-dashboard-apex', ebaySellerRidgeTopDashboardApexRouter);
+  app.use('/api/ebay-product-ridge-top-analysis-apex', ebayProductRidgeTopAnalysisApexRouter);
+  app.use('/api/ebay-listing-pinnacle-set-engine-apex', ebayListingPinnacleSetEngineApexRouter);
+  app.use('/api/ebay-order-pinnacle-set-routing-apex', ebayOrderPinnacleSetRoutingApexRouter);
+  app.use('/api/ebay-inventory-pinnacle-set-planning-apex', ebayInventoryPinnacleSetPlanningApexRouter);
+  app.use('/api/ebay-seller-pinnacle-set-dashboard-apex', ebaySellerPinnacleSetDashboardApexRouter);
+  app.use('/api/ebay-product-pinnacle-set-analysis-apex', ebayProductPinnacleSetAnalysisApexRouter);
+  app.use('/api/ebay-listing-crown-point-engine-apex', ebayListingCrownPointEngineApexRouter);
+  app.use('/api/ebay-order-crown-point-routing-apex', ebayOrderCrownPointRoutingApexRouter);
+  app.use('/api/ebay-inventory-crown-point-planning-apex', ebayInventoryCrownPointPlanningApexRouter);
+  app.use('/api/ebay-seller-crown-point-dashboard-apex', ebaySellerCrownPointDashboardApexRouter);
+  app.use('/api/ebay-product-crown-point-analysis-apex', ebayProductCrownPointAnalysisApexRouter);
+  app.use('/api/ebay-listing-high-mark-engine-apex', ebayListingHighMarkEngineApexRouter);
+  app.use('/api/ebay-order-high-mark-routing-apex', ebayOrderHighMarkRoutingApexRouter);
+  app.use('/api/ebay-inventory-high-mark-planning-apex', ebayInventoryHighMarkPlanningApexRouter);
+  app.use('/api/ebay-seller-high-mark-dashboard-apex', ebaySellerHighMarkDashboardApexRouter);
+  app.use('/api/ebay-product-high-mark-analysis-apex', ebayProductHighMarkAnalysisApexRouter);
+  app.use('/api/ebay-listing-zenith-reached-engine-apex', ebayListingZenithReachedEngineApexRouter);
+  app.use('/api/ebay-order-zenith-reached-routing-apex', ebayOrderZenithReachedRoutingApexRouter);
+  app.use('/api/ebay-inventory-zenith-reached-planning-apex', ebayInventoryZenithReachedPlanningApexRouter);
+  app.use('/api/ebay-seller-zenith-reached-dashboard-apex', ebaySellerZenithReachedDashboardApexRouter);
+  app.use('/api/ebay-product-zenith-reached-analysis-apex', ebayProductZenithReachedAnalysisApexRouter);
+  app.use('/api/ebay-listing-vertex-placed-engine-apex', ebayListingVertexPlacedEngineApexRouter);
+  app.use('/api/ebay-order-vertex-placed-routing-apex', ebayOrderVertexPlacedRoutingApexRouter);
+  app.use('/api/ebay-inventory-vertex-placed-planning-apex', ebayInventoryVertexPlacedPlanningApexRouter);
+  app.use('/api/ebay-seller-vertex-placed-dashboard-apex', ebaySellerVertexPlacedDashboardApexRouter);
+  app.use('/api/ebay-product-vertex-placed-analysis-apex', ebayProductVertexPlacedAnalysisApexRouter);
+  app.use('/api/ebay-listing-acme-level-engine-apex', ebayListingAcmeLevelEngineApexRouter);
+  app.use('/api/ebay-order-acme-level-routing-apex', ebayOrderAcmeLevelRoutingApexRouter);
+  app.use('/api/ebay-inventory-acme-level-planning-apex', ebayInventoryAcmeLevelPlanningApexRouter);
+  app.use('/api/ebay-seller-acme-level-dashboard-apex', ebaySellerAcmeLevelDashboardApexRouter);
+  app.use('/api/ebay-product-acme-level-analysis-apex', ebayProductAcmeLevelAnalysisApexRouter);
+  app.use('/api/ebay-listing-climax-point-engine-apex', ebayListingClimaxPointEngineApexRouter);
+  app.use('/api/ebay-order-climax-point-routing-apex', ebayOrderClimaxPointRoutingApexRouter);
+  app.use('/api/ebay-inventory-climax-point-planning-apex', ebayInventoryClimaxPointPlanningApexRouter);
+  app.use('/api/ebay-seller-climax-point-dashboard-apex', ebaySellerClimaxPointDashboardApexRouter);
+  app.use('/api/ebay-product-climax-point-analysis-apex', ebayProductClimaxPointAnalysisApexRouter);
+  app.use('/api/ebay-listing-tip-top-engine-apex', ebayListingTipTopEngineApexRouter);
+  app.use('/api/ebay-order-tip-top-routing-apex', ebayOrderTipTopRoutingApexRouter);
+  app.use('/api/ebay-inventory-tip-top-planning-apex', ebayInventoryTipTopPlanningApexRouter);
+  app.use('/api/ebay-seller-tip-top-dashboard-apex', ebaySellerTipTopDashboardApexRouter);
+  app.use('/api/ebay-product-tip-top-analysis-apex', ebayProductTipTopAnalysisApexRouter);
+  app.use('/api/ebay-listing-capstone-set-engine-apex', ebayListingCapstoneSetEngineApexRouter);
+  app.use('/api/ebay-order-capstone-set-routing-apex', ebayOrderCapstoneSetRoutingApexRouter);
+  app.use('/api/ebay-inventory-capstone-set-planning-apex', ebayInventoryCapstoneSetPlanningApexRouter);
+  app.use('/api/ebay-seller-capstone-set-dashboard-apex', ebaySellerCapstoneSetDashboardApexRouter);
+  app.use('/api/ebay-product-capstone-set-analysis-apex', ebayProductCapstoneSetAnalysisApexRouter);
+  app.use('/api/ebay-listing-keystone-locked-engine-apex', ebayListingKeystoneLockedEngineApexRouter);
+  app.use('/api/ebay-order-keystone-locked-routing-apex', ebayOrderKeystoneLockedRoutingApexRouter);
+  app.use('/api/ebay-inventory-keystone-locked-planning-apex', ebayInventoryKeystoneLockedPlanningApexRouter);
+  app.use('/api/ebay-seller-keystone-locked-dashboard-apex', ebaySellerKeystoneLockedDashboardApexRouter);
+  app.use('/api/ebay-product-keystone-locked-analysis-apex', ebayProductKeystoneLockedAnalysisApexRouter);
