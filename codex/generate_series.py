@@ -489,6 +489,47 @@ SERIES_ADJECTIVES = {
         "reef-built", "polyp-grown", "lagoon-sheltered", "atoll-ringed", "brain-coral", "staghorn-branched",
         "fan-spread", "table-flat", "pillar-tall", "elkhorn-wide", "fire-coral", "soft-swayed", "deep-water", "bleach-resistant",
     ],
+    # ===== New series for Phase 8771+ =====
+    "flint": [
+        "strike-sparked", "chert-hard", "knapped-edge", "fire-starter", "conchoidal-break", "nodule-formed",
+        "siliceous", "crypto-crystalline", "biface-shaped", "cortex-rimmed", "lithic-core", "flake-detached", "pressure-chipped", "micro-blade",
+    ],
+    "zephyr": [
+        "west-blown", "breeze-light", "petal-carried", "dawn-stirred", "soft-gust", "vale-swept",
+        "meadow-crossed", "reed-bent", "mist-borne", "dusk-fading", "warm-front", "gentle-drift", "sky-whisper", "cloud-nudged",
+    ],
+    "riptide": [
+        "current-strong", "shore-pulling", "undertow-deep", "channel-carved", "sand-bar", "break-zone",
+        "seaward-flow", "neck-narrow", "feeder-current", "escape-route", "foam-line", "surf-edge", "lateral-drift", "rip-head",
+    ],
+    "cobalt": [
+        "blue-metallic", "alloy-grade", "magnetic-core", "catalyst-active", "pigment-deep", "oxide-layered",
+        "electrode-coated", "battery-cell", "superalloy", "gamma-phase", "spinel-form", "arsenide-base", "valence-shift", "coordination-six",
+    ],
+    "granite": [
+        "quartz-rich", "feldspar-white", "mica-flecked", "plutonic-deep", "batholithic", "coarse-grained",
+        "porphyritic-v2", "pegmatite-vein", "aplite-dike", "rapakivi-texture", "gneiss-foliated", "migmatite-mixed", "tor-weathered", "inselberg-risen",
+    ],
+    "fjord": [
+        "glacier-carved", "steep-walled", "deep-basin", "u-shaped", "threshold-shallow", "hanging-valley",
+        "tidewater-front", "sill-blocked", "stratified-water", "anoxic-deep", "waterfall-fed", "cliff-flanked", "arm-branched", "sound-open",
+    ],
+    "ironwood": [
+        "dense-grained", "axe-resistant", "heartwood-dark", "bark-furrowed", "slow-grown", "drought-hardy",
+        "termite-proof", "fence-post", "charcoal-grade", "tool-handle", "ship-timber", "bridge-beam", "mill-wheel", "forge-fuel",
+    ],
+    "mariana": [
+        "hadal-zone", "trench-deep", "abyssal-plain", "subduction-born", "pressure-extreme", "bioluminescent-v2",
+        "vent-heated", "seep-cold", "xenophyophore", "amphipod-rich", "manganese-crust", "sediment-thick", "fault-scarped", "plate-converged",
+    ],
+    "boreal": [
+        "taiga-vast", "spruce-dense", "moss-carpeted", "bog-pitted", "lake-dotted", "snow-laden",
+        "fire-cycled", "lichen-draped", "muskeg-soft", "moose-browsed", "owl-hunted", "frost-cracked", "daylight-long", "winter-dark",
+    ],
+    "obsidian-v3": [
+        "glass-flow", "rhyolite-born", "apache-tear", "snowflake-pattern", "rainbow-sheen", "mahogany-brown",
+        "pele-hair", "marekanite", "pitchstone-gray", "tachylite-dark", "hyaloclastite", "pumice-light", "scoria-rough", "tephra-blast",
+    ],
 }
 
 
