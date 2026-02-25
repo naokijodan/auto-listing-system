@@ -219,6 +219,56 @@ SERIES_ADJECTIVES = {
         "ambient", "ubiquitous", "pervasive", "context-aware", "location-aware",
         "proximity", "geofenced", "beacon", "mesh-networked",
     ],
+    "astral": [
+        "astral-plane", "dimensional", "transcendent", "ethereal", "celestial-v2",
+        "metaphysical", "quantum-leap", "hyperdimensional", "multiverse", "singularity",
+        "wormhole", "tesseract", "hyperspace", "subspace",
+    ],
+    "cosmic": [
+        "cosmic-ray", "supernova", "black-hole", "white-dwarf", "red-giant",
+        "neutron-star", "magnetar", "cosmic-web", "dark-flow", "cosmic-string",
+        "inflation", "big-bang", "cosmic-dawn", "recombination",
+    ],
+    "phantom": [
+        "stealth", "invisible", "cloaked", "shadow", "ghost",
+        "spectral-v2", "wraithlike", "ephemeral", "transient", "volatile",
+        "phantom-zone", "null-space", "void", "liminal",
+    ],
+    "thunder": [
+        "electrostatic", "lightning", "thunderbolt", "capacitive", "inductive",
+        "resonant", "oscillating", "pulsating", "surging", "cascading",
+        "avalanche", "breakdown", "discharge", "ionized",
+    ],
+    "glacier": [
+        "cryogenic", "frozen", "permafrost", "glacial", "icecore",
+        "snowflake", "crystallized", "frost", "subzero", "polar",
+        "arctic", "tundra", "alpine", "boreal",
+    ],
+    "ember": [
+        "incandescent", "molten", "pyroclastic", "volcanic", "magmatic",
+        "geothermal-v2", "hydrothermal", "fumarolic", "obsidian", "basaltic",
+        "igneous", "metamorphic", "sedimentary", "tectonic",
+    ],
+    "torrent": [
+        "fluvial", "deltaic", "estuarine", "riparian", "alluvial",
+        "hydraulic", "hydrodynamic", "turbulent", "laminar", "vortical",
+        "siphonic", "artesian", "aquifer", "watershed",
+    ],
+    "pinnacle": [
+        "summit", "apex-v2", "zenith-v2", "meridian", "culmination",
+        "acme", "paragon", "epitome", "archetype", "paradigm",
+        "exemplar", "benchmark-v2", "criterion", "touchstone",
+    ],
+    "aurora": [
+        "borealis", "australis", "solar-wind", "magnetospheric", "ionospheric",
+        "thermospheric", "mesospheric", "stratospheric", "tropospheric", "exospheric",
+        "chromospheric", "photospheric", "coronal", "heliospheric",
+    ],
+    "radiant": [
+        "luminous", "phosphorescent", "fluorescent", "bioluminescent", "chemiluminescent",
+        "triboluminescent", "electroluminescent", "cathodoluminescent", "radioluminescent", "sonoluminescent",
+        "thermoluminescent", "photoluminescent", "scintillating", "iridescent",
+    ],
 }
 
 
