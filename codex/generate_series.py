@@ -735,6 +735,47 @@ SERIES_ADJECTIVES = {
         "taiga-endless", "permafrost-bound", "river-frozen", "mammoth-steppe", "diamond-pipe", "gulag-remote",
         "baikal-deep", "yenisei-flow", "larch-forest", "sable-fur", "frost-cracked-v2", "tundra-edge", "meteor-crater", "aurora-belt",
     ],
+    # ===== New series for Phase 12971+ =====
+    "obsidian-fortress": [
+        "bastion-walled", "iron-gate", "keep-stone", "portcullis-heavy", "arrow-slotted", "rampart-crowned",
+        "siege-hardened", "drawbridge-chain", "turret-watch", "garrison-held", "moat-circled", "battlement-sharp", "tower-capped", "vault-sealed",
+    ],
+    "aurora-veil": [
+        "shimmer-curtain", "polar-glow", "ribbon-light", "green-arc", "solar-kissed", "magnetic-dance",
+        "night-veil", "sky-drape", "ion-stream", "corona-wisp", "photon-shower", "particle-rain", "dawn-haze", "spectrum-fold",
+    ],
+    "tempest-crown": [
+        "storm-king", "gale-throne", "thunder-reign", "cyclone-peak", "whirlwind-crest", "squall-helm",
+        "lightning-scepter", "cloud-palace", "rain-sovereign", "hail-crown", "tornado-spire", "monsoon-rule", "blizzard-court", "typhoon-seat",
+    ],
+    "crystal-depths": [
+        "abyss-clear", "deep-facet", "trench-prism", "pressure-gem", "fathom-shine", "ocean-lattice",
+        "hydro-crystal", "brine-diamond", "seabed-quartz", "coral-gem", "pearl-matrix", "abyssal-shard", "sapphire-deep", "aqua-refract",
+    ],
+    "ember-throne": [
+        "flame-seat", "ash-crown", "cinder-reign", "blaze-rule", "inferno-peak", "char-throne",
+        "spark-scepter", "molten-hall", "fire-court", "smolder-king", "pyre-gate", "hearth-sovereign", "coal-vault", "magma-seat",
+    ],
+    "glacier-peak": [
+        "ice-summit", "snow-cap", "frost-ridge", "berg-crown", "crevasse-edge", "firn-peak",
+        "glacial-spire", "rime-crest", "polar-summit", "frozen-apex", "ice-field-top", "neve-ridge", "serac-tower", "moraine-peak",
+    ],
+    "thunder-vale": [
+        "bolt-valley", "storm-glen", "rumble-gorge", "flash-canyon", "crack-ravine", "echo-dale",
+        "charge-basin", "spark-hollow", "voltage-vale", "arc-gulch", "static-dell", "plasma-gap", "ion-cleft", "surge-valley",
+    ],
+    "nebula-gate": [
+        "star-portal", "cloud-arch", "cosmic-door", "dust-gateway", "plasma-entry", "nova-threshold",
+        "void-passage", "stellar-lock", "gas-bridge", "ion-gate", "photon-arch", "quasar-portal", "dark-entry", "emission-gate",
+    ],
+    "titan-forge": [
+        "anvil-giant", "hammer-colossal", "furnace-vast", "bellows-roar", "ingot-titan", "crucible-massive",
+        "slag-mountain", "tong-iron", "quench-deep", "temper-strong", "alloy-prime", "smelt-core", "cast-monolith", "weld-titan",
+    ],
+    "phantom-reef": [
+        "ghost-coral", "wraith-lagoon", "specter-atoll", "shade-reef", "mist-barrier", "vanish-shoal",
+        "haunt-tide", "ether-reef", "mirage-bank", "shadow-cay", "phantom-pass", "spirit-shelf", "void-reef", "unseen-bar",
+    ],
 }
 
 
