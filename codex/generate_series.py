@@ -530,6 +530,47 @@ SERIES_ADJECTIVES = {
         "glass-flow", "rhyolite-born", "apache-tear", "snowflake-pattern", "rainbow-sheen", "mahogany-brown",
         "pele-hair", "marekanite", "pitchstone-gray", "tachylite-dark", "hyaloclastite", "pumice-light", "scoria-rough", "tephra-blast",
     ],
+    # ===== New series for Phase 9471+ =====
+    "caldera": [
+        "magma-chamber", "collapse-rim", "crater-wide", "fumarole-vent", "resurgent-dome", "tephra-layer",
+        "lava-lake", "hot-spring", "sulfur-crust", "ash-fall", "pyroclastic-flow", "caldera-fill", "ring-fault", "post-collapse",
+    ],
+    "cypress": [
+        "swamp-rooted", "knee-high", "moss-draped", "evergreen-tall", "resin-rich", "bark-fibrous",
+        "cone-scaled", "wind-resistant", "wetland-king", "bald-crowned", "timber-straight", "bayou-born", "flood-proof", "centuries-old",
+    ],
+    "quartz": [
+        "silicon-pure", "piezo-active", "crystal-hexed", "vein-threaded", "milky-white", "rose-tinted",
+        "smoky-dark", "amethyst-purple", "rutilated", "phantom-layered", "double-terminated", "druzy-coated", "geode-filled", "oscillator-grade",
+    ],
+    "peridot": [
+        "olivine-green", "mantle-born", "gem-clarity", "iron-tinted", "volcanic-ejected", "meteorite-found",
+        "basalt-hosted", "xenolith-carried", "facet-brilliant", "chrysolite-old", "hawaiite-set", "kimberlite-piped", "orthorhombic", "birefringent",
+    ],
+    "sandstone": [
+        "grain-cemented", "cross-bedded", "wind-sculpted", "mesa-forming", "arch-carved", "canyon-walled",
+        "red-ochre", "buff-yellow", "ripple-marked", "fossil-bearing", "aquifer-porous", "flagstone-split", "desert-varnished", "cliff-dwelling",
+    ],
+    "terracotta": [
+        "kiln-fired", "earthen-warm", "clay-molded", "ochre-glazed", "pot-shaped", "tile-pressed",
+        "sun-dried", "slip-coated", "coil-built", "wheel-thrown", "bisque-stage", "engobe-painted", "sgraffito-carved", "amphora-styled",
+    ],
+    "permafrost": [
+        "ice-cemented", "ground-frozen", "pingo-mound", "thermokarst", "active-layer", "yedoma-rich",
+        "syngenetic", "epigenetic", "talik-thawed", "palsa-raised", "cryopeg-briny", "ice-wedge-v2", "retrogressive-thaw", "solifluction",
+    ],
+    "stalactite": [
+        "drip-formed", "cave-hung", "calcite-pure", "mineral-deposited", "column-merged", "speleothem",
+        "flowstone-spread", "soda-straw", "curtain-draped", "helictite-twisted", "rim-stone", "cave-pearl", "bacon-strip", "gour-pool",
+    ],
+    "archipelago": [
+        "island-chain", "volcanic-arc", "barrier-reef", "atoll-based", "continental-shelf", "strait-linked",
+        "channel-deep", "lagoon-calm", "windward-exposed", "leeward-sheltered", "islet-dotted", "seamount-risen", "coral-fringed", "trade-wind",
+    ],
+    "monsoon-v2": [
+        "inter-tropical", "hadley-cell", "jet-stream", "orographic-lift", "convective-burst", "dry-spell",
+        "onset-surge", "withdrawal-phase", "monsoon-trough", "low-pressure", "cyclogenesis", "outflow-boundary", "gust-front", "squall-line",
+    ],
 }
 
 
