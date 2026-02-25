@@ -399,6 +399,87 @@ SERIES_ADJECTIVES = {
         "mono-layer", "hex-lattice", "sp2-bonded", "zero-gap", "ballistic-transport", "flex-strong",
         "ultra-thin", "high-conduct", "sheet-rolled", "nano-ribbon", "oxide-form", "doped-layer", "edge-state", "dirac-cone",
     ],
+    # ===== New series for Phase 7231+ =====
+    "obsidian-v2": [
+        "glass-sharp", "mirror-polish", "lava-cooled", "edge-honed", "shard-split", "obsid-core",
+        "dark-gleam", "fracture-clean", "volcanic-born", "silica-dense", "smoke-black", "knap-ready", "flow-lined", "vitric-pure",
+    ],
+    "tundra": [
+        "permafrost-deep", "lichen-grown", "windswept-flat", "frost-heaved", "snow-packed", "ice-wedged",
+        "caribou-trail", "peat-rich", "taiga-edge", "polar-bare", "aurora-lit", "solstice-dark", "drift-covered", "melt-pooled",
+    ],
+    "monsoon": [
+        "rain-heavy", "wind-shift", "cloud-burst-v2", "flood-prone", "season-turn", "tropic-wet",
+        "delta-fed", "paddy-green", "river-swelled", "mud-slick", "thunder-drawn", "mist-wrapped", "storm-bred", "humidity-peak",
+    ],
+    "bastion": [
+        "wall-thick", "tower-high", "moat-ringed", "gate-barred", "parapet-topped", "keep-central",
+        "curtain-walled", "arrow-slit", "drawbridge-set", "turret-crowned", "sally-port", "barbican-front", "citadel-core", "rampart-edged",
+    ],
+    "typhoon": [
+        "eye-wall", "spiral-band", "pressure-low", "wind-max", "rain-band", "surge-high",
+        "track-curved", "intensity-peak", "feeder-band", "outflow-jet", "convection-deep", "shear-low", "warm-core", "rapid-intensify",
+    ],
+    "sequoia": [
+        "bark-thick", "crown-tall", "root-deep", "ring-ancient", "fire-scarred", "grove-dense",
+        "trunk-massive", "canopy-high", "needle-green", "cone-bearing", "heartwood-strong", "sapwood-fresh", "giant-scale", "old-growth",
+    ],
+    "compass": [
+        "north-true", "bearing-fixed", "course-set", "declination-adj", "azimuth-read", "heading-locked",
+        "waypoint-marked", "meridian-crossed", "rose-printed", "needle-steady", "calibrated", "deviation-free", "pole-seeking", "chart-plotted",
+    ],
+    "anvil": [
+        "hammer-struck", "forge-heated", "steel-shaped", "horn-curved", "hardy-hole", "face-flat",
+        "pritchel-cut", "swage-formed", "tong-gripped", "quench-ready", "temper-drawn", "billet-set", "scale-free", "spark-thrown",
+    ],
+    "delta-v2": [
+        "sediment-rich", "fan-shaped", "channel-split", "alluvial-plain", "levee-built", "marsh-edged",
+        "distributary", "backwater-calm", "silt-laden", "flood-plain-v2", "oxbow-curved", "meander-belt", "bar-formed", "deposit-layered",
+    ],
+    "kelvin": [
+        "absolute-zero", "thermal-scale", "entropy-low", "heat-capacity", "conduction-rate", "blackbody-peak",
+        "temperature-grad", "isothermal", "adiabatic-v2", "exothermic", "endothermic", "calorimetric", "boltzmann-const", "planck-law",
+    ],
+    "trident": [
+        "three-pronged", "deep-sea", "coral-pierced", "current-split", "tide-master", "wave-breaker",
+        "reef-guard", "abyss-reach", "brine-forged", "kelp-carved", "barnacle-tough", "nautical-grade", "fathom-deep", "hull-strong",
+    ],
+    "bramble": [
+        "thorn-dense", "hedge-woven", "berry-ripe", "vine-tangled", "root-spread", "leaf-layered",
+        "wild-grown", "path-blocked", "thicket-deep", "stem-arched", "bud-set", "pollen-rich", "seed-scattered", "canopy-low",
+    ],
+    "citrine": [
+        "amber-hued", "quartz-clear", "golden-warm", "facet-bright", "gem-polished", "crystal-grown",
+        "mineral-rich", "luster-high", "carat-fine", "deposit-found", "heat-formed", "matrix-set", "prism-split", "clarity-top",
+    ],
+    "magnet": [
+        "pole-north", "field-strong", "flux-dense", "ferrite-core", "coil-wound", "gauss-high",
+        "domain-aligned", "hysteresis-low", "eddy-free", "rare-earth", "neodymium-grade", "attraction-pull", "repulsion-push", "induction-fast",
+    ],
+    "glacier-v2": [
+        "ice-shelf", "crevasse-deep", "moraine-left", "calving-front", "firn-packed", "glacial-lake",
+        "erratic-placed", "striation-marked", "cirque-carved", "arête-sharp", "till-deposited", "drumlin-shaped", "esker-ridged", "kettle-formed",
+    ],
+    "voltage": [
+        "amp-high", "ohm-matched", "watt-dense", "circuit-closed", "resistor-tuned", "capacitor-charged",
+        "diode-gated", "transistor-switched", "relay-triggered", "fuse-rated", "breaker-set", "transformer-wound", "rectifier-clean", "inverter-driven",
+    ],
+    "prairie": [
+        "grass-tall", "wind-bent", "horizon-wide", "bison-roamed", "loam-rich", "drought-hard",
+        "wildfire-swept", "root-mat", "sod-thick", "bloom-spring", "frost-browned", "hawk-hunted", "creek-cut", "bluff-edged",
+    ],
+    "garnet": [
+        "almandine-red", "pyrope-deep", "spessartine-orange", "grossular-green", "andradite-dark", "uvarovite-chrome",
+        "cabochon-set", "inclusion-free", "refractive-high", "hardness-seven", "dodecahedral", "trapezohedral", "alluvial-found", "metamorphic-born",
+    ],
+    "rampart": [
+        "battlement-crowned", "crenel-cut", "merlon-topped", "embrasure-set", "machicolation-hung", "chemin-de-ronde",
+        "escarp-steep", "counterscarp-faced", "glacis-sloped", "postern-hidden", "casemate-vaulted", "revetment-stone", "terreplein-wide", "banquette-stepped",
+    ],
+    "helios": [
+        "solar-flare", "corona-bright", "prominence-arced", "sunspot-dark", "photon-stream", "plasma-ejected",
+        "magnetic-loop", "chromosphere-hot", "convection-zone", "radiation-core", "fusion-powered", "hydrogen-rich", "helium-born", "luminosity-peak",
+    ],
 }
 
 
