@@ -3,9 +3,9 @@
 ## 最終更新
 
 **日付**: 2026-02-26
-**Phase**: v3.0 Social Commerce Edition — Phase 15070完了
+**Phase**: v3.0 Social Commerce Edition — Phase 15770完了
 **担当**: Claude（オーケストレーター）+ Codex/直接生成（コード生成）
-**最新コミット**: 3574ec6a
+**最新コミット**: 1ed7863e
 
 ---
 
@@ -53,15 +53,15 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 | タスク | 内容 | 開始Phase |
 |--------|------|-----------|
-| **eBay Phase 15071+** | eBay機能の継続開発（Phase 15071から） | Phase 15071 |
+| **eBay Phase 15771+** | eBay機能の継続開発（Phase 15771から） | Phase 15771 |
 
-**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 15071から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
+**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 15771から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
 
 **パターン**: Python generator (codex/generate_series.py) で70 Phase単位で生成 → ebay-routes.ts更新 → git commit → 140 Phase単位でpush → HANDOVER.md更新 → Obsidianノート
 
 **効率化**: `generate_series.py` を作成済み。`python3 codex/generate_series.py <series_name> <start_phase>` で70 Phase一括生成+routes自動更新。
 
-**使用済みシリーズ（全112シリーズ消化済み）**: obsidian-v2, tundra, monsoon, bastion, typhoon, sequoia, compass, anvil, delta-v2, kelvin, trident, bramble, citrine, magnet, glacier-v2, voltage, prairie, garnet, rampart, helios, summit, coral, flint, zephyr, riptide, cobalt, granite, fjord, ironwood, mariana, boreal, obsidian-v3, caldera, cypress, quartz, peridot, sandstone, terracotta, permafrost, stalactite, archipelago, monsoon-v2, aurora-v2, cascade-v2, tempest-v2, ember-v2, helix-v2, nexus-v2, prism-v2, dynamo-v2, orbit-v2, crystal-v2, magma, vanguard, pylon, apex, meridian-v2, tundra-v2, typhoon-v2, sequoia-v2, bastion-v2, trident-v2, kraken, monolith, nomad, raptor, crucible, obelisk, leviathan, steppe, atoll, ridgeline, citadel, avalanche, pangaea, solaris, labyrinth, tectonic, maelstrom, cerberus, colosseum, siberia, obsidian-fortress, aurora-veil, tempest-crown, crystal-depths, ember-throne, glacier-peak, thunder-vale, nebula-gate, titan-forge, phantom-reef, iron-canyon, jade-forest, silver-storm, copper-ridge, amber-coast, onyx-spire, ruby-depths, bronze-summit, pearl-harbor, diamond-glacier, malachite-gorge, titanium-shelf, obsidian-drift, rhodium-peak, lapis-canyon, platinum-reef, bismuth-spire, tourmaline-cove, beryllium-ridge, zirconium-vale
+**使用済みシリーズ（全122シリーズ消化済み）**: obsidian-v2, tundra, monsoon, bastion, typhoon, sequoia, compass, anvil, delta-v2, kelvin, trident, bramble, citrine, magnet, glacier-v2, voltage, prairie, garnet, rampart, helios, summit, coral, flint, zephyr, riptide, cobalt, granite, fjord, ironwood, mariana, boreal, obsidian-v3, caldera, cypress, quartz, peridot, sandstone, terracotta, permafrost, stalactite, archipelago, monsoon-v2, aurora-v2, cascade-v2, tempest-v2, ember-v2, helix-v2, nexus-v2, prism-v2, dynamo-v2, orbit-v2, crystal-v2, magma, vanguard, pylon, apex, meridian-v2, tundra-v2, typhoon-v2, sequoia-v2, bastion-v2, trident-v2, kraken, monolith, nomad, raptor, crucible, obelisk, leviathan, steppe, atoll, ridgeline, citadel, avalanche, pangaea, solaris, labyrinth, tectonic, maelstrom, cerberus, colosseum, siberia, obsidian-fortress, aurora-veil, tempest-crown, crystal-depths, ember-throne, glacier-peak, thunder-vale, nebula-gate, titan-forge, phantom-reef, iron-canyon, jade-forest, silver-storm, copper-ridge, amber-coast, onyx-spire, ruby-depths, bronze-summit, pearl-harbor, diamond-glacier, malachite-gorge, titanium-shelf, obsidian-drift, rhodium-peak, lapis-canyon, platinum-reef, bismuth-spire, tourmaline-cove, beryllium-ridge, zirconium-vale, selenite-arch, chromium-basin, feldspar-mesa, antimony-gorge, apatite-ridge, vermiculite-pass, cassiterite-bluff, sphalerite-hollow, dolomite-terrace, molybdenite-peak
 
 **次のステップ**: generate_series.pyに新しいシリーズを追加するか、別の開発タスク（INT-1〜6, QP-6〜8等）に移行。
 
@@ -275,7 +275,51 @@ APIエラーハンドリングを統一するミドルウェアを生成して�
 
 ---
 
-## 今回のセッションで完了したPhase（14371-15070）
+## 今回のセッションで完了したPhase（15071-15770）
+
+### Phase 15701-15770（Molybdenite-Peakシリーズ）
+70 Phase完了。サフィックス: `-molybdenite-peak`
+Git: 1ed7863e
+
+### Phase 15631-15700（Dolomite-Terraceシリーズ）
+70 Phase完了。サフィックス: `-dolomite-terrace`
+Git: 1ed7863e
+
+### Phase 15561-15630（Sphalerite-Hollowシリーズ）
+70 Phase完了。サフィックス: `-sphalerite-hollow`
+Git: ac428786
+
+### Phase 15491-15560（Cassiterite-Bluffシリーズ）
+70 Phase完了。サフィックス: `-cassiterite-bluff`
+Git: ac428786
+
+### Phase 15421-15490（Vermiculite-Passシリーズ）
+70 Phase完了。サフィックス: `-vermiculite-pass`
+Git: 4a168ca7
+
+### Phase 15351-15420（Apatite-Ridgeシリーズ）
+70 Phase完了。サフィックス: `-apatite-ridge`
+Git: 4a168ca7
+
+### Phase 15281-15350（Antimony-Gorgeシリーズ）
+70 Phase完了。サフィックス: `-antimony-gorge`
+Git: 1501e934
+
+### Phase 15211-15280（Feldspar-Mesaシリーズ）
+70 Phase完了。サフィックス: `-feldspar-mesa`
+Git: 1501e934
+
+### Phase 15141-15210（Chromium-Basinシリーズ）
+70 Phase完了。サフィックス: `-chromium-basin`
+Git: 3f43255a
+
+### Phase 15071-15140（Selenite-Archシリーズ）
+70 Phase完了。サフィックス: `-selenite-arch`
+Git: 3f43255a
+
+---
+
+## 前回セッションで完了したPhase（14371-15070）
 
 ### Phase 15001-15070（Zirconium-Valeシリーズ）
 70 Phase完了。サフィックス: `-zirconium-vale`
@@ -319,7 +363,7 @@ Git: 57d3d83a
 
 ---
 
-## 前回セッションで完了したPhase（13671-14370）
+## 前々回セッションで完了したPhase（13671-14370）
 
 ### Phase 14301-14370（Diamond-Glacierシリーズ）
 70 Phase完了。サフィックス: `-diamond-glacier`
