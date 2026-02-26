@@ -981,6 +981,23 @@ SERIES_ADJECTIVES = {
         "magnesium-alumino", "iolite-gem", "sector-twin", "peak-granulite", "dichroic-strong", "pinite-altered",
         "sekaninaite-iron", "indialite-hex", "water-bearing", "cordierite-gneiss", "hornfels-mineral", "emery-associated", "buckling-fold", "osumilite-group",
     ],
+    # ===== New series for Phase 17171+ =====
+    "siderite-canyon": [
+        "carbonate-iron", "rhombohedral-cleavage", "clay-ironstone", "blackband-ore", "bog-iron", "canyon-bedded",
+        "spathic-crystal", "siderite-concretion", "coal-measure", "chalybite-old", "vivianite-stained", "ankerite-mixed", "goethite-weathered", "limonite-crust",
+    ],
+    "anorthite-bluff": [
+        "calcic-plagioclase", "triclinic-twin", "labradorescence-sheen", "bytownite-range", "bluff-volcanic", "gabbro-hosted",
+        "anorthosite-massive", "schiller-effect", "exsolution-lamella", "bowen-continuous", "lunar-highland-v2", "refractory-calcium", "zoning-oscillatory", "albite-rim",
+    ],
+    "garnierite-vale": [
+        "nickel-silicate", "serpentine-derived", "laterite-zone", "saprolite-rich", "vale-tropical", "limonite-cap",
+        "nontronite-clay", "chlorite-green-v2", "magnetite-remnant", "chrysoprase-trace", "weathering-profile", "oxide-enriched", "supergene-zone", "karst-hosted",
+    ],
+    "zinnwaldite-pass": [
+        "lithium-mica", "iron-rich-v2", "greisen-associated", "pass-granitic", "fluorine-bearing", "lepidolite-related",
+        "pegmatite-margin", "tin-tungsten", "topaz-paired", "masutomilite-rare", "polylithionite-end", "siderophyllite-iron", "tetraferriphlogopite", "protolithionite",
+    ],
 }
 
 
