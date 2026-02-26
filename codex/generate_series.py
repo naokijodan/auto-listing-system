@@ -998,6 +998,23 @@ SERIES_ADJECTIVES = {
         "lithium-mica", "iron-rich-v2", "greisen-associated", "pass-granitic", "fluorine-bearing", "lepidolite-related",
         "pegmatite-margin", "tin-tungsten", "topaz-paired", "masutomilite-rare", "polylithionite-end", "siderophyllite-iron", "tetraferriphlogopite", "protolithionite",
     ],
+    # ===== New series for Phase 17451+ =====
+    "arsenopyrite-gorge": [
+        "iron-arsenic", "monoclinic-crystal", "gold-indicator", "gorge-vein-hosted", "pyrite-associated", "marcasite-dimorph",
+        "lollingite-end", "cobaltite-cousin", "thermal-decompose", "magnetic-roast", "arsenical-pyrite", "mispickel-old", "crystal-striated", "sulfo-arsenide",
+    ],
+    "chrysocolla-mesa": [
+        "copper-silicate", "botryoidal-blue", "mesa-oxidized", "turquoise-cousin", "opal-admixed", "dehydration-crack",
+        "chrysocolla-chalcedony", "gem-silica", "copper-stain", "gossan-indicator", "secondary-copper", "azurite-replaced", "malachite-banded", "supergene-blanket",
+    ],
+    "scapolite-ridge": [
+        "marialite-sodic", "meionite-calcic", "tetragonal-prism-v2", "ridge-granulite", "wernerite-old", "fluorescent-yellow",
+        "dipyre-intermediate", "metamorphic-calc", "amphibolite-facies", "contact-zone", "replacement-feldspar", "skarned-margin", "cathodoluminescent-blue", "volatile-bearing",
+    ],
+    "columbite-hollow": [
+        "niobium-oxide", "tantalite-end-member", "orthorhombic-prism", "hollow-pegmatite", "rare-earth-host-v2", "manganocolumbite",
+        "ferrocolumbite", "tapiolite-polymorph", "samarskite-group", "euxenite-related", "pyrochlore-cubic", "capacitor-grade", "superconductor-flux", "ferro-alloy-source",
+    ],
 }
 
 
