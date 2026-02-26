@@ -1048,6 +1048,47 @@ SERIES_ADJECTIVES = {
         "complex-silicate", "trigonal-system", "peak-alkaline", "rare-earth-source", "zirconium-bearing", "sodium-calcium",
         "eucolite-variety", "agrellite-associated", "lamprophyllite-paired", "loparite-neighbor", "lovozerite-group", "eudialyte-red", "cyclic-structure", "kola-peninsula",
     ],
+    # ===== New series for Phase 18291+ =====
+    "pyrargyrite-basin": [
+        "silver-antimony", "trigonal-scaleno", "ruby-silver", "proustite-pair", "dark-ruby", "basin-epithermal",
+        "sulfo-salt", "conchoidal-fract", "adamantine-sub", "streak-cherry", "polybasite-kin", "stephanite-group", "tetrahedrite-associated", "freibergite-silver",
+    ],
+    "thomsonite-ridge": [
+        "zeolite-radial", "orthorhombic-needle", "natrolite-kin", "mesolite-cousin", "ridge-basaltic", "amygdule-fill",
+        "hydrothermal-vein-v2", "spherulitic-mass", "acicular-spray", "white-radiating", "stilbite-associated", "heulandite-paired", "chabazite-cubic", "laumontite-prismatic",
+    ],
+    "benitoite-gorge": [
+        "barium-titanium", "ditrigonal-dipyramid", "sapphire-blue-v2", "gorge-serpentinite", "neptunite-associated", "joaquinite-paired",
+        "fluorescent-intense", "san-benito-type", "gem-rare", "crossite-schist", "natrolite-v2-vein", "albite-host", "glaucophane-matrix", "eclogite-origin",
+    ],
+    "prehnite-vale": [
+        "grape-agate", "botryoidal-v2", "zeolite-facies-v2", "vale-basaltic", "epidote-suite", "pumpellyite-pair-v2",
+        "reniform-habit", "tabular-crystal-v2", "apple-green", "translucent-gem", "lining-cavity", "vein-fill-v2", "sub-greenschist", "stilpnomelane-assoc",
+    ],
+    "lazulite-mesa": [
+        "phosphate-blue", "monoclinic-dipyramid", "scorzalite-iron", "mesa-pegmatitic", "quartz-vein-hosted", "kyanite-bearing",
+        "lazurite-confused", "siderite-associated", "rutile-inclusion", "metamorphic-phosphate", "granulite-hosted", "eclogite-rare", "azure-gem", "paragonite-matrix",
+    ],
+    "kermesite-hollow": [
+        "antimony-oxysulfide", "cherry-red", "capillary-needle", "hollow-oxidized", "stibnite-derived", "valentinite-pair",
+        "senarmontite-cubic", "cervantite-ortho", "tufted-acicular", "efflorescent-crust", "secondary-sb", "prismatic-thin", "cleavage-basal", "monoclinic-elongate",
+    ],
+    "vivianite-pass": [
+        "iron-phosphate", "monoclinic-prismatic", "blue-green-deep", "pass-sedimentary", "erythrite-cobalt-kin", "annabergite-nickel-kin",
+        "oxidation-darkening", "tabular-elongated", "bog-ore-assoc", "clay-ironstone-v2", "fossil-replacement", "prismatic-striated-v2", "transparent-fresh", "blackened-surface",
+    ],
+    "pectolite-bluff": [
+        "larimar-blue", "triclinic-acicular", "wollastonite-kin", "bluff-volcanic-v2", "radiating-spray", "silky-luster",
+        "botryoidal-crust-v2", "caribbean-gem", "sodium-calcium-v2", "basalt-vesicle", "zeolite-suite", "needle-mass", "fibrous-compact", "blue-pectolite",
+    ],
+    "adamite-terrace": [
+        "zinc-arsenate", "orthorhombic-wedge", "lime-green-fluor", "terrace-oxidized", "olivenite-copper-kin", "paradamite-triclinic",
+        "cobalt-pink-var", "manganoan-rose", "cuproadamite-blue", "limonite-matrix-v2", "smithsonite-assoc", "hemimorphite-pair", "botryoidal-druzy", "fluorescent-green-v2",
+    ],
+    "cavansite-peak": [
+        "calcium-vanadium", "orthorhombic-rosette", "peacock-blue", "peak-basaltic", "pentagonite-dimorph", "stilbite-substrate",
+        "heulandite-base", "apophyllite-assoc", "zeolite-cavity", "volcanic-vesicle-v2", "prismatic-blue", "rosette-cluster", "deccan-trap", "tuff-hosted",
+    ],
 }
 
 
