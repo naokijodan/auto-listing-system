@@ -3,9 +3,9 @@
 ## 最終更新
 
 **日付**: 2026-02-26
-**Phase**: v3.0 Social Commerce Edition — Phase 17730完了
+**Phase**: v3.0 Social Commerce Edition — Phase 18290完了
 **担当**: Claude（オーケストレーター）+ Codex/直接生成（コード生成）
-**最新コミット**: 9fa4295d
+**最新コミット**: 983e10fd
 
 ---
 
@@ -53,17 +53,17 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 | タスク | 内容 | 開始Phase |
 |--------|------|-----------|
-| **eBay Phase 17731+** | eBay機能の継続開発（Phase 17731から） | Phase 17731 |
+| **eBay Phase 18291+** | eBay機能の継続開発（Phase 18291から） | Phase 18291 |
 
-**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 17731から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
+**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 18291から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
 
 **パターン**: Python generator (codex/generate_series.py) で70 Phase単位で生成 → ebay-routes.ts更新 → git commit → 140 Phase単位でpush → HANDOVER.md更新 → Obsidianノート
 
 **効率化**: `generate_series.py` を作成済み。`python3 codex/generate_series.py <series_name> <start_phase>` で70 Phase一括生成+routes自動更新。
 
-**使用済みシリーズ（全150シリーズ消化済み）**: obsidian-v2, tundra, monsoon, bastion, typhoon, sequoia, compass, anvil, delta-v2, kelvin, trident, bramble, citrine, magnet, glacier-v2, voltage, prairie, garnet, rampart, helios, summit, coral, flint, zephyr, riptide, cobalt, granite, fjord, ironwood, mariana, boreal, obsidian-v3, caldera, cypress, quartz, peridot, sandstone, terracotta, permafrost, stalactite, archipelago, monsoon-v2, aurora-v2, cascade-v2, tempest-v2, ember-v2, helix-v2, nexus-v2, prism-v2, dynamo-v2, orbit-v2, crystal-v2, magma, vanguard, pylon, apex, meridian-v2, tundra-v2, typhoon-v2, sequoia-v2, bastion-v2, trident-v2, kraken, monolith, nomad, raptor, crucible, obelisk, leviathan, steppe, atoll, ridgeline, citadel, avalanche, pangaea, solaris, labyrinth, tectonic, maelstrom, cerberus, colosseum, siberia, obsidian-fortress, aurora-veil, tempest-crown, crystal-depths, ember-throne, glacier-peak, thunder-vale, nebula-gate, titan-forge, phantom-reef, iron-canyon, jade-forest, silver-storm, copper-ridge, amber-coast, onyx-spire, ruby-depths, bronze-summit, pearl-harbor, diamond-glacier, malachite-gorge, titanium-shelf, obsidian-drift, rhodium-peak, lapis-canyon, platinum-reef, bismuth-spire, tourmaline-cove, beryllium-ridge, zirconium-vale, selenite-arch, chromium-basin, feldspar-mesa, antimony-gorge, apatite-ridge, vermiculite-pass, cassiterite-bluff, sphalerite-hollow, dolomite-terrace, molybdenite-peak, chalcedony-ridge, magnetite-basin, fluorite-arch, bauxite-mesa, celestite-gorge, wolframite-pass, cinnabar-bluff, nepheline-hollow, kyanite-terrace, galena-peak, rutile-canyon, spodumene-vale, wollastonite-arch, prehnite-mesa, enstatite-gorge, andalusite-pass, chrysoberyl-bluff, staurolite-hollow, epidote-terrace, cordierite-peak, siderite-canyon, anorthite-bluff, garnierite-vale, zinnwaldite-pass, arsenopyrite-gorge, chrysocolla-mesa, scapolite-ridge, columbite-hollow
+**使用済みシリーズ（全158シリーズ消化済み）**: obsidian-v2, tundra, monsoon, bastion, typhoon, sequoia, compass, anvil, delta-v2, kelvin, trident, bramble, citrine, magnet, glacier-v2, voltage, prairie, garnet, rampart, helios, summit, coral, flint, zephyr, riptide, cobalt, granite, fjord, ironwood, mariana, boreal, obsidian-v3, caldera, cypress, quartz, peridot, sandstone, terracotta, permafrost, stalactite, archipelago, monsoon-v2, aurora-v2, cascade-v2, tempest-v2, ember-v2, helix-v2, nexus-v2, prism-v2, dynamo-v2, orbit-v2, crystal-v2, magma, vanguard, pylon, apex, meridian-v2, tundra-v2, typhoon-v2, sequoia-v2, bastion-v2, trident-v2, kraken, monolith, nomad, raptor, crucible, obelisk, leviathan, steppe, atoll, ridgeline, citadel, avalanche, pangaea, solaris, labyrinth, tectonic, maelstrom, cerberus, colosseum, siberia, obsidian-fortress, aurora-veil, tempest-crown, crystal-depths, ember-throne, glacier-peak, thunder-vale, nebula-gate, titan-forge, phantom-reef, iron-canyon, jade-forest, silver-storm, copper-ridge, amber-coast, onyx-spire, ruby-depths, bronze-summit, pearl-harbor, diamond-glacier, malachite-gorge, titanium-shelf, obsidian-drift, rhodium-peak, lapis-canyon, platinum-reef, bismuth-spire, tourmaline-cove, beryllium-ridge, zirconium-vale, selenite-arch, chromium-basin, feldspar-mesa, antimony-gorge, apatite-ridge, vermiculite-pass, cassiterite-bluff, sphalerite-hollow, dolomite-terrace, molybdenite-peak, chalcedony-ridge, magnetite-basin, fluorite-arch, bauxite-mesa, celestite-gorge, wolframite-pass, cinnabar-bluff, nepheline-hollow, kyanite-terrace, galena-peak, rutile-canyon, spodumene-vale, wollastonite-arch, prehnite-mesa, enstatite-gorge, andalusite-pass, chrysoberyl-bluff, staurolite-hollow, epidote-terrace, cordierite-peak, siderite-canyon, anorthite-bluff, garnierite-vale, zinnwaldite-pass, arsenopyrite-gorge, chrysocolla-mesa, scapolite-ridge, columbite-hollow, hauyne-basin, perovskite-ridge, sodalite-gorge, vesuvianite-pass, wulfenite-bluff, axinite-bluff, danburite-terrace, eudialyte-peak
 
-**次のステップ**: Phase 17731+から継続。generate_series.pyに新しいシリーズを追加するか、別の開発タスク（INT-1〜6, QP-6〜8等）に移行。全150シリーズ消化済み。
+**次のステップ**: Phase 18291+から継続。generate_series.pyに新しいシリーズを追加するか、別の開発タスク（INT-1〜6, QP-6〜8等）に移行。全158シリーズ消化済み。
 
 **注意**: Codex CLIがタイムアウトする場合はClaudeが直接生成+サブエージェント並行生成で対応可。
 
