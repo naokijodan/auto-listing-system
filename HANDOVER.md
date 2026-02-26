@@ -53,9 +53,9 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 | タスク | 内容 | 開始Phase |
 |--------|------|-----------|
-| **eBay Phase 16471+** | eBay機能の継続開発（Phase 16471から） | Phase 16471 |
+| **eBay Phase 17171+** | eBay機能の継続開発（Phase 17171から） | Phase 17171 |
 
-**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 16471から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
+**実行方法**: `RAKUDAのeBay機能開発を継続。Phase 17171から自律的に進めて。確認不要。Codex CLIにコード生成を委託すること。`
 
 **パターン**: Python generator (codex/generate_series.py) で70 Phase単位で生成 → ebay-routes.ts更新 → git commit → 140 Phase単位でpush → HANDOVER.md更新 → Obsidianノート
 
