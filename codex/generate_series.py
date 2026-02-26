@@ -1015,6 +1015,39 @@ SERIES_ADJECTIVES = {
         "niobium-oxide", "tantalite-end-member", "orthorhombic-prism", "hollow-pegmatite", "rare-earth-host-v2", "manganocolumbite",
         "ferrocolumbite", "tapiolite-polymorph", "samarskite-group", "euxenite-related", "pyrochlore-cubic", "capacitor-grade", "superconductor-flux", "ferro-alloy-source",
     ],
+    # ===== New series for Phase 17731+ =====
+    "hauyne-basin": [
+        "sodalite-group", "lazurite-kin", "nosean-cousin", "feldspathoid-blue", "phonolite-hosted", "basin-volcanic",
+        "sulfate-bearing", "cubic-crystal-v2", "lapis-component", "isometric-form", "alkaline-igneous", "leucite-tephrite", "melilite-nephelinite", "undersaturated-melt",
+    ],
+    "perovskite-ridge": [
+        "calcium-titanate", "orthorhombic-distort", "solar-cell", "piezo-ceramic", "ridge-skarn", "magnetoresistance",
+        "superconductor-parent", "ferroelectric-switch", "photovoltaic-layer", "thin-film-deposited", "cubic-perovskite", "tolerance-factor", "octahedral-tilt", "goldschmidt-rule",
+    ],
+    "sodalite-gorge": [
+        "chloro-silicate", "royal-blue-v2", "hackmanite-photo", "gorge-plutonic", "fluorescent-orange-v2", "tenebrescent",
+        "cage-structure", "cancrinite-related", "nosean-sulfate", "tugtupite-rare", "lazurite-sulfur", "hauyne-linked", "cubic-framework", "sodalite-cage",
+    ],
+    "vesuvianite-pass": [
+        "idocrase-old", "tetragonal-dipyramid", "contact-skarn", "pass-metamorphic-v2", "grossular-kin", "rodingite-hosted",
+        "californite-jade", "cyprine-copper", "chrome-vesuvianite", "manganese-variety", "boron-bearing-v2", "fluorine-rich", "columnar-habit", "massive-compact",
+    ],
+    "wulfenite-bluff": [
+        "lead-molybdate", "tabular-orange", "bluff-oxidized", "stolzite-tungsten", "tetragonal-thin", "secondary-mineral",
+        "scheelite-series", "powellite-calcium", "vanadinite-associated", "descloizite-paired", "mimetite-neighbor", "pyromorphite-group", "cerussite-crust-v2", "anglesite-coat",
+    ],
+    "axinite-bluff": [
+        "borosilicate-calcium", "triclinic-blade-v2", "contact-zone-v2", "axe-shaped", "manganese-axinite", "ferro-axinite",
+        "tinzenite-manganese", "magnesio-axinite", "piezo-electric-v2", "cleavage-good", "vitreous-luster", "brown-violet", "wedge-crystal", "hornfels-accessory",
+    ],
+    "danburite-terrace": [
+        "calcium-borosilicate", "orthorhombic-prism-v2", "topaz-similar", "terrace-metamorphic", "colorless-gem", "danbury-named",
+        "prismatic-elongated", "chisel-terminated", "heat-resistant-v2", "fluorescent-blue", "mexican-source", "japanese-twin", "cross-shaped-v2", "refractive-moderate",
+    ],
+    "eudialyte-peak": [
+        "complex-silicate", "trigonal-system", "peak-alkaline", "rare-earth-source", "zirconium-bearing", "sodium-calcium",
+        "eucolite-variety", "agrellite-associated", "lamprophyllite-paired", "loparite-neighbor", "lovozerite-group", "eudialyte-red", "cyclic-structure", "kola-peninsula",
+    ],
 }
 
 
