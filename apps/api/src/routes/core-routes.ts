@@ -94,6 +94,7 @@ import etsyAuthRouter from './etsy-auth';
 import etsyRouter from './etsy';
 import shopifyRouter from './shopify';
 import { shopifyAuthRouter } from './shopify-auth';
+import depopRouter from './depop';
 
 
 export function registerCoreRoutes(app: Express): void {
@@ -194,4 +195,7 @@ export function registerCoreRoutes(app: Express): void {
   app.use('/api/etsy-listings', etsyRouter);
   app.use('/api/shopify-products', shopifyRouter);
   app.use('/api/shopify', shopifyAuthRouter);
+
+  // v3.1: Depop Selling API
+  app.use('/api/depop', depopRouter);
 }

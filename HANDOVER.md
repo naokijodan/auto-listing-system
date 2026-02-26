@@ -71,6 +71,7 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 
 | 候補 | 内容 | 前提条件 |
 |------|------|----------|
+| **DEP-2** | **Depop Partner API認証** — Partner Portal申請→APIキー取得→設定ページで登録 | Depop Partner申請が必要 |
 | **INT-1** | **Etsy OAuth認証実行** — API Key取得→認証フロー実行→トークン取得 | Etsy Developer Accountが必要 |
 | **INT-2** | **Shopify OAuth認証実行** — アプリ作成→認証フロー実行→トークン取得 | Shopify Partnerアカウントが必要 |
 
@@ -124,7 +125,7 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 - **Shopify = Social Commerce Hub**: Instagram/TikTok/Facebook/Pinterestへの配信ハブ
 - **Product = Catalog Core（SSoT）**: カタログの核として位置づけ
 - **SupplierSource**: 在庫の出どころを分離管理（STOCKED/DROPSHIP/HYBRID）
-- **Marketplace enum拡張**: INSTAGRAM_SHOP, TIKTOK_SHOP 追加済み
+- **Marketplace enum拡張**: INSTAGRAM_SHOP, TIKTOK_SHOP, DEPOP 追加済み
 - **SupplierSource/SupplyType/InventoryMode**: DB追加済み（prisma db push適用済み）
 - **段階的リアルタイム化**: Phase 1 APIポーリング → Phase 2 Webhook/イベント駆動
 - **Hub限界の境界条件**: 月間TikTok注文>100件、ライブコマースAPI必要時に直接API移行
@@ -138,6 +139,20 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 | M-4 | Shopify連携（OAuth + API + AI最適化出品 + ワーカー） | 990b8a9 |
 | M-5 | 在庫一元管理（inventory-manager + order-sync-manager + marketplace-router） | bb4c841 |
 | M-6 | 統合管理UI（在庫ダッシュボード + マーケットプレイス管理） | 232f08b |
+
+### 完了済み（Depop連携 - 2026-02-26）
+| タスク | 内容 | コミット |
+|--------|------|---------|
+| DEP-1 | Depop Selling API連携（APIクライアント + 出品パイプライン + APIルート + UI + 設定） | (pending) |
+
+#### Depop連携 新規・変更ファイル
+- `apps/worker/src/lib/depop-api.ts` - Depop Partner API v1クライアント（既存）
+- `apps/worker/src/lib/depop-publish-service.ts` - Depop出品パイプライン（翻訳→画像→出品→DB更新）
+- `apps/api/src/routes/depop.ts` - Depop APIルート（出品CRUD・注文・設定・統計）
+- `apps/web/src/app/depop/page.tsx` - Depop管理ダッシュボード
+- `apps/web/src/app/depop/settings/page.tsx` - Depop設定ページ（APIキー設定・接続テスト）
+- `packages/database/prisma/schema.prisma` - DepopListing model + DepopListingStatus enum + DEPOP marketplace enum
+- `apps/api/src/routes/core-routes.ts` - Depopルート登録
 
 ### 完了済み（v3.0 Social Commerce Edition - 2026-02-22〜23）
 | タスク | 内容 | コミット |
