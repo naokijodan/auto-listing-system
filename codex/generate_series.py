@@ -1130,6 +1130,47 @@ SERIES_ADJECTIVES = {
         "iron-disulfide", "cubic-pyritohedron", "fools-gold", "peak-hydrothermal", "marcasite-dimorph-v2", "framboidal-form",
         "arsenic-bearing-v2", "cobalt-trace-v2", "nickel-variety", "striated-cube", "pyritohedral-habit", "replacement-fossil-v2", "massive-granular-v2", "sun-disc",
     ],
+    # ===== New series for Phase 23891+ =====
+    "valkyrie": [
+        "shield-maiden", "chooser-slain", "einherjar-bound", "wing-helmed", "spear-sworn", "battle-weaver",
+        "mead-hall", "rune-carved", "frost-gale", "war-hymn", "sky-rider", "fate-spinner", "valor-forged", "odin-sent",
+    ],
+    "chimera": [
+        "lion-headed", "goat-bodied", "serpent-tailed", "fire-breath", "hybrid-born", "myth-forged",
+        "beast-fused", "terror-winged", "shadow-stalked", "fang-triple", "scale-maned", "claw-rending", "rage-bound", "labyrinth-kin",
+    ],
+    "pegasus": [
+        "wing-spread", "cloud-gallop", "star-maned", "hoof-struck", "sky-born", "thunder-steed",
+        "dawn-rider", "gale-swept", "silver-flanked", "storm-bridled", "muse-spring", "heaven-vaulted", "wind-saddled", "bolt-swift",
+    ],
+    "phoenix": [
+        "ash-risen", "flame-plumed", "rebirth-cycle", "ember-hearted", "sun-kindled", "pyre-born",
+        "golden-winged", "tear-healing", "immortal-spark", "cinder-crowned", "blaze-sung", "fire-nested", "epoch-turned", "radiance-core",
+    ],
+    "griffin": [
+        "eagle-crowned", "lion-pawed", "gold-guarding", "aerie-throned", "talon-keen", "beak-iron",
+        "feather-mailed", "crest-proud", "nest-gilded", "sky-sentinel", "treasure-warding", "dual-natured", "raptor-roar", "pride-bound",
+    ],
+    "hydra": [
+        "many-headed", "regen-scaled", "swamp-lurking", "venom-blooded", "neck-coiled", "fang-legion",
+        "acid-breathed", "marsh-rooted", "wound-spawning", "serpent-crowned", "lair-sunken", "immortal-head", "cauterize-proof", "lake-dwelling",
+    ],
+    "sphinx": [
+        "riddle-posed", "lion-flanked", "human-faced", "desert-seated", "wisdom-gated", "enigma-bound",
+        "oracle-voiced", "sand-carved", "paw-resting", "guardian-still", "truth-seeking", "passage-barred", "mystery-veiled", "answer-keyed",
+    ],
+    "centaur": [
+        "horse-bodied", "archer-skilled", "forest-roaming", "herd-running", "star-reading", "spear-wielding",
+        "hoof-thundered", "mane-wild", "wisdom-elder", "meadow-galloped", "bow-drawn", "trail-blazed", "sage-taught", "mount-born",
+    ],
+    "cyclops": [
+        "single-eyed", "forge-master", "boulder-hurled", "cave-dwelling", "titan-born", "hammer-struck",
+        "flame-stoking", "anvil-ringing", "thunder-crafted", "island-bound", "sheep-herding", "stone-walled", "bronze-smithed", "peak-seated",
+    ],
+    "siren": [
+        "song-weaving", "shore-perched", "wave-calling", "sailor-luring", "voice-enchanted", "reef-haunting",
+        "tide-singing", "mist-cloaked", "current-voiced", "deep-echoed", "foam-crowned", "moonlit-hymn", "undertow-drawn", "pearl-throated",
+    ],
 }
 
 
