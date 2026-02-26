@@ -858,6 +858,47 @@ SERIES_ADJECTIVES = {
         "reactor-clad", "corrosion-shield", "hafnium-free", "oxide-ceramic", "cubic-zirconia", "vale-deposited",
         "baddeleyite-ore", "zircon-sand", "plasma-sprayed", "thermal-barrier", "prosthetic-grade", "getter-active", "pyrophoric-fine", "alloy-naval",
     ],
+    # ===== New series for Phase 15071+ =====
+    "selenite-arch": [
+        "gypsum-clear", "moon-stone", "desert-rose", "twin-crystal", "tabular-form", "prismatic-habit",
+        "cleavage-perfect", "satin-spar", "cave-grown", "evaporite-born", "fibrous-silk", "selenite-plate", "water-soluble", "optical-grade",
+    ],
+    "chromium-basin": [
+        "stainless-alloy", "chrome-plated", "emerald-dopant", "ferrochrome", "refractory-lined", "passivation-film",
+        "hexavalent-free", "trivalent-state", "specular-finish", "hardface-weld", "catalyst-carrier", "pigment-oxide", "corrosion-immune", "basin-smelted",
+    ],
+    "feldspar-mesa": [
+        "orthoclase-pink", "plagioclase-white", "twinning-striped", "weathered-clay", "perthite-intergrown", "anorthite-calcic",
+        "albite-sodic", "labradorite-flash", "moonstone-sheen", "sanidine-clear", "microcline-green", "mesa-exposed", "granitic-host", "pegmatite-coarse",
+    ],
+    "antimony-gorge": [
+        "stibnite-metallic", "flame-retardant", "alloy-hardener", "trioxide-white", "sulfide-gray", "gorge-mined",
+        "brittle-fracture", "lead-battery", "semiconductor-doped", "antimonial-lead", "type-metal", "bearing-alloy", "vermillion-base", "glass-fining",
+    ],
+    "apatite-ridge": [
+        "phosphate-rich", "fluorapatite", "hydroxy-form", "bone-mineral", "fertilizer-source", "hexagonal-prism",
+        "ridge-outcrop", "igneous-accessory", "sedimentary-layer", "bio-apatite", "laser-host", "rare-earth-doped", "francolite-crypto", "collophane-massive",
+    ],
+    "vermiculite-pass": [
+        "mica-exfoliated", "heat-expanded", "insulation-fill", "soil-conditioner", "fire-barrier", "acoustic-dampen",
+        "pass-quarried", "lightweight-aggregate", "asbestos-free", "hydroponic-medium", "packing-material", "friction-liner", "refractory-filler", "absorbent-grade",
+    ],
+    "cassiterite-bluff": [
+        "tin-ore", "placer-deposit", "alluvial-worked", "smelter-feed", "bronze-age", "bluff-exposed",
+        "tetragonal-crystal", "adamantine-luster", "heavy-mineral", "greisenized", "pegmatite-hosted", "wood-tin", "stream-tin", "vein-mined",
+    ],
+    "sphalerite-hollow": [
+        "zinc-blende", "wurtzite-hex", "resinous-luster", "cleavage-six", "hollow-mined", "galena-associated",
+        "cadmium-trace", "indium-source", "germanium-carrier", "marmatite-iron", "schalenblende", "fluorescent-orange", "triboluminescent-spark", "metamorphic-skarn",
+    ],
+    "dolomite-terrace": [
+        "calcium-magnesium", "rhombohedral-form", "saddle-shaped", "terrace-layered", "reef-builder", "dolostone-massive",
+        "hydrothermal-replaced", "pearl-spar", "ferroan-variety", "ankerite-iron", "huntite-white", "stromatolite-bound", "burial-diagenetic", "sabkha-evaporite",
+    ],
+    "molybdenite-peak": [
+        "disulfide-layer", "lubricant-dry", "steel-alloy", "catalyst-hydro", "peak-porphyry", "rhenium-host",
+        "hexagonal-plate", "metallic-sheen", "high-melting-v2", "superlubricant", "photovoltaic-contact", "nitrogen-fixation", "electrode-material", "quantum-emitter",
+    ],
 }
 
 
