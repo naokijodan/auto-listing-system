@@ -940,6 +940,47 @@ SERIES_ADJECTIVES = {
         "lead-sulfide", "cubic-crystal", "galena-cleavage", "silver-bearing", "peak-lode", "mississippi-valley",
         "replacement-body", "skarn-contact", "anglesite-weathered", "cerussite-crust", "flotation-recovered", "smelter-concentrate", "isotope-dated", "ore-shoot",
     ],
+    # ===== New series for Phase 16471+ =====
+    "rutile-canyon": [
+        "titanium-dioxide", "tetragonal-prism", "needle-crystal", "beach-placer", "ilmenite-altered", "anatase-polymorph",
+        "brookite-ortho", "canyon-bedrock", "refractory-pigment", "photocatalyst", "rutile-twin", "geniculated", "sagenite-net", "epitaxial-growth",
+    ],
+    "spodumene-vale": [
+        "lithium-bearing", "pyroxene-chain", "kunzite-pink", "hiddenite-green", "pegmatite-crystal", "vale-quarried",
+        "monoclinic-prism", "cleavage-perfect-v2", "alpha-phase", "beta-converted", "glass-ceramic", "battery-grade", "flotation-pure", "concentrate-refined",
+    ],
+    "wollastonite-arch": [
+        "calcium-silicate", "acicular-habit", "contact-metamorphic", "skarn-mineral", "arch-outcrop", "fibrous-mass",
+        "ceramic-filler", "friction-material", "paint-extender", "plastics-reinforcer", "low-shrinkage", "alkaline-flux", "deinking-agent", "fireproof-board",
+    ],
+    "prehnite-mesa": [
+        "calcium-aluminum", "botryoidal-habit", "zeolite-facies", "mesa-volcanic", "pipe-vesicle", "green-translucent",
+        "fan-spherulite", "epidote-associated", "pumpellyite-paired", "low-grade-meta", "cavity-lining", "reniform-crust", "tabular-aggregate", "vein-filling",
+    ],
+    "enstatite-gorge": [
+        "magnesium-silicate", "ortho-pyroxene", "bronzite-sheen", "hypersthene-dark", "gorge-ultramafic", "mantle-xenolith",
+        "meteorite-phase", "chondrite-common", "bowen-series", "cumulate-layer", "harzburgite-host", "lherzolite-bound", "norite-component", "corona-texture",
+    ],
+    "andalusite-pass": [
+        "aluminum-silicate-v2", "chiastolite-cross", "contact-aureole", "hornfels-grade", "pass-metamorphic", "prismatic-square",
+        "viridine-manganese", "porcelain-jasper", "refractory-brick", "mullite-precursor", "pelite-porphyroblast", "cordierite-paired-v2", "biotite-zone", "spotted-slate",
+    ],
+    "chrysoberyl-bluff": [
+        "beryllium-aluminate", "cyclic-twin", "alexandrite-color", "cymophane-chatoyant", "bluff-pegmatite", "orthorhombic-dipyramid",
+        "color-change", "cats-eye-v2", "trillings-form", "hard-gemstone", "alluvial-gem", "chrysoberyl-green", "iron-chromium", "sixling-twin",
+    ],
+    "staurolite-hollow": [
+        "iron-aluminum", "cruciform-twin", "fairy-cross", "garnet-grade", "hollow-schist", "monoclinic-pseudo",
+        "penetration-twin", "sixty-degree", "ninety-degree", "kyanite-associated", "regional-meta", "barrovian-zone", "pelitic-index", "medium-grade",
+    ],
+    "epidote-terrace": [
+        "calcium-iron-aluminum", "pistachio-green", "clinozoisite-iron-free", "zoisite-ortho", "terrace-greenschist", "prismatic-striated",
+        "saussurite-mass", "unakite-rock", "pistacite-end", "pleochroic-strong", "anomalous-interference", "vein-epidote", "skarn-accessory", "retrograde-product",
+    ],
+    "cordierite-peak": [
+        "magnesium-alumino", "iolite-gem", "sector-twin", "peak-granulite", "dichroic-strong", "pinite-altered",
+        "sekaninaite-iron", "indialite-hex", "water-bearing", "cordierite-gneiss", "hornfels-mineral", "emery-associated", "buckling-fold", "osumilite-group",
+    ],
 }
 
 
