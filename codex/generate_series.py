@@ -1171,6 +1171,47 @@ SERIES_ADJECTIVES = {
         "song-weaving", "shore-perched", "wave-calling", "sailor-luring", "voice-enchanted", "reef-haunting",
         "tide-singing", "mist-cloaked", "current-voiced", "deep-echoed", "foam-crowned", "moonlit-hymn", "undertow-drawn", "pearl-throated",
     ],
+    # ===== New series for Phase 24591+ (Mythological Beasts) =====
+    "minotaur": [
+        "labyrinth-bound", "horn-crowned", "maze-walker", "bull-forged", "arena-bred", "axe-wielding",
+        "stone-walled", "corridor-stalking", "thread-traced", "bronze-skinned", "hoof-stamped", "myth-born", "palace-deep", "ritual-carved",
+    ],
+    "gorgon": [
+        "stone-gazing", "serpent-haired", "shield-reflected", "medusa-born", "petrifying", "venom-dripped",
+        "temple-dwelling", "curse-laden", "scale-skinned", "fang-bared", "aegis-mounted", "bronze-clawed", "nightmare-forged", "idol-shattered",
+    ],
+    "triton": [
+        "conch-blown", "trident-armed", "reef-dwelling", "wave-riding", "coral-throned", "deep-sea",
+        "current-steering", "pearl-adorned", "shell-armored", "tide-commanding", "kelp-mantled", "brine-blessed", "surf-born", "abyss-roaming",
+    ],
+    "harpy": [
+        "wind-borne", "talon-sharp", "storm-shrieking", "cliff-nesting", "gale-winged", "sky-hunting",
+        "feather-bladed", "swoop-diving", "tempest-born", "carrion-scenting", "iron-beaked", "cloud-darting", "prey-snatching", "gust-riding",
+    ],
+    "wyvern": [
+        "venom-tailed", "leather-winged", "fire-spewing", "crag-dwelling", "sky-terrorizing", "scale-plated",
+        "roost-perched", "fang-dripping", "shadow-casting", "den-guarding", "acid-breathed", "bone-crushing", "flight-swift", "wyrm-blooded",
+    ],
+    "basilisk": [
+        "death-gazing", "crown-crested", "venom-fanged", "tunnel-lurking", "stone-turning", "serpent-king",
+        "cave-born", "scale-jeweled", "hiss-deadly", "mirror-weak", "rooster-spawned", "den-coiled", "plague-bearing", "eye-blazing",
+    ],
+    "manticore": [
+        "spike-tailed", "lion-bodied", "scorpion-armed", "desert-roaming", "triple-rowed", "prey-devouring",
+        "wing-spread-v2", "fang-triple", "mane-bristled", "barb-launching", "howl-piercing", "sand-stalking", "bone-crunching", "fear-radiating",
+    ],
+    "fenrir": [
+        "chain-breaking", "wolf-giant", "fang-gleaming", "ice-breathed", "fate-bound", "iron-jawed",
+        "shadow-pelted", "howl-shaking", "frost-furred", "rage-fueled", "myth-chained", "doom-heralding", "pack-leading", "tundra-prowling",
+    ],
+    "wyrm": [
+        "earth-burrowing", "coil-massive", "scale-ancient", "fire-bellied", "hoard-guarding", "cavern-dwelling",
+        "gem-encrusted", "wing-vestigial", "breath-toxic", "treasure-sleeping", "mountain-coiled", "claw-rending", "age-eternal", "lair-deep",
+    ],
+    "drake": [
+        "flame-tongued", "wing-folded", "scale-hardened", "ember-eyed", "smoke-trailing", "nest-fierce",
+        "gold-hoarding", "claw-razor", "fire-resistant", "sky-patrolling", "den-warming", "egg-guarding", "roar-thundering", "spine-ridged",
+    ],
 }
 
 
