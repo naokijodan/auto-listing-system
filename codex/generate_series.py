@@ -899,6 +899,47 @@ SERIES_ADJECTIVES = {
         "disulfide-layer", "lubricant-dry", "steel-alloy", "catalyst-hydro", "peak-porphyry", "rhenium-host",
         "hexagonal-plate", "metallic-sheen", "high-melting-v2", "superlubricant", "photovoltaic-contact", "nitrogen-fixation", "electrode-material", "quantum-emitter",
     ],
+    # ===== New series for Phase 15771+ =====
+    "chalcedony-ridge": [
+        "microcrystalline", "agate-banded", "carnelian-red", "chrysoprase-green", "jasper-opaque", "onyx-layered",
+        "ridge-silicified", "botryoidal-crust", "geode-lined", "chalcedonic-vein", "flint-nodule", "chert-bedded", "moss-agate", "dendritic-pattern",
+    ],
+    "magnetite-basin": [
+        "iron-oxide", "lodestone-polar", "octahedral-form", "magnetite-sand", "skarn-hosted", "banded-iron",
+        "basin-concentrated", "titano-magnetite", "detrital-grain", "biogenic-magnetite", "curie-point", "spinel-structure", "ilmenite-inter", "hematite-martite",
+    ],
+    "fluorite-arch": [
+        "calcium-fluoride", "cubic-habit", "octahedral-cleave", "fluorspar-grade", "arch-mineralized", "purple-zone",
+        "green-fluorite", "blue-john", "thermoluminescent-v2", "flux-agent", "optical-window", "rare-earth-host", "gangue-mineral", "hydrothermal-vein",
+    ],
+    "bauxite-mesa": [
+        "alumina-rich", "laterite-weathered", "gibbsite-form", "boehmite-phase", "diaspore-hard", "mesa-capped",
+        "bayer-process", "red-mud", "pisolitic-texture", "karst-bauxite", "tropical-leached", "iron-stained", "residual-deposit", "refinery-grade",
+    ],
+    "celestite-gorge": [
+        "strontium-sulfate", "sky-blue", "tabular-crystal", "evaporite-hosted", "gorge-deposited", "geode-cluster",
+        "orthorhombic-form", "celestine-nodule", "fibrous-vein", "replacement-origin", "sedimentary-bed", "concretion-core", "dogtooth-spar", "karstic-fill",
+    ],
+    "wolframite-pass": [
+        "tungsten-ore", "iron-manganese", "monoclinic-form", "pass-vein", "greisen-hosted", "quartz-associated",
+        "scheelite-paired", "hubnerite-end", "ferberite-dark", "alluvial-placer", "gravity-separated", "flotation-concentrate", "high-density", "strategic-mineral",
+    ],
+    "cinnabar-bluff": [
+        "mercury-sulfide", "vermillion-red", "trigonal-crystal", "bluff-outcrop", "hot-spring-deposited", "epithermal-vein",
+        "retort-smelted", "native-mercury", "metacinnabar-black", "livingstonite-mix", "fumarole-sublimate", "silica-sinter", "opalized-host", "stockwork-ore",
+    ],
+    "nepheline-hollow": [
+        "feldspathoid", "hexagonal-prismatic", "silica-undersaturated", "hollow-intrusive", "syenite-host", "phonolite-rock",
+        "sodalite-group", "leucite-related", "cancrinite-altered", "analcime-replaced", "ceramic-flux", "alumina-source", "alkali-rich", "peralkaline-melt",
+    ],
+    "kyanite-terrace": [
+        "aluminum-silicate", "triclinic-blade", "blue-bladed", "terrace-metamorphic", "high-pressure", "andalusite-polymorph",
+        "sillimanite-transition", "eclogite-facies", "mullite-converted", "refractory-cast", "abrasive-grain", "indicator-mineral", "garnet-schist", "staurolite-paired",
+    ],
+    "galena-peak": [
+        "lead-sulfide", "cubic-crystal", "galena-cleavage", "silver-bearing", "peak-lode", "mississippi-valley",
+        "replacement-body", "skarn-contact", "anglesite-weathered", "cerussite-crust", "flotation-recovered", "smelter-concentrate", "isotope-dated", "ore-shoot",
+    ],
 }
 
 
