@@ -5,7 +5,7 @@
 **日付**: 2026-02-26
 **Phase**: v3.0 Social Commerce Edition — Phase 15070完了
 **担当**: Claude（オーケストレーター）+ Codex/直接生成（コード生成）
-**最新コミット**: 1447d129
+**最新コミット**: 3574ec6a
 
 ---
 
@@ -143,7 +143,7 @@ codex exec "$(cat codex/current-task.txt)" --full-auto
 ### 完了済み（Depop連携 - 2026-02-26）
 | タスク | 内容 | コミット |
 |--------|------|---------|
-| DEP-1 | Depop Selling API連携（APIクライアント + 出品パイプライン + APIルート + UI + 設定） | (pending) |
+| DEP-1 | Depop Selling API連携（APIクライアント + 出品パイプライン + APIルート + UI + 設定） | 3574ec6a |
 
 #### Depop連携 新規・変更ファイル
 - `apps/worker/src/lib/depop-api.ts` - Depop Partner API v1クライアント（既存）
