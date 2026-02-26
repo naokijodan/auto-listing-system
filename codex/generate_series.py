@@ -1089,6 +1089,47 @@ SERIES_ADJECTIVES = {
         "calcium-vanadium", "orthorhombic-rosette", "peacock-blue", "peak-basaltic", "pentagonite-dimorph", "stilbite-substrate",
         "heulandite-base", "apophyllite-assoc", "zeolite-cavity", "volcanic-vesicle-v2", "prismatic-blue", "rosette-cluster", "deccan-trap", "tuff-hosted",
     ],
+    # ===== New series for Phase 19691+ =====
+    "beryl-canyon": [
+        "hexagonal-prism-v3", "emerald-chromium", "aquamarine-iron", "morganite-manganese", "heliodor-uranium", "goshenite-pure-v2",
+        "pegmatite-giant", "canyon-vein-hosted", "columnar-crystal", "etched-surface", "vorobyevite-cesium", "rosterite-lithium", "beryl-habit", "maxixe-irradiated",
+    ],
+    "topaz-basin": [
+        "orthorhombic-prism-v3", "imperial-orange", "sherry-golden", "london-blue", "swiss-blue", "sky-blue-natural",
+        "basin-rhyolitic", "fluorine-hydroxyl", "basal-cleavage", "prismatic-striation", "mystic-coated", "phantom-inclusion", "alluvial-gem-v2", "pegmatite-pocket",
+    ],
+    "olivine-ridge": [
+        "forsterite-magnesium", "fayalite-iron-end", "peridot-gem-v2", "mantle-abundant", "ridge-basaltic-v2", "dunite-rock",
+        "xenolith-carried-v2", "meteorite-pallasite", "san-carlos-type", "nesosilicate-island", "olivine-sand", "green-beach", "cumulate-settled", "iddingsite-altered",
+    ],
+    "zircon-gorge": [
+        "tetragonal-dipyramid-v2", "uranium-bearing-v2", "hafnium-trace", "gorge-granitic", "detrital-grain-v2", "geochronometer",
+        "metamict-damaged", "hyacinth-red", "zircon-sand-v2", "refractory-mold", "ceramic-opacifier", "high-zircon", "low-zircon", "reidite-shocked",
+    ],
+    "talc-mesa": [
+        "monoclinic-sheet", "soapstone-carved", "steatite-grade", "mesa-ultramafic", "serpentine-derived-v2", "chlorite-associated",
+        "talc-schist", "paper-grade", "cosmetic-filler", "ceramic-body", "paint-extender-v2", "plastic-nucleant", "rubber-dusting", "pharmaceutical-excipient",
+    ],
+    "augite-pass": [
+        "clinopyroxene-common", "monoclinic-prismatic-v2", "pass-volcanic-v2", "basalt-phenocryst", "gabbro-cumulate", "diopside-end-v2",
+        "hedenbergite-iron-end", "exsolution-pigeonite", "twinned-crystal", "dark-green-black", "stubby-prism", "augite-porphyry", "ophitic-texture", "sub-calcic",
+    ],
+    "biotite-bluff": [
+        "potassium-iron-mica", "monoclinic-sheet-v2", "bluff-granitic-v2", "phlogopite-magnesium", "annite-iron-end", "books-crystal",
+        "perfect-basal", "dark-mica", "pleochroic-brown", "dehydration-melt", "chloritized-alter", "bird-eye-maple", "argon-datable", "biotite-gneiss",
+    ],
+    "muscovite-hollow": [
+        "potassium-aluminum-mica", "monoclinic-tabular", "hollow-pegmatitic", "sericite-fine", "fuchsite-chrome", "phengite-high-p",
+        "paragonite-sodium", "mica-book", "dielectric-sheet", "window-pane", "isinglass-old", "muscovy-glass", "ruby-muscovite", "gilded-mica",
+    ],
+    "anhydrite-terrace": [
+        "calcium-sulfate-dry", "orthorhombic-tabular", "gypsum-dehydrated", "terrace-evaporitic", "cap-rock-v2", "salt-dome",
+        "angelite-blue-v2", "massive-granular", "fibrous-vein-v2", "cleavage-cubic-like", "anhydrite-plug", "sulfur-associated", "halite-interbedded", "polyhalite-mixed",
+    ],
+    "pyrite-peak": [
+        "iron-disulfide", "cubic-pyritohedron", "fools-gold", "peak-hydrothermal", "marcasite-dimorph-v2", "framboidal-form",
+        "arsenic-bearing-v2", "cobalt-trace-v2", "nickel-variety", "striated-cube", "pyritohedral-habit", "replacement-fossil-v2", "massive-granular-v2", "sun-disc",
+    ],
 }
 
 
