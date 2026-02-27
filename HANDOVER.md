@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-02-27
+## 最終更新: 2026-02-28 (Phase 3準備セッション終了時)
 
 ---
 
@@ -21,18 +21,15 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 
 ### Phase 2 完了: eBay Sandbox出品E2Eテスト全通過
 
-本セッションでeBay Sandbox環境へのフルフロー出品に成功した。テスト商品1件（セイコー プレザージュ SARX055）を使い、商品作成 → AI翻訳・属性抽出 → eBay Inventory API経由の出品 → Sandboxでの公開確認まで、全9ステップが自動で通過する。
+テスト商品1件（セイコー プレザージュ SARX055）で、商品作成 → AI翻訳・属性抽出 → eBay Inventory API経由の出品 → Sandboxでの公開確認まで、全9ステップが自動で通過。
 
 - テスト結果: **9/9 PASS**（実行時間21秒）
 - Sandbox Item ID: `110589099265`
 - テスト実行コマンド: `npx tsx scripts/ebay-e2e-test.ts`
 
-### eBay Sandbox認証情報
+### Phase 3準備 完了: Etsy/Shopify/Depop認証基盤整備
 
-Sandbox環境の認証は全て設定済み。Access Tokenは2時間で失効するが、Refresh Token（有効期限2027-08-29）を使った自動更新が実装されている。Business Policyも3種（Fulfillment・Payment・Return）が作成済みで、新規出品時に自動で参照される。
-
-- Sandbox User: `TESTUSER_rakudaseller` / `Rakuda2026!`
-- Business Policies: Fulfillment `6217663000`, Payment `6217666000`, Return `6217665000`
+3チャネルの認証に必要なコード基盤を全て整備した。バグ修正5件、セットアップスクリプト3本、E2Eテストスクリプト3本を作成・コミット済み。**残りはユーザーによるブラウザ操作（アカウント登録・OAuth認証）のみ。**
 
 ---
 
@@ -52,137 +49,121 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 ---
 
-## 今回のセッションでやったこと（Phase 3準備）
-
-### 1. コードバグ修正（5件）
-
-| 修正 | ファイル | 内容 |
-|------|---------|------|
-| Redirect URI | `etsy-auth.ts` | デフォルトポート 3000 → 3010 |
-| Redirect URI | `shopify-auth.ts` | デフォルトポート 3000 → 3010 |
-| API Version | `shopify-api.ts` | 2024-01 → 2025-01 |
-| API Version | `shopify-auth.ts` | 2024-01 → 2025-01（2箇所） |
-| Missing method | `depop-api.ts` | `testConnection()` メソッド追加 |
-
-### 2. セットアップスクリプト作成（3チャネル）
-
-| スクリプト | 内容 |
-|-----------|------|
-| `scripts/setup-etsy-credentials.ts` | PKCE OAuth URL生成、OAuthState DB保存 |
-| `scripts/setup-shopify-credentials.ts` | OAuth URL生成、OAuthState DB保存 |
-| `scripts/setup-depop-credentials.ts` | APIキー保存、接続テスト |
-
-### 3. E2Eテストスクリプト作成（3チャネル）
-
-| スクリプト | 内容 |
-|-----------|------|
-| `scripts/etsy-e2e-test.ts` | 商品作成→翻訳→Etsy出品フロー |
-| `scripts/shopify-e2e-test.ts` | 商品作成→翻訳→Shopify出品フロー |
-| `scripts/depop-e2e-test.ts` | 商品作成→翻訳→Depop出品フロー |
-
-各テストは `--dry-run`（検証のみ）、`--cleanup`（テストデータ削除）モードをサポート。
-
-### 4. マーケットプレイスAPI調査結果
-
-| チャネル | 開発者登録 | APIキー取得 | 備考 |
-|---------|-----------|-----------|------|
-| Etsy | etsy.com/developers/register | 審査に数週間 | PKCE必須、サンドボックスなし |
-| Shopify | shopify.com/partners（無料） | 即日発行可 | Dev store利用可、永続トークン |
-| Depop | business@depop.comに申請 | 非公開API | 2025年7月開始、サンドボックスあり |
-
----
-
-## 前回のセッションでやったこと（Phase 2）
-
-### 1. eBay OAuth認証フローの実行
-
-Playwright経由でeBay Sandbox consent画面を操作し、Authorization Codeを取得。Access Token + Refresh Tokenに交換してDBに保存した。
-
-### 2. eBay Inventory API出品フローのバグ修正（6件）
-
-出品フローを実行するたびに異なるエラーが発生し、1つずつ潰していった。
-
-| 修正 | 内容 |
-|------|------|
-| Token refresh URL | `EBAY_AUTH_BASE`（auth.sandbox.ebay.com）を使っていたが、正しくは`EBAY_API_BASE`（api.sandbox.ebay.com） |
-| Accept-Languageヘッダー | Sandbox APIが`Accept-Language: en-US`を要求。inventoryApiRequestに追加 |
-| Inventory Location | eBayは出品元の所在地情報が必須。`ensureInventoryLocation()`で東京のウェアハウスを自動作成 |
-| Condition mapping | `USED_GOOD`（conditionId 5000）はWristwatchesカテゴリで無効。デフォルトを`USED_EXCELLENT`（3000）に変更 |
-| Business Policy opt-in | Sandboxユーザーはデフォルトでは Business Policyが使えない。Account APIの`/program/opt_in`で自動opt-in |
-| Item Specifics | Wristwatchesカテゴリは「Type」が必須。商品データからaspects（Type, Brand, Model等）を自動推定する処理を追加 |
-
-### 3. Account API実装の追加
-
-`ebay-api.ts`にSell Account API用のメソッド群を追加した。Business Policyの取得・作成・自動opt-inを行い、ポリシーIDが未指定の場合でも出品が通るようにした。
-
-### 4. E2Eテストスクリプトの改善
-
-enrichmentが自動承認（APPROVED）になった場合の承認スキップ処理と、Wristwatchesカテゴリ用のItem Specifics付きリスティング作成に対応した。
-
----
-
-## 修正ファイル
-
-| ファイル | 変更量 | 内容 |
-|---------|--------|------|
-| `apps/worker/src/lib/ebay-api.ts` | +343行 | Token refresh修正、ヘッダー追加、Account API全体、ポリシー管理、ロケーション作成 |
-| `apps/worker/src/processors/ebay-publish.ts` | +55行 | ensureInventoryLocation呼び出し、ポリシー自動作成、Item Specifics推定ロジック |
-| `scripts/ebay-e2e-test.ts` | +42/-22行 | auto-approval対応、itemSpecifics追加 |
-| `apps/web/package.json` | ポート変更 | 3002 → 3012 |
-| `apps/web/playwright.config.ts` | ポート変更 | 3002 → 3012 |
-
----
-
-## コミット履歴（本セッション）
-
-| コミット | 内容 |
-|---------|------|
-| `76bce4be` | docs: HANDOVER.md更新 - Phase 2 eBay E2Eテスト完了 |
-| `1c87e592` | feat: eBay E2Eテスト完全通過 - Sandbox出品成功 |
-| `c54cdf02` | fix: webポートを3012に変更（ポート衝突回避） |
-
----
-
 ## 販売チャネルの現状
 
 | チャネル | APIクライアント | ステータス |
 |---------|---------------|----------|
 | eBay | 1,297行 | **E2E通過・Sandbox動作確認済** |
 | Joom | 811行 | OAuth済・動作可能 |
-| Etsy | 268行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・認証待ち |
-| Shopify | 197行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・認証待ち |
-| Depop | 187行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・認証待ち |
+| Etsy | 268行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・**認証待ち** |
+| Shopify | 197行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・**認証待ち** |
+| Depop | 187行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・**認証待ち** |
+
+### eBay Sandbox認証情報
+
+Sandbox環境の認証は全て設定済み。Access Tokenは2時間で失効するが、Refresh Token（有効期限2027-08-29）を使った自動更新が実装されている。Business Policyも3種（Fulfillment・Payment・Return）が作成済みで、新規出品時に自動で参照される。
+
+- Sandbox User: `TESTUSER_rakudaseller` / `Rakuda2026!`
+- Business Policies: Fulfillment `6217663000`, Payment `6217666000`, Return `6217665000`
+
+### マーケットプレイスAPI調査結果
+
+| チャネル | 開発者登録 | APIキー取得 | 備考 |
+|---------|-----------|-----------|------|
+| Etsy | etsy.com/developers/register | 審査に2-4週間 | PKCE必須、サンドボックスなし、2FA必須 |
+| Shopify | shopify.com/partners（無料） | 即日発行可 | Dev store利用可、永続トークン、最新API 2026-01 |
+| Depop | integrations@depop.com に申請 | 非公開API | 2025年7月開始、サンドボックスあり |
 
 ---
 
 ## 次のセッションでやること
 
-### Phase 3 続き: OAuth認証の実行
+### Phase 3: OAuth認証の実行（ユーザー操作必要）
 
-セットアップスクリプトとE2Eテストは準備済み。ユーザーによるブラウザ操作が必要。
+セットアップスクリプトとE2Eテストは準備済み。優先順位はShopify → Etsy → Depop。
 
-| チャネル | 手順 | ステータス |
-|---------|------|----------|
-| Shopify | 1. shopify.com/partnersで無料アカウント作成<br>2. Dev store作成<br>3. Custom app作成→API Key/Secret取得<br>4. `npx tsx scripts/setup-shopify-credentials.ts store.myshopify.com`<br>5. OAuth URL開いて認証 | **即日可能** |
-| Etsy | 1. etsy.com/developers/registerでアプリ登録<br>2. API Key審査待ち（数週間）<br>3. `npx tsx scripts/setup-etsy-credentials.ts`<br>4. OAuth URL開いて認証 | 審査待ち |
-| Depop | 1. business@depop.comにPartner API申請<br>2. 承認後APIキー取得<br>3. `npx tsx scripts/setup-depop-credentials.ts` | 申請待ち |
+#### Shopify（即日可能・最優先）
+
+1. https://www.shopify.com/partners で無料パートナーアカウント作成
+2. Partner Dashboard → Stores → Add store → Development store作成
+3. Dev Dashboard → Create app → Custom app作成
+4. API access画面でスコープ設定: `read_products, write_products, read_inventory, write_inventory, read_orders, write_orders`
+5. Client ID / Client Secret を `.env` の `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` に設定
+6. 実行: `npx tsx scripts/setup-shopify-credentials.ts your-store.myshopify.com`
+7. 表示されるOAuth URLをブラウザで開いて認証
+8. E2Eテスト: `npx tsx scripts/shopify-e2e-test.ts --dry-run`
+
+#### Etsy（審査待ち・登録だけ先に）
+
+1. Etsyアカウントで2FA設定
+2. https://www.etsy.com/developers/register でアプリ登録
+3. API Key審査完了まで待機（2-4週間）
+4. 審査通過後、API Keyを `.env` の `ETSY_API_KEY` に設定
+5. 実行: `npx tsx scripts/setup-etsy-credentials.ts`
+6. 表示されるOAuth URLをブラウザで開いて認証
+7. E2Eテスト: `npx tsx scripts/etsy-e2e-test.ts --dry-run`
+
+#### Depop（メール申請・時期未定）
+
+1. integrations@depop.com にPartner API申請メール送信
+2. 承認後、APIキーを `.env` の `DEPOP_API_KEY` に設定
+3. 実行: `npx tsx scripts/setup-depop-credentials.ts`
+4. E2Eテスト: `npx tsx scripts/depop-e2e-test.ts --dry-run`
 
 ### Phase 4: 統合テスト
 
 全チャネルの認証が完了したら、1商品を全チャネルに同時出品するテストと、在庫変更が全チャネルに反映される同期テストを実施する。
 
-E2Eテスト実行コマンド:
 ```bash
-npx tsx scripts/etsy-e2e-test.ts --dry-run
-npx tsx scripts/shopify-e2e-test.ts --dry-run
-npx tsx scripts/depop-e2e-test.ts --dry-run
+npx tsx scripts/etsy-e2e-test.ts
+npx tsx scripts/shopify-e2e-test.ts
+npx tsx scripts/depop-e2e-test.ts
 ```
 
-### 改善候補（優先度低）
+---
 
-- E2Eテストでenrichment結果（英語タイトル・USD価格）がインベントリアイテムに反映されていない（現在は日本語タイトルのまま出品される）
+## 直近のコミット履歴
+
+| コミット | 内容 |
+|---------|------|
+| `1c18f0b2` | feat: Phase 3準備 - Etsy/Shopify/Depop認証基盤整備 |
+| `fa0cd1ae` | docs: HANDOVER.md全面書き直し |
+| `76bce4be` | docs: HANDOVER.md更新 - Phase 2 eBay E2Eテスト完了 |
+| `1c87e592` | feat: eBay E2Eテスト完全通過 - Sandbox出品成功 |
+| `c54cdf02` | fix: webポートを3012に変更 |
+
+---
+
+## Phase 3準備で修正・作成したファイル
+
+### バグ修正
+
+| ファイル | 内容 |
+|---------|------|
+| `apps/api/src/routes/etsy-auth.ts` | redirect URIポート 3000→3010 |
+| `apps/api/src/routes/shopify-auth.ts` | redirect URIポート 3000→3010、API version 2024-01→2025-01（2箇所） |
+| `apps/worker/src/lib/shopify-api.ts` | API version 2024-01→2025-01 |
+| `apps/worker/src/lib/depop-api.ts` | testConnection()メソッド追加 |
+
+### 新規作成
+
+| ファイル | 内容 |
+|---------|------|
+| `scripts/setup-etsy-credentials.ts` | PKCE OAuth URL生成、OAuthState DB保存 |
+| `scripts/setup-shopify-credentials.ts` | OAuth URL生成、CLI引数でショップドメイン指定 |
+| `scripts/setup-depop-credentials.ts` | APIキー保存、接続テスト実行 |
+| `scripts/etsy-e2e-test.ts` | 九谷焼花瓶テスト商品でフルフロー検証 |
+| `scripts/shopify-e2e-test.ts` | リーバイスデニムジャケットテスト商品でフルフロー検証 |
+| `scripts/depop-e2e-test.ts` | エアジョーダン1テスト商品でフルフロー検証 |
+
+---
+
+## 改善候補（優先度低）
+
+- E2Eテストでenrichment結果（英語タイトル・USD価格）がインベントリアイテムに反映されていない（日本語タイトルのまま出品される）
 - Payment Policyで`PERSONAL_CHECK`を指定しているが、eBay Managed Paymentsに自動変換される（直接指定に変更すべき）
 - 既知のTSエラー3件（ab-test-engine, chatbot-engine, sales-forecast-engine）が未修正
+- Shopify API versionは2025-01を使用中。最新安定版は2026-01（2025-01は2026年6月までサポート）
 
 ---
 
@@ -192,5 +173,6 @@ npx tsx scripts/depop-e2e-test.ts --dry-run
 - [x] テスト全件パス（Worker 1,221件 + API 344件）
 - [x] スタブファイル整理完了（41,151件削除）
 - [x] eBay出品E2Eテスト成功（Phase 2）
-- [ ] Etsy/Shopify/Depop認証完了（Phase 3）
+- [x] Phase 3認証基盤整備（セットアップスクリプト・E2Eテスト・バグ修正）
+- [ ] Etsy/Shopify/Depop認証完了（Phase 3 - ユーザー操作待ち）
 - [ ] 全チャネル統合テスト成功（Phase 4）
