@@ -126,11 +126,11 @@ npx tsx scripts/depop-e2e-test.ts
 
 | コミット | 内容 |
 |---------|------|
+| `fff92a40` | fix: TSエラー修正・Shopify API更新・eBay enrichment反映修正 |
+| `d77b1027` | docs: HANDOVER.md全面書き直し - Phase 3準備セッション引継ぎ |
 | `1c18f0b2` | feat: Phase 3準備 - Etsy/Shopify/Depop認証基盤整備 |
 | `fa0cd1ae` | docs: HANDOVER.md全面書き直し |
 | `76bce4be` | docs: HANDOVER.md更新 - Phase 2 eBay E2Eテスト完了 |
-| `1c87e592` | feat: eBay E2Eテスト完全通過 - Sandbox出品成功 |
-| `c54cdf02` | fix: webポートを3012に変更 |
 
 ---
 
@@ -141,8 +141,8 @@ npx tsx scripts/depop-e2e-test.ts
 | ファイル | 内容 |
 |---------|------|
 | `apps/api/src/routes/etsy-auth.ts` | redirect URIポート 3000→3010 |
-| `apps/api/src/routes/shopify-auth.ts` | redirect URIポート 3000→3010、API version 2024-01→2025-01（2箇所） |
-| `apps/worker/src/lib/shopify-api.ts` | API version 2024-01→2025-01 |
+| `apps/api/src/routes/shopify-auth.ts` | redirect URIポート 3000→3010、API version → 2026-01 |
+| `apps/worker/src/lib/shopify-api.ts` | API version → 2026-01 |
 | `apps/worker/src/lib/depop-api.ts` | testConnection()メソッド追加 |
 
 ### 新規作成
@@ -160,10 +160,10 @@ npx tsx scripts/depop-e2e-test.ts
 
 ## 改善候補（優先度低）
 
-- E2Eテストでenrichment結果（英語タイトル・USD価格）がインベントリアイテムに反映されていない（日本語タイトルのまま出品される）
 - Payment Policyで`PERSONAL_CHECK`を指定しているが、eBay Managed Paymentsに自動変換される（直接指定に変更すべき）
-- 既知のTSエラー3件（ab-test-engine, chatbot-engine, sales-forecast-engine）が未修正
-- Shopify API versionは2025-01を使用中。最新安定版は2026-01（2025-01は2026年6月までサポート）
+- ルートファイル（ebay-*, automation-rules, backup-recovery等）にTSエラー488件残存（Prismaスキーマとの不整合）
+  - 主にeBay Phase生成時のスキーマ不整合（Order, Sale, Listing, Product間のリレーション名・フィールド名）
+  - lib 4ファイルは修正済み（ab-test-engine, chatbot-engine, sales-forecast-engine, workflow-engine）
 
 ---
 
