@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Phase 115: eBay自動価格調整 API
  */

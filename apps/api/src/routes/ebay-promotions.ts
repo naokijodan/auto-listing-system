@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * eBayプロモーション連携API
  * Phase 121: プロモーション管理

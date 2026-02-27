@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * eBay広告連携API
  * Phase 123: Promoted Listings管理

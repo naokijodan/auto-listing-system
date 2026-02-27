@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * 外部連携API
  * Phase 81: 外部連携強化

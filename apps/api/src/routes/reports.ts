@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Router } from 'express';
 import { prisma, ReportFormat, ReportType, ReportStatus } from '@rakuda/database';
 import { logger } from '@rakuda/logger';

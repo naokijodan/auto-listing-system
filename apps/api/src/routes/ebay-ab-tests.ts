@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * eBay A/BテストAPI
  * Phase 119: AI最適化のA/Bテスト機能

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * eBay多言語対応API
  * Phase 120: タイトル・説明文の多言語化

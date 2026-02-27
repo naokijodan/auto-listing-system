@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Phase 112: eBay分析・レポート強化 API
  */

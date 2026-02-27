@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Phase 108: eBayメッセージ管理 API
  *

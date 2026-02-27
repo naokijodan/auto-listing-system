@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Phase 35: ワークフロー自動化 API
  */

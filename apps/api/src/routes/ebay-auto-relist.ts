@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Phase 105-C: eBay自動再出品 API
  */

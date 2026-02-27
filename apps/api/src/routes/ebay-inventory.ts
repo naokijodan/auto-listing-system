@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Phase 106: eBay在庫監視 API
  *

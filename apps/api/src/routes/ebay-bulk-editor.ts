@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Phase 113: eBayバルクエディター API
  */

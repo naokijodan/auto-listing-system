@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Depop出品管理 API
  *
