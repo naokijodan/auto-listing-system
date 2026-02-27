@@ -11,7 +11,7 @@ import { DepopApiClient, DepopProductInput } from './depop-api';
 import { downloadImages, isValidImageUrl } from './image-downloader';
 import { optimizeImage, optimizeImagesParallel } from './image-optimizer';
 import { uploadFile } from './storage';
-import { enrichmentTaskManager } from './enrichment-service';
+import { TranslatorService } from './enrichment-service';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
@@ -79,18 +79,28 @@ async function processImagesForDepop(
 
       try {
         const downloaded = await downloadImages([imgUrl], tmpDir);
-        if (downloaded.length === 0) continue;
+        const downloadedPaths = downloaded
+          .filter(r => r.success && r.filePath)
+          .map(r => r.filePath!);
+        if (downloadedPaths.length === 0) continue;
 
-        const optimized = await optimizeImage(downloaded[0], {
-          width: 1280,
-          height: 1280,
+        const outputPath = path.join(tmpDir, `optimized-${i}.jpg`);
+        const optimized = await optimizeImage(downloadedPaths[0], outputPath, {
+          maxWidth: 1280,
+          maxHeight: 1280,
           quality: 90,
           format: 'jpeg',
         });
 
+        if (!optimized.success || !optimized.outputPath) continue;
+
         const s3Key = `depop/${productId}/image-${i}.jpg`;
-        const uploadedUrl = await uploadFile(optimized, s3Key, 'image/jpeg');
-        processed.push(uploadedUrl);
+        const uploadResult = await uploadFile(optimized.outputPath, s3Key, {
+          contentType: 'image/jpeg',
+        });
+        if (uploadResult.success && uploadResult.url) {
+          processed.push(uploadResult.url);
+        }
       } catch (error) {
         log.warn({ error, imgUrl, productId }, 'Failed to process image');
       }
@@ -176,8 +186,13 @@ export async function publishToDepop(productId: string): Promise<DepopPublishRes
     let description = product.descriptionEn || product.description;
     if (!product.descriptionEn) {
       try {
-        const enriched = await enrichmentTaskManager.translate(product.description, 'en');
-        description = enriched;
+        const translator = new TranslatorService();
+        const translated = await translator.translateOnly(
+          product.title || '',
+          product.description,
+          ['en'],
+        );
+        description = translated.en.description;
       } catch (error) {
         log.warn({ error, productId }, 'Translation failed, using original');
       }
