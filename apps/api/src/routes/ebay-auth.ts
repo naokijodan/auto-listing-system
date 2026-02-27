@@ -8,7 +8,7 @@ const log = logger.child({ module: 'ebay-auth' });
 const EBAY_CONFIG = {
   clientId: process.env.EBAY_CLIENT_ID || '',
   clientSecret: process.env.EBAY_CLIENT_SECRET || '',
-  redirectUri: process.env.EBAY_REDIRECT_URI || 'http://localhost:3000/api/ebay/callback',
+  redirectUri: process.env.EBAY_REDIRECT_URI || 'http://localhost:3010/api/ebay/callback',
   scope: [
     'https://api.ebay.com/oauth/api_scope',
     'https://api.ebay.com/oauth/api_scope/sell.inventory',

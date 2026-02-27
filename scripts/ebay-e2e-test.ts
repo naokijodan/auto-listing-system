@@ -21,7 +21,7 @@ import { resolve } from 'path';
 // .env 読み込み
 config({ path: resolve(__dirname, '..', '.env') });
 
-const API_BASE = `http://localhost:${process.env.API_PORT || 3000}`;
+const API_BASE = `http://localhost:${process.env.API_PORT || 3010}`;
 const DRY_RUN = process.argv.includes('--dry-run');
 const CLEANUP = process.argv.includes('--cleanup');
 

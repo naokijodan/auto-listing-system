@@ -17,7 +17,8 @@
     "https://fril.jp/*",
     "https://item.rakuten.co.jp/*",
     "https://www.amazon.co.jp/*",
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "http://localhost:3010/*"
   ],
   "action": {
     "default_icon": {

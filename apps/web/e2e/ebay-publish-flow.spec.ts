@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
  * Sandbox環境でのリグレッション検知が目的
  */
 
-const API_BASE = 'http://localhost:3000';
+const API_BASE = process.env.API_BASE || 'http://localhost:3010';
 
 test.describe('eBay Publish Flow - Critical Path', () => {
   test('should display eBay management page', async ({ page }) => {
