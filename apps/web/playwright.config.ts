@@ -14,7 +14,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3002',
+    baseURL: process.env.BASE_URL || 'http://localhost:3012',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -34,7 +34,7 @@ export default defineConfig({
     ? undefined
     : {
         command: 'npm run dev',
-        url: 'http://localhost:3002',
+        url: 'http://localhost:3012',
         reuseExistingServer: true,
         timeout: 120000,
       },
