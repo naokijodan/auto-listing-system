@@ -3,8 +3,8 @@
 ## 最終更新
 
 **日付**: 2026-02-27
-**Phase**: 方針転換 — Phase 1 クリーンアップ完了
-**最新コミット**: c6472078
+**Phase**: Phase 2 eBay E2Eテスト — 基盤構築完了、認証待ち
+**最新コミット**: 06c78325
 **方針**: eBay Phase生成を停止、実用化に注力
 
 ---
@@ -21,14 +21,22 @@
 
 ## 🚀 次のセッションで実行すること
 
-### Phase 2: eBay E2Eテスト（優先度S）
+### Phase 2: eBay E2Eテスト（ユーザー操作が必要）
 
-| タスク | 内容 | 前提条件 |
-|--------|------|----------|
-| **eBay E2Eテスト** | テスト商品1件でフルフロー確認 | Sandbox環境 |
+**ブロッカー**: eBay Sandbox認証情報がダミー値。実テスト実行には以下が必要:
 
-- Chrome拡張 → 商品取り込み → 翻訳 → eBay出品 → 確認
-- eBay Sandbox環境で実行
+| ステップ | 内容 | 実行者 |
+|----------|------|--------|
+| 1. Sandbox Keys取得 | developer.ebay.com でSandbox Application Keys取得 | ユーザー |
+| 2. セットアップ | `npm run ebay:setup` で認証情報を設定 | ユーザー+Claude |
+| 3. OAuth認証 | ブラウザでeBay Sandboxにログイン・認証 | ユーザー |
+| 4. Business Policies | Sandbox Seller Hubでポリシー3つ作成 | ユーザー |
+| 5. E2Eテスト実行 | `npm run ebay:e2e` でフルフロー確認 | Claude |
+
+**テスト基盤は構築済み:**
+- `scripts/setup-ebay-sandbox.sh` - 対話式セットアップ
+- `scripts/ebay-e2e-test.ts` - API経由フルフローテスト
+- `apps/web/e2e/ebay-publish-flow.spec.ts` - Playwright UIテスト
 
 ### Phase 3: 外部認証（ユーザー操作が必要）
 
@@ -48,6 +56,19 @@
 ---
 
 ## 今回のセッションで完了したこと
+
+### Phase 2 準備: eBay E2Eテスト基盤（2026-02-27）
+
+1. **E2Eテスト基盤構築**
+   - `scripts/setup-ebay-sandbox.sh` - 対話式Sandboxセットアップ
+   - `scripts/ebay-e2e-test.ts` - API経由フルフローE2Eテスト（dry-run対応）
+   - `apps/web/e2e/ebay-publish-flow.spec.ts` - Playwright UIテスト
+   - npm scripts: `ebay:setup`, `ebay:e2e`, `ebay:e2e:dry`, `ebay:e2e:cleanup`
+
+2. **eBay認証状況の調査**
+   - DB認証情報はダミー値（`test-client-id`）のみ
+   - 「OAuth済」は実装完了の意味で、実トークンは未取得
+   - Phase 2とPhase 3のeBay部分は同時に実施が必要
 
 ### Phase 1: クリーンアップ（2026-02-27）
 
@@ -77,7 +98,7 @@
 
 | チャネル | APIクライアント | 出品サービス | ステータス |
 |---------|---------------|------------|----------|
-| eBay | 954行 | 425行 | OAuth済・動作可能 |
+| eBay | 954行 | 425行 | 実装済・Sandbox認証待ち |
 | Joom | 811行 | 808行 | OAuth済・動作可能 |
 | Etsy | 268行 | 298行 | 実装済・認証待ち |
 | Shopify | 197行 | 404行 | 実装済・認証待ち |
