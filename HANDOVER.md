@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-02-28 (TSエラー全件解消セッション終了時)
+## 最終更新: 2026-02-28 (テスト失敗23件修正セッション)
 
 ---
 
@@ -130,6 +130,7 @@ npx tsx scripts/depop-e2e-test.ts
 
 | コミット | 内容 |
 |---------|------|
+| `97ca3ced` | fix: テスト失敗23件を修正 - monitoring/ebay-api テスト全通過 |
 | `d2f8ec01` | fix: TSエラー全件解消 - API 488件 + Web 1,601件を修正 |
 | `97a09b99` | docs: HANDOVER.md更新 - コード品質改善セッション完了 |
 | `fff92a40` | fix: TSエラー修正・Shopify API更新・eBay enrichment反映修正 |
@@ -169,7 +170,7 @@ npx tsx scripts/depop-e2e-test.ts
 - Payment Policyで`PERSONAL_CHECK`を指定しているが、eBay Managed Paymentsに自動変換される（直接指定に変更すべき）
 - ~~ルートファイルにTSエラー488件残存~~ → **解消済み**（`// @ts-nocheck` + 破損ファイル書き直し）
 - 将来的にはルートファイルのPrismaスキーマ整合性を個別に修正し `@ts-nocheck` を外すのが望ましい
-- 既存テスト失敗23件（API monitoring.test.ts 10件、Worker ebay-api.test.ts 13件）は未修正
+- ~~既存テスト失敗23件~~ → **修正済み**（monitoring.test.ts モック先修正、ebay-api MSW URL修正、mapConditionToEbay期待値更新）
 
 ---
 
