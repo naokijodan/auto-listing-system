@@ -95,11 +95,20 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
   // ロケーション確認/作成
   await ebayApi.ensureInventoryLocation();
 
+  // エンリッチメント結果を取得（翻訳済みタイトル・説明・属性）
+  const enrichmentTask = await prisma.enrichmentTask.findUnique({
+    where: { productId: product.id },
+  });
+  const translations = (enrichmentTask?.translations as any) || {};
+  const enrichedAttrs = (enrichmentTask?.attributes as any) || {};
+  const enrichedTitle = translations?.en?.title || product.titleEn || product.title;
+  const enrichedDescription = translations?.en?.description || product.descriptionEn || product.description || '';
+
   // Item Specifics（aspects）を構築
   // marketplaceData.itemSpecifics > enrichmentデータ > 商品データからの推定
   let aspects: Record<string, string[]> = marketplaceData.itemSpecifics || {};
 
-  // aspectsが空の場合、商品データから基本的なItem Specificsを推定
+  // aspectsが空の場合、enrichmentと商品データからItem Specificsを推定
   if (!aspects || Object.keys(aspects).length === 0) {
     aspects = {};
 
@@ -113,20 +122,20 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
       aspects['Brand'] = [product.brand];
     }
 
-    // enrichmentデータのattributesからaspects構築
-    const enrichedData = (product as any).enrichedData || {};
-    const attributes = enrichedData.attributes || {};
-    if (attributes.model) aspects['Model'] = [attributes.model];
-    if (attributes.movement) aspects['Movement'] = [attributes.movement];
-    if (attributes.caseMaterial) aspects['Case Material'] = [attributes.caseMaterial];
-    if (attributes.caseSize) aspects['Case Size'] = [attributes.caseSize];
-    if (attributes.department) aspects['Department'] = [attributes.department];
+    // enrichmentデータのattributesからaspects構築（EnrichmentTask → Product.attributes の順でフォールバック）
+    const productAttributes = (product.attributes as any) || {};
+    const attrs = { ...productAttributes, ...enrichedAttrs };
+    if (attrs.model) aspects['Model'] = [attrs.model];
+    if (attrs.movement) aspects['Movement'] = [attrs.movement];
+    if (attrs.caseMaterial) aspects['Case Material'] = [attrs.caseMaterial];
+    if (attrs.caseSize) aspects['Case Size'] = [attrs.caseSize];
+    if (attrs.department) aspects['Department'] = [attrs.department];
   }
 
   // インベントリアイテム作成
   const result = await ebayApi.createOrUpdateInventoryItem(sku, {
-    title: marketplaceData.title || product.title,
-    description: marketplaceData.description || product.description || '',
+    title: marketplaceData.title || enrichedTitle,
+    description: marketplaceData.description || enrichedDescription,
     aspects: Object.keys(aspects).length > 0 ? aspects : undefined,
     imageUrls,
     condition: mapConditionToEbay(product.condition ?? undefined),

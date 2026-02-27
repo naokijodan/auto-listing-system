@@ -142,7 +142,7 @@ export class ShopifyApiClient {
   private async request<T>(method: string, path: string, body?: any): Promise<T> {
     const { token, shop } = await this.ensureAccessToken();
     await shopifyRateLimiter.acquire();
-    const url = `https://${shop}/admin/api/2025-01${path}`;
+    const url = `https://${shop}/admin/api/2026-01${path}`;
     const headers: Record<string, string> = {
       'X-Shopify-Access-Token': token,
     };

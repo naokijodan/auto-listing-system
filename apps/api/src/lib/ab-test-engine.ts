@@ -59,7 +59,7 @@ export async function createABTest(data: {
       testType: data.testType as any,
       targetEntity: data.targetEntity,
       targetField: data.targetField,
-      filters: data.filters || {},
+      filters: (data.filters || {}) as any,
       trafficPercent: data.trafficPercent || 100,
       startAt: data.startAt,
       endAt: data.endAt,
@@ -72,7 +72,7 @@ export async function createABTest(data: {
         create: normalizedVariants.map(v => ({
           name: v.name,
           isControl: v.isControl,
-          changes: v.changes,
+          changes: v.changes as any,
           weight: v.weight,
         })),
       },

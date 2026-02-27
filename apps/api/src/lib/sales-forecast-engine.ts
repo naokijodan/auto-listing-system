@@ -85,13 +85,11 @@ export async function getHistoricalSalesData(
 
   const orders = await prisma.order.findMany({
     where: {
-      orderDate: { gte: startDate },
-      status: { in: ['COMPLETED', 'SHIPPED', 'DELIVERED'] },
+      orderedAt: { gte: startDate },
+      status: { in: ['SHIPPED', 'DELIVERED'] },
     },
-    select: {
-      orderDate: true,
-      totalAmount: true,
-      quantity: true,
+    include: {
+      sales: { select: { quantity: true } },
     },
   });
 
@@ -99,16 +97,16 @@ export async function getHistoricalSalesData(
   const dailyMap = new Map<string, DailySalesData>();
 
   orders.forEach((order) => {
-    const dateKey = order.orderDate.toISOString().split('T')[0];
+    const dateKey = order.orderedAt.toISOString().split('T')[0];
     const existing = dailyMap.get(dateKey) || {
       date: dateKey,
       revenue: 0,
       orders: 0,
       items: 0,
     };
-    existing.revenue += order.totalAmount || 0;
+    existing.revenue += order.total || 0;
     existing.orders += 1;
-    existing.items += order.quantity || 1;
+    existing.items += order.sales.reduce((sum: number, s: any) => sum + (s.quantity || 1), 0);
     dailyMap.set(dateKey, existing);
   });
 
@@ -353,13 +351,17 @@ export async function forecastByCategory(
   // 前半と後半のデータを取得
   const orders = await prisma.order.findMany({
     where: {
-      orderDate: { gte: startDate },
-      status: { in: ['COMPLETED', 'SHIPPED', 'DELIVERED'] },
+      orderedAt: { gte: startDate },
+      status: { in: ['SHIPPED', 'DELIVERED'] },
     },
     include: {
-      listing: {
+      sales: {
         include: {
-          product: true,
+          listing: {
+            include: {
+              product: true,
+            },
+          },
         },
       },
     },
@@ -372,16 +374,16 @@ export async function forecastByCategory(
   >();
 
   orders.forEach((order) => {
-    const category = order.listing?.product?.category || 'その他';
+    const category = order.sales[0]?.listing?.product?.category || 'その他';
     const existing = categoryData.get(category) || {
       firstHalf: 0,
       secondHalf: 0,
     };
 
-    if (order.orderDate < midDate) {
-      existing.firstHalf += order.totalAmount || 0;
+    if (order.orderedAt < midDate) {
+      existing.firstHalf += order.total || 0;
     } else {
-      existing.secondHalf += order.totalAmount || 0;
+      existing.secondHalf += order.total || 0;
     }
     categoryData.set(category, existing);
   });
@@ -429,13 +431,17 @@ export async function forecastProductDemand(
 
   const orders = await prisma.order.findMany({
     where: {
-      orderDate: { gte: startDate },
-      status: { in: ['COMPLETED', 'SHIPPED', 'DELIVERED'] },
+      orderedAt: { gte: startDate },
+      status: { in: ['SHIPPED', 'DELIVERED'] },
     },
     include: {
-      listing: {
+      sales: {
         include: {
-          product: true,
+          listing: {
+            include: {
+              product: true,
+            },
+          },
         },
       },
     },
@@ -452,22 +458,24 @@ export async function forecastProductDemand(
   >();
 
   orders.forEach((order) => {
-    const productId = order.listing?.productId;
-    if (!productId) return;
+    order.sales.forEach((sale) => {
+      const productId = sale.listing?.productId;
+      if (!productId) return;
 
-    const existing = productData.get(productId) || {
-      title: order.listing?.product?.title || 'Unknown',
-      firstHalf: 0,
-      secondHalf: 0,
-    };
+      const existing = productData.get(productId) || {
+        title: sale.listing?.product?.title || 'Unknown',
+        firstHalf: 0,
+        secondHalf: 0,
+      };
 
-    const qty = order.quantity || 1;
-    if (order.orderDate < midDate) {
-      existing.firstHalf += qty;
-    } else {
-      existing.secondHalf += qty;
-    }
-    productData.set(productId, existing);
+      const qty = sale.quantity || 1;
+      if (order.orderedAt < midDate) {
+        existing.firstHalf += qty;
+      } else {
+        existing.secondHalf += qty;
+      }
+      productData.set(productId, existing);
+    });
   });
 
   const forecasts: ProductForecast[] = [];
@@ -515,15 +523,14 @@ export async function getInventoryRecommendations(
   // 在庫のある商品を取得
   const products = await prisma.product.findMany({
     where: {
-      status: 'AVAILABLE',
+      status: 'ACTIVE',
     },
     include: {
       listings: {
         include: {
-          orders: {
+          sales: {
             where: {
-              orderDate: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-              status: { in: ['COMPLETED', 'SHIPPED', 'DELIVERED'] },
+              createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
             },
           },
         },
@@ -536,9 +543,9 @@ export async function getInventoryRecommendations(
   products.forEach((product) => {
     // 過去30日の販売数
     const totalSales = product.listings.reduce(
-      (sum, listing) =>
+      (sum: number, listing: any) =>
         sum +
-        listing.orders.reduce((orderSum, order) => orderSum + (order.quantity || 1), 0),
+        listing.sales.reduce((saleSum: number, sale: any) => saleSum + (sale.quantity || 1), 0),
       0
     );
 

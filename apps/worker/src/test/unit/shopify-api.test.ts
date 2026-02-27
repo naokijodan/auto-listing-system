@@ -166,7 +166,7 @@ describe('ShopifyApiClient', () => {
 
       expect(result).toEqual({ product: { id: 12345, title: 'Test Product' } });
       expect(mockSafeFetch).toHaveBeenCalledWith(
-        'https://test-store.myshopify.com/admin/api/2024-01/products.json',
+        'https://test-store.myshopify.com/admin/api/2026-01/products.json',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
@@ -199,7 +199,7 @@ describe('ShopifyApiClient', () => {
       const result = await client.getProduct('99');
       expect(result).toEqual({ product: { id: 99, title: 'Fetched' } });
       expect(mockSafeFetch).toHaveBeenCalledWith(
-        'https://get-store.myshopify.com/admin/api/2024-01/products/99.json',
+        'https://get-store.myshopify.com/admin/api/2026-01/products/99.json',
         expect.objectContaining({ method: 'GET' }),
       );
     });
@@ -343,7 +343,7 @@ describe('ShopifyApiClient', () => {
 
       await client.deleteProduct('123');
       expect(mockSafeFetch).toHaveBeenCalledWith(
-        'https://del-store.myshopify.com/admin/api/2024-01/products/123.json',
+        'https://del-store.myshopify.com/admin/api/2026-01/products/123.json',
         expect.objectContaining({ method: 'DELETE' }),
       );
     });

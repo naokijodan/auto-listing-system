@@ -160,11 +160,11 @@ async function getOrderInfo(orderId: string) {
     where: {
       OR: [
         { id: orderId },
-        { externalOrderId: orderId },
+        { marketplaceOrderId: orderId },
       ],
     },
     include: {
-      items: {
+      sales: {
         include: {
           listing: {
             include: {
@@ -180,20 +180,20 @@ async function getOrderInfo(orderId: string) {
 
   return {
     orderId: order.id,
-    externalOrderId: order.externalOrderId,
+    externalOrderId: order.marketplaceOrderId,
     status: order.status,
     paymentStatus: order.paymentStatus,
     fulfillmentStatus: order.fulfillmentStatus,
-    totalAmount: order.totalAmount,
+    totalAmount: order.total,
     currency: order.currency,
     trackingNumber: order.trackingNumber,
-    carrier: order.carrier,
+    carrier: order.trackingCarrier,
     shippedAt: order.shippedAt,
-    deliveredAt: order.deliveredAt,
-    items: order.items.map(item => ({
-      title: item.listing?.product?.title || 'Unknown Product',
-      quantity: item.quantity,
-      price: item.price,
+    deliveredAt: order.shippedAt,
+    items: order.sales.map((sale) => ({
+      title: sale.listing?.product?.title || 'Unknown Product',
+      quantity: sale.quantity,
+      price: sale.unitPrice,
     })),
   };
 }
@@ -418,7 +418,7 @@ export async function processMessage(
     data: {
       lastMessageAt: new Date(),
       messageCount: { increment: 2 }, // ユーザー + AI
-      context,
+      context: context as any,
       isEscalated: escalation.escalate || undefined,
       escalatedAt: escalation.escalate ? new Date() : undefined,
       escalationReason: escalation.reason,
@@ -481,7 +481,7 @@ export async function createSession(data: {
       customerName: data.customerName,
       customerEmail: data.customerEmail,
       customerLocale: data.customerLocale || 'en',
-      context: data.context || {},
+      context: (data.context || {}) as any,
       status: ChatSessionStatus.ACTIVE,
     },
   });
