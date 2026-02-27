@@ -52,7 +52,47 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 ---
 
-## 今回のセッションでやったこと
+## 今回のセッションでやったこと（Phase 3準備）
+
+### 1. コードバグ修正（5件）
+
+| 修正 | ファイル | 内容 |
+|------|---------|------|
+| Redirect URI | `etsy-auth.ts` | デフォルトポート 3000 → 3010 |
+| Redirect URI | `shopify-auth.ts` | デフォルトポート 3000 → 3010 |
+| API Version | `shopify-api.ts` | 2024-01 → 2025-01 |
+| API Version | `shopify-auth.ts` | 2024-01 → 2025-01（2箇所） |
+| Missing method | `depop-api.ts` | `testConnection()` メソッド追加 |
+
+### 2. セットアップスクリプト作成（3チャネル）
+
+| スクリプト | 内容 |
+|-----------|------|
+| `scripts/setup-etsy-credentials.ts` | PKCE OAuth URL生成、OAuthState DB保存 |
+| `scripts/setup-shopify-credentials.ts` | OAuth URL生成、OAuthState DB保存 |
+| `scripts/setup-depop-credentials.ts` | APIキー保存、接続テスト |
+
+### 3. E2Eテストスクリプト作成（3チャネル）
+
+| スクリプト | 内容 |
+|-----------|------|
+| `scripts/etsy-e2e-test.ts` | 商品作成→翻訳→Etsy出品フロー |
+| `scripts/shopify-e2e-test.ts` | 商品作成→翻訳→Shopify出品フロー |
+| `scripts/depop-e2e-test.ts` | 商品作成→翻訳→Depop出品フロー |
+
+各テストは `--dry-run`（検証のみ）、`--cleanup`（テストデータ削除）モードをサポート。
+
+### 4. マーケットプレイスAPI調査結果
+
+| チャネル | 開発者登録 | APIキー取得 | 備考 |
+|---------|-----------|-----------|------|
+| Etsy | etsy.com/developers/register | 審査に数週間 | PKCE必須、サンドボックスなし |
+| Shopify | shopify.com/partners（無料） | 即日発行可 | Dev store利用可、永続トークン |
+| Depop | business@depop.comに申請 | 非公開API | 2025年7月開始、サンドボックスあり |
+
+---
+
+## 前回のセッションでやったこと（Phase 2）
 
 ### 1. eBay OAuth認証フローの実行
 
@@ -109,27 +149,34 @@ enrichmentが自動承認（APPROVED）になった場合の承認スキップ�
 |---------|---------------|----------|
 | eBay | 1,297行 | **E2E通過・Sandbox動作確認済** |
 | Joom | 811行 | OAuth済・動作可能 |
-| Etsy | 268行 | 実装済・認証待ち |
-| Shopify | 197行 | 実装済・認証待ち |
-| Depop | 180行 | 実装済・認証待ち |
+| Etsy | 268行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・認証待ち |
+| Shopify | 197行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・認証待ち |
+| Depop | 187行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・認証待ち |
 
 ---
 
 ## 次のセッションでやること
 
-### Phase 3: 外部マーケットプレイス認証
+### Phase 3 続き: OAuth認証の実行
 
-eBayは完了したので、残り4チャネルのOAuth認証を進める。いずれもブラウザでのユーザー操作が必要。
+セットアップスクリプトとE2Eテストは準備済み。ユーザーによるブラウザ操作が必要。
 
-| チャネル | 作業内容 | 必要なもの |
-|---------|---------|-----------|
-| Etsy | Developer Account作成 → API Key取得 → PKCE OAuth → トークン取得 | ブラウザ操作 |
-| Shopify | Partner Account作成 → アプリ作成 → OAuth → トークン取得 | ブラウザ操作 |
-| Depop | Partner Portal申請 → APIキー取得 | 申請・審査 |
+| チャネル | 手順 | ステータス |
+|---------|------|----------|
+| Shopify | 1. shopify.com/partnersで無料アカウント作成<br>2. Dev store作成<br>3. Custom app作成→API Key/Secret取得<br>4. `npx tsx scripts/setup-shopify-credentials.ts store.myshopify.com`<br>5. OAuth URL開いて認証 | **即日可能** |
+| Etsy | 1. etsy.com/developers/registerでアプリ登録<br>2. API Key審査待ち（数週間）<br>3. `npx tsx scripts/setup-etsy-credentials.ts`<br>4. OAuth URL開いて認証 | 審査待ち |
+| Depop | 1. business@depop.comにPartner API申請<br>2. 承認後APIキー取得<br>3. `npx tsx scripts/setup-depop-credentials.ts` | 申請待ち |
 
 ### Phase 4: 統合テスト
 
 全チャネルの認証が完了したら、1商品を全チャネルに同時出品するテストと、在庫変更が全チャネルに反映される同期テストを実施する。
+
+E2Eテスト実行コマンド:
+```bash
+npx tsx scripts/etsy-e2e-test.ts --dry-run
+npx tsx scripts/shopify-e2e-test.ts --dry-run
+npx tsx scripts/depop-e2e-test.ts --dry-run
+```
 
 ### 改善候補（優先度低）
 

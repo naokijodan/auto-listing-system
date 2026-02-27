@@ -15,7 +15,7 @@ function getClientId(): string {
 }
 
 function getRedirectUri(): string {
-  return process.env.ETSY_REDIRECT_URI || 'http://localhost:3000/api/etsy/callback';
+  return process.env.ETSY_REDIRECT_URI || 'http://localhost:3010/api/etsy/callback';
 }
 
 // GET /auth - OAuth認証開始（PKCE）

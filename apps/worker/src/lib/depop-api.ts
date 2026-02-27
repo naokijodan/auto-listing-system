@@ -175,6 +175,15 @@ export class DepopApiClient {
       `/shop/seller-addresses/${encodeURIComponent(addressId)}/shipping-providers`
     );
   }
+
+  async testConnection(): Promise<boolean> {
+    try {
+      await this.getSellerAddresses();
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export const depopApi = new DepopApiClient();

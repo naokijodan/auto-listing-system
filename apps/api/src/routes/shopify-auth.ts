@@ -22,7 +22,7 @@ function getScopes(): string {
 }
 
 function getRedirectUri(): string {
-  return process.env.SHOPIFY_REDIRECT_URI || 'http://localhost:3000/api/shopify/callback';
+  return process.env.SHOPIFY_REDIRECT_URI || 'http://localhost:3010/api/shopify/callback';
 }
 
 function normalizeShopDomain(shopParam?: string): string | null {
@@ -154,7 +154,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
           accessToken: tokenData.access_token,
           shop,
           scopes: tokenData.scope || getScopes(),
-          apiBase: `https://${shop}/admin/api/2024-01`,
+          apiBase: `https://${shop}/admin/api/2025-01`,
         },
         tokenExpiresAt: null,
         refreshTokenExpiresAt: null,
@@ -169,7 +169,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
           accessToken: tokenData.access_token,
           shop,
           scopes: tokenData.scope || getScopes(),
-          apiBase: `https://${shop}/admin/api/2024-01`,
+          apiBase: `https://${shop}/admin/api/2025-01`,
         },
         tokenExpiresAt: null,
         refreshTokenExpiresAt: null,
