@@ -18,7 +18,7 @@ export const handlers = [
   // ========================================
   // eBay OAuth
   // ========================================
-  http.post(`${EBAY_SANDBOX_AUTH}/identity/v1/oauth2/token`, async ({ request }) => {
+  http.post(`${EBAY_SANDBOX_API}/identity/v1/oauth2/token`, async ({ request }) => {
     const body = await request.text();
     const params = new URLSearchParams(body);
     const grantType = params.get('grant_type');
@@ -578,7 +578,7 @@ export const handlers = [
 
 // エラーハンドラー（テスト用）
 export const errorHandlers = {
-  ebayAuthFailure: http.post(`${EBAY_SANDBOX_AUTH}/identity/v1/oauth2/token`, () => {
+  ebayAuthFailure: http.post(`${EBAY_SANDBOX_API}/identity/v1/oauth2/token`, () => {
     return HttpResponse.json(
       { error: 'invalid_client', error_description: 'Client authentication failed' },
       { status: 401 }

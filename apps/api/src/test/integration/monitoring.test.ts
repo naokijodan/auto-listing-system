@@ -33,19 +33,6 @@ vi.mock('bullmq', () => ({
   Queue: vi.fn().mockImplementation(() => mockQueue),
 }));
 
-vi.mock('@rakuda/logger', () => ({
-  logger: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    child: vi.fn().mockReturnValue({
-      info: vi.fn(),
-      error: vi.fn(),
-      warn: vi.fn(),
-    }),
-  },
-}));
-
 // Mock log aggregator
 const { mockLogAggregator } = vi.hoisted(() => ({
   mockLogAggregator: {
@@ -58,7 +45,17 @@ const { mockLogAggregator } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@rakuda/logger/log-aggregator', () => ({
+vi.mock('@rakuda/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    child: vi.fn().mockReturnValue({
+      info: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+    }),
+  },
   getLogAggregator: vi.fn().mockReturnValue(mockLogAggregator),
 }));
 

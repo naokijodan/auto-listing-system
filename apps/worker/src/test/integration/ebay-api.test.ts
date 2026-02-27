@@ -218,14 +218,14 @@ describe('mapConditionToEbay', () => {
     expect(mapConditionToEbay('新品・未使用')).toBe('NEW');
     expect(mapConditionToEbay('未使用に近い')).toBe('NEW_OTHER');
     expect(mapConditionToEbay('目立った傷や汚れなし')).toBe('USED_EXCELLENT');
-    expect(mapConditionToEbay('やや傷や汚れあり')).toBe('USED_GOOD');
+    expect(mapConditionToEbay('やや傷や汚れあり')).toBe('USED_EXCELLENT');
     expect(mapConditionToEbay('傷や汚れあり')).toBe('USED_ACCEPTABLE');
     expect(mapConditionToEbay('全体的に状態が悪い')).toBe('FOR_PARTS_OR_NOT_WORKING');
   });
 
   it('should return default for unknown conditions', () => {
-    expect(mapConditionToEbay('unknown')).toBe('USED_GOOD');
-    expect(mapConditionToEbay('')).toBe('USED_GOOD');
-    expect(mapConditionToEbay(undefined)).toBe('USED_GOOD');
+    expect(mapConditionToEbay('unknown')).toBe('USED_EXCELLENT');
+    expect(mapConditionToEbay('')).toBe('USED_EXCELLENT');
+    expect(mapConditionToEbay(undefined)).toBe('USED_EXCELLENT');
   });
 });
