@@ -1212,6 +1212,47 @@ SERIES_ADJECTIVES = {
         "flame-tongued", "wing-folded", "scale-hardened", "ember-eyed", "smoke-trailing", "nest-fierce",
         "gold-hoarding", "claw-razor", "fire-resistant", "sky-patrolling", "den-warming", "egg-guarding", "roar-thundering", "spine-ridged",
     ],
+    # ===== New series for Phase 25291+ (Legendary Spirits) =====
+    "selkie": [
+        "seal-folk", "skin-casting", "wave-cloaked", "foam-footed", "tide-called", "kelp-draped",
+        "brine-scented", "moon-haunted", "dune-silent", "cove-hidden", "surf-born-v2", "net-slipping", "gull-watched", "shore-shifting",
+    ],
+    "kelpie": [
+        "water-horse", "ford-haunting", "river-lurking", "mane-dripping", "bridle-beguiling", "bog-luring",
+        "loch-dwelling", "hoof-slick", "reed-whispering", "current-pulling", "rider-tricking", "bank-stalking", "kelp-entangled", "mire-bound",
+    ],
+    "djinn": [
+        "smokeless-flame", "desert-born", "fire-wrought", "wish-binding", "sand-whirling", "brass-lantern",
+        "mirage-casting", "ember-king", "oath-twisting", "wind-housed", "ashless-blaze", "incense-scented", "seal-ringed", "night-wandering",
+    ],
+    "golem": [
+        "clay-wrought", "earth-animated", "rune-etched", "river-soaked", "kiln-baked", "mud-hewn",
+        "guardian-shaped", "breathless-guard", "script-bound", "iron-shod", "stone-browed", "dust-stirred", "warded-mark", "oath-silent",
+    ],
+    "naga": [
+        "serpent-deity", "hood-flared", "coil-guarding", "river-hallowed", "shrine-keeping", "jewel-crowned",
+        "water-ward", "fang-gilded", "scale-ceremonial", "temple-coiled", "rain-bringing", "spring-watching", "lake-circled", "myth-anointed",
+    ],
+    "banshee": [
+        "wail-foretelling", "keening-cry", "barrow-haunting", "pale-veiled", "death-omen", "night-lament",
+        "tear-chilled", "cairn-watched", "wind-weeping", "ruin-wandering", "hearth-forewarned", "moor-bound", "shade-crying", "dirge-calling",
+    ],
+    "thunderbird": [
+        "storm-borne", "cloud-rending", "lightning-eyed", "sky-resounding", "wing-thundered", "rain-commanding",
+        "mountain-circling", "squall-summoning", "talon-stormed", "thunder-waked", "hail-calling", "horizon-shadowing", "prairie-guarding", "tempest-winged",
+    ],
+    "wendigo": [
+        "ice-starved", "hunger-haunted", "spruce-shadowed", "winter-gaunt", "blizzard-stalking", "bone-thin",
+        "frost-bitten", "deer-echoing", "cannibal-curse", "breath-frozen", "moon-starved", "snow-gnashing", "pine-howling", "aurora-glared",
+    ],
+    "tengu": [
+        "crow-headed", "beak-masked", "mountain-ascetic", "cedar-perched", "yamabushi-clad", "wind-trickster",
+        "feather-fanned", "duel-teaching", "bridge-guarding", "cliff-striding", "staff-wielding", "mask-grinning", "shrine-mischief", "path-warding",
+    ],
+    "yokai": [
+        "shape-shifting", "lantern-led", "alley-haunting", "rice-field-roaming", "tea-kettle-spirited", "umbrella-hopping",
+        "night-parade", "shrine-haunting", "household-pranking", "well-dwelling", "shadow-peering", "attic-scuttling", "mirror-dwelling", "kitchen-trickster",
+    ],
 }
 
 
