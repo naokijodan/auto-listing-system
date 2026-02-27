@@ -133,7 +133,7 @@ export class EbayApiClient {
     ).toString('base64');
 
     try {
-      const response = await fetch(`${EBAY_AUTH_BASE}/identity/v1/oauth2/token`, {
+      const response = await fetch(`${EBAY_API_BASE}/identity/v1/oauth2/token`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${auth}`,
@@ -203,6 +203,7 @@ export class EbayApiClient {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       'Content-Language': 'en-US',
+      'Accept-Language': 'en-US',
     };
 
     log.debug({
@@ -320,7 +321,335 @@ export class EbayApiClient {
       },
       condition: product.condition,
       conditionDescription: product.conditionDescription,
+      availability: {
+        shipToLocationAvailability: {
+          quantity: 1,
+        },
+      },
     });
+  }
+
+  /**
+   * インベントリロケーションを作成/確認
+   */
+  async ensureInventoryLocation(
+    merchantLocationKey: string = 'RAKUDA_JP'
+  ): Promise<void> {
+    // まず既存のロケーションがあるか確認
+    const existing = await this.inventoryApiRequest<any>(
+      'GET',
+      `/location/${merchantLocationKey}`
+    );
+
+    if (existing.success) {
+      return; // 既に存在する
+    }
+
+    // ロケーションを作成
+    await this.inventoryApiRequest<void>(
+      'POST',
+      `/location/${merchantLocationKey}`,
+      {
+        location: {
+          address: {
+            city: 'Tokyo',
+            stateOrProvince: 'Tokyo',
+            postalCode: '100-0001',
+            country: 'JP',
+          },
+        },
+        locationTypes: ['WAREHOUSE'],
+        name: 'RAKUDA Japan Warehouse',
+        merchantLocationStatus: 'ENABLED',
+      }
+    );
+
+    log.info({
+      type: 'ebay_location_created',
+      merchantLocationKey,
+    });
+  }
+
+  /**
+   * Sell Account API リクエスト（レート制限・リトライ付き）
+   */
+  private async accountApiRequest<T>(
+    method: string,
+    endpoint: string,
+    body?: any
+  ): Promise<EbayApiResponse<T>> {
+    const token = await this.ensureAccessToken();
+
+    const url = `${EBAY_API_BASE}/sell/account/v1${endpoint}`;
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Accept-Language': 'en-US',
+    };
+
+    log.debug({
+      type: 'ebay_account_api_request',
+      method,
+      endpoint,
+    });
+
+    try {
+      return await withRetry(async () => {
+        await ebayRateLimiter.acquire();
+
+        const response = await safeFetch(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+          timeout: 30000,
+        });
+
+        if (response.status === 204) {
+          return { success: true } as EbayApiResponse<T>;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            const retryAfter = response.headers.get('Retry-After');
+            throw new RateLimitError(
+              data.errors?.[0]?.message || 'Rate limit exceeded',
+              retryAfter ? parseInt(retryAfter) : undefined
+            );
+          }
+
+          if (response.status >= 500) {
+            throw new ApiError(
+              data.errors?.[0]?.message || 'Server error',
+              response.status,
+              data.errors?.[0]?.errorId
+            );
+          }
+
+          log.error({
+            type: 'ebay_account_api_error',
+            status: response.status,
+            error: data,
+          });
+
+          return {
+            success: false,
+            error: {
+              code: data.errors?.[0]?.errorId || 'UNKNOWN',
+              message: data.errors?.[0]?.message || 'Unknown error',
+              details: data.errors,
+            },
+          } as EbayApiResponse<T>;
+        }
+
+        return {
+          success: true,
+          data,
+        } as EbayApiResponse<T>;
+      }, {
+        maxRetries: 3,
+        initialDelay: 1000,
+        retryableStatuses: [429, 500, 502, 503, 504],
+      });
+    } catch (error: any) {
+      log.error({
+        type: 'ebay_account_api_exception',
+        error: error.message,
+        code: error.code,
+      });
+
+      return {
+        success: false,
+        error: {
+          code: error.code || 'NETWORK_ERROR',
+          message: error.message,
+        },
+      };
+    }
+  }
+
+  /**
+   * Fulfillmentポリシー一覧を取得
+   */
+  async getFulfillmentPolicies(
+    marketplaceId: string = 'EBAY_US'
+  ): Promise<EbayApiResponse<{ fulfillmentPolicies: Array<{ fulfillmentPolicyId: string; name: string }> }>> {
+    return this.accountApiRequest('GET', `/fulfillment_policy?marketplace_id=${marketplaceId}`);
+  }
+
+  /**
+   * Paymentポリシー一覧を取得
+   */
+  async getPaymentPolicies(
+    marketplaceId: string = 'EBAY_US'
+  ): Promise<EbayApiResponse<{ paymentPolicies: Array<{ paymentPolicyId: string; name: string }> }>> {
+    return this.accountApiRequest('GET', `/payment_policy?marketplace_id=${marketplaceId}`);
+  }
+
+  /**
+   * Returnポリシー一覧を取得
+   */
+  async getReturnPolicies(
+    marketplaceId: string = 'EBAY_US'
+  ): Promise<EbayApiResponse<{ returnPolicies: Array<{ returnPolicyId: string; name: string }> }>> {
+    return this.accountApiRequest('GET', `/return_policy?marketplace_id=${marketplaceId}`);
+  }
+
+  /**
+   * Fulfillmentポリシーを作成
+   */
+  async createFulfillmentPolicy(
+    marketplaceId: string = 'EBAY_US'
+  ): Promise<EbayApiResponse<{ fulfillmentPolicyId: string }>> {
+    return this.accountApiRequest('POST', '/fulfillment_policy', {
+      name: 'RAKUDA Standard Shipping',
+      description: 'Standard international shipping from Japan',
+      marketplaceId,
+      categoryTypes: [{ name: 'ALL_EXCLUDING_MOTORS_VEHICLES' }],
+      handlingTime: { value: 3, unit: 'DAY' },
+      shippingOptions: [
+        {
+          optionType: 'DOMESTIC',
+          costType: 'FLAT_RATE',
+          shippingServices: [
+            {
+              sortOrder: 1,
+              shippingCarrierCode: 'USPS',
+              shippingServiceCode: 'USPSPriority',
+              shippingCost: { value: '0.00', currency: 'USD' },
+              additionalShippingCost: { value: '0.00', currency: 'USD' },
+              freeShipping: true,
+              buyerResponsibleForShipping: false,
+            },
+          ],
+        },
+      ],
+    });
+  }
+
+  /**
+   * Paymentポリシーを作成
+   */
+  async createPaymentPolicy(
+    marketplaceId: string = 'EBAY_US'
+  ): Promise<EbayApiResponse<{ paymentPolicyId: string }>> {
+    return this.accountApiRequest('POST', '/payment_policy', {
+      name: 'RAKUDA Payment Policy',
+      description: 'Standard payment policy',
+      marketplaceId,
+      categoryTypes: [{ name: 'ALL_EXCLUDING_MOTORS_VEHICLES' }],
+      paymentMethods: [
+        { paymentMethodType: 'PERSONAL_CHECK' },
+      ],
+      immediatePay: false,
+    });
+  }
+
+  /**
+   * Returnポリシーを作成
+   */
+  async createReturnPolicy(
+    marketplaceId: string = 'EBAY_US'
+  ): Promise<EbayApiResponse<{ returnPolicyId: string }>> {
+    return this.accountApiRequest('POST', '/return_policy', {
+      name: 'RAKUDA Return Policy',
+      description: '30-day returns accepted',
+      marketplaceId,
+      categoryTypes: [{ name: 'ALL_EXCLUDING_MOTORS_VEHICLES' }],
+      returnsAccepted: true,
+      returnPeriod: { value: 30, unit: 'DAY' },
+      refundMethod: 'MONEY_BACK',
+      returnShippingCostPayer: 'BUYER',
+    });
+  }
+
+  /**
+   * Business Policyプログラムへのopt-in
+   * Sandbox環境では明示的にopt-inが必要
+   */
+  async optInToBusinessPolicies(): Promise<void> {
+    const result = await this.accountApiRequest<void>(
+      'POST',
+      '/program/opt_in',
+      { programType: 'SELLING_POLICY_MANAGEMENT' }
+    );
+
+    if (result.success) {
+      log.info({ type: 'business_policy_opt_in_success' });
+    } else {
+      // 既にopt-in済みの場合もエラーになることがあるが無視
+      log.warn({
+        type: 'business_policy_opt_in_warning',
+        error: result.error?.message,
+      });
+    }
+  }
+
+  /**
+   * デフォルトのビジネスポリシーを確認・作成
+   * 既存のポリシーがあればそのIDを返し、なければ作成する
+   */
+  async ensureDefaultPolicies(
+    marketplaceId: string = 'EBAY_US'
+  ): Promise<{
+    fulfillmentPolicyId: string;
+    paymentPolicyId: string;
+    returnPolicyId: string;
+  }> {
+    // まずBusiness Policyへのopt-inを確認
+    await this.optInToBusinessPolicies();
+
+    // Fulfillment Policy
+    let fulfillmentPolicyId: string | undefined;
+    const fulfillmentResult = await this.getFulfillmentPolicies(marketplaceId);
+    if (fulfillmentResult.success && fulfillmentResult.data?.fulfillmentPolicies?.length) {
+      fulfillmentPolicyId = fulfillmentResult.data.fulfillmentPolicies[0].fulfillmentPolicyId;
+      log.info({ type: 'policy_found', kind: 'fulfillment', id: fulfillmentPolicyId });
+    } else {
+      const created = await this.createFulfillmentPolicy(marketplaceId);
+      if (!created.success || !created.data?.fulfillmentPolicyId) {
+        throw new Error(`Failed to create fulfillment policy: ${created.error?.message}`);
+      }
+      fulfillmentPolicyId = created.data.fulfillmentPolicyId;
+      log.info({ type: 'policy_created', kind: 'fulfillment', id: fulfillmentPolicyId });
+    }
+
+    // Payment Policy
+    let paymentPolicyId: string | undefined;
+    const paymentResult = await this.getPaymentPolicies(marketplaceId);
+    if (paymentResult.success && paymentResult.data?.paymentPolicies?.length) {
+      paymentPolicyId = paymentResult.data.paymentPolicies[0].paymentPolicyId;
+      log.info({ type: 'policy_found', kind: 'payment', id: paymentPolicyId });
+    } else {
+      const created = await this.createPaymentPolicy(marketplaceId);
+      if (!created.success || !created.data?.paymentPolicyId) {
+        throw new Error(`Failed to create payment policy: ${created.error?.message}`);
+      }
+      paymentPolicyId = created.data.paymentPolicyId;
+      log.info({ type: 'policy_created', kind: 'payment', id: paymentPolicyId });
+    }
+
+    // Return Policy
+    let returnPolicyId: string | undefined;
+    const returnResult = await this.getReturnPolicies(marketplaceId);
+    if (returnResult.success && returnResult.data?.returnPolicies?.length) {
+      returnPolicyId = returnResult.data.returnPolicies[0].returnPolicyId;
+      log.info({ type: 'policy_found', kind: 'return', id: returnPolicyId });
+    } else {
+      const created = await this.createReturnPolicy(marketplaceId);
+      if (!created.success || !created.data?.returnPolicyId) {
+        throw new Error(`Failed to create return policy: ${created.error?.message}`);
+      }
+      returnPolicyId = created.data.returnPolicyId;
+      log.info({ type: 'policy_created', kind: 'return', id: returnPolicyId });
+    }
+
+    return {
+      fulfillmentPolicyId: fulfillmentPolicyId!,
+      paymentPolicyId: paymentPolicyId!,
+      returnPolicyId: returnPolicyId!,
+    };
   }
 
   /**
@@ -339,6 +668,7 @@ export class EbayApiClient {
       fulfillmentPolicyId?: string;
       paymentPolicyId?: string;
       returnPolicyId?: string;
+      merchantLocationKey?: string;
     }
   ): Promise<EbayApiResponse<{ offerId: string }>> {
     log.info({
@@ -359,6 +689,7 @@ export class EbayApiClient {
         },
       },
       availableQuantity: offer.quantity,
+      merchantLocationKey: offer.merchantLocationKey || 'RAKUDA_JP',
       listingDescription: offer.listingDescription,
       listingPolicies: {
         fulfillmentPolicyId: offer.fulfillmentPolicyId,
@@ -939,16 +1270,22 @@ export async function isEbayConfigured(): Promise<boolean> {
  * eBay 商品コンディションをマッピング
  */
 export function mapConditionToEbay(condition?: string): string {
+  // eBay ConditionEnum マッピング
+  // USED_EXCELLENT (3000) はほとんどのカテゴリで有効な中古品condition
+  // USED_GOOD (5000) は一部カテゴリで無効なため、USED_EXCELLENTをデフォルトにする
   const conditionMap: Record<string, string> = {
     '新品': 'NEW',
     '未使用': 'NEW',
     '新品・未使用': 'NEW',
     '未使用に近い': 'NEW_OTHER',
     '目立った傷や汚れなし': 'USED_EXCELLENT',
-    'やや傷や汚れあり': 'USED_GOOD',
+    'やや傷や汚れあり': 'USED_EXCELLENT',
     '傷や汚れあり': 'USED_ACCEPTABLE',
     '全体的に状態が悪い': 'FOR_PARTS_OR_NOT_WORKING',
+    'NEW': 'NEW',
+    'USED': 'USED_EXCELLENT',
+    'LIKE_NEW': 'NEW_OTHER',
   };
 
-  return conditionMap[condition || ''] || 'USED_GOOD';
+  return conditionMap[condition || ''] || 'USED_EXCELLENT';
 }

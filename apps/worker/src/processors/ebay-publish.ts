@@ -92,11 +92,42 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
     : product.images;
   const imageUrls = allImages.slice(0, 12); // eBayは最大12枚
 
+  // ロケーション確認/作成
+  await ebayApi.ensureInventoryLocation();
+
+  // Item Specifics（aspects）を構築
+  // marketplaceData.itemSpecifics > enrichmentデータ > 商品データからの推定
+  let aspects: Record<string, string[]> = marketplaceData.itemSpecifics || {};
+
+  // aspectsが空の場合、商品データから基本的なItem Specificsを推定
+  if (!aspects || Object.keys(aspects).length === 0) {
+    aspects = {};
+
+    // カテゴリ31387（Wristwatches）の必須: Type
+    if (marketplaceData.categoryId === '31387') {
+      aspects['Type'] = ['Wristwatch'];
+    }
+
+    // ブランド
+    if (product.brand) {
+      aspects['Brand'] = [product.brand];
+    }
+
+    // enrichmentデータのattributesからaspects構築
+    const enrichedData = (product as any).enrichedData || {};
+    const attributes = enrichedData.attributes || {};
+    if (attributes.model) aspects['Model'] = [attributes.model];
+    if (attributes.movement) aspects['Movement'] = [attributes.movement];
+    if (attributes.caseMaterial) aspects['Case Material'] = [attributes.caseMaterial];
+    if (attributes.caseSize) aspects['Case Size'] = [attributes.caseSize];
+    if (attributes.department) aspects['Department'] = [attributes.department];
+  }
+
   // インベントリアイテム作成
   const result = await ebayApi.createOrUpdateInventoryItem(sku, {
     title: marketplaceData.title || product.title,
     description: marketplaceData.description || product.description || '',
-    aspects: marketplaceData.itemSpecifics,
+    aspects: Object.keys(aspects).length > 0 ? aspects : undefined,
     imageUrls,
     condition: mapConditionToEbay(product.condition ?? undefined),
     conditionDescription: product.condition ?? undefined,
@@ -168,18 +199,32 @@ async function processCreateOffer(listingId: string): Promise<any> {
     throw new Error('SKU not found. Run create-inventory-item first.');
   }
 
+  // ポリシーIDが指定されていない場合はデフォルトポリシーを確認/作成
+  const marketplaceId = marketplaceData.marketplaceId || 'EBAY_US';
+  let fulfillmentPolicyId = marketplaceData.fulfillmentPolicyId;
+  let paymentPolicyId = marketplaceData.paymentPolicyId;
+  let returnPolicyId = marketplaceData.returnPolicyId;
+
+  if (!fulfillmentPolicyId || !paymentPolicyId || !returnPolicyId) {
+    log.info({ type: 'ensuring_default_policies', marketplaceId });
+    const policies = await ebayApi.ensureDefaultPolicies(marketplaceId);
+    fulfillmentPolicyId = fulfillmentPolicyId || policies.fulfillmentPolicyId;
+    paymentPolicyId = paymentPolicyId || policies.paymentPolicyId;
+    returnPolicyId = returnPolicyId || policies.returnPolicyId;
+  }
+
   // オファー作成
   const result = await ebayApi.createOffer(sku, {
-    marketplaceId: marketplaceData.marketplaceId || 'EBAY_US',
+    marketplaceId,
     format: marketplaceData.format || 'FIXED_PRICE',
     categoryId: marketplaceData.categoryId || '',
     pricingPrice: listing.listingPrice,
     pricingCurrency: listing.currency || 'USD',
     quantity: marketplaceData.quantity || 1,
     listingDescription: marketplaceData.description || listing.product.description,
-    fulfillmentPolicyId: marketplaceData.fulfillmentPolicyId,
-    paymentPolicyId: marketplaceData.paymentPolicyId,
-    returnPolicyId: marketplaceData.returnPolicyId,
+    fulfillmentPolicyId,
+    paymentPolicyId,
+    returnPolicyId,
   });
 
   if (!result.success || !result.data?.offerId) {

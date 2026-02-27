@@ -165,7 +165,7 @@ async function waitForEnrichment(productId: string): Promise<string> {
   });
 
   // エンリッチメント完了を待機
-  const enrichmentTaskId = await runStep(
+  const enrichmentResult = await runStep(
     'エンリッチメント完了待機 (翻訳・属性抽出)',
     async () => {
       const maxWait = 120_000; // 2分
@@ -185,7 +185,7 @@ async function waitForEnrichment(productId: string): Promise<string> {
         if (data.status === 'READY_TO_REVIEW' || data.status === 'APPROVED') {
           console.log(`  Title (EN): ${data.translations?.en?.title || 'N/A'}`);
           console.log(`  Price (USD): $${data.pricing?.finalPriceUsd || 'N/A'}`);
-          return data.id;
+          return { id: data.id, status: data.status };
         }
 
         if (data.status === 'FAILED') {
@@ -199,19 +199,24 @@ async function waitForEnrichment(productId: string): Promise<string> {
     }
   );
 
-  // タスクを承認
-  await runStep('エンリッチメントタスク承認', async () => {
-    const { data } = await apiCall(
-      'POST',
-      `/api/enrichment/tasks/${enrichmentTaskId}/approve`,
-      undefined,
-      [200]
-    );
-    console.log(`  Status: ${data.status || 'APPROVED'}`);
-    return data;
-  });
+  // 自動承認されていない場合のみ承認ステップ実行
+  if (enrichmentResult.status === 'READY_TO_REVIEW') {
+    await runStep('エンリッチメントタスク承認', async () => {
+      const { data } = await apiCall(
+        'POST',
+        `/api/enrichment/tasks/${enrichmentResult.id}/approve`,
+        undefined,
+        [200]
+      );
+      console.log(`  Status: ${data.status || 'APPROVED'}`);
+      return data;
+    });
+  } else {
+    console.log(`\n--- エンリッチメントタスク承認 ---`);
+    console.log(`  スキップ (自動承認済み: ${enrichmentResult.status})`);
+  }
 
-  return enrichmentTaskId;
+  return enrichmentResult.id;
 }
 
 async function createAndPublishListing(
@@ -225,6 +230,15 @@ async function createAndPublishListing(
       categoryId: '31387', // Wristwatches (Sandbox用デフォルト)
       conditionId: '3000', // Used
       quantity: 1,
+      itemSpecifics: {
+        'Type': ['Wristwatch'],
+        'Brand': ['Seiko'],
+        'Model': ['Presage SARX055'],
+        'Movement': ['Automatic'],
+        'Case Material': ['Stainless Steel'],
+        'Case Size': ['40.5 mm'],
+        'Department': ['Men'],
+      },
     });
 
     if (!data.id) {
