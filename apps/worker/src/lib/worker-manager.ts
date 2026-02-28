@@ -38,6 +38,7 @@ import { sendDailyReportNotification, generateDailyReport } from './daily-report
 import { runDailyReportJob, runWeeklyReportJob } from './report-generator';
 import { notifyHealthIssues, checkSystemHealth, recordError } from './error-monitor';
 import { notifyExchangeRateUpdated } from './notifications';
+import { processScheduledResumes } from './inventory-alert-service';
 
 const workers: Worker[] = [];
 let deadLetterQueue: Queue | null = null;
@@ -82,6 +83,14 @@ export async function startWorkers(connection: IORedis): Promise<void> {
       // トークン更新ジョブ（Phase 46）
       if (job.name === 'token-refresh') {
         return handleTokenRefresh(job);
+      }
+      // メッセージ送信ジョブ（Phase 16）
+      if (job.name === 'message-sending') {
+        return handleMessageSending(job);
+      }
+      // Webhookイベント処理ジョブ（Phase 15）
+      if (job.name === 'webhook-processing') {
+        return handleWebhookProcessing(job);
       }
       // 通常のスクレイピング
       return processScrapeJob(job);
@@ -156,6 +165,10 @@ export async function startWorkers(connection: IORedis): Promise<void> {
       // スケジュールされた在庫チェック
       if (job.name === 'scheduled-inventory-check' || job.name === 'manual-inventory-check') {
         return processScheduledInventoryCheck(job);
+      }
+      // 在庫アラート処理（Phase 17）
+      if (job.name === 'inventory-alert-processing') {
+        return handleInventoryAlertProcessing(job);
       }
       // 個別の在庫チェック
       return processInventoryJob(job);
@@ -720,6 +733,95 @@ async function handleActiveInventoryCheck(job: any): Promise<any> {
     };
   } catch (error: any) {
     log.error({ type: 'active_inventory_check_job_error', error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * メッセージ送信ジョブのハンドラー（Phase 16）
+ * 未送信の通知をバッチ処理する
+ */
+async function handleMessageSending(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'message-sending' });
+  const { batchSize = 10 } = job.data;
+
+  log.info({ type: 'message_sending_start', batchSize });
+
+  try {
+    const { prisma } = await import('@rakuda/database');
+
+    // 未読の通知を取得してログ出力（将来のDiscord/Email送信用）
+    const pendingNotifications = await prisma.notification.findMany({
+      where: { isRead: false },
+      take: batchSize,
+      orderBy: { createdAt: 'asc' },
+    });
+
+    log.info({ type: 'message_sending_complete', processed: pendingNotifications.length });
+
+    return {
+      success: true,
+      processed: pendingNotifications.length,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'message_sending_error', error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * Webhookイベント処理ジョブのハンドラー（Phase 15）
+ * 受信したWebhookイベントをバッチ処理する
+ */
+async function handleWebhookProcessing(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'webhook-processing' });
+  const { batchSize = 20 } = job.data;
+
+  log.info({ type: 'webhook_processing_start', batchSize });
+
+  try {
+    // Webhookイベント処理のプレースホルダー
+    // Shopify Webhook基盤構築後に実装予定
+    log.info({ type: 'webhook_processing_complete', processed: 0 });
+
+    return {
+      success: true,
+      processed: 0,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'webhook_processing_error', error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * 在庫アラート処理ジョブのハンドラー（Phase 17）
+ * 在庫切れで停止したリスティングの自動再開を処理する
+ */
+async function handleInventoryAlertProcessing(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'inventory-alert-processing' });
+
+  log.info({ type: 'inventory_alert_processing_start' });
+
+  try {
+    const result = await processScheduledResumes();
+
+    log.info({
+      type: 'inventory_alert_processing_complete',
+      processed: result.processed,
+      resumed: result.resumed,
+      failed: result.failed,
+    });
+
+    return {
+      success: true,
+      ...result,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'inventory_alert_processing_error', error: error.message });
     throw error;
   }
 }
