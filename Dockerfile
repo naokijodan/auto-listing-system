@@ -33,8 +33,8 @@ FROM node:20-alpine AS api
 
 WORKDIR /app
 
-# OpenSSLをインストール（Prismaエンジンに必要）
-RUN apk add --no-cache openssl
+# OpenSSL + netcatをインストール
+RUN apk add --no-cache openssl busybox-extras
 
 # セキュリティ: 非rootユーザーで実行
 RUN addgroup --system --gid 1001 nodejs && \

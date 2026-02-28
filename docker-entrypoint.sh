@@ -16,20 +16,24 @@ echo "Timestamp: $(date -Iseconds)"
 # ---------------------------------------------------------------------------
 wait_for_database() {
   echo "Waiting for database connection..."
+  echo "DATABASE_URL host: $(echo $DATABASE_URL | sed -E 's|.*@([^:]+):.*|\1|')"
+
+  # Extract host and port from DATABASE_URL
+  db_host=$(echo "$DATABASE_URL" | sed -E 's|.*@([^:]+):.*|\1|')
+  db_port=$(echo "$DATABASE_URL" | sed -E 's|.*:([0-9]+)/.*|\1|')
+  db_port=${db_port:-5432}
+
+  echo "Checking network connectivity to $db_host:$db_port..."
 
   max_attempts=30
   attempt=0
 
   while [ $attempt -lt $max_attempts ]; do
-    if node -e "
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
-      prisma.\$connect()
-        .then(() => { prisma.\$disconnect(); process.exit(0); })
-        .catch(() => process.exit(1));
-    " 2>/dev/null; then
-      echo "Database connection established."
-      return 0
+    if nc -z "$db_host" "$db_port" 2>/dev/null; then
+      echo "Network connection to database established."
+      # Now test with Prisma
+      node -e "const{PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.\$connect().then(()=>{console.log('Prisma connected OK');p.\$disconnect();process.exit(0)}).catch(e=>{console.error('Prisma error:',e.message);p.\$disconnect();process.exit(1)})" 2>&1 && return 0
+      echo "Prisma connection failed, retrying..."
     fi
 
     attempt=$((attempt + 1))
