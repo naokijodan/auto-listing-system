@@ -2,12 +2,12 @@
   "name": "@rakuda/logger",
   "version": "1.0.0",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./log-aggregator": "./src/log-aggregator.ts",
-    "./sentry": "./src/sentry.ts"
+    ".": "./dist/index.js",
+    "./log-aggregator": "./dist/log-aggregator.js",
+    "./sentry": "./dist/sentry.js"
   },
   "scripts": {
     "build": "tsc",
