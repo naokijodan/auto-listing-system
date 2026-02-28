@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-02-28 (本番デプロイ完了セッション - Vultr VPS + Coolify)
+## 最終更新: 2026-03-01 (ドメイン・DNS・SSL + Web/eBay本番デプロイ完了セッション)
 
 ---
 
@@ -52,18 +52,49 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - CI/CD・Docker設定のスキーマパス更新済み
 - `prisma generate` 正常動作確認、DB差分なし
 
-### 本番デプロイ 完了（本セッション）
+### 本番デプロイ 完了
 - **VPS**: Vultr Tokyo (vhf-3c-8gb: 3vCPU/8GB RAM/256GB NVMe, $48/mo)
   - IP: 45.32.28.61, Ubuntu 24.04 LTS
-- **Coolify**: v4.0.0-beta.463 (http://45.32.28.61:8000)
+- **Coolify**: v4.0.0-beta.463 (http://45.32.28.61:8000 / https://coolify.rakuda.dev)
 - **PostgreSQL 16**: Coolify管理、coolifyネットワーク上
 - **Redis 7.2**: Coolify管理、coolifyネットワーク上
-- **rakuda-api**: Coolify管理でデプロイ成功、Traefik経由でアクセス可能
-  - URL: http://acg8g884ck4woc480cgcg8kk.45.32.28.61.sslip.io
-  - ヘルスチェック: /api/health → {"status":"ok"}
-- **rakuda-worker**: docker run で直接起動（Coolifyビルドエラー回避）
-  - 全スケジューラー正常初期化
+- **rakuda-api**: Coolify管理でデプロイ成功、Traefik経由 + Let's Encrypt SSL
+  - URL: https://api.rakuda.dev (Coolify UUID: acg8g884ck4woc480cgcg8kk)
+  - ヘルスチェック: /api/health → {"status":"ok","services":{"database":"ok","redis":"ok"}}
+- **rakuda-web**: Coolify管理でデプロイ成功（Next.js standalone）
+  - URL: https://rakuda.dev (Coolify UUID: zoo8cgswg4ssc84kgcog8cg0)
+  - Dockerfile Stage 4 (web target) でビルド
+- **rakuda-worker**: systemdサービスとして管理
+  - `/etc/systemd/system/rakuda-worker.service`
+  - Docker containerを制御、全スケジューラー正常初期化
 - **Prismaマイグレーション**: 2件適用済み（init + add_oauth_state）
+
+### ドメイン・DNS・SSL 完了（2026-03-01セッション）
+- **ドメイン**: rakuda.dev（Cloudflare Registrar、$12.20/年）
+- **Cloudflare Zone ID**: 77ead71df34c621aa86d7e70c1b0882e
+- **DNSレコード**:
+  - `api.rakuda.dev` → 45.32.28.61（DNS-only、Let's Encrypt用）
+  - `rakuda.dev` → 45.32.28.61（DNS-only）
+  - `coolify.rakuda.dev` → 45.32.28.61
+- **SSL**: Traefik + Let's Encrypt で自動取得・更新
+
+### eBay本番環境切替 完了（2026-03-01セッション）
+- Production Client ID: `NaokiKab-Createak-PRD-a265b3311-5f1d9341`
+- Production Client Secret: 設定済み（Coolify env + Worker systemd）
+- Auth'n'Auth Token: 取得済み
+- OAuth Refresh Token: 取得済み（Coolify EBAY_REFRESH_TOKEN）
+- Callback URL: `https://api.rakuda.dev/api/ebay/callback`
+- EBAY_SANDBOX=false, EBAY_ENV=production
+
+### Discord Webhook 完了（2026-03-01セッション）
+- API（Coolify env）とWorker（systemd env）に設定済み
+- テスト送信成功（HTTP 204）
+
+### Etsy OAuth ブロック中（2026-03-01セッション）
+- アプリが「Pending Personal Approval」ステータス
+- コールバックURLがlocalhost:3010で登録されており変更不可
+- 新規アプリ作成も不可（既存Pending中）
+- **3者協議の結論**: Etsyは後回し、Shopifyを最優先で進める
 
 ### デプロイ時に修正した問題
 1. Prismaスキーマパス（単一ファイル→フォルダ）
@@ -75,9 +106,15 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 
 ### 3者協議による本番デプロイ設計 完了
 Claude/GPT/Gemini全員一致の方針：
-- **デプロイ先**: Vultr VPS (Tokyo) + Coolify + Vercel(Web)
+- **デプロイ先**: Vultr VPS (Tokyo) + Coolify（API/Web/Worker全てCoolify管理）
 - **MVP戦略**: eBay → Shopify の2軸優先。Etsy/Depopは後回し
 - **アーキテクチャ**: モノレポ維持。マイクロサービス化は不要
+
+### 3者協議によるEtsy方針 完了（2026-03-01セッション）
+Claude/GPT/Gemini全員一致の方針：
+- **Etsy後回し**: Pending Personal Approvalは外部依存、コントロール不可
+- **Shopify最優先**: Social Commerce Hubとして1認証で3-4チャネル分の効果
+- **優先順位**: Shopify OAuth → 共通商品スキーマ設計 → Instagram/TikTok疎通 → Etsy（承認後）
 
 ---
 
@@ -118,7 +155,14 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 - Shared Secret: 設定済み
 - ステータス: Pending Personal Approval → OAuth実行で承認完了
 
-### eBay Sandbox認証情報
+### eBay本番認証情報（2026-03-01設定）
+- Production Client ID: `NaokiKab-Createak-PRD-a265b3311-5f1d9341`
+- Production Client Secret: Coolify env + Worker systemdに設定済み
+- OAuth Refresh Token: 設定済み（EBAY_REFRESH_TOKEN）
+- Callback URL: `https://api.rakuda.dev/api/ebay/callback`
+- EBAY_SANDBOX=false, EBAY_ENV=production
+
+### eBay Sandbox認証情報（旧・参考）
 - Sandbox User: `TESTUSER_rakudaseller` / `Rakuda2026!`
 - Business Policies: Fulfillment `6217663000`, Payment `6217666000`, Return `6217665000`
 - Refresh Token有効期限: 2027-08-29
@@ -127,24 +171,24 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 ## 次のセッションでやること
 
-### Phase 5.5: 残りのデプロイ作業
+### Phase 6: チャネル拡大 & 運用整備
 
-#### 1. ドメイン設定 + SSL
-- Cloudflareでドメインを取得・DNS設定
-- Coolifyでカスタムドメインを設定
-- Let's Encrypt SSL証明書設定
+#### 1. Shopify OAuth認証（最優先）
+- Shopifyを「Social Commerce Hub」として認証
+- Webhook基盤構築
+- Instagram/TikTok連携の疎通確認（Shopify経由）
 
-#### 2. Web (Next.js) デプロイ
-- Vercel無料枠にデプロイ（推奨）
-- または Coolify上でビルド
+#### 2. テスト出品
+- eBay本番テスト出品（Production環境確認）
+- Joomテスト出品
+- Shopifyテスト出品
 
-#### 3. チャネル接続
-- Etsy OAuth実行（本番URL使用）: `npx tsx scripts/setup-etsy-credentials.ts`
-- eBay本番環境設定（Sandbox → Production切替）
-- Discord Webhook URLを環境変数に設定してトークン監視通知を有効化
+#### 3. Etsy OAuth（承認後）
+- Pending Personal Approval が下りたらコールバックURLを変更
+- https://api.rakuda.dev/api/etsy/callback でOAuth実行
+- 環境変数は既に設定済み
 
 #### 4. 運用整備
-- Workerのsystemdサービス化またはCoolify管理への移行
 - バックアップ設定（PostgreSQL）
 - モニタリング設定（Coolify + 外部サービス）
 - Coolify APIのヘルスチェック再有効化
@@ -155,10 +199,11 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 | コミット | 内容 |
 |---------|------|
+| `801370ba` | feat: Dockerfile に Web (Next.js) ステージ追加 + standalone モード有効化 |
+| `e64466f7` | docs: HANDOVER.md更新 - 本番デプロイ完了 |
+| `4fcb7af4` | fix: BullMQ Redis接続をURL直接指定に変更 |
+| `9353dc00` | fix: パッケージmainフィールドをdist/に変更 + Dockerfileヘルスチェック削除 |
 | `4b344bde` | feat: Shopify接続テスト + OAuthトークン監視Etsy対応 + Prismaスキーマ分割 |
-| `70ffffc1` | docs: HANDOVER.md更新 - Shopify/Etsy/Depop認証完了 + 本番デプロイ設計 |
-| `ec844c25` | fix: 全ファイルから @ts-nocheck を除去し、TSエラー0件を達成 |
-| `97ca3ced` | fix: テスト失敗23件を修正 - monitoring/ebay-api テスト全通過 |
 
 ---
 
@@ -176,8 +221,12 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 - [x] Shopify接続テスト（全8ステップ通過）
 - [x] OAuthトークン監視ジョブ実装（eBay/Joom/Etsy対応）
 - [x] Prismaスキーマ分割（13ファイル）
-- [ ] Hetzner VPS契約 + Coolifyインストール
-- [ ] 本番環境デプロイ
-- [ ] Etsy OAuth完了
-- [ ] eBay本番環境切替
-- [ ] Discord Webhook設定（トークン監視通知用）
+- [x] Vultr VPS契約 + Coolifyインストール
+- [x] 本番環境デプロイ（API + Web + Worker）
+- [x] ドメイン取得（rakuda.dev）+ Cloudflare DNS + SSL
+- [x] eBay本番環境切替（Production OAuth完了）
+- [x] Discord Webhook設定（API + Worker）
+- [x] Worker systemdサービス化
+- [ ] Shopify OAuth認証（次の最優先タスク）
+- [ ] Etsy OAuth完了（承認待ち→後回し）
+- [ ] テスト出品（eBay/Joom/Shopify）
