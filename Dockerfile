@@ -21,7 +21,7 @@ COPY . .
 RUN npm ci --legacy-peer-deps
 
 # Prismaクライアントを生成
-RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
+RUN npx prisma generate --schema=packages/database/prisma/schema
 
 # TypeScriptをビルド
 RUN npm run build
@@ -63,7 +63,7 @@ ENV RUN_MIGRATIONS=true
 
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh", "api"]
