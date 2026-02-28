@@ -58,7 +58,12 @@ app.use(helmet({
   },
 }));
 app.use(cors());
-app.use(express.json());
+app.use((req, res, next) => {
+  if (req.path === '/api/shopify/webhook') {
+    return next();
+  }
+  express.json()(req, res, next);
+});
 app.use(requestLogger);
 
 // Swagger API ドキュメント（認証不要）
