@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-01 (ドメイン・DNS・SSL + Web/eBay本番デプロイ完了セッション)
+## 最終更新: 2026-03-01 (eBay本番テスト出品成功 + OAuthコールバック修正 + Joom本番設定セッション)
 
 ---
 
@@ -100,11 +100,33 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - /api/shopify-products/status: isAuthenticated=true, Online Store=CONNECTED ✅
 - テスト商品作成・削除成功（Shopify Admin API直接）
 
-### eBay Production OAuth 要再認証（2026-03-01セッション②）
-- 本番クライアントID/Secretは正常動作（client_credentials tokenで確認）
-- **Refresh Tokenが無効**（sandbox用トークンの可能性）
-- 再認証URL: https://api.rakuda.dev/api/ebay/auth（ブラウザでOAuth同意フロー要）
-- Business Policy（Fulfillment/Payment/Return）のIDも未設定
+### eBay Production OAuth 完了 + テスト出品成功（2026-03-01セッション③）
+- Production OAuth完了: Refresh Token有効（期限: 2027-08-30）
+- **テスト出品成功**: eBay Listing ID `137081160735`（ACTIVE）
+  - URL: https://www.ebay.com/itm/137081160735
+  - 商品: Seiko Presage SARX035, $399.99
+  - SKU: RAKUDA-EBAY-cmm6kzo2x0004111xokg9ks5o
+- Business Policy設定済み:
+  - Fulfillment: 308477371011 (xp_new_free - 無料送料)
+  - Payment: 288537326011 (eBay Managed Payments)
+  - Return: 288537325011 (No Return Accepted)
+- 全312個のFulfillmentポリシー確認済み（free系: xp_new_free, eco_new_free等）
+
+### eBay OAuthコールバック修正（2026-03-01セッション③）
+- `ebay-auth.ts`: 相対リダイレクト → FRONTEND_URL使用に変更
+- 成功時: `${FRONTEND_URL}/settings?ebay=connected`
+- エラー時: `${FRONTEND_URL}/settings?ebay=error&message=...`
+- Coolify env: FRONTEND_URL=https://rakuda.dev 設定済み
+- コミット: 05b58053
+
+### Joom本番環境設定（2026-03-01セッション③）
+- MarketplaceCredential: clientId/clientSecret設定済み（DB直接INSERT）
+- Coolify env: JOOM_CLIENT_ID, JOOM_CLIENT_SECRET, JOOM_REDIRECT_URI 設定済み
+- Worker systemd: JOOM関連環境変数追加、再起動済み
+- **ブロッカー**: Joom OAuth appのredirect URIがlocalhost:3000のまま
+  - 変更先: https://api.rakuda.dev/api/auth/joom/callback
+  - Joom developer portalで変更が必要
+  - 変更後: https://api.rakuda.dev/api/auth/joom/authorize にアクセスしてOAuth実行
 
 ### 運用整備 完了（2026-03-01セッション②）
 - PostgreSQLバックアップ: `/opt/rakuda-backup.sh` (毎日3:00 UTC, 7日保持)
@@ -184,7 +206,7 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 ### eBay本番認証情報（2026-03-01設定）
 - Production Client ID: `NaokiKab-Createak-PRD-a265b3311-5f1d9341`
 - Production Client Secret: Coolify env + Worker systemdに設定済み
-- OAuth Refresh Token: **要再取得**（現在のトークンは無効 - sandbox用の可能性）
+- OAuth Refresh Token: 有効（期限: 2027-08-30、DB MarketplaceCredentialに保存済み）
 - Callback URL: `https://api.rakuda.dev/api/ebay/callback`
 - EBAY_SANDBOX=false, EBAY_ENV=production
 
@@ -199,24 +221,25 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 ### Phase 6: チャネル拡大（続き）
 
-#### 1. eBay Production再認証（最優先）
-- ブラウザで https://api.rakuda.dev/api/ebay/auth にアクセス
-- eBayにログインしてOAuth権限を承認
-- コールバック後にRefresh Tokenが自動保存される
-- Business Policy（Fulfillment/Payment/Return）を確認・設定
-- テスト出品実行
+#### 1. ~~eBay Production再認証~~ ✅ 完了
+- eBay本番テスト出品成功（Listing ID: 137081160735, $399.99）
 
-#### 2. Shopify Social Commerce Hub拡張
+#### 2. Joom本番OAuth実行（ユーザー操作必要）
+- **前提**: Joom developer portalでredirect URIを変更
+  - 現在: `http://localhost:3000/api/auth/joom/callback`
+  - 変更先: `https://api.rakuda.dev/api/auth/joom/callback`
+- 変更後: ブラウザで `https://api.rakuda.dev/api/auth/joom/authorize` にアクセス
+- OAuth完了後: Joomテスト出品を実行
+
+#### 3. Shopify Social Commerce Hub拡張
 - Instagram Shop連携（Shopify管理画面→「Facebook & Instagram」チャネル追加）
 - TikTok Shop連携（Shopify管理画面→「TikTok」チャネル追加）
 - Webhook基盤構築（注文通知等）
 
-#### 3. テスト出品
-- eBay本番テスト出品（再認証後）
-- Joomテスト出品
-- Shopify本番出品テスト（RAKUDA UIから）
+#### 4. Shopify本番出品テスト
+- RAKUDA UIからShopify出品テスト
 
-#### 4. Etsy OAuth（承認後）
+#### 5. Etsy OAuth（承認後）
 - Pending Personal Approval が下りたらコールバックURLを変更
 - https://api.rakuda.dev/api/etsy/callback でOAuth実行
 - 環境変数は既に設定済み
@@ -227,6 +250,8 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 | コミット | 内容 |
 |---------|------|
+| `05b58053` | fix: eBay OAuthコールバックをフロントエンドURLにリダイレクト |
+| `fad63abe` | docs: HANDOVER.md更新 - Shopify本番接続完了 + 運用整備完了 |
 | `33fd0828` | feat: Shopify本番環境対応 - DB認証チェック修正 + 全チャネルマイグレーション |
 | `801370ba` | feat: Dockerfile に Web (Next.js) ステージ追加 + standalone モード有効化 |
 | `e64466f7` | docs: HANDOVER.md更新 - 本番デプロイ完了 |
@@ -259,7 +284,10 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 - [x] Shopify本番環境接続（認証情報登録・API動作確認・テスト出品成功）
 - [x] Prismaマイグレーション本番適用（全チャネルテーブル追加）
 - [x] 運用整備（PostgreSQLバックアップ毎日3:00・ヘルスチェック5分毎・Discord通知）
-- [ ] eBay Production再認証（Refresh Token無効→OAuth再取得が必要）
+- [x] eBay Production OAuth完了（Refresh Token有効、2027-08-30まで）
+- [x] eBay本番テスト出品成功（Listing ID: 137081160735, ACTIVE）
+- [x] eBay OAuthコールバックリダイレクト修正（FRONTEND_URL対応）
+- [x] Joom本番環境設定（DB + Coolify + Worker環境変数）
+- [ ] Joom本番OAuth実行（redirect URI変更→OAuth→テスト出品）
 - [ ] Etsy OAuth完了（承認待ち→後回し）
-- [ ] テスト出品（eBay/Joom）
 - [ ] Shopify Social Commerce Hub拡張（Instagram/TikTok連携）
