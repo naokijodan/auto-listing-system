@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-02-28 (Shopify/Etsy/Depop認証 + 本番デプロイ設計セッション)
+## 最終更新: 2026-02-28 (Shopify接続テスト + OAuthトークン監視 + Prismaスキーマ分割セッション)
 
 ---
 
@@ -29,6 +29,28 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - **Shopify**: パートナーアカウント作成、rakuda-store開発ストア作成、レガシーカスタムアプリ「RAKUDA」作成、APIキー3点を.envに保存済み
 - **Etsy**: 開発者アカウント作成、アプリ「rakuda」登録、APIキー/SharedSecretを.envに保存済み（Personal Approval待ち＝OAuth実行で完了）
 - **Depop**: business@depop.comに申請、Selling API Enquiry Form送信済み（返信待ち）
+
+### Shopify接続テスト 完了（本セッション）
+- レガシーカスタムアプリのアクセストークンをDBに直接保存
+- Shopify Admin API 全8テスト通過: DB接続/認証情報保存/Shop情報取得/商品一覧/ロケーション/テスト商品作成・削除/スコープ確認
+- Shop: rakuda-store（Development plan, JPY, Japan）
+- ロケーション: Shop location (ID: 89391366360)
+
+### OAuthトークン監視ジョブ Etsy対応 完了（本セッション）
+- `refreshEtsyToken()` 関数をetsy-api.tsに追加
+- scheduler.tsの`checkTokenExpiry`にEtsy自動リフレッシュ追加
+- テスト10件全通過（Etsy token refresh 2件追加）
+
+### Prismaスキーマ分割 完了（本セッション）
+- `prismaSchemaFolder` 機能を有効化
+- 10,814行の単一ファイルを13ファイルに分割:
+  - base.prisma（generator/datasource）
+  - common.prisma（コアモデル: 6,486行）
+  - ebay.prisma / shopify.prisma / etsy.prisma / joom.prisma / depop.prisma
+  - marketplace.prisma / enrichment.prisma / notifications.prisma
+  - auth.prisma / monitoring.prisma / operations.prisma
+- CI/CD・Docker設定のスキーマパス更新済み
+- `prisma generate` 正常動作確認、DB差分なし
 
 ### 3者協議による本番デプロイ設計 完了
 Claude/GPT/Gemini全員一致の方針：
@@ -61,7 +83,7 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 |---------|---------------|----------|----------|
 | eBay | 1,297行 | **E2E通過・Sandbox動作確認済** | 設定済み |
 | Joom | 811行 | OAuth済・動作可能 | 設定済み |
-| Shopify | 197行 | **APIキー取得済・接続テスト未実施** | 設定済み |
+| Shopify | 197行 | **接続テスト全通過・出品準備完了** | 設定済み |
 | Etsy | 268行 | **APIキー取得済・OAuth承認待ち** | 設定済み |
 | Depop | 187行 | **Partner API申請中・返信待ち** | 未設定 |
 
@@ -85,7 +107,7 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 ## 次のセッションでやること
 
-### Phase 5: 本番デプロイ + チャネル接続テスト
+### Phase 5: 本番デプロイ + チャネル接続
 
 #### ステップ1: Hetzner VPS契約 + Coolifyインストール（ユーザー操作）
 1. https://www.hetzner.com/cloud でCPX31プラン（4vCPU/8GB RAM, €15/月）を契約
@@ -105,20 +127,17 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 3. SSL証明書設定（Let's Encrypt）
 4. Prisma migrate deploy実行
 
-#### ステップ3: チャネル接続テスト（自動実行）
-1. Shopify接続テスト: `npx tsx scripts/shopify-e2e-test.ts --dry-run`
+#### ステップ3: チャネル接続（自動実行）
+1. ~~Shopify接続テスト~~ ✅ 完了
 2. Etsy OAuth実行（本番URL使用）: `npx tsx scripts/setup-etsy-credentials.ts`
 3. eBay本番環境設定（Sandbox → Production切替）
+4. Discord Webhook URLを.envに設定してトークン監視通知を有効化
 
-#### ステップ4: OAuthトークン監視ジョブ実装（自動実行）
-1. BullMQで定期ジョブ作成（1時間ごと）
-2. 有効期限24時間前に警告通知（Discord）
-3. 有効期限1時間前に自動リフレッシュ
-4. 失敗時にDiscord通知
+#### ~~ステップ4: OAuthトークン監視ジョブ実装~~ ✅ 完了
+- eBay/Joom/Etsy 全対応済み（毎時チェック、1時間前自動リフレッシュ、24時間前警告通知）
 
-#### ステップ5: Prismaスキーマ分割（自動実行）
-1. `prismaSchemaFolder`機能を有効化
-2. eBay.prisma / Shopify.prisma / Etsy.prisma / Common.prisma に分割
+#### ~~ステップ5: Prismaスキーマ分割~~ ✅ 完了
+- 13ファイルに分割済み（prismaSchemaFolder機能）
 
 ---
 
@@ -126,10 +145,10 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 | コミット | 内容 |
 |---------|------|
+| `4b344bde` | feat: Shopify接続テスト + OAuthトークン監視Etsy対応 + Prismaスキーマ分割 |
+| `70ffffc1` | docs: HANDOVER.md更新 - Shopify/Etsy/Depop認証完了 + 本番デプロイ設計 |
 | `ec844c25` | fix: 全ファイルから @ts-nocheck を除去し、TSエラー0件を達成 |
 | `97ca3ced` | fix: テスト失敗23件を修正 - monitoring/ebay-api テスト全通過 |
-| `d2f8ec01` | fix: TSエラー全件解消 - API 488件 + Web 1,601件を修正 |
-| `1c18f0b2` | feat: Phase 3準備 - Etsy/Shopify/Depop認証基盤整備 |
 
 ---
 
@@ -144,10 +163,11 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 - [x] Etsy APIキー取得・.env設定
 - [x] Depop Partner API申請送信
 - [x] 本番デプロイ設計（3者協議完了）
+- [x] Shopify接続テスト（全8ステップ通過）
+- [x] OAuthトークン監視ジョブ実装（eBay/Joom/Etsy対応）
+- [x] Prismaスキーマ分割（13ファイル）
 - [ ] Hetzner VPS契約 + Coolifyインストール
 - [ ] 本番環境デプロイ
-- [ ] Shopify接続テスト
 - [ ] Etsy OAuth完了
 - [ ] eBay本番環境切替
-- [ ] OAuthトークン監視ジョブ実装
-- [ ] Prismaスキーマ分割
+- [ ] Discord Webhook設定（トークン監視通知用）
