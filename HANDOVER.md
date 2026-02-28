@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-02-28 (テスト失敗23件修正セッション)
+## 最終更新: 2026-02-28 (Shopify/Etsy/Depop認証 + 本番デプロイ設計セッション)
 
 ---
 
@@ -19,21 +19,23 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 
 ## 現在の到達点
 
-### Phase 2 完了: eBay Sandbox出品E2Eテスト全通過
+### @ts-nocheck全件除去 完了
+- 298ファイル（API 40 + Web 258）から `// @ts-nocheck` を除去
+- TSエラー1,462件を修正（API 354件 + Web 1,108件）
+- UIコンポーネント根本修正（Badge, Button, Card, Checkbox, Toast）
+- テスト2,342件全通過
 
-テスト商品1件（セイコー プレザージュ SARX055）で、商品作成 → AI翻訳・属性抽出 → eBay Inventory API経由の出品 → Sandboxでの公開確認まで、全9ステップが自動で通過。
+### Shopify/Etsy/Depop認証 完了
+- **Shopify**: パートナーアカウント作成、rakuda-store開発ストア作成、レガシーカスタムアプリ「RAKUDA」作成、APIキー3点を.envに保存済み
+- **Etsy**: 開発者アカウント作成、アプリ「rakuda」登録、APIキー/SharedSecretを.envに保存済み（Personal Approval待ち＝OAuth実行で完了）
+- **Depop**: business@depop.comに申請、Selling API Enquiry Form送信済み（返信待ち）
 
-- テスト結果: **9/9 PASS**（実行時間21秒）
-- Sandbox Item ID: `110589099265`
-- テスト実行コマンド: `npx tsx scripts/ebay-e2e-test.ts`
-
-### Phase 3準備 完了: Etsy/Shopify/Depop認証基盤整備
-
-3チャネルの認証に必要なコード基盤を全て整備した。バグ修正5件、セットアップスクリプト3本、E2Eテストスクリプト3本を作成・コミット済み。**残りはユーザーによるブラウザ操作（アカウント登録・OAuth認証）のみ。**
-
-### TSエラー全件解消 完了: API 488件 + Web 1,601件
-
-API 40ルートファイル・Web 254ページファイルに `// @ts-nocheck` を追加し、破損していた4ページ（fee-calculator, shipping-calculator, image-manager, keyword-research）をクリーンに書き直した。TSエラーは全ワークスペースで0件。
+### 3者協議による本番デプロイ設計 完了
+Claude/GPT/Gemini全員一致の方針：
+- **デプロイ先**: Hetzner VPS (CPX31: 4vCPU/8GB RAM) + Coolify + Vercel(Web)
+- **MVP戦略**: eBay → Shopify の2軸優先。Etsy/Depopは後回し
+- **アーキテクチャ**: モノレポ維持。マイクロサービス化は不要
+- **月額コスト**: 約5,000〜8,000円
 
 ---
 
@@ -55,74 +57,68 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 ## 販売チャネルの現状
 
-| チャネル | APIクライアント | ステータス |
-|---------|---------------|----------|
-| eBay | 1,297行 | **E2E通過・Sandbox動作確認済** |
-| Joom | 811行 | OAuth済・動作可能 |
-| Etsy | 268行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・**認証待ち** |
-| Shopify | 197行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・**認証待ち** |
-| Depop | 187行 | 実装済・バグ修正済・セットアップ/E2Eスクリプト完備・**認証待ち** |
+| チャネル | APIクライアント | ステータス | .env設定 |
+|---------|---------------|----------|----------|
+| eBay | 1,297行 | **E2E通過・Sandbox動作確認済** | 設定済み |
+| Joom | 811行 | OAuth済・動作可能 | 設定済み |
+| Shopify | 197行 | **APIキー取得済・接続テスト未実施** | 設定済み |
+| Etsy | 268行 | **APIキー取得済・OAuth承認待ち** | 設定済み |
+| Depop | 187行 | **Partner API申請中・返信待ち** | 未設定 |
+
+### Shopify認証情報（.envに保存済み）
+- Shop Domain: `rakuda-store.myshopify.com`
+- Access Token: `shpat_****` （レガシーカスタムアプリ）
+- API Key / API Secret: 設定済み
+- スコープ: write_products, write_orders, write_inventory, write_shipping, read_locations, write_fulfillments, read_analytics, write_customers
+
+### Etsy認証情報（.envに保存済み）
+- API Key (Keystring): `njrdzcwc61ha706dasyq467o`
+- Shared Secret: 設定済み
+- ステータス: Pending Personal Approval → OAuth実行で承認完了
 
 ### eBay Sandbox認証情報
-
-Sandbox環境の認証は全て設定済み。Access Tokenは2時間で失効するが、Refresh Token（有効期限2027-08-29）を使った自動更新が実装されている。Business Policyも3種（Fulfillment・Payment・Return）が作成済みで、新規出品時に自動で参照される。
-
 - Sandbox User: `TESTUSER_rakudaseller` / `Rakuda2026!`
 - Business Policies: Fulfillment `6217663000`, Payment `6217666000`, Return `6217665000`
-
-### マーケットプレイスAPI調査結果
-
-| チャネル | 開発者登録 | APIキー取得 | 備考 |
-|---------|-----------|-----------|------|
-| Etsy | etsy.com/developers/register | 審査に2-4週間 | PKCE必須、サンドボックスなし、2FA必須 |
-| Shopify | shopify.com/partners（無料） | 即日発行可 | Dev store利用可、永続トークン、最新API 2026-01 |
-| Depop | integrations@depop.com に申請 | 非公開API | 2025年7月開始、サンドボックスあり |
+- Refresh Token有効期限: 2027-08-29
 
 ---
 
 ## 次のセッションでやること
 
-### Phase 3: OAuth認証の実行（ユーザー操作必要）
+### Phase 5: 本番デプロイ + チャネル接続テスト
 
-セットアップスクリプトとE2Eテストは準備済み。優先順位はShopify → Etsy → Depop。
+#### ステップ1: Hetzner VPS契約 + Coolifyインストール（ユーザー操作）
+1. https://www.hetzner.com/cloud でCPX31プラン（4vCPU/8GB RAM, €15/月）を契約
+2. Ubuntu 24.04 LTSを選択
+3. SSH鍵を登録
+4. CoolifyをVPSにインストール: `curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash`
+5. ドメインを取得・DNS設定（Cloudflare推奨）
 
-#### Shopify（即日可能・最優先）
+#### ステップ2: 本番環境デプロイ（自動実行）
+1. Coolifyで各サービスを設定:
+   - PostgreSQL
+   - Redis
+   - API (Express.js) - Dockerfile
+   - Worker (BullMQ) - Dockerfile
+   - Web (Next.js) - Vercel無料枠にデプロイ
+2. 環境変数をCoolifyに設定（.envから移行）
+3. SSL証明書設定（Let's Encrypt）
+4. Prisma migrate deploy実行
 
-1. https://www.shopify.com/partners で無料パートナーアカウント作成
-2. Partner Dashboard → Stores → Add store → Development store作成
-3. Dev Dashboard → Create app → Custom app作成
-4. API access画面でスコープ設定: `read_products, write_products, read_inventory, write_inventory, read_orders, write_orders`
-5. Client ID / Client Secret を `.env` の `SHOPIFY_API_KEY` / `SHOPIFY_API_SECRET` に設定
-6. 実行: `npx tsx scripts/setup-shopify-credentials.ts your-store.myshopify.com`
-7. 表示されるOAuth URLをブラウザで開いて認証
-8. E2Eテスト: `npx tsx scripts/shopify-e2e-test.ts --dry-run`
+#### ステップ3: チャネル接続テスト（自動実行）
+1. Shopify接続テスト: `npx tsx scripts/shopify-e2e-test.ts --dry-run`
+2. Etsy OAuth実行（本番URL使用）: `npx tsx scripts/setup-etsy-credentials.ts`
+3. eBay本番環境設定（Sandbox → Production切替）
 
-#### Etsy（審査待ち・登録だけ先に）
+#### ステップ4: OAuthトークン監視ジョブ実装（自動実行）
+1. BullMQで定期ジョブ作成（1時間ごと）
+2. 有効期限24時間前に警告通知（Discord）
+3. 有効期限1時間前に自動リフレッシュ
+4. 失敗時にDiscord通知
 
-1. Etsyアカウントで2FA設定
-2. https://www.etsy.com/developers/register でアプリ登録
-3. API Key審査完了まで待機（2-4週間）
-4. 審査通過後、API Keyを `.env` の `ETSY_API_KEY` に設定
-5. 実行: `npx tsx scripts/setup-etsy-credentials.ts`
-6. 表示されるOAuth URLをブラウザで開いて認証
-7. E2Eテスト: `npx tsx scripts/etsy-e2e-test.ts --dry-run`
-
-#### Depop（メール申請・時期未定）
-
-1. integrations@depop.com にPartner API申請メール送信
-2. 承認後、APIキーを `.env` の `DEPOP_API_KEY` に設定
-3. 実行: `npx tsx scripts/setup-depop-credentials.ts`
-4. E2Eテスト: `npx tsx scripts/depop-e2e-test.ts --dry-run`
-
-### Phase 4: 統合テスト
-
-全チャネルの認証が完了したら、1商品を全チャネルに同時出品するテストと、在庫変更が全チャネルに反映される同期テストを実施する。
-
-```bash
-npx tsx scripts/etsy-e2e-test.ts
-npx tsx scripts/shopify-e2e-test.ts
-npx tsx scripts/depop-e2e-test.ts
-```
+#### ステップ5: Prismaスキーマ分割（自動実行）
+1. `prismaSchemaFolder`機能を有効化
+2. eBay.prisma / Shopify.prisma / Etsy.prisma / Common.prisma に分割
 
 ---
 
@@ -130,57 +126,28 @@ npx tsx scripts/depop-e2e-test.ts
 
 | コミット | 内容 |
 |---------|------|
+| `ec844c25` | fix: 全ファイルから @ts-nocheck を除去し、TSエラー0件を達成 |
 | `97ca3ced` | fix: テスト失敗23件を修正 - monitoring/ebay-api テスト全通過 |
 | `d2f8ec01` | fix: TSエラー全件解消 - API 488件 + Web 1,601件を修正 |
-| `97a09b99` | docs: HANDOVER.md更新 - コード品質改善セッション完了 |
-| `fff92a40` | fix: TSエラー修正・Shopify API更新・eBay enrichment反映修正 |
-| `d77b1027` | docs: HANDOVER.md全面書き直し - Phase 3準備セッション引継ぎ |
 | `1c18f0b2` | feat: Phase 3準備 - Etsy/Shopify/Depop認証基盤整備 |
-| `fa0cd1ae` | docs: HANDOVER.md全面書き直し |
-| `76bce4be` | docs: HANDOVER.md更新 - Phase 2 eBay E2Eテスト完了 |
-
----
-
-## Phase 3準備で修正・作成したファイル
-
-### バグ修正
-
-| ファイル | 内容 |
-|---------|------|
-| `apps/api/src/routes/etsy-auth.ts` | redirect URIポート 3000→3010 |
-| `apps/api/src/routes/shopify-auth.ts` | redirect URIポート 3000→3010、API version → 2026-01 |
-| `apps/worker/src/lib/shopify-api.ts` | API version → 2026-01 |
-| `apps/worker/src/lib/depop-api.ts` | testConnection()メソッド追加 |
-
-### 新規作成
-
-| ファイル | 内容 |
-|---------|------|
-| `scripts/setup-etsy-credentials.ts` | PKCE OAuth URL生成、OAuthState DB保存 |
-| `scripts/setup-shopify-credentials.ts` | OAuth URL生成、CLI引数でショップドメイン指定 |
-| `scripts/setup-depop-credentials.ts` | APIキー保存、接続テスト実行 |
-| `scripts/etsy-e2e-test.ts` | 九谷焼花瓶テスト商品でフルフロー検証 |
-| `scripts/shopify-e2e-test.ts` | リーバイスデニムジャケットテスト商品でフルフロー検証 |
-| `scripts/depop-e2e-test.ts` | エアジョーダン1テスト商品でフルフロー検証 |
-
----
-
-## 改善候補（優先度低）
-
-- Payment Policyで`PERSONAL_CHECK`を指定しているが、eBay Managed Paymentsに自動変換される（直接指定に変更すべき）
-- ~~ルートファイルにTSエラー488件残存~~ → **解消済み**（`// @ts-nocheck` + 破損ファイル書き直し）
-- 将来的にはルートファイルのPrismaスキーマ整合性を個別に修正し `@ts-nocheck` を外すのが望ましい
-- ~~既存テスト失敗23件~~ → **修正済み**（monitoring.test.ts モック先修正、ebay-api MSW URL修正、mapConditionToEbay期待値更新）
 
 ---
 
 ## 完了条件チェックリスト
 
-- [x] TSエラー0件（Depop分）
-- [x] テスト全件パス（Worker 1,221件 + API 344件）
-- [x] スタブファイル整理完了（41,151件削除）
+- [x] TSエラー0件
+- [x] @ts-nocheck全件除去（298ファイル）
+- [x] テスト全件パス（2,342件）
 - [x] eBay出品E2Eテスト成功（Phase 2）
-- [x] Phase 3認証基盤整備（セットアップスクリプト・E2Eテスト・バグ修正）
-- [x] TSエラー全件解消（API 488件 + Web 1,601件）
-- [ ] Etsy/Shopify/Depop認証完了（Phase 3 - ユーザー操作待ち）
-- [ ] 全チャネル統合テスト成功（Phase 4）
+- [x] Phase 3認証基盤整備
+- [x] Shopify APIキー取得・.env設定
+- [x] Etsy APIキー取得・.env設定
+- [x] Depop Partner API申請送信
+- [x] 本番デプロイ設計（3者協議完了）
+- [ ] Hetzner VPS契約 + Coolifyインストール
+- [ ] 本番環境デプロイ
+- [ ] Shopify接続テスト
+- [ ] Etsy OAuth完了
+- [ ] eBay本番環境切替
+- [ ] OAuthトークン監視ジョブ実装
+- [ ] Prismaスキーマ分割
