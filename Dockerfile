@@ -24,6 +24,9 @@ RUN npm ci --legacy-peer-deps
 RUN npx prisma generate --schema=packages/database/prisma/schema
 
 # TypeScriptをビルド
+# Next.jsのパブリック環境変数をビルド時に受け取れるようにする
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 
 # -----------------------------------------------------------------------------
@@ -120,3 +123,23 @@ ENV NODE_ENV=production
 
 ENTRYPOINT ["docker-entrypoint.sh", "worker"]
 CMD ["node", "apps/worker/dist/index.js"]
+
+# -----------------------------------------------------------------------------
+# Stage 4: Web Runner
+# -----------------------------------------------------------------------------
+FROM node:20-alpine AS web
+
+WORKDIR /app
+
+# Next.js standaloneの出力をコピー
+COPY --from=builder /app/apps/web/.next/standalone ./
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/apps/web/public ./apps/web/public
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+EXPOSE 3000
+
+CMD ["node", "apps/web/server.js"]
