@@ -119,14 +119,15 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - Coolify env: FRONTEND_URL=https://rakuda.dev 設定済み
 - コミット: 05b58053
 
-### Joom本番環境設定（2026-03-01セッション③）
+### Joom本番環境設定 + OAuth + テスト出品成功（2026-03-01セッション③）
 - MarketplaceCredential: clientId/clientSecret設定済み（DB直接INSERT）
 - Coolify env: JOOM_CLIENT_ID, JOOM_CLIENT_SECRET, JOOM_REDIRECT_URI 設定済み
 - Worker systemd: JOOM関連環境変数追加、再起動済み
-- **ブロッカー**: Joom OAuth appのredirect URIがlocalhost:3000のまま
-  - 変更先: https://api.rakuda.dev/api/auth/joom/callback
-  - Joom developer portalで変更が必要
-  - 変更後: https://api.rakuda.dev/api/auth/joom/authorize にアクセスしてOAuth実行
+- Joom OAuth app redirect URI変更済み: https://api.rakuda.dev/api/auth/joom/callback
+- **OAuth完了**: トークン有効期限 2026-03-30
+- **テスト出品成功**: Joom Product ID `69a32981171b160126427ee2`（ACTIVE）
+  - 商品: Seiko Presage SARX035, $299.99
+  - 注意: shippingCostはUSD単位で指定（JPYだとエラー）
 
 ### 運用整備 完了（2026-03-01セッション②）
 - PostgreSQLバックアップ: `/opt/rakuda-backup.sh` (毎日3:00 UTC, 7日保持)
@@ -224,12 +225,8 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 #### 1. ~~eBay Production再認証~~ ✅ 完了
 - eBay本番テスト出品成功（Listing ID: 137081160735, $399.99）
 
-#### 2. Joom本番OAuth実行（ユーザー操作必要）
-- **前提**: Joom developer portalでredirect URIを変更
-  - 現在: `http://localhost:3000/api/auth/joom/callback`
-  - 変更先: `https://api.rakuda.dev/api/auth/joom/callback`
-- 変更後: ブラウザで `https://api.rakuda.dev/api/auth/joom/authorize` にアクセス
-- OAuth完了後: Joomテスト出品を実行
+#### 2. ~~Joom本番OAuth実行~~ ✅ 完了
+- Joomテスト出品成功（Product ID: 69a32981171b160126427ee2, $299.99）
 
 #### 3. Shopify Social Commerce Hub拡張
 - Instagram Shop連携（Shopify管理画面→「Facebook & Instagram」チャネル追加）
@@ -288,6 +285,6 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 - [x] eBay本番テスト出品成功（Listing ID: 137081160735, ACTIVE）
 - [x] eBay OAuthコールバックリダイレクト修正（FRONTEND_URL対応）
 - [x] Joom本番環境設定（DB + Coolify + Worker環境変数）
-- [ ] Joom本番OAuth実行（redirect URI変更→OAuth→テスト出品）
+- [x] Joom本番OAuth完了 + テスト出品成功（Product ID: 69a32981171b160126427ee2, ACTIVE）
 - [ ] Etsy OAuth完了（承認待ち→後回し）
 - [ ] Shopify Social Commerce Hub拡張（Instagram/TikTok連携）
