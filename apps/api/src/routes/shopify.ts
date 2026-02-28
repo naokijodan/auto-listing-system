@@ -225,16 +225,16 @@ router.get('/orders', async (req: Request, res: Response) => {
 router.get('/status', async (req: Request, res: Response) => {
   try {
     // 認証ステータス
-    const credential = await prisma.integrationCredential.findFirst({
+    const credential = await prisma.marketplaceCredential.findFirst({
       where: {
-        integrationId: { contains: 'shopify' },
-        isValid: true,
+        marketplace: 'SHOPIFY',
+        isActive: true,
       },
       orderBy: { createdAt: 'desc' },
     });
 
     const isAuthenticated = !!credential;
-    const tokenExpiresAt = credential?.expiresAt || null;
+    const tokenExpiresAt = credential?.tokenExpiresAt || null;
 
     // 商品統計
     const [
@@ -393,10 +393,10 @@ router.post('/batch-publish', async (req: Request, res: Response) => {
 router.get('/channels', async (req: Request, res: Response) => {
   try {
     // Shopify認証ステータス確認
-    const credential = await prisma.integrationCredential.findFirst({
+    const credential = await prisma.marketplaceCredential.findFirst({
       where: {
-        integrationId: { contains: 'shopify' },
-        isValid: true,
+        marketplace: 'SHOPIFY',
+        isActive: true,
       },
       orderBy: { createdAt: 'desc' },
     });
