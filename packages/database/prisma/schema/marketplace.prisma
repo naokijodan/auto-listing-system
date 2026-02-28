@@ -1,0 +1,180 @@
+// Prisma Schema - Marketplace Common (Credentials, OAuth, Sync)
+
+
+// ========================================
+// マーケットプレイス認証情報
+// ========================================
+model MarketplaceCredential {
+  id String @id @default(cuid())
+
+  marketplace Marketplace
+  name        String      @default("default") // アカウント名
+
+  // 認証情報（暗号化推奨）
+  credentials Json // { clientId, clientSecret, accessToken, refreshToken, ... }
+
+  // トークン有効期限
+  tokenExpiresAt        DateTime?
+  refreshTokenExpiresAt DateTime?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([marketplace, name])
+  @@index([marketplace, isActive])
+  @@map("marketplace_credentials")
+}
+
+
+// ========================================
+// OAuth状態管理（CSRF対策）
+// ========================================
+model OAuthState {
+  id String @id @default(cuid())
+
+  state     String   @unique
+  provider  String // EBAY, JOOM, etc.
+  expiresAt DateTime
+  metadata  Json     @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([provider, expiresAt])
+  @@map("oauth_states")
+}
+
+
+// ========================================
+// マーケットプレイス同期設定（Phase 44-B）
+// ========================================
+model MarketplaceSyncSetting {
+  id             String    @id @default(cuid())
+  marketplace    String // 'JOOM' | 'EBAY'
+  syncType       String // 'INVENTORY' | 'ORDER' | 'PRICE'
+  cronExpression String // cron式
+  isEnabled      Boolean   @default(true)
+  lastRunAt      DateTime?
+  nextRunAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([marketplace, syncType])
+  @@index([isEnabled])
+  @@map("marketplace_sync_settings")
+}
+
+
+// ========================================
+// マルチプラットフォーム在庫一元管理（Phase M-1）
+// ========================================
+
+// 在庫変動イベント（全プラットフォーム共通）
+model InventoryEvent {
+  id        String @id @default(cuid())
+  productId String
+
+  eventType InventoryEventType
+  quantity  Int // 変動数（正: 入荷、負: 出荷/販売）
+  prevStock Int // 変動前在庫
+  newStock  Int // 変動後在庫
+
+  marketplace Marketplace? // どのプラットフォームで発生したか（手動調整はnull）
+  orderId     String? // 注文起因の場合
+  reason      String? // 変動理由
+
+  syncedTo   String[] // 同期済みプラットフォーム一覧
+  syncErrors Json? // 同期エラー詳細
+
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("inventory_events")
+}
+
+enum InventoryEventType {
+  SALE // 販売
+  RESTOCK // 入荷
+  ADJUSTMENT // 手動調整
+  RETURN // 返品
+  SYNC // 同期による補正
+  RESERVED // 予約（出品中のロック）
+}
+
+
+// マーケットプレイス同期状態
+model MarketplaceSyncState {
+  id          String      @id @default(cuid())
+  marketplace Marketplace
+  productId   String
+  listingId   String? // プラットフォーム側のID
+
+  syncStatus    MarketplaceSyncStatus @default(PENDING)
+  lastSyncAt    DateTime?
+  lastSyncError String?
+  retryCount    Int                   @default(0)
+
+  localStock  Int    @default(0) // rakuda側の在庫数
+  remoteStock Int? // プラットフォーム側の在庫数
+  localPrice  Float? // rakuda側の価格
+  remotePrice Float? // プラットフォーム側の価格
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([marketplace, productId])
+  @@index([syncStatus])
+  @@index([marketplace, isActive])
+  @@map("marketplace_sync_states")
+}
+
+enum MarketplaceSyncStatus {
+  PENDING
+  SYNCING
+  SYNCED
+  ERROR
+  STALE
+}
+
+
+// ========================================
+// v3.0: Social Commerce カタログモデル
+// ========================================
+
+model SupplierSource {
+  id            String     @id @default(cuid())
+  productId     String
+  type          SupplyType
+  supplierUrl   String?
+  quantity      Int        @default(0)
+  priority      Int        @default(0)
+  lastCheckedAt DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@map("supplier_sources")
+}
+
+enum SupplyType {
+  WAREHOUSE
+  SUPPLIER
+  ON_DEMAND
+}
+
+enum InventoryMode {
+  STOCKED
+  DROPSHIP
+  HYBRID
+}
+

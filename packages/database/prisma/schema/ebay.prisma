@@ -1,0 +1,132 @@
+// Prisma Schema - eBay Domain Models
+
+
+// ========================================
+// eBay カテゴリマッピング
+// ========================================
+model EbayCategoryMapping {
+  id String @id @default(cuid())
+
+  sourceCategory   String // 元カテゴリ（日本語）
+  ebayCategoryId   String // eBayカテゴリID
+  ebayCategoryName String // eBayカテゴリ名
+
+  // Item Specifics テンプレート
+  itemSpecifics Json @default("{}")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  templates ListingTemplate[]
+
+  @@unique([sourceCategory])
+  @@map("ebay_category_mappings")
+}
+
+
+// ========================================
+// Phase 105: eBay出品テンプレート
+// ========================================
+
+model EbayListingTemplate {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  // カテゴリ設定
+  ebayCategoryId   String
+  ebayCategoryName String?
+
+  // コンディション
+  conditionId          String?
+  conditionDescription String?
+
+  // ポリシー設定
+  fulfillmentPolicyId String?
+  paymentPolicyId     String?
+  returnPolicyId      String?
+
+  // 価格・送料設定
+  defaultShippingCost Float?
+  priceMultiplier     Float  @default(1.0) // 仕入れ価格に対する倍率
+
+  // Item Specifics
+  itemSpecifics Json @default("{}")
+
+  // 説明文テンプレート
+  descriptionTemplate String? @db.Text
+
+  // フラグ
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ebayCategoryId])
+  @@index([isActive, isDefault])
+  @@map("ebay_listing_templates")
+}
+
+model EbayAutoRelistConfig {
+  id String @id @default(cuid())
+
+  // 基本設定
+  enabled        Boolean @default(false)
+  maxRelistCount Int     @default(3) // 最大再出品回数
+
+  // 価格調整
+  priceAdjustment Float  @default(0) // パーセンテージ（-5 = 5%値下げ）
+  minPrice        Float? // 最低価格
+
+  // 除外設定
+  excludeCategories String[] @default([])
+  excludeBrands     String[] @default([])
+
+  // スケジュール
+  runHour Int   @default(9) // 実行時刻（時）
+  runDays Int[] @default([1, 2, 3, 4, 5]) // 実行曜日（1-7）
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ebay_auto_relist_config")
+}
+
+model EbayBulkOperation {
+  id String @id @default(cuid())
+
+  operationType EbayBulkOperationType
+  status        BulkOperationStatus   @default(PENDING)
+
+  // 対象
+  listingIds String[]
+  totalCount Int
+
+  // 結果
+  successCount Int  @default(0)
+  failureCount Int  @default(0)
+  results      Json @default("[]")
+
+  // パラメータ
+  parameters Json @default("{}")
+
+  // エラー
+  errorMessage String?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status, createdAt])
+  @@map("ebay_bulk_operations")
+}
+
+enum EbayBulkOperationType {
+  PRICE_UPDATE
+  END_LISTING
+  RELIST
+  APPLY_TEMPLATE
+}
+

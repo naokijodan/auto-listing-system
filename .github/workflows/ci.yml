@@ -86,10 +86,10 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Generate Prisma Client
-        run: npx prisma generate --schema=packages/database/prisma/schema.prisma
+        run: npx prisma generate --schema=packages/database/prisma/schema
 
       - name: Run database migrations
-        run: npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma
+        run: npx prisma migrate deploy --schema=packages/database/prisma/schema
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/rakuda_test
 
@@ -148,7 +148,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Generate Prisma Client
-        run: npx prisma generate --schema=packages/database/prisma/schema.prisma
+        run: npx prisma generate --schema=packages/database/prisma/schema
 
       - name: Build Web App
         run: npm run build --filter=@rakuda/web
@@ -188,7 +188,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Generate Prisma Client
-        run: npx prisma generate --schema=packages/database/prisma/schema.prisma
+        run: npx prisma generate --schema=packages/database/prisma/schema
 
       - name: Build
         run: npm run build

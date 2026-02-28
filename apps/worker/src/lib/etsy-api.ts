@@ -266,3 +266,99 @@ export function calculateEtsyPrice(costJpy: number): number {
 
 export const etsyApi = new EtsyApiClient();
 
+/**
+ * Etsy リフレッシュトークンでアクセストークンを更新
+ * schedulerのcheckTokenExpiryから呼ばれる
+ */
+export async function refreshEtsyToken(): Promise<{
+  success: boolean;
+  expiresAt?: Date;
+  error?: string;
+}> {
+  const credential = await prisma.marketplaceCredential.findFirst({
+    where: { marketplace: 'ETSY', isActive: true },
+  });
+
+  if (!credential) {
+    return { success: false, error: 'Etsy credentials not configured' };
+  }
+
+  const creds = credential.credentials as Record<string, any>;
+  const clientId: string = creds.clientId || process.env.ETSY_API_KEY || '';
+  const refreshToken: string | undefined = creds.refreshToken;
+
+  if (!refreshToken) {
+    return {
+      success: false,
+      error: 'Etsy refresh token not available. OAuth authorization required.',
+    };
+  }
+
+  if (!clientId) {
+    return {
+      success: false,
+      error: 'Etsy API key not configured',
+    };
+  }
+
+  try {
+    const response = await fetch(ETSY_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        refresh_token: refreshToken,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      log.error({
+        type: 'etsy_token_refresh_failed',
+        status: response.status,
+        error: text,
+      });
+      return {
+        success: false,
+        error: `Token refresh failed: ${text}`,
+      };
+    }
+
+    const data = await response.json() as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in: number;
+    };
+
+    const expiresIn = data.expires_in || 3600;
+    const expiresAt = new Date(Date.now() + expiresIn * 1000);
+
+    await prisma.marketplaceCredential.update({
+      where: { id: credential.id },
+      data: {
+        credentials: {
+          ...creds,
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token || refreshToken,
+        },
+        tokenExpiresAt: expiresAt,
+      },
+    });
+
+    log.info({ type: 'etsy_token_refreshed', expiresAt });
+
+    // シングルトンインスタンスのキャッシュをクリア
+    (etsyApi as any).accessToken = data.access_token;
+    (etsyApi as any).tokenExpiresAt = expiresAt;
+
+    return { success: true, expiresAt };
+  } catch (error: any) {
+    log.error({
+      type: 'etsy_token_refresh_exception',
+      error: error.message,
+    });
+    return { success: false, error: error.message };
+  }
+}
+

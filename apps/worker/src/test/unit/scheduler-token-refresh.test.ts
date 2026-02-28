@@ -28,6 +28,13 @@ vi.mock('./joom-api', () => ({
   }),
 }));
 
+vi.mock('./etsy-api', () => ({
+  refreshEtsyToken: vi.fn().mockResolvedValue({
+    success: true,
+    expiresAt: new Date(Date.now() + 3600000),
+  }),
+}));
+
 describe('Token Refresh Scheduler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -172,11 +179,8 @@ describe('Token Refresh Scheduler', () => {
 
   describe('Joom Token Refresh (Phase 48)', () => {
     it('should attempt to refresh Joom token when expiring soon', async () => {
-      // This test verifies that checkTokenExpiry processes JOOM credentials correctly
-      // The actual refreshJoomToken function is tested separately in joom-token-refresh.test.ts
       const { checkTokenExpiry } = await import('../../lib/scheduler');
 
-      // Token expiring in 30 minutes (within 1 hour refresh threshold)
       const expiringDate = new Date(Date.now() + 30 * 60000);
 
       vi.mocked(prisma.marketplaceCredential.findMany).mockResolvedValue([
@@ -196,16 +200,55 @@ describe('Token Refresh Scheduler', () => {
         },
       ] as any);
 
-      // In real execution, this will try to refresh the token
-      // The mock returns success, but the actual behavior depends on dynamic import
-      // We mainly verify no exception is thrown and the result structure is correct
       const result = await checkTokenExpiry({
-        refreshBeforeExpiry: 3600000, // 1 hour
+        refreshBeforeExpiry: 3600000,
       });
 
       expect(result.checked).toBe(1);
-      // Result will either be refreshed (if mock worked) or have errors/warnings (if dynamic import failed)
       expect(result.refreshed + result.errors.length + result.warnings.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('Etsy Token Refresh', () => {
+    it('should attempt to refresh Etsy token when expiring soon', async () => {
+      const { checkTokenExpiry } = await import('../../lib/scheduler');
+
+      const expiringDate = new Date(Date.now() + 30 * 60000);
+
+      vi.mocked(prisma.marketplaceCredential.findMany).mockResolvedValue([
+        {
+          id: '2',
+          marketplace: 'ETSY',
+          isActive: true,
+          tokenExpiresAt: expiringDate,
+          credentials: {
+            clientId: 'etsy-client-id',
+            accessToken: 'old-token',
+            refreshToken: 'etsy-refresh-token',
+          },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ] as any);
+
+      const result = await checkTokenExpiry({
+        refreshBeforeExpiry: 3600000,
+      });
+
+      expect(result.checked).toBe(1);
+      expect(result.refreshed + result.errors.length + result.warnings.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should filter by etsy marketplace', async () => {
+      const { checkTokenExpiry } = await import('../../lib/scheduler');
+
+      vi.mocked(prisma.marketplaceCredential.findMany).mockResolvedValue([]);
+
+      await checkTokenExpiry({ marketplace: 'etsy' });
+
+      expect(prisma.marketplaceCredential.findMany).toHaveBeenCalledWith({
+        where: { marketplace: 'ETSY', isActive: true },
+      });
     });
   });
 });

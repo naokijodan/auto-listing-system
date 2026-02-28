@@ -1,0 +1,663 @@
+// Prisma Schema - Monitoring & Metrics
+
+
+// ========================================
+// Phase 32: 監視・アラート
+// ========================================
+
+model MetricDefinition {
+  id String @id @default(cuid())
+
+  // メトリクス定義
+  name        String  @unique // 例: system.cpu.usage, business.orders.count
+  displayName String // 表示名
+  description String?
+  unit        String? // 単位（%, ms, count等）
+
+  // 分類
+  category   MetricCategory
+  metricType MetricType     @default(GAUGE)
+
+  // 収集設定
+  collectInterval Int @default(60) // 収集間隔（秒）
+  retentionDays   Int @default(30) // 保持日数
+
+  // メタデータ
+  isActive  Boolean  @default(true)
+  tags      String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 関連
+  snapshots  MetricSnapshot[]
+  alertRules MetricAlertRule[]
+
+  @@map("metric_definitions")
+}
+
+model MetricSnapshot {
+  id String @id @default(cuid())
+
+  // メトリクス参照
+  metricId String
+  metric   MetricDefinition @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  // 値
+  value    Float
+  minValue Float?
+  maxValue Float?
+  avgValue Float?
+  count    Int? // カウンター系メトリクス用
+
+  // ラベル（ディメンション）
+  labels Json @default("{}") // 例: { "host": "server-1", "endpoint": "/api/products" }
+
+  // タイムスタンプ
+  timestamp DateTime @default(now())
+
+  @@index([metricId, timestamp])
+  @@index([timestamp])
+  @@map("metric_snapshots")
+}
+
+model MetricAlertRule {
+  id String @id @default(cuid())
+
+  // ルール定義
+  name        String
+  description String?
+  metricId    String
+  metric      MetricDefinition @relation(fields: [metricId], references: [id])
+
+  // 条件
+  condition  MetricAlertCondition
+  threshold  Float
+  duration   Int                   @default(60) // 判定期間（秒）
+  comparison MetricAlertComparison
+
+  // 重要度
+  severity MetricAlertSeverity @default(WARNING)
+
+  // 通知設定
+  channelIds       String[] @default([]) // 通知チャンネルID
+  notifyInterval   Int      @default(300) // 再通知間隔（秒）
+  maxNotifications Int      @default(5) // 最大通知回数
+
+  // Playbook
+  playbookUrl String? // 対応手順書URL
+  runbook     Json? // 対応手順（JSON形式）
+
+  // メタデータ
+  isActive  Boolean  @default(true)
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 関連
+  alerts MetricAlert[]
+
+  @@index([metricId])
+  @@index([severity, isActive])
+  @@map("metric_alert_rules")
+}
+
+model MetricAlert {
+  id String @id @default(cuid())
+
+  // ルール参照
+  ruleId String
+  rule   MetricAlertRule @relation(fields: [ruleId], references: [id])
+
+  // アラート状態
+  status   MetricAlertStatus   @default(FIRING)
+  severity MetricAlertSeverity
+
+  // 値
+  currentValue Float // 現在値
+  threshold    Float // しきい値
+
+  // 詳細
+  message     String @db.Text
+  labels      Json   @default("{}")
+  annotations Json   @default("{}")
+
+  // 対応状況
+  assignedTo     String?
+  assignedAt     DateTime?
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  resolvedBy     String?
+  resolvedAt     DateTime?
+  resolution     String?   @db.Text
+
+  // 通知
+  notificationCount Int       @default(0)
+  lastNotifiedAt    DateTime?
+
+  // タイムスタンプ
+  firedAt   DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 関連
+  history MetricAlertHistory[]
+
+  @@index([ruleId, status])
+  @@index([status, firedAt])
+  @@index([severity, status])
+  @@map("metric_alerts")
+}
+
+model MetricAlertHistory {
+  id String @id @default(cuid())
+
+  // アラート参照
+  alertId String
+  alert   MetricAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  // 変更内容
+  action    MetricAlertAction
+  oldStatus MetricAlertStatus?
+  newStatus MetricAlertStatus?
+
+  // 詳細
+  comment   String? @db.Text
+  changedBy String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+
+  @@index([alertId, createdAt])
+  @@map("metric_alert_histories")
+}
+
+model SystemHealth {
+  id String @id @default(cuid())
+
+  // システム情報
+  hostname  String?
+  component String // api, worker, database, redis
+
+  // リソース使用率
+  cpuUsage    Float? // CPU使用率（%）
+  memoryUsage Float? // メモリ使用率（%）
+  diskUsage   Float? // ディスク使用率（%）
+
+  // パフォーマンス
+  responseTime Float? // 平均レスポンス時間（ms）
+  requestCount Int? // リクエスト数
+  errorCount   Int? // エラー数
+  errorRate    Float? // エラー率（%）
+
+  // 接続
+  activeConnections Int? // アクティブ接続数
+  queuedJobs        Int? // キュー内ジョブ数
+
+  // ステータス
+  status    HealthStatus @default(HEALTHY)
+  lastError String?
+
+  // タイムスタンプ
+  recordedAt DateTime @default(now())
+
+  @@index([component, recordedAt])
+  @@index([status])
+  @@map("system_health")
+}
+
+enum MetricCategory {
+  SYSTEM // システムメトリクス
+  BUSINESS // ビジネスメトリクス
+  PERFORMANCE // パフォーマンスメトリクス
+  SECURITY // セキュリティメトリクス
+  CUSTOM // カスタムメトリクス
+}
+
+enum MetricType {
+  GAUGE // ゲージ（現在値）
+  COUNTER // カウンター（累積値）
+  HISTOGRAM // ヒストグラム
+  SUMMARY // サマリー
+}
+
+enum MetricAlertCondition {
+  ABOVE // 以上
+  BELOW // 以下
+  EQUAL // 等しい
+  NOT_EQUAL // 等しくない
+  INCREASE_BY // 増加率
+  DECREASE_BY // 減少率
+}
+
+enum MetricAlertComparison {
+  GT // より大きい
+  GTE // 以上
+  LT // より小さい
+  LTE // 以下
+  EQ // 等しい
+  NE // 等しくない
+}
+
+enum MetricAlertSeverity {
+  CRITICAL // 緊急
+  WARNING // 警告
+  INFO // 情報
+}
+
+enum MetricAlertStatus {
+  FIRING // 発火中
+  ACKNOWLEDGED // 確認済み
+  RESOLVED // 解決済み
+  SILENCED // 抑制中
+}
+
+enum MetricAlertAction {
+  CREATED // 作成
+  ACKNOWLEDGED // 確認
+  ASSIGNED // アサイン
+  ESCALATED // エスカレーション
+  RESOLVED // 解決
+  SILENCED // 抑制
+  REOPENED // 再オープン
+  COMMENTED // コメント
+  NOTIFIED // 通知
+}
+
+enum HealthStatus {
+  HEALTHY // 正常
+  DEGRADED // 劣化
+  UNHEALTHY // 異常
+  UNKNOWN // 不明
+}
+
+
+// ========================================
+// Phase 86: パフォーマンス最適化
+// ========================================
+model PerformanceMetric {
+  id String @id @default(cuid())
+
+  metricType PerformanceMetricType
+  name       String
+  value      Float
+  unit       String
+
+  // コンテキスト
+  endpoint   String?
+  method     String?
+  statusCode Int?
+  userId     String?
+
+  // 詳細メトリクス
+  responseTimeMs  Int?
+  dbQueryTimeMs   Int?
+  cacheHitRate    Float?
+  memoryUsageMb   Float?
+  cpuUsagePercent Float?
+
+  // タグ
+  tags     Json @default("{}")
+  metadata Json @default("{}")
+
+  // 集計期間
+  periodStart DateTime
+  periodEnd   DateTime
+  sampleCount Int      @default(1)
+
+  createdAt DateTime @default(now())
+
+  @@index([metricType, periodStart])
+  @@index([endpoint, periodStart])
+  @@index([name, periodStart])
+  @@map("performance_metrics")
+}
+
+enum PerformanceMetricType {
+  API_LATENCY
+  DB_QUERY_TIME
+  CACHE_HIT_RATE
+  MEMORY_USAGE
+  CPU_USAGE
+  THROUGHPUT
+  ERROR_RATE
+  QUEUE_DEPTH
+  ACTIVE_CONNECTIONS
+  CUSTOM
+}
+
+enum CacheStatus {
+  HIT
+  MISS
+  STALE
+  BYPASS
+  ERROR
+}
+
+model CdnConfig {
+  id String @id @default(cuid())
+
+  name     String
+  provider CdnProvider
+  status   CdnConfigStatus @default(INACTIVE)
+
+  // エンドポイント
+  originUrl    String
+  cdnUrl       String?
+  customDomain String?
+
+  // 認証
+  accessKeyId     String?
+  secretAccessKey String?
+  apiToken        String?
+
+  // キャッシュ設定
+  defaultTtl Int  @default(86400)
+  maxTtl     Int  @default(604800)
+  cacheRules Json @default("[]")
+
+  // セキュリティ
+  enableHttps       Boolean  @default(true)
+  enableCompression Boolean  @default(true)
+  enableWebp        Boolean  @default(true)
+  allowedOrigins    String[] @default(["*"])
+
+  // 画像最適化
+  imageOptimization Boolean @default(true)
+  imageQuality      Int     @default(85)
+  imageSizes        Int[]   @default([320, 640, 960, 1280, 1920])
+
+  // 統計
+  totalRequests   BigInt    @default(0)
+  totalBandwidth  BigInt    @default(0)
+  cacheHitRatio   Float     @default(0)
+  lastStatsUpdate DateTime?
+
+  // メタデータ
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provider, status])
+  @@map("cdn_configs")
+}
+
+enum CdnProvider {
+  CLOUDFLARE
+  AWS_CLOUDFRONT
+  FASTLY
+  BUNNY_CDN
+  IMGIX
+  CLOUDINARY
+  CUSTOM
+}
+
+enum CdnConfigStatus {
+  INACTIVE
+  CONFIGURING
+  ACTIVE
+  ERROR
+  SUSPENDED
+}
+
+model QueryOptimizationRule {
+  id String @id @default(cuid())
+
+  name        String
+  description String?
+  isEnabled   Boolean @default(true)
+  priority    Int     @default(100)
+
+  // マッチング条件
+  targetTable        String?
+  targetEndpoint     String?
+  queryPattern       String?
+  minExecutionTimeMs Int     @default(100)
+
+  // 最適化アクション
+  optimizationType   OptimizationType
+  optimizationConfig Json             @default("{}")
+
+  // インデックス推奨
+  suggestedIndex String?
+  indexCreated   Boolean @default(false)
+
+  // キャッシュ設定
+  enableCache Boolean @default(false)
+  cacheTtl    Int     @default(60)
+  cacheKey    String?
+
+  // 統計
+  matchCount     Int       @default(0)
+  avgSavedTimeMs Float     @default(0)
+  lastMatchedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isEnabled, priority])
+  @@index([targetTable])
+  @@index([targetEndpoint])
+  @@map("query_optimization_rules")
+}
+
+enum OptimizationType {
+  ADD_INDEX
+  QUERY_REWRITE
+  ENABLE_CACHE
+  PAGINATION
+  BATCH_LOADING
+  LAZY_LOADING
+  PRECOMPUTE
+  DENORMALIZE
+  CUSTOM
+}
+
+
+// ========================================
+// Phase 95: eBay出品パフォーマンス分析
+// ========================================
+
+model ListingPerformance {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  listingId  String  @unique
+  ebayItemId String?
+
+  title      String
+  price      Float
+  currency   String  @default("USD")
+  category   String?
+  categoryId String?
+
+  views          Int   @default(0)
+  watchers       Int   @default(0)
+  impressions    Int   @default(0)
+  clicks         Int   @default(0)
+  ctr            Float @default(0)
+  conversionRate Float @default(0)
+
+  daysListed  Int       @default(0)
+  listingDate DateTime?
+
+  performanceScore Float?
+  scoreType        PerformanceScoreType @default(COMBINED)
+
+  categoryAvgViews    Float?
+  categoryAvgWatchers Float?
+  categoryPercentile  Float?
+
+  isLowPerformer     Boolean @default(false)
+  lowPerformerReason String?
+
+  lastSyncedAt DateTime?
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  snapshots   PerformanceSnapshot[]
+  flags       LowPerformanceFlag[]
+  suggestions ImprovementSuggestion[]
+
+  @@index([organizationId, isLowPerformer])
+  @@index([organizationId, performanceScore])
+  @@index([categoryId])
+  @@map("listing_performances")
+}
+
+enum PerformanceScoreType {
+  ABSOLUTE
+  RELATIVE
+  COMBINED
+}
+
+model PerformanceSnapshot {
+  id String @id @default(cuid())
+
+  listingId String
+  listing   ListingPerformance @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  date DateTime @db.Date
+
+  views       Int @default(0)
+  watchers    Int @default(0)
+  impressions Int @default(0)
+  clicks      Int @default(0)
+
+  viewsChange    Int @default(0)
+  watchersChange Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@unique([listingId, date])
+  @@index([listingId, date])
+  @@map("performance_snapshots")
+}
+
+model PerformanceThreshold {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+
+  metric   ThresholdMetric
+  operator ThresholdOperator @default(LESS_THAN)
+
+  absoluteValue      Float?
+  relativePercentile Float?
+
+  daysListedMin Int?
+
+  isActive Boolean @default(true)
+  priority Int     @default(0)
+
+  actionOnMatch ThresholdAction @default(FLAG)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, isActive])
+  @@map("performance_thresholds")
+}
+
+enum ThresholdMetric {
+  VIEWS
+  WATCHERS
+  IMPRESSIONS
+  CLICKS
+  CTR
+  CONVERSION_RATE
+  DAYS_LISTED
+  PERFORMANCE_SCORE
+}
+
+enum ThresholdOperator {
+  LESS_THAN
+  GREATER_THAN
+  EQUALS
+  BETWEEN
+  PERCENTILE_BELOW
+}
+
+enum ThresholdAction {
+  FLAG
+  NOTIFY
+  SUGGEST_IMPROVEMENT
+  AUTO_DELIST
+  AUTO_PRICE_REDUCE
+}
+
+model LowPerformanceFlag {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  listingId String
+  listing   ListingPerformance @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  thresholdId String?
+
+  reason  String
+  details Json   @default("{}")
+
+  score   Float?
+  metrics Json   @default("{}")
+
+  suggestedActions Json @default("[]")
+
+  status        FlagStatus @default(ACTIVE)
+  dismissedAt   DateTime?
+  dismissedBy   String?
+  dismissReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, status])
+  @@index([listingId])
+  @@map("low_performance_flags")
+}
+
+enum FlagStatus {
+  ACTIVE
+  DISMISSED
+  RESOLVED
+  EXPIRED
+}
+
+model CategoryBenchmark {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  categoryId   String
+  categoryName String
+
+  avgViews       Float @default(0)
+  avgWatchers    Float @default(0)
+  avgImpressions Float @default(0)
+  avgCtr         Float @default(0)
+  avgDaysToSell  Float @default(0)
+
+  p10Views Float @default(0)
+  p25Views Float @default(0)
+  p50Views Float @default(0)
+  p75Views Float @default(0)
+  p90Views Float @default(0)
+
+  sampleSize   Int      @default(0)
+  calculatedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, categoryId])
+  @@index([organizationId])
+  @@map("category_benchmarks")
+}
+

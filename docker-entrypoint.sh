@@ -47,7 +47,7 @@ wait_for_database() {
 run_migrations() {
   echo "Running database migrations..."
 
-  if npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma; then
+  if npx prisma migrate deploy --schema=packages/database/prisma/schema; then
     echo "Database migrations completed successfully."
   else
     echo "ERROR: Database migrations failed."

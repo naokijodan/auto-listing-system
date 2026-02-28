@@ -1,0 +1,198 @@
+// Prisma Schema - Joom Domain Models
+
+
+// ========================================
+// Phase 49: Joom カテゴリマッピング
+// ========================================
+model JoomCategoryMapping {
+  id String @id @default(cuid())
+
+  // 元カテゴリ（日本語キーワード）
+  sourceKeywords String[] // 元カテゴリキーワード群
+  sourceBrand    String? // ブランドマッチ（オプション）
+
+  // Joomカテゴリ情報
+  joomCategoryId   String // JoomカテゴリID
+  joomCategoryName String // Joomカテゴリ名（英語）
+  joomCategoryPath String // カテゴリパス（例: "Electronics > Watches > Smart Watches"）
+
+  // 必須属性テンプレート
+  requiredAttributes Json @default("{}") // { "material": "string", "color": ["red", "blue"], ... }
+
+  // 推奨属性
+  recommendedAttributes Json @default("{}") // オプションで指定可能な属性
+
+  // AIマッピング情報
+  aiConfidence Float     @default(0) // AIが提案した場合の信頼度 (0-1)
+  aiSuggested  Boolean   @default(false) // AIによる提案かどうか
+  verifiedAt   DateTime? // 人間による検証日時
+  verifiedBy   String? // 検証者
+
+  // 統計
+  usageCount Int       @default(0) // 使用回数
+  lastUsedAt DateTime? // 最終使用日時
+
+  isActive  Boolean  @default(true)
+  priority  Int      @default(0) // 優先度（高いほど優先）
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([joomCategoryId])
+  @@index([isActive, priority])
+  @@map("joom_category_mappings")
+}
+
+
+// ========================================
+// Phase 40: Joom出品ワークフロー
+// ========================================
+
+// Joom出品情報
+model JoomListing {
+  id String @id @default(cuid())
+
+  // エンリッチメントタスク
+  taskId String         @unique
+  task   EnrichmentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  // 商品参照
+  productId String
+  listingId String? // RAKUDAのListingモデルID
+
+  // Joom固有データ
+  joomProductId String? // Joom側の商品ID
+  joomVariantId String? // バリエーションID
+  joomSku       String?
+
+  // 出品データ（Joom APIに送信するデータ）
+  title       String?
+  description String? @db.Text
+  price       Float?
+  currency    String  @default("USD")
+  quantity    Int     @default(1)
+
+  // 送料設定
+  shippingPrice Float?
+  shippingTime  String? // "7-14 days"等
+
+  // カテゴリ・属性
+  joomCategory   String?
+  joomAttributes Json    @default("{}") // Joom固有の属性
+
+  // 画像（Joomにアップロード済み）
+  joomImages String[] // Joom CDN URL
+
+  // ステータス
+  status       JoomListingStatus @default(DRAFT)
+  publishedAt  DateTime?
+  lastSyncedAt DateTime?
+
+  // エラー
+  lastError  String? @db.Text
+  errorCount Int     @default(0)
+
+  // Dry-Run結果
+  dryRunResult Json? // プレビュー結果
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([joomProductId])
+  @@index([status])
+  @@index([productId])
+  @@map("joom_listings")
+}
+
+
+// Joom出品バッチ（一括出品用）
+model JoomPublishBatch {
+  id String @id @default(cuid())
+
+  // バッチ情報
+  name        String?
+  description String?
+
+  // 対象
+  productIds String[] // 対象商品ID
+  totalCount Int      @default(0)
+
+  // 進捗
+  processedCount Int @default(0)
+  successCount   Int @default(0)
+  failedCount    Int @default(0)
+  skippedCount   Int @default(0)
+
+  // ステータス
+  status BatchPublishStatus @default(PENDING)
+
+  // 設定
+  dryRun      Boolean @default(false)
+  autoRetry   Boolean @default(true)
+  concurrency Int     @default(5)
+
+  // 実行者
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  // 処理時間
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // 結果サマリー
+  resultSummary Json? // {success: [], failed: [], skipped: []}
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdById])
+  @@map("joom_publish_batches")
+}
+
+
+// Joom APIログ
+model JoomApiLog {
+  id String @id @default(cuid())
+
+  // リクエスト情報
+  method      String // GET, POST, PUT, DELETE
+  endpoint    String
+  requestBody Json?
+
+  // レスポンス情報
+  statusCode   Int?
+  responseBody Json?
+
+  // 対象
+  joomProductId String?
+  productId     String?
+
+  // 結果
+  success      Boolean @default(false)
+  errorMessage String?
+
+  // パフォーマンス
+  duration Int? // ミリ秒
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+
+  @@index([endpoint, createdAt])
+  @@index([joomProductId])
+  @@index([success, createdAt])
+  @@map("joom_api_logs")
+}
+
+enum JoomListingStatus {
+  DRAFT // 下書き
+  READY // 出品準備完了
+  PUBLISHING // 出品処理中
+  ACTIVE // 出品中
+  PAUSED // 一時停止
+  SOLD // 売却済み
+  ENDED // 終了
+  ERROR // エラー
+}
+

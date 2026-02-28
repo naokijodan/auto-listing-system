@@ -1,0 +1,6485 @@
+// Prisma Schema - Common Models (Product, Listing, Order, etc.)
+
+
+// ========================================
+// 仕入元情報
+// ========================================
+model Source {
+  id        String     @id @default(cuid())
+  type      SourceType
+  name      String
+  url       String?
+  isActive  Boolean    @default(true)
+  metadata  Json       @default("{}")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  products Product[]
+
+  @@map("sources")
+}
+
+enum SourceType {
+  MERCARI
+  YAHOO_AUCTION
+  YAHOO_FLEA
+  RAKUMA
+  RAKUTEN
+  AMAZON
+  TAKAYAMA
+  JOSHIN
+  OTHER
+}
+
+
+// ========================================
+// 統一商品モデル
+// ========================================
+model Product {
+  id String @id @default(cuid())
+
+  // ソース情報
+  sourceId     String
+  source       Source  @relation(fields: [sourceId], references: [id])
+  sourceItemId String // 元サイトの商品ID
+  sourceUrl    String
+  sourceHash   String? // 差分検知用ハッシュ
+
+  // 基本情報（原文）
+  title       String
+  description String @db.Text
+  price       Int // 仕入価格（円）
+
+  // 翻訳済み情報
+  titleEn       String?
+  descriptionEn String? @db.Text
+
+  // 商品属性
+  category   String?
+  brand      String?
+  condition  String?
+  weight     Int? // グラム
+  attributes Json    @default("{}") // AI抽出属性
+
+  // 画像
+  images          String[] // 元画像URL
+  processedImages String[] // 白抜き後URL（MinIO/S3）
+
+  // セラー情報
+  sellerId   String?
+  sellerName String?
+
+  // ステータス
+  status            ProductStatus @default(PENDING_SCRAPE)
+  translationStatus ProcessStatus @default(PENDING)
+  imageStatus       ProcessStatus @default(PENDING)
+  lastError         String?       @db.Text
+
+  // タイムスタンプ
+  scrapedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  listings Listing[]
+  jobLogs  JobLog[]
+
+  // Phase 36: AI機能強化
+  pricePredictions PricePrediction[]
+  competitorPrices CompetitorPrice[]
+
+  // Phase 39: エンリッチメント
+  enrichmentTask EnrichmentTask?
+
+  // マルチプラットフォーム在庫一元管理（Phase M-1）
+  inventoryEvents       InventoryEvent[]
+  marketplaceSyncStates MarketplaceSyncState[]
+  etsyListings          EtsyListing[]
+  depopListings         DepopListing[]
+
+  // v3.0: Social Commerce / カタログモデル
+  inventoryMode   InventoryMode    @default(STOCKED)
+  supplierSources SupplierSource[]
+
+  @@unique([sourceId, sourceItemId])
+  @@index([status])
+  @@index([sourceHash])
+  @@index([createdAt])
+  // Phase 69: パフォーマンス最適化インデックス
+  @@index([status, updatedAt])
+  @@index([sourceId, status])
+  @@index([brand])
+  @@index([category])
+  @@index([translationStatus, imageStatus])
+  @@map("products")
+}
+
+enum ProductStatus {
+  PENDING_SCRAPE
+  SCRAPED
+  PROCESSING_IMAGES
+  TRANSLATING
+  READY_TO_REVIEW
+  APPROVED
+  PUBLISHING
+  ACTIVE
+  SOLD
+  OUT_OF_STOCK
+  ERROR
+  DELETED
+}
+
+enum ProcessStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  ERROR
+}
+
+
+// ========================================
+// 出品情報（マーケットプレイス別）
+// ========================================
+model Listing {
+  id String @id @default(cuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  marketplace          Marketplace
+  marketplaceListingId String? // eBay/Joom の出品ID
+
+  // 価格情報
+  listingPrice Float // 出品価格（USD）
+  shippingCost Float? // 送料
+  currency     String @default("USD")
+
+  // マーケット固有データ（JSONB）
+  marketplaceData Json @default("{}")
+
+  // ステータス
+  status       ListingStatus @default(DRAFT)
+  errorMessage String?       @db.Text
+
+  // 在庫自動化制御（Phase 17）
+  autoStatusEnabled Boolean   @default(true) // 自動停止/再開の有効化
+  pausedByInventory Boolean   @default(false) // 在庫切れによる自動停止中
+  resumeAt          DateTime? // 遅延再開予定日時
+
+  // タイムスタンプ
+  listedAt  DateTime?
+  soldAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // リレーション
+  inventoryAlerts   InventoryAlert[]
+  sales             Sale[]
+  scheduledListings ScheduledListing[]
+  optimizations     ListingOptimization[]
+
+  @@unique([productId, marketplace])
+  @@index([marketplace, status])
+  @@index([marketplaceListingId])
+  @@index([pausedByInventory, resumeAt])
+  // Phase 69: パフォーマンス最適化インデックス
+  @@index([status, updatedAt])
+  @@index([status, listedAt])
+  @@index([marketplace, status, listingPrice])
+  @@index([productId, status])
+  @@map("listings")
+}
+
+enum Marketplace {
+  JOOM
+  EBAY
+  ETSY
+  SHOPIFY
+  DEPOP
+  INSTAGRAM_SHOP
+  TIKTOK_SHOP
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_PUBLISH
+  PUBLISHING
+  ACTIVE
+  PAUSED
+  SOLD
+  ENDED
+  ERROR
+}
+
+
+// ========================================
+// スケジュール出品（Phase 116）
+// ========================================
+model ScheduledListing {
+  id        String  @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  scheduledAt DateTime // 出品予定日時
+  status      ScheduledListingStatus @default(PENDING)
+  executedAt  DateTime? // 実行日時
+  error       String? // エラーメッセージ
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledAt])
+  @@index([listingId])
+  @@map("scheduled_listings")
+}
+
+enum ScheduledListingStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+
+// ========================================
+// 在庫補充ルール（Phase 117）
+// ========================================
+model RestockRule {
+  id                String  @id @default(cuid())
+  name              String
+  lowStockThreshold Int // この在庫数以下でアラート
+  restockQuantity   Int // 補充数
+  supplierId        String?
+
+  autoOrder   Boolean @default(false) // 自動発注
+  notifyEmail Boolean @default(true) // メール通知
+  isActive    Boolean @default(true)
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs RestockLog[]
+
+  @@map("restock_rules")
+}
+
+
+// 在庫補充ログ（Phase 117）
+model RestockLog {
+  id        String @id @default(cuid())
+  productId String
+
+  ruleId  String?
+  rule    RestockRule? @relation(fields: [ruleId], references: [id])
+  orderId String?
+
+  previousStock Int
+  addedStock    Int
+  newStock      Int
+  source        String // manual, bulk, order, auto
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([source])
+  @@map("restock_logs")
+}
+
+
+// 在庫発注（Phase 117）
+model RestockOrder {
+  id         String  @id @default(cuid())
+  productId  String
+  supplierId String?
+
+  quantity Int
+  status   RestockOrderStatus @default(PENDING)
+
+  metadata    Json      @default("{}")
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([productId])
+  @@map("restock_orders")
+}
+
+enum RestockOrderStatus {
+  PENDING
+  ORDERED
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+
+// ========================================
+// 出品最適化（Phase 118）
+// ========================================
+model ListingOptimization {
+  id        String  @id @default(cuid())
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  type           String // TITLE, DESCRIPTION, KEYWORDS
+  originalValue  String  @db.Text
+  suggestedValue String  @db.Text
+  reason         String?
+
+  status    OptimizationStatus @default(PENDING)
+  appliedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId, status])
+  @@index([type])
+  @@map("listing_optimizations")
+}
+
+enum OptimizationStatus {
+  PENDING
+  APPLIED
+  REJECTED
+}
+
+
+// ========================================
+// ジョブログ
+// ========================================
+model JobLog {
+  id String @id @default(cuid())
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  jobId        String // BullMQ Job ID
+  queueName    String
+  jobType      String
+  status       JobStatus
+  payload      Json      @default("{}")
+  result       Json?
+  errorMessage String?   @db.Text
+
+  startedAt   DateTime
+  completedAt DateTime?
+  duration    Int? // ミリ秒
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([queueName, status])
+  @@index([createdAt])
+  @@index([jobId])
+  // Phase 69: パフォーマンス最適化インデックス
+  @@index([queueName, status, createdAt])
+  @@index([status, startedAt])
+  @@index([jobType, status])
+  @@map("job_logs")
+}
+
+enum JobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  DEAD_LETTER
+}
+
+
+// ========================================
+// 価格計算設定
+// ========================================
+model PriceSetting {
+  id String @id @default(cuid())
+
+  name        String      @unique
+  marketplace Marketplace
+
+  // 手数料
+  platformFeeRate Float // プラットフォーム手数料率
+  paymentFeeRate  Float // 決済手数料率
+
+  // マージン
+  targetProfitRate Float // 目標利益率
+  adRate           Float @default(0) // 広告費率
+
+  // 為替
+  exchangeRate   Float // USD/JPY
+  exchangeBuffer Float @default(0) // 為替バッファ
+
+  // カテゴリ別設定（オプション）
+  categorySettings Json @default("{}")
+
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("price_settings")
+}
+
+
+// ========================================
+// eBay シッピングポリシー
+// ========================================
+model ShippingPolicy {
+  id String @id @default(cuid())
+
+  name   String
+  region String // US, EU, ASIA など
+
+  // 配送方法
+  carrier String // ePacket, Cpass, EMS など
+
+  // 送料テーブル（重量別）
+  shippingTable Json // { "100": 880, "200": 1060, ... }
+
+  // 燃油サーチャージ
+  fuelSurcharge Float @default(0)
+
+  // 関税設定
+  dutyThreshold Float? // 関税閾値（USD）
+  dutyRate      Float? // 関税率
+
+  // 追加設定
+  handlingTime Int  @default(1) // 発送準備日数
+  metadata     Json @default("{}")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([region, carrier])
+  @@map("shipping_policies")
+}
+
+
+// ========================================
+// 為替レート履歴
+// ========================================
+model ExchangeRate {
+  id String @id @default(cuid())
+
+  fromCurrency String @default("JPY")
+  toCurrency   String @default("USD")
+  rate         Float
+
+  fetchedAt DateTime @default(now())
+  source    String   @default("manual") // manual, api, etc.
+
+  @@index([fromCurrency, toCurrency, fetchedAt])
+  @@map("exchange_rates")
+}
+
+
+// ========================================
+// 翻訳プロンプト設定
+// ========================================
+model TranslationPrompt {
+  id String @id @default(cuid())
+
+  name        String  @unique // プロンプト名
+  category    String? // 対象カテゴリ（nullはデフォルト）
+  marketplace String? // joom, ebay, null=共通
+
+  // プロンプト内容
+  systemPrompt String @db.Text // システムプロンプト
+  userPrompt   String @db.Text // ユーザープロンプトテンプレート
+
+  // 抽出する属性
+  extractAttributes String[] // ["brand", "model", "color", ...]
+
+  // 追加指示
+  additionalInstructions String?  @db.Text
+  seoKeywords            String[] // SEO推奨ワード
+
+  // 設定
+  priority  Int     @default(0) // 優先度（高いほど優先）
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  templates ListingTemplate[]
+
+  @@index([category, marketplace])
+  @@map("translation_prompts")
+}
+
+
+// ========================================
+// 出品テンプレート
+// ========================================
+model ListingTemplate {
+  id String @id @default(cuid())
+
+  name        String  @unique // テンプレート名
+  description String? // 説明
+
+  // カテゴリマッピングへの参照
+  categoryMappingId String?
+  categoryMapping   EbayCategoryMapping? @relation(fields: [categoryMappingId], references: [id])
+
+  // 翻訳プロンプトへの参照
+  translationPromptId String?
+  translationPrompt   TranslationPrompt? @relation(fields: [translationPromptId], references: [id])
+
+  // 価格設定
+  profitRate Float @default(30) // 目標利益率 (%)
+  minProfit  Float @default(500) // 最低利益額 (円)
+
+  // 出品設定
+  titleTemplate       String? @db.Text // タイトルテンプレート
+  descriptionTemplate String? @db.Text // 説明文テンプレート
+  conditionMapping    Json    @default("{}") // コンディション変換マップ
+
+  // デフォルト値
+  defaultWeight       Int? // デフォルト重量 (g)
+  defaultShippingDays String? // 配送日数
+
+  // 設定
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryMappingId])
+  @@map("listing_templates")
+}
+
+
+// ========================================
+// 注文管理
+// ========================================
+model Order {
+  id String @id @default(cuid())
+
+  // マーケットプレイス情報
+  marketplace        Marketplace
+  marketplaceOrderId String // eBay/Joomの注文ID
+
+  // 購入者情報
+  buyerUsername String
+  buyerEmail    String?
+  buyerName     String?
+
+  // 配送先住所
+  shippingAddress Json // { street, city, state, postalCode, country }
+
+  // 金額情報
+  subtotal     Float // 商品小計
+  shippingCost Float // 送料
+  tax          Float  @default(0) // 税金
+  total        Float // 合計金額
+  currency     String @default("USD")
+
+  // マーケット手数料
+  marketplaceFee Float @default(0)
+  paymentFee     Float @default(0)
+
+  // ステータス
+  status            OrderStatus       @default(PENDING)
+  paymentStatus     PaymentStatus     @default(PENDING)
+  fulfillmentStatus FulfillmentStatus @default(UNFULFILLED)
+
+  // 追跡情報
+  trackingNumber  String?
+  trackingCarrier String?
+  shippedAt       DateTime?
+
+  // 生データ（デバッグ・参照用）
+  rawData Json @default("{}")
+
+  // タイムスタンプ
+  orderedAt DateTime // マーケットプレイスでの注文日時
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // 関連
+  sales            Sale[]
+  customerMessages CustomerMessage[]
+
+  @@unique([marketplace, marketplaceOrderId])
+  @@index([status])
+  @@index([marketplace, orderedAt])
+  @@index([buyerUsername])
+  // Phase 69: パフォーマンス最適化インデックス
+  @@index([status, orderedAt])
+  @@index([paymentStatus, orderedAt])
+  @@index([fulfillmentStatus, orderedAt])
+  @@index([marketplace, status, orderedAt])
+  @@index([shippedAt])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+  DISPUTE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  PARTIALLY_FULFILLED
+  FULFILLED
+  RETURNED
+}
+
+
+// ========================================
+// 売上明細
+// ========================================
+model Sale {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  listingId String?
+  listing   Listing? @relation(fields: [listingId], references: [id])
+  productId String?
+
+  // 商品情報
+  sku        String
+  title      String
+  quantity   Int    @default(1)
+  unitPrice  Float
+  totalPrice Float
+
+  // 利益計算
+  costPrice  Float? // 仕入価格（円）
+  profitJpy  Float? // 利益（円）
+  profitRate Float? // 利益率（%）
+
+  // マーケットプレイス商品ID
+  marketplaceItemId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([listingId])
+  @@index([productId])
+  @@index([sku])
+  // Phase 69: パフォーマンス最適化インデックス
+  @@index([createdAt])
+  @@index([orderId, createdAt])
+  @@map("sales")
+}
+
+
+// ========================================
+// Webhookイベント（履歴・デバッグ用）
+// ========================================
+model WebhookEvent {
+  id String @id @default(cuid())
+
+  // ソース情報
+  provider  String // EBAY, JOOM
+  eventType String // ORDER_CREATED, PAYMENT_COMPLETE, etc.
+
+  // ペイロード
+  payload   Json
+  headers   Json    @default("{}")
+  signature String?
+
+  // 処理状態（Phase 15強化）
+  status          WebhookEventStatus @default(PENDING)
+  processedAt     DateTime?
+  errorMessage    String?            @db.Text
+  retryCount      Int                @default(0)
+  maxRetries      Int                @default(5)
+  lastAttemptedAt DateTime?
+  nextRetryAt     DateTime?
+
+  // 関連
+  orderId   String?
+  listingId String?
+
+  // 生成されたメッセージ
+  customerMessages CustomerMessage[]
+
+  createdAt DateTime @default(now())
+
+  @@index([provider, eventType])
+  @@index([status])
+  @@index([status, nextRetryAt])
+  @@index([createdAt])
+  @@map("webhook_events")
+}
+
+enum WebhookEventStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  FATAL // リトライ上限到達または回復不能エラー
+  IGNORED
+}
+
+
+// ========================================
+// スケジュールレポート（Phase 32）
+// ========================================
+model ScheduledReport {
+  id         String @id @default(cuid())
+  name       String
+  reportType String // 'daily' | 'weekly' | 'monthly' | 'custom'
+
+  // スケジュール設定
+  cronExpression String // cron式（例: "0 9 * * *" = 毎日9時）
+  timezone       String  @default("Asia/Tokyo")
+  isActive       Boolean @default(true)
+
+  // レポート設定
+  format        String  @default("markdown") // 'json' | 'markdown' | 'csv'
+  includeCharts Boolean @default(false)
+  customQuery   Json? // カスタムフィルター条件
+
+  // 配信設定
+  deliveryChannels String[] // チャンネルID or 'email:xxx@example.com'
+  emailRecipients  String[] // メールアドレス
+  emailSubject     String?
+
+  // 実行履歴
+  lastRunAt     DateTime?
+  lastRunStatus String? // 'success' | 'failed'
+  lastRunError  String?
+  nextRunAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, nextRunAt])
+  @@index([reportType])
+  @@map("scheduled_reports")
+}
+
+
+// スケジュールレポート実行ログ
+model ScheduledReportLog {
+  id        String    @id @default(cuid())
+  reportId  String
+  status    String // 'running' | 'success' | 'failed'
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  duration  Int? // 実行時間（ミリ秒）
+  error     String?
+  metadata  Json? // 結果サマリーなど
+
+  @@index([reportId, startedAt])
+  @@map("scheduled_report_logs")
+}
+
+
+// ========================================
+// 価格履歴（Phase 28）
+// ========================================
+model PriceHistory {
+  id         String   @id @default(cuid())
+  listingId  String
+  price      Float
+  currency   String   @default("USD")
+  source     String // 'manual' | 'rule' | 'ai' | 'competitor' | 'initial'
+  metadata   Json? // 追加情報（変更理由など）
+  recordedAt DateTime @default(now())
+
+  @@index([listingId, recordedAt])
+  @@index([recordedAt])
+  @@map("price_histories")
+}
+
+
+// ========================================
+// 競合価格ログ（Phase 28）
+// ========================================
+model CompetitorPriceLog {
+  id                   String   @id @default(cuid())
+  competitorIdentifier String // 競合商品識別子（URL or ID）
+  listingId            String? // 関連する自社出品
+  productId            String? // 関連する自社商品
+  marketplace          String // 競合のマーケットプレイス
+  price                Float
+  currency             String   @default("USD")
+  title                String? // 競合商品タイトル
+  url                  String? // 競合商品URL
+  metadata             Json? // 追加データ
+  recordedAt           DateTime @default(now())
+
+  // Phase 29: 拡張フィールド
+  conditionRank      String? // コンディションランク (A/B/C/D/unknown)
+  matchConfidence    Float? // マッチング確度 (0-1)
+  isVerified         Boolean   @default(false) // 人間による検証済み
+  verifiedBy         String? // 検証者
+  verifiedAt         DateTime? // 検証日時
+  sellerRating       Float? // 出品者評価
+  stockStatus        String? // 在庫状態 (in_stock/low_stock/out_of_stock)
+  shippingCost       Float? // 送料
+  priceChange        Float? // 前回からの価格変動
+  priceChangePercent Float? // 前回からの価格変動率
+
+  // トラッカー参照
+  trackerId String?
+  tracker   CompetitorTracker? @relation(fields: [trackerId], references: [id])
+
+  @@index([listingId, recordedAt])
+  @@index([productId, recordedAt])
+  @@index([competitorIdentifier, recordedAt])
+  @@index([recordedAt])
+  @@index([trackerId])
+  @@index([isVerified])
+  @@map("competitor_price_logs")
+}
+
+
+// ========================================
+// 競合トラッキング設定（Phase 29）
+// ========================================
+model CompetitorTracker {
+  id                   String  @id @default(cuid())
+  listingId            String? // 関連する自社出品
+  productId            String? // 関連する自社商品
+  competitorIdentifier String // 競合商品識別子
+  marketplace          String // 競合のマーケットプレイス
+  url                  String // 競合商品URL
+  title                String? // 競合商品タイトル
+
+  // マッチング情報
+  matchMethod     String    @default("manual") // manual/keyword/barcode/ai
+  matchConfidence Float     @default(1.0) // マッチング確度
+  isVerified      Boolean   @default(false) // 人間による検証済み
+  verifiedBy      String?
+  verifiedAt      DateTime?
+
+  // トラッキング設定
+  isActive              Boolean @default(true)
+  checkInterval         Int     @default(360) // チェック間隔（分）
+  alertOnPriceDrop      Boolean @default(true)
+  alertOnPriceRise      Boolean @default(false)
+  alertThresholdPercent Float   @default(5.0) // アラート閾値（%）
+  autoAdjustPrice       Boolean @default(false) // 自動価格調整
+
+  // 最終チェック情報
+  lastPrice         Float?
+  lastCheckedAt     DateTime?
+  lastError         String?
+  consecutiveErrors Int       @default(0)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  priceLogs CompetitorPriceLog[]
+
+  @@unique([listingId, competitorIdentifier])
+  @@index([listingId])
+  @@index([productId])
+  @@index([isActive])
+  @@index([lastCheckedAt])
+  @@map("competitor_trackers")
+}
+
+
+// ========================================
+// 競合アラート（Phase 29）
+// ========================================
+model CompetitorAlert {
+  id        String  @id @default(cuid())
+  trackerId String
+  listingId String?
+  productId String?
+
+  // アラート内容
+  alertType String // price_drop/price_rise/out_of_stock/new_competitor
+  severity  String @default("medium") // low/medium/high/critical
+  title     String
+  message   String @db.Text
+
+  // 価格情報
+  ourPrice         Float?
+  competitorPrice  Float?
+  priceDiff        Float?
+  priceDiffPercent Float?
+
+  // ステータス
+  status         String    @default("pending") // pending/acknowledged/resolved/dismissed
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+
+  // メタデータ
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([listingId])
+  @@index([productId])
+  @@index([status])
+  @@index([alertType])
+  @@index([createdAt])
+  @@map("competitor_alerts")
+}
+
+
+// ========================================
+// 価格推奨（Phase 28）
+// ========================================
+model PriceRecommendation {
+  id        String  @id @default(cuid())
+  listingId String
+  productId String?
+
+  // 価格情報
+  currentPrice     Float
+  recommendedPrice Float
+  minPrice         Float? // ルールによる下限
+  maxPrice         Float? // ルールによる上限
+
+  // 推奨の詳細
+  confidence Float   @default(0.5) // 0-1 信頼度
+  reason     Json // 推奨根拠（JSON）
+  impact     Json? // 影響試算（JSON）
+  ruleId     String? // 適用されたルールID
+
+  // ステータス
+  status    PriceRecommendationStatus @default(PENDING)
+  expiresAt DateTime
+
+  // 処理履歴
+  approvedBy     String? // 承認者
+  approvedAt     DateTime?
+  appliedAt      DateTime?
+  rejectedReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([listingId, status])
+  @@index([status, expiresAt])
+  @@index([createdAt])
+  @@map("price_recommendations")
+}
+
+enum PriceRecommendationStatus {
+  PENDING // 承認待ち
+  APPROVED // 承認済み（適用待ち）
+  REJECTED // 却下
+  APPLIED // 適用済み
+  EXPIRED // 期限切れ
+  CANCELLED // キャンセル
+}
+
+
+// ========================================
+// 価格ルール（Phase 28）
+// ========================================
+model PricingRule {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  // ルールタイプ
+  type PricingRuleType
+
+  // ルール定義
+  conditions Json // 適用条件（JSON配列）
+  actions    Json // アクション定義（JSON配列）
+
+  // 適用範囲
+  marketplace String? // null = 全マーケットプレイス
+  category    String? // null = 全カテゴリ
+
+  // 優先度と状態
+  priority Int     @default(0) // 高いほど優先
+  isActive Boolean @default(true)
+
+  // 安全設定
+  safetyConfig Json? // サーキットブレーカー設定
+
+  // 統計
+  appliedCount  Int       @default(0)
+  lastAppliedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, isActive])
+  @@index([priority])
+  @@map("pricing_rules")
+}
+
+enum PricingRuleType {
+  COMPETITOR_FOLLOW // 競合追従
+  MIN_MARGIN // 最低利益率維持
+  MAX_DISCOUNT // 最大値下げ制限
+  DEMAND_BASED // 需要ベース
+  TIME_BASED // 時間ベース（滞留日数など）
+  CUSTOM // カスタム
+}
+
+
+// ========================================
+// 価格変更ログ（Phase 28）
+// ========================================
+model PriceChangeLog {
+  id               String  @id @default(cuid())
+  listingId        String
+  recommendationId String?
+
+  // 価格変更
+  oldPrice      Float
+  newPrice      Float
+  currency      String @default("USD")
+  changePercent Float // 変更率（%）
+
+  // 変更理由
+  source String // 'manual' | 'rule' | 'ai' | 'auto'
+  ruleId String?
+  reason String?
+
+  // プラットフォーム更新
+  platformUpdated Boolean @default(false)
+  platformError   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([listingId, createdAt])
+  @@index([source, createdAt])
+  @@map("price_change_logs")
+}
+
+
+// ========================================
+// 在庫履歴（Phase 41）
+// ========================================
+model InventoryLog {
+  id        String  @id @default(cuid())
+  productId String
+  listingId String?
+
+  // 在庫・価格情報
+  price       Int // 仕入価格（円）
+  stock       Int     @default(1) // 在庫数
+  isAvailable Boolean @default(true)
+
+  // 変動検知
+  priceChanged  Boolean @default(false)
+  stockChanged  Boolean @default(false)
+  previousPrice Int?
+  previousStock Int?
+
+  // メタデータ
+  sourceUrl String?
+  checkedAt DateTime @default(now())
+  metadata  Json     @default("{}")
+
+  @@index([productId, checkedAt])
+  @@index([checkedAt])
+  @@map("inventory_logs")
+}
+
+
+// ========================================
+// 自動化判定用ログ（Phase 41）
+// ========================================
+model ShadowLog {
+  id String @id @default(cuid())
+
+  // サービス・操作
+  service   String // 'profit-guard' | 'order-processor' | 'inventory-sync'
+  operation String // 'check' | 'process' | 'decide'
+
+  // 入力・出力
+  input  Json // 入力データ
+  output Json // 出力データ（判定結果など）
+
+  // 判定結果
+  decision       String? // 'approve' | 'reject' | 'hold'
+  decisionReason String?
+  isDryRun       Boolean @default(true)
+
+  // パフォーマンス
+  durationMs Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([service, createdAt])
+  @@index([decision, createdAt])
+  @@map("shadow_logs")
+}
+
+
+// ========================================
+// 利益率閾値設定（Phase 41）
+// ========================================
+model ProfitThreshold {
+  id String @id @default(cuid())
+
+  marketplace String // 'JOOM' | 'EBAY' | 'ALL'
+  category    String? // カテゴリ（nullはデフォルト）
+
+  // 閾値
+  minProfitRate   Float @default(10) // 最低利益率 (%)
+  minProfitAmount Int   @default(500) // 最低利益額（円）
+  alertProfitRate Float @default(15) // アラート閾値 (%)
+
+  // 設定
+  isActive Boolean @default(true)
+  isDryRun Boolean @default(true) // Dry Runモード
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([marketplace, category])
+  @@map("profit_thresholds")
+}
+
+
+// ========================================
+// 通知イベント（Phase 45+）
+// ========================================
+model NotificationEvent {
+  id            String    @id @default(cuid())
+  type          String // ORDER_RECEIVED, PROFIT_ALERT, STOCK_OUT, etc.
+  channel       String // SLACK, DISCORD, WEBHOOK
+  status        String    @default("PENDING") // PENDING, SENT, FAILED, ACTION_TAKEN
+  payload       Json // 通知内容
+  referenceId   String? // 注文ID、商品IDなど
+  referenceType String? // ORDER, PRODUCT, LISTING
+  actionTaken   String? // 実行されたアクション
+  actionBy      String? // アクション実行者
+  sentAt        DateTime?
+  error         String?
+  retryCount    Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([type, status])
+  @@index([referenceId, referenceType])
+  @@index([createdAt])
+  @@map("notification_events")
+}
+
+
+// ========================================
+// メッセージテンプレート（Phase 16）
+// ========================================
+model MessageTemplate {
+  id String @id @default(cuid())
+
+  // テンプレート識別
+  name        String  @unique // テンプレート名（例: order_confirmation_en）
+  description String? // 説明
+
+  // イベントトリガー
+  triggerEvent MessageTriggerEvent // ORDER_CONFIRMED, SHIPPED, DELIVERED, etc.
+  marketplace  Marketplace? // null = 全マーケットプレイス
+
+  // テンプレート内容
+  language String  @default("en") // en, ja, etc.
+  subject  String // 件名テンプレート
+  body     String  @db.Text // 本文テンプレート（プレースホルダー対応）
+  bodyHtml String? @db.Text // HTML版本文（オプション）
+
+  // プレースホルダー定義
+  // {{buyer_name}}, {{order_id}}, {{tracking_number}}, etc.
+  placeholders String[] // 使用可能なプレースホルダー一覧
+
+  // 設定
+  isActive Boolean @default(true)
+  priority Int     @default(0) // 同一イベントで複数テンプレートがある場合の優先度
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Phase 63-64: 追加フィールド
+  nameEn    String? // 英語名
+  category  String? // SHIPPING, REFUND, INQUIRY, AUTO_REPLY, etc.
+  variables String[] // 使用変数リスト
+
+  // リレーション
+  customerMessages CustomerMessage[]
+  autoReplyRules   AutoReplyRule[]
+
+  @@unique([triggerEvent, marketplace, language])
+  @@index([triggerEvent, isActive])
+  @@index([category, isActive])
+  @@map("message_templates")
+}
+
+enum MessageTriggerEvent {
+  ORDER_CONFIRMED
+  ORDER_PAID
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  TRACKING_UPDATED
+  CUSTOM
+}
+
+
+// ========================================
+// 顧客メッセージ（Phase 16）
+// ========================================
+model CustomerMessage {
+  id String @id @default(cuid())
+
+  // 関連情報
+  orderId        String?
+  listingId      String?
+  webhookEventId String?
+  webhookEvent   WebhookEvent? @relation(fields: [webhookEventId], references: [id])
+
+  templateId String?
+  template   MessageTemplate? @relation(fields: [templateId], references: [id])
+
+  // 宛先情報
+  marketplace   Marketplace
+  buyerUsername String
+  buyerEmail    String?
+
+  // メッセージ内容（レンダリング済み）
+  subject  String
+  body     String  @db.Text
+  bodyHtml String? @db.Text
+
+  // 送信状態
+  status          MessageStatus @default(PENDING)
+  sendingAttempts Int           @default(0)
+  maxAttempts     Int           @default(3)
+  lastAttemptedAt DateTime?
+  sentAt          DateTime?
+  errorMessage    String?       @db.Text
+
+  // マーケットプレイス応答
+  marketplaceMessageId String? // 送信後のメッセージID
+  marketplaceResponse  Json? // APIレスポンス
+
+  // Phase 63-64: 自動返信対応
+  isAutoReply     Boolean   @default(false)
+  autoReplyRuleId String?
+  respondedAt     DateTime?
+  category        String? // SHIPPING, REFUND, PRODUCT, GENERAL, COMPLAINT
+  sentiment       String? // POSITIVE, NEUTRAL, NEGATIVE
+  urgency         String? // LOW, MEDIUM, HIGH
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order Order? @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@index([status])
+  @@index([status, lastAttemptedAt])
+  @@index([marketplace, buyerUsername])
+  @@index([isAutoReply, createdAt])
+  @@index([category, urgency])
+  @@map("customer_messages")
+}
+
+enum MessageStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  FATAL // リトライ上限到達または回復不能エラー
+}
+
+
+// ========================================
+// 自動返信ルール（Phase 63-64）
+// ========================================
+model AutoReplyRule {
+  id String @id @default(cuid())
+
+  // ルール識別
+  name        String  @unique
+  description String?
+
+  // トリガー設定
+  triggerType      String // KEYWORD, ORDER_STATUS, NO_RESPONSE, FIRST_MESSAGE, REFUND_REQUEST, SHIPPING_INQUIRY
+  triggerCondition Json // { keywords: [], orderStatus: '', delayMinutes: 0, marketplace: '' }
+
+  // 返信テンプレート
+  templateId String
+  template   MessageTemplate @relation(fields: [templateId], references: [id])
+
+  // 優先度と状態
+  priority Int     @default(50) // 1-100, 低い方が高優先度
+  isActive Boolean @default(true)
+
+  // 統計
+  usageCount Int       @default(0)
+  lastUsedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([triggerType, isActive])
+  @@index([priority])
+  @@map("auto_reply_rules")
+}
+
+
+// ========================================
+// 在庫アラート（Phase 17）
+// ========================================
+model InventoryAlert {
+  id String @id @default(cuid())
+
+  // 関連
+  productId String?
+  listingId String?
+  listing   Listing? @relation(fields: [listingId], references: [id])
+
+  // イベント情報
+  alertType InventoryAlertType
+  severity  AlertSeverity      @default(MEDIUM)
+
+  // 在庫状態（変動前後）
+  previousStock     Int?
+  currentStock      Int?
+  previousAvailable Boolean?
+  currentAvailable  Boolean?
+
+  // 判定理由
+  reason        String @db.Text // 例: "在庫数が0になったため自動停止"
+  thresholdUsed Int? // 判定に使用した閾値
+
+  // アクション
+  actionTaken   InventoryAlertAction?
+  actionDetails Json? // 詳細情報（遅延時間等）
+
+  // 通知
+  notificationSent Boolean @default(false)
+  notificationId   String? // 送信した通知のID
+
+  // 抑制情報
+  suppressed     Boolean @default(false) // スパム抑制でスキップ
+  suppressReason String?
+
+  createdAt DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@index([listingId, createdAt])
+  @@index([alertType, createdAt])
+  @@index([actionTaken, createdAt])
+  @@map("inventory_alerts")
+}
+
+enum InventoryAlertType {
+  STOCK_OUT // 在庫切れ
+  STOCK_LOW // 在庫僅少
+  STOCK_RECOVERED // 在庫復活
+  LISTING_PAUSED // リスティング停止
+  LISTING_RESUMED // リスティング再開
+  PRICE_CHANGED // 価格変動
+  AVAILABILITY_CHANGED // 販売状態変更
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum InventoryAlertAction {
+  PAUSE_LISTING // リスティング停止
+  RESUME_LISTING // リスティング再開
+  SCHEDULE_RESUME // 遅延再開スケジュール
+  NOTIFY_ONLY // 通知のみ
+  NONE // アクションなし
+}
+
+
+// ========================================
+// 売上サマリー（Phase 18）
+// ========================================
+model SalesSummary {
+  id String @id @default(cuid())
+
+  // 集計期間
+  periodType  SalesPeriodType // DAILY, WEEKLY, MONTHLY
+  periodStart DateTime
+  periodEnd   DateTime
+
+  // フィルター条件
+  marketplace Marketplace? // null = 全マーケットプレイス
+  category    String? // null = 全カテゴリ
+
+  // 売上サマリー
+  orderCount    Int   @default(0)
+  itemCount     Int   @default(0) // 販売数量
+  grossRevenue  Float @default(0) // 売上総額（USD）
+  shippingTotal Float @default(0) // 送料総額
+  feeTotal      Float @default(0) // 手数料総額
+  netRevenue    Float @default(0) // 純売上
+
+  // 利益サマリー（原価データがある場合）
+  costTotal   Float? // 仕入総額（円）
+  profitTotal Float? // 利益総額（円）
+  profitRate  Float? // 利益率（%）
+
+  // ベストセラー（JSON）
+  topProducts   Json @default("[]") // [{productId, title, quantity, revenue}]
+  topCategories Json @default("[]") // [{category, quantity, revenue}]
+
+  // メタデータ
+  calculatedAt DateTime @default(now())
+  isComplete   Boolean  @default(false) // 集計完了フラグ
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([periodType, periodStart, marketplace, category])
+  @@index([periodType, periodStart])
+  @@index([marketplace, periodStart])
+  @@map("sales_summaries")
+}
+
+enum SalesPeriodType {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+
+// ========================================
+// Phase 19: データエクスポート
+// ========================================
+
+model ExportJob {
+  id String @id @default(cuid())
+
+  // エクスポート種別
+  exportType ExportType
+  format     ExportFormat @default(CSV)
+
+  // フィルター条件
+  filters Json @default("{}") // {startDate, endDate, marketplace, status, etc.}
+
+  // 実行状態
+  status        ExportJobStatus @default(PENDING)
+  progress      Int             @default(0) // 0-100
+  totalRows     Int?
+  processedRows Int             @default(0)
+
+  // ファイル情報
+  fileName    String?
+  filePath    String? // S3/ローカルパス
+  fileSize    Int? // bytes
+  downloadUrl String? // 署名付きURL
+  expiresAt   DateTime? // ダウンロード期限
+
+  // エラー情報
+  errorMessage String? @db.Text
+
+  // スケジュール設定（定期エクスポート用）
+  isScheduled    Boolean   @default(false)
+  cronExpression String?
+  nextRunAt      DateTime?
+
+  // メタデータ
+  requestedBy String? // ユーザーID/APIキー
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([exportType, status])
+  @@index([status, createdAt])
+  @@index([isScheduled, nextRunAt])
+  @@map("export_jobs")
+}
+
+enum ExportType {
+  ORDERS // 注文データ
+  PRODUCTS // 商品データ
+  LISTINGS // 出品データ
+  SALES_SUMMARY // 売上サマリー
+  INVENTORY // 在庫データ
+  AUDIT_LOG // 監査ログ
+  CUSTOMER_MESSAGES // 顧客メッセージ
+}
+
+enum ExportFormat {
+  CSV
+  EXCEL
+  JSON
+}
+
+enum ExportJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+
+// ========================================
+// Phase 20: 監査ログ
+// ========================================
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  // 操作者情報
+  actorType ActorType // USER, SYSTEM, API, WEBHOOK
+  actorId   String? // ユーザーID or APIキーID
+  actorName String? // 表示名
+  ipAddress String?
+
+  // 操作対象
+  entityType AuditEntityType // PRODUCT, LISTING, ORDER, etc.
+  entityId   String? // 対象のID
+  entityName String? // 対象の名前（検索用）
+
+  // 操作内容
+  action      AuditAction // CREATE, UPDATE, DELETE, etc.
+  description String      @db.Text // 操作の説明
+
+  // 変更内容
+  previousValue Json? // 変更前の値
+  newValue      Json? // 変更後の値
+  changedFields String[] // 変更されたフィールド名
+
+  // メタデータ
+  metadata Json          @default("{}") // 追加情報（リクエストID、ユーザーエージェント等）
+  severity AuditSeverity @default(INFO)
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorType, actorId])
+  @@index([action, createdAt])
+  @@index([severity, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+enum ActorType {
+  USER
+  SYSTEM
+  API
+  WEBHOOK
+  SCHEDULER
+}
+
+enum AuditEntityType {
+  PRODUCT
+  LISTING
+  ORDER
+  SALE
+  INVENTORY_ALERT
+  WEBHOOK_EVENT
+  CUSTOMER_MESSAGE
+  PRICE_RECOMMENDATION
+  EXPORT_JOB
+  SETTINGS
+  MARKETPLACE_CREDENTIAL
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  PUBLISH
+  UNPUBLISH
+  PAUSE
+  RESUME
+  APPROVE
+  REJECT
+  EXPORT
+  IMPORT
+  SYNC
+  SEND
+  LOGIN
+  LOGOUT
+}
+
+enum AuditSeverity {
+  DEBUG
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+
+// ========================================
+// Phase 21: システム設定管理
+// ========================================
+
+model SystemSetting {
+  id String @id @default(cuid())
+
+  // 設定キー（ユニーク）
+  key      String          @unique
+  category SettingCategory @default(GENERAL)
+
+  // 設定値
+  value        String           @db.Text
+  valueType    SettingValueType @default(STRING)
+  defaultValue String?          @db.Text
+
+  // メタデータ
+  label          String? // 表示名
+  description    String? @db.Text // 説明
+  isSecret       Boolean @default(false) // シークレット値（マスク表示）
+  isReadOnly     Boolean @default(false) // 読み取り専用
+  validationRule String? // バリデーションルール（JSON Schema等）
+
+  // 変更履歴
+  version       Int      @default(1)
+  lastChangedBy String?
+  lastChangedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 設定履歴
+  history SettingHistory[]
+
+  @@index([category])
+  @@index([key])
+  @@map("system_settings")
+}
+
+model SettingHistory {
+  id String @id @default(cuid())
+
+  settingId String
+  setting   SystemSetting @relation(fields: [settingId], references: [id], onDelete: Cascade)
+
+  // 変更内容
+  previousValue String? @db.Text
+  newValue      String  @db.Text
+  version       Int
+
+  // 変更者
+  changedBy    String?
+  changedAt    DateTime @default(now())
+  changeReason String?
+
+  @@index([settingId, changedAt])
+  @@map("setting_histories")
+}
+
+enum SettingCategory {
+  GENERAL // 一般設定
+  SCHEDULER // スケジューラー設定
+  NOTIFICATION // 通知設定
+  MARKETPLACE // マーケットプレイス設定
+  PRICING // 価格設定
+  INVENTORY // 在庫設定
+  EXPORT // エクスポート設定
+  SECURITY // セキュリティ設定
+  INTEGRATION // 外部連携設定
+}
+
+enum SettingValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  ARRAY
+  SECRET
+}
+
+
+// ========================================
+// Phase 22: API使用量・レート制限管理
+// ========================================
+
+model ApiKey {
+  id String @id @default(cuid())
+
+  // キー情報
+  name      String // キー名
+  keyHash   String @unique // ハッシュ化されたAPIキー
+  keyPrefix String // キーの先頭部分（表示用）
+
+  // 権限
+  permissions String[] // 許可されたエンドポイント/操作
+  rateLimit   Int      @default(1000) // 1時間あたりのリクエスト上限
+  dailyLimit  Int? // 1日あたりのリクエスト上限
+
+  // ステータス
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+
+  // メタデータ
+  description String?
+  createdBy   String?
+  lastUsedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 使用量記録
+  usageLogs ApiUsageLog[]
+
+  @@index([keyHash])
+  @@index([isActive, expiresAt])
+  @@map("api_keys")
+}
+
+model ApiUsageLog {
+  id String @id @default(cuid())
+
+  // APIキー（nullの場合は認証なしリクエスト）
+  apiKeyId String?
+  apiKey   ApiKey? @relation(fields: [apiKeyId], references: [id])
+
+  // リクエスト情報
+  endpoint     String // エンドポイントパス
+  method       String // HTTP メソッド
+  statusCode   Int // レスポンスステータス
+  responseTime Int // レスポンス時間（ミリ秒）
+
+  // クライアント情報
+  ipAddress String?
+  userAgent String?
+
+  // 使用量
+  requestSize  Int? // リクエストサイズ（bytes）
+  responseSize Int? // レスポンスサイズ（bytes）
+
+  // エラー情報
+  errorCode    String?
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([apiKeyId, createdAt])
+  @@index([endpoint, createdAt])
+  @@index([createdAt])
+  @@map("api_usage_logs")
+}
+
+model RateLimitRecord {
+  id String @id @default(cuid())
+
+  // 識別子（APIキーID or IPアドレス）
+  identifier     String
+  identifierType RateLimitIdentifierType
+
+  // カウンター
+  windowStart  DateTime // ウィンドウ開始時刻
+  windowSize   Int // ウィンドウサイズ（秒）
+  requestCount Int      @default(0)
+
+  // 制限情報
+  isBlocked    Boolean   @default(false)
+  blockedUntil DateTime?
+  blockReason  String?
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([identifier, windowStart])
+  @@index([identifier, windowStart])
+  @@index([isBlocked, blockedUntil])
+  @@map("rate_limit_records")
+}
+
+model ApiUsageSummary {
+  id String @id @default(cuid())
+
+  // 集計期間
+  periodType  UsagePeriodType // HOURLY, DAILY, MONTHLY
+  periodStart DateTime
+  periodEnd   DateTime
+
+  // 対象
+  apiKeyId String? // null = 全体
+  endpoint String? // null = 全エンドポイント
+
+  // 統計
+  totalRequests     Int     @default(0)
+  successCount      Int     @default(0)
+  errorCount        Int     @default(0)
+  avgResponseTime   Float?
+  maxResponseTime   Int?
+  totalRequestSize  BigInt?
+  totalResponseSize BigInt?
+
+  // 上位エンドポイント
+  topEndpoints Json @default("[]")
+
+  calculatedAt DateTime @default(now())
+
+  @@unique([periodType, periodStart, apiKeyId, endpoint])
+  @@index([periodType, periodStart])
+  @@index([apiKeyId, periodStart])
+  @@map("api_usage_summaries")
+}
+
+enum RateLimitIdentifierType {
+  API_KEY
+  IP_ADDRESS
+  USER_ID
+}
+
+enum UsagePeriodType {
+  HOURLY
+  DAILY
+  MONTHLY
+}
+
+
+// ========================================
+// Phase 24: Webhook管理の強化
+// ========================================
+
+model WebhookEndpoint {
+  id String @id @default(cuid())
+
+  // エンドポイント情報
+  name        String
+  url         String
+  description String?
+
+  // 認証設定
+  authType   WebhookAuthType @default(NONE)
+  authConfig Json            @default("{}") // {secret, header, token, etc.}
+
+  // 署名設定
+  signatureEnabled   Boolean @default(true)
+  signatureSecret    String? // HMAC署名用シークレット
+  signatureHeader    String  @default("X-Webhook-Signature")
+  signatureAlgorithm String  @default("sha256")
+
+  // イベント設定
+  events  WebhookEventType[]
+  filters Json               @default("{}") // イベントフィルター条件
+
+  // リトライ設定
+  retryEnabled           Boolean @default(true)
+  maxRetries             Int     @default(5)
+  retryDelayMs           Int     @default(1000)
+  retryBackoffMultiplier Float   @default(2.0)
+
+  // タイムアウト
+  timeoutMs Int @default(30000)
+
+  // ステータス
+  isActive            Boolean   @default(true)
+  lastDeliveryAt      DateTime?
+  lastDeliveryStatus  String?
+  consecutiveFailures Int       @default(0)
+  disabledAt          DateTime?
+  disabledReason      String?
+
+  // 統計
+  totalDeliveries      Int @default(0)
+  successfulDeliveries Int @default(0)
+  failedDeliveries     Int @default(0)
+
+  // リレーション
+  deliveries WebhookDelivery[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([events])
+  @@map("webhook_endpoints")
+}
+
+model WebhookDelivery {
+  id String @id @default(cuid())
+
+  endpointId String
+  endpoint   WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  // イベント情報
+  eventType String
+  eventId   String? // 元イベントのID
+  payload   Json
+
+  // リクエスト情報
+  requestHeaders Json   @default("{}")
+  requestBody    String @db.Text
+
+  // レスポンス情報
+  responseStatus  Int?
+  responseHeaders Json?
+  responseBody    String? @db.Text
+  responseTimeMs  Int?
+
+  // 配信状態
+  status       WebhookDeliveryStatus @default(PENDING)
+  attemptCount Int                   @default(0)
+  maxAttempts  Int                   @default(5)
+  nextRetryAt  DateTime?
+
+  // エラー情報
+  errorType    String? // timeout, connection_error, http_error, etc.
+  errorMessage String? @db.Text
+
+  // 署名
+  signature String?
+
+  deliveredAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([endpointId, createdAt])
+  @@index([status, nextRetryAt])
+  @@index([eventType, createdAt])
+  @@map("webhook_deliveries")
+}
+
+model WebhookSecret {
+  id String @id @default(cuid())
+
+  // プロバイダー情報
+  provider String @unique // EBAY, JOOM, STRIPE, etc.
+
+  // シークレット情報
+  secret     String // 署名検証用シークレット
+  algorithm  String @default("sha256")
+  headerName String @default("X-Webhook-Signature")
+
+  // 検証設定
+  verifyTimestamp           Boolean @default(true)
+  timestampToleranceSeconds Int     @default(300)
+
+  // ステータス
+  isActive       Boolean   @default(true)
+  lastVerifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([provider])
+  @@map("webhook_secrets")
+}
+
+enum WebhookAuthType {
+  NONE
+  BASIC
+  BEARER
+  API_KEY
+  HMAC
+  CUSTOM
+}
+
+enum WebhookEventType {
+  // 注文関連
+  ORDER_CREATED
+  ORDER_UPDATED
+  ORDER_PAID
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  // 商品関連
+  PRODUCT_CREATED
+  PRODUCT_UPDATED
+  PRODUCT_DELETED
+  // 出品関連
+  LISTING_PUBLISHED
+  LISTING_UPDATED
+  LISTING_ENDED
+  LISTING_SOLD
+  // 在庫関連
+  INVENTORY_LOW
+  INVENTORY_OUT
+  INVENTORY_UPDATED
+  // 価格関連
+  PRICE_CHANGED
+  PRICE_RECOMMENDATION
+  // システム関連
+  SYSTEM_ERROR
+  SYSTEM_ALERT
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SENDING
+  DELIVERED
+  FAILED
+  RETRYING
+  EXHAUSTED // リトライ上限到達
+}
+
+
+// ========================================
+// Phase 25: バックアップ/リストア
+// ========================================
+
+model Backup {
+  id String @id @default(cuid())
+
+  // バックアップ情報
+  name        String
+  description String?
+  backupType  BackupType @default(FULL)
+
+  // 含まれるデータ
+  includeProducts    Boolean @default(true)
+  includeListings    Boolean @default(true)
+  includeOrders      Boolean @default(true)
+  includeSettings    Boolean @default(true)
+  includeTemplates   Boolean @default(true)
+  includeCredentials Boolean @default(false) // 認証情報は暗号化
+
+  // ファイル情報
+  fileName String?
+  filePath String? // S3/ローカルパス
+  fileSize BigInt?
+  checksum String? // SHA256
+
+  // 暗号化
+  isEncrypted   Boolean @default(true)
+  encryptionKey String? // 暗号化キーのヒント（実キーは別管理）
+
+  // 統計
+  productCount Int?
+  listingCount Int?
+  orderCount   Int?
+  settingCount Int?
+
+  // ステータス
+  status       BackupStatus @default(PENDING)
+  progress     Int          @default(0)
+  errorMessage String?      @db.Text
+
+  // 実行情報
+  createdBy   String?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // スケジュール
+  isScheduled Boolean @default(false)
+  scheduleId  String?
+
+  // 保持期間
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([backupType, status])
+  @@index([createdAt])
+  @@index([isScheduled])
+  @@map("backups")
+}
+
+model BackupSchedule {
+  id String @id @default(cuid())
+
+  // スケジュール情報
+  name           String
+  description    String?
+  cronExpression String // cron式
+  timezone       String  @default("Asia/Tokyo")
+
+  // バックアップ設定
+  backupType         BackupType @default(INCREMENTAL)
+  includeProducts    Boolean    @default(true)
+  includeListings    Boolean    @default(true)
+  includeOrders      Boolean    @default(true)
+  includeSettings    Boolean    @default(true)
+  includeTemplates   Boolean    @default(true)
+  includeCredentials Boolean    @default(false)
+
+  // 暗号化設定
+  isEncrypted Boolean @default(true)
+
+  // 保持設定
+  retentionDays Int @default(30)
+  maxBackups    Int @default(10)
+
+  // ステータス
+  isActive      Boolean   @default(true)
+  lastRunAt     DateTime?
+  lastRunStatus String?
+  nextRunAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, nextRunAt])
+  @@map("backup_schedules")
+}
+
+model RestoreJob {
+  id String @id @default(cuid())
+
+  // リストア元
+  backupId     String? // 既存バックアップから
+  uploadedFile String? // アップロードファイルから
+
+  // リストア設定
+  restoreType      RestoreType @default(FULL)
+  restoreProducts  Boolean     @default(true)
+  restoreListings  Boolean     @default(true)
+  restoreOrders    Boolean     @default(false) // 注文は慎重に
+  restoreSettings  Boolean     @default(true)
+  restoreTemplates Boolean     @default(true)
+
+  // 競合解決
+  conflictStrategy ConflictStrategy @default(SKIP)
+
+  // ステータス
+  status   RestoreStatus @default(PENDING)
+  progress Int           @default(0)
+
+  // 統計
+  totalItems     Int?
+  processedItems Int  @default(0)
+  skippedItems   Int  @default(0)
+  failedItems    Int  @default(0)
+
+  // エラー情報
+  errorMessage String? @db.Text
+  errorDetails Json    @default("[]")
+
+  // 実行情報
+  createdBy   String?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("restore_jobs")
+}
+
+enum BackupType {
+  FULL // 完全バックアップ
+  INCREMENTAL // 増分バックアップ
+  DIFFERENTIAL // 差分バックアップ
+  SETTINGS_ONLY // 設定のみ
+}
+
+enum BackupStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum RestoreType {
+  FULL // 完全リストア
+  SELECTIVE // 選択的リストア
+  SETTINGS_ONLY // 設定のみ
+}
+
+enum RestoreStatus {
+  PENDING
+  VALIDATING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  ROLLED_BACK
+}
+
+enum ConflictStrategy {
+  SKIP // 既存をスキップ
+  OVERWRITE // 上書き
+  MERGE // マージ（可能な場合）
+  RENAME // リネームして両方保持
+}
+
+
+// ========================================
+// Phase 26: ダッシュボードウィジェット
+// ========================================
+
+model DashboardWidget {
+  id String @id @default(cuid())
+
+  // ウィジェット情報
+  name        String
+  description String?
+  widgetType  WidgetType
+
+  // 表示設定
+  title    String
+  subtitle String?
+  icon     String? // アイコン名
+  color    String? // テーマカラー
+
+  // データ設定
+  dataSource  String // データソース識別子
+  query       Json    @default("{}") // クエリ条件
+  aggregation String? // 集計方法
+  timeRange   String? // 時間範囲（last_24h, last_7d, etc.）
+
+  // 表示オプション
+  displayOptions  Json @default("{}") // グラフオプション等
+  refreshInterval Int  @default(300) // 更新間隔（秒）
+
+  // 閾値設定（アラート用）
+  thresholds Json @default("[]") // [{value, color, label}]
+
+  // 権限
+  requiredPermission String? // 必要な権限
+
+  // システムウィジェット
+  isSystem Boolean @default(false)
+  isActive Boolean @default(true)
+
+  // リレーション
+  dashboardItems DashboardItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([widgetType])
+  @@index([isActive])
+  @@map("dashboard_widgets")
+}
+
+model Dashboard {
+  id String @id @default(cuid())
+
+  // ダッシュボード情報
+  name        String
+  description String?
+  slug        String  @unique // URLスラッグ
+
+  // 所有者
+  userId    String? // null = システムダッシュボード
+  isDefault Boolean @default(false)
+  isPublic  Boolean @default(false)
+
+  // レイアウト設定
+  layout  Json @default("[]") // グリッドレイアウト
+  columns Int  @default(12)
+
+  // テーマ
+  theme String @default("light")
+
+  // リレーション
+  items      DashboardItem[]
+  chartItems DashboardChartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([slug])
+  @@index([isDefault])
+  @@map("dashboards")
+}
+
+model DashboardItem {
+  id String @id @default(cuid())
+
+  dashboardId String
+  dashboard   Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+
+  widgetId String
+  widget   DashboardWidget @relation(fields: [widgetId], references: [id], onDelete: Cascade)
+
+  // グリッド位置
+  x      Int @default(0)
+  y      Int @default(0)
+  width  Int @default(4)
+  height Int @default(3)
+
+  // カスタム設定（ウィジェットデフォルトのオーバーライド）
+  customTitle   String?
+  customOptions Json    @default("{}")
+
+  // 表示順
+  order Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([dashboardId, widgetId])
+  @@index([dashboardId])
+  @@map("dashboard_items")
+}
+
+model WidgetData {
+  id String @id @default(cuid())
+
+  // データ識別
+  widgetType WidgetType
+  dataKey    String // キャッシュキー
+
+  // データ
+  value    Json
+  metadata Json @default("{}")
+
+  // キャッシュ情報
+  calculatedAt DateTime @default(now())
+  expiresAt    DateTime
+
+  @@unique([widgetType, dataKey])
+  @@index([expiresAt])
+  @@map("widget_data")
+}
+
+model KpiSnapshot {
+  id String @id @default(cuid())
+
+  // スナップショット期間
+  periodType  KpiPeriodType
+  periodStart DateTime
+  periodEnd   DateTime
+
+  // KPI値
+  kpiType       KpiType
+  value         Float
+  previousValue Float? // 前期比較用
+  changePercent Float?
+
+  // メタデータ
+  breakdown Json @default("{}") // 内訳データ
+  metadata  Json @default("{}")
+
+  calculatedAt DateTime @default(now())
+
+  @@unique([periodType, periodStart, kpiType])
+  @@index([kpiType, periodStart])
+  @@map("kpi_snapshots")
+}
+
+enum WidgetType {
+  // 数値系
+  METRIC // 単一指標
+  COUNTER // カウンター
+  GAUGE // ゲージ
+  PROGRESS // 進捗バー
+
+  // グラフ系
+  LINE_CHART // 折れ線グラフ
+  BAR_CHART // 棒グラフ
+  PIE_CHART // 円グラフ
+  AREA_CHART // エリアチャート
+
+  // リスト系
+  TABLE // テーブル
+  LIST // リスト
+  LEADERBOARD // ランキング
+
+  // その他
+  MAP // 地図
+  HEATMAP // ヒートマップ
+  TIMELINE // タイムライン
+  STATUS // ステータス表示
+  ALERT // アラートリスト
+}
+
+enum KpiPeriodType {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum KpiType {
+  // 売上系
+  TOTAL_REVENUE
+  GROSS_PROFIT
+  NET_PROFIT
+  PROFIT_MARGIN
+  AVERAGE_ORDER_VALUE
+
+  // 注文系
+  ORDER_COUNT
+  ITEM_COUNT
+  CONVERSION_RATE
+  RETURN_RATE
+
+  // 在庫系
+  ACTIVE_LISTINGS
+  OUT_OF_STOCK_COUNT
+  INVENTORY_VALUE
+
+  // パフォーマンス系
+  API_REQUESTS
+  ERROR_RATE
+  RESPONSE_TIME
+
+  // 顧客系
+  NEW_CUSTOMERS
+  REPEAT_CUSTOMERS
+  CUSTOMER_SATISFACTION
+}
+
+
+// ========================================
+// Phase 28: レポート機能の強化
+// ========================================
+
+model Report {
+  id String @id @default(cuid())
+
+  // レポート情報
+  name        String
+  description String?
+  reportType  ReportType
+
+  // テンプレート
+  templateId String?
+  template   ReportTemplate? @relation(fields: [templateId], references: [id])
+
+  // パラメータ
+  parameters Json    @default("{}") // {startDate, endDate, filters, etc.}
+  timeRange  String? // last_7d, last_30d, custom
+
+  // 出力設定
+  format      ReportFormat @default(PDF)
+  orientation String       @default("portrait") // portrait, landscape
+  paperSize   String       @default("A4")
+
+  // ファイル情報
+  fileName String?
+  filePath String?
+  fileSize Int?
+  mimeType String?
+
+  // ステータス
+  status       ReportStatus @default(PENDING)
+  progress     Int          @default(0)
+  errorMessage String?      @db.Text
+
+  // 実行情報
+  generatedBy String?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // 有効期限
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reportType, status])
+  @@index([generatedBy, createdAt])
+  @@map("reports")
+}
+
+model ReportTemplate {
+  id String @id @default(cuid())
+
+  // テンプレート情報
+  name        String     @unique
+  description String?
+  reportType  ReportType
+
+  // レイアウト設定
+  layout   Json  @default("{}") // ページレイアウト
+  sections Json  @default("[]") // セクション定義
+  header   Json? // ヘッダー設定
+  footer   Json? // フッター設定
+
+  // スタイル
+  theme        String  @default("default")
+  customStyles Json    @default("{}")
+  logoUrl      String?
+
+  // データソース
+  dataSources Json @default("[]") // クエリ定義
+  charts      Json @default("[]") // グラフ設定
+
+  // 設定
+  isActive Boolean @default(true)
+  isSystem Boolean @default(false)
+
+  // リレーション
+  reports   Report[]
+  schedules ReportScheduleConfig[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reportType])
+  @@map("report_templates")
+}
+
+model ReportScheduleConfig {
+  id String @id @default(cuid())
+
+  // スケジュール情報
+  name           String
+  description    String?
+  cronExpression String
+  timezone       String  @default("Asia/Tokyo")
+
+  // テンプレート
+  templateId String
+  template   ReportTemplate @relation(fields: [templateId], references: [id])
+
+  // パラメータ
+  parameters Json         @default("{}")
+  format     ReportFormat @default(PDF)
+
+  // 配信設定
+  recipients      String[] // メールアドレス
+  channels        String[] // 通知チャンネルID
+  uploadToStorage Boolean  @default(true)
+
+  // ステータス
+  isActive      Boolean   @default(true)
+  lastRunAt     DateTime?
+  lastRunStatus String?
+  nextRunAt     DateTime?
+
+  // 保持設定
+  retentionDays Int @default(30)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, nextRunAt])
+  @@map("report_schedule_configs")
+}
+
+model ReportExecution {
+  id String @id @default(cuid())
+
+  // スケジュール参照
+  scheduleId String?
+  reportId   String?
+
+  // 実行情報
+  status      ReportStatus @default(PENDING)
+  startedAt   DateTime     @default(now())
+  completedAt DateTime?
+  duration    Int? // ミリ秒
+
+  // 結果
+  filePath       String?
+  fileSize       Int?
+  recipientCount Int?
+  deliveryStatus Json    @default("[]") // 配信結果
+
+  // エラー
+  errorMessage String? @db.Text
+
+  @@index([scheduleId, startedAt])
+  @@index([status])
+  @@map("report_executions")
+}
+
+enum ReportType {
+  SALES_SUMMARY // 売上サマリー
+  ORDER_DETAIL // 注文詳細
+  INVENTORY_STATUS // 在庫状況
+  PRODUCT_PERFORMANCE // 商品パフォーマンス
+  PROFIT_ANALYSIS // 利益分析
+  CUSTOMER_ANALYSIS // 顧客分析
+  MARKETPLACE_COMPARISON // マーケットプレイス比較
+  AUDIT_REPORT // 監査レポート
+  CUSTOM // カスタム
+}
+
+enum ReportFormat {
+  PDF
+  EXCEL
+  CSV
+  HTML
+}
+
+enum ReportStatus {
+  PENDING
+  GENERATING
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+
+// ========================================
+// Phase 30: 多言語対応（i18n）
+// ========================================
+
+model TranslationNamespace {
+  id String @id @default(cuid())
+
+  // 名前空間
+  name        String  @unique // 例: common, checkout, product, error
+  description String?
+
+  // メタデータ
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 関連
+  keys TranslationKey[]
+
+  @@map("translation_namespaces")
+}
+
+model TranslationKey {
+  id String @id @default(cuid())
+
+  // キー情報
+  namespaceId String
+  namespace   TranslationNamespace @relation(fields: [namespaceId], references: [id])
+
+  key         String // 例: title, description, button.submit
+  description String? // キーの説明（翻訳者向けコンテキスト）
+  context     String? // 使用コンテキスト（画面名など）
+  screenshot  String? // スクリーンショットURL
+
+  // プレースホルダー
+  placeholders Json @default("[]") // 例: ["name", "count"]
+
+  // メタデータ
+  isActive  Boolean  @default(true)
+  maxLength Int? // 最大文字数制限
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 関連
+  translations Translation[]
+
+  @@unique([namespaceId, key])
+  @@index([key])
+  @@map("translation_keys")
+}
+
+model Translation {
+  id String @id @default(cuid())
+
+  // キー参照
+  keyId          String
+  translationKey TranslationKey @relation(fields: [keyId], references: [id], onDelete: Cascade)
+
+  // 言語
+  locale String // 例: ja, en, zh, zh-TW, ko, es, de, fr
+
+  // 翻訳
+  value String @db.Text
+
+  // 品質管理
+  status     TranslationStatus @default(UNTRANSLATED)
+  source     TranslationSource @default(MANUAL)
+  reviewedBy String?
+  reviewedAt DateTime?
+
+  // バージョン管理
+  version Int @default(1)
+
+  // メタデータ
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([keyId, locale])
+  @@index([locale])
+  @@index([status])
+  @@map("translations")
+}
+
+model SupportedLocale {
+  id String @id @default(cuid())
+
+  // 言語情報
+  code       String @unique // 例: ja, en, zh-TW
+  name       String // 例: 日本語, English
+  nativeName String // 例: 日本語, English
+
+  // 方向
+  direction TextDirection @default(LTR)
+
+  // フォールバック
+  fallbackLocale String? // フォールバック先言語コード
+
+  // 設定
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  // メタデータ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("supported_locales")
+}
+
+model TranslationHistory {
+  id String @id @default(cuid())
+
+  // 翻訳参照
+  translationId String
+
+  // 変更内容
+  oldValue  String?            @db.Text
+  newValue  String             @db.Text
+  oldStatus TranslationStatus?
+  newStatus TranslationStatus
+
+  // 変更者
+  changedBy    String?
+  changeReason String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+
+  @@index([translationId, createdAt])
+  @@map("translation_histories")
+}
+
+enum TranslationStatus {
+  UNTRANSLATED // 未翻訳
+  MACHINE // 機械翻訳
+  DRAFT // 下書き
+  PENDING_REVIEW // レビュー待ち
+  APPROVED // 承認済み
+  PUBLISHED // 公開済み
+}
+
+enum TranslationSource {
+  MANUAL // 手動入力
+  MACHINE_GOOGLE // Google翻訳
+  MACHINE_DEEPL // DeepL
+  MACHINE_GPT // GPT
+  IMPORTED // インポート
+}
+
+enum TextDirection {
+  LTR // 左から右
+  RTL // 右から左
+}
+
+
+// ========================================
+// Phase 31: パフォーマンス最適化
+// ========================================
+
+model CacheConfig {
+  id String @id @default(cuid())
+
+  // キャッシュ設定
+  name        String    @unique // キャッシュ名（例: products, categories）
+  description String?
+  cacheType   CacheType @default(QUERY)
+
+  // TTL設定
+  ttlSeconds Int  @default(300) // デフォルト5分
+  maxEntries Int? // 最大エントリ数
+
+  // 無効化設定
+  tags         String[] @default([]) // タグベース無効化用
+  invalidateOn String[] @default([]) // 無効化トリガー（例: product.update）
+
+  // 統計
+  hitCount   Int @default(0)
+  missCount  Int @default(0)
+  evictCount Int @default(0)
+
+  // メタデータ
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 関連
+  entries CacheEntry[]
+
+  @@map("cache_configs")
+}
+
+model CacheEntry {
+  id String @id @default(cuid())
+
+  // キャッシュ参照
+  configId String
+  config   CacheConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  // キー・値
+  cacheKey  String // キャッシュキー
+  value     Json // キャッシュ値
+  valueHash String? // 値のハッシュ（検証用）
+
+  // タグ
+  tags String[] @default([])
+
+  // 有効期限
+  expiresAt DateTime
+
+  // メタデータ
+  hitCount  Int       @default(0)
+  lastHitAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([configId, cacheKey])
+  @@index([expiresAt])
+  @@index([tags])
+  @@map("cache_entries")
+}
+
+model QueryPerformance {
+  id String @id @default(cuid())
+
+  // クエリ情報
+  queryHash String // クエリのハッシュ
+  queryText String  @db.Text // クエリテキスト（サニタイズ済み）
+  operation String // SELECT, INSERT, UPDATE, DELETE
+  tableName String? // 主テーブル名
+
+  // パフォーマンス
+  executionTime Float // 実行時間（ミリ秒）
+  rowsExamined  Int? // 検査行数
+  rowsReturned  Int? // 返却行数
+
+  // 問題検出
+  isSlowQuery  Boolean @default(false)
+  hasN1Problem Boolean @default(false)
+  suggestions  Json    @default("[]") // 最適化提案
+
+  // コンテキスト
+  endpoint  String? // APIエンドポイント
+  requestId String? // リクエストID
+  userId    String?
+
+  // タイムスタンプ
+  recordedAt DateTime @default(now())
+
+  @@index([queryHash])
+  @@index([isSlowQuery, recordedAt])
+  @@index([tableName])
+  @@map("query_performances")
+}
+
+model QueryStats {
+  id String @id @default(cuid())
+
+  // 集計期間
+  periodStart DateTime
+  periodEnd   DateTime
+  periodType  StatsPeriodType @default(HOURLY)
+
+  // クエリ識別
+  queryHash String
+  tableName String?
+
+  // 統計
+  executionCount Int    @default(0)
+  totalTime      Float  @default(0) // 合計実行時間
+  avgTime        Float  @default(0) // 平均実行時間
+  maxTime        Float  @default(0) // 最大実行時間
+  minTime        Float  @default(0) // 最小実行時間
+  p95Time        Float? // 95パーセンタイル
+  p99Time        Float? // 99パーセンタイル
+
+  // 問題
+  slowQueryCount Int @default(0)
+  n1ProblemCount Int @default(0)
+
+  @@unique([periodStart, periodType, queryHash])
+  @@index([periodStart, periodType])
+  @@map("query_stats")
+}
+
+enum CacheType {
+  QUERY // クエリ結果キャッシュ
+  DATA // データキャッシュ
+  PAGE // ページキャッシュ
+  FRAGMENT // フラグメントキャッシュ
+  SESSION // セッションキャッシュ
+  API // API レスポンスキャッシュ
+}
+
+enum StatsPeriodType {
+  MINUTELY
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model ApiKeyPolicy {
+  id String @id @default(cuid())
+
+  // 対象
+  apiKeyId String     @unique
+  apiKey   UserApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  // 有効期限
+  expiresAt         DateTime?
+  maxUsageCount     Int? // 最大使用回数
+  currentUsageCount Int       @default(0)
+
+  // IP制限
+  allowedIps String[] // 許可IPアドレス（CIDR対応）
+  deniedIps  String[] // 拒否IPアドレス
+
+  // スコープ制限
+  scopes     String[] // 許可スコープ（例: read:products, write:orders）
+  isReadOnly Boolean  @default(false)
+
+  // レート制限
+  rateLimit       Int? // リクエスト/分
+  rateLimitWindow Int  @default(60) // 秒
+
+  // 使用統計
+  lastUsedAt DateTime?
+  lastUsedIp String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("api_key_policies")
+}
+
+
+// ========================================
+// Phase 34: 外部連携強化
+// ========================================
+
+model ExternalIntegration {
+  id String @id @default(cuid())
+
+  // 識別
+  name        String          @unique
+  displayName String
+  description String?
+  type        IntegrationType
+  provider    String // google, freee, yayoi, moneyforward
+
+  // 設定
+  config     Json     @default("{}") // プロバイダ固有設定
+  webhookUrl String? // コールバックURL
+  scopes     String[] // 要求スコープ
+
+  // ステータス
+  isEnabled       Boolean                 @default(true)
+  isConfigured    Boolean                 @default(false)
+  lastHealthCheck DateTime?
+  healthStatus    IntegrationHealthStatus @default(UNKNOWN)
+
+  // 統計
+  totalSyncs      Int @default(0)
+  successfulSyncs Int @default(0)
+  failedSyncs     Int @default(0)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  credentials       IntegrationCredential[]
+  syncLogs          IntegrationSyncLog[]
+  analyticsEvents   AnalyticsEvent[]
+  accountingExports AccountingExport[]
+
+  @@map("external_integrations")
+}
+
+model IntegrationCredential {
+  id String @id @default(cuid())
+
+  // 連携情報
+  integrationId String
+
+  // 認証タイプ
+  authType IntegrationAuthType
+
+  // OAuth用
+  accessToken  String?   @db.Text // 暗号化済み
+  refreshToken String?   @db.Text // 暗号化済み
+  tokenType    String?
+  scope        String?
+  expiresAt    DateTime?
+
+  // APIキー用
+  apiKey    String? @db.Text // 暗号化済み
+  apiSecret String? @db.Text // 暗号化済み
+
+  // Basic認証用
+  username String?
+  password String? // 暗号化済み
+
+  // 追加情報
+  accountId String? // 外部サービスのアカウントID
+  metadata  Json    @default("{}")
+
+  // ステータス
+  isValid         Boolean   @default(true)
+  lastValidatedAt DateTime?
+  lastRefreshedAt DateTime?
+
+  // タイムスタンプ
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  ExternalIntegration   ExternalIntegration? @relation(fields: [externalIntegrationId], references: [id])
+  externalIntegrationId String?
+
+  @@index([integrationId, isValid])
+  @@map("integration_credentials")
+}
+
+model IntegrationSyncLog {
+  id String @id @default(cuid())
+
+  // 連携情報
+  integrationId String
+
+  // 同期情報
+  syncType    IntegrationSyncType
+  direction   SyncDirection
+  entityType  String? // products, orders, etc.
+  entityCount Int                 @default(0)
+
+  // 実行情報
+  status      IntegrationSyncStatus
+  startedAt   DateTime              @default(now())
+  completedAt DateTime?
+  duration    Int? // ミリ秒
+
+  // 結果
+  successCount Int @default(0)
+  failureCount Int @default(0)
+  skippedCount Int @default(0)
+
+  // エラー情報
+  errorCode    String?
+  errorMessage String? @db.Text
+  errorDetails Json?
+
+  // リトライ情報
+  retryCount  Int       @default(0)
+  maxRetries  Int       @default(3)
+  nextRetryAt DateTime?
+
+  // タイムスタンプ
+  createdAt             DateTime             @default(now())
+  ExternalIntegration   ExternalIntegration? @relation(fields: [externalIntegrationId], references: [id])
+  externalIntegrationId String?
+
+  @@index([integrationId, createdAt])
+  @@index([status])
+  @@index([syncType])
+  @@map("integration_sync_logs")
+}
+
+model AnalyticsEvent {
+  id String @id @default(cuid())
+
+  // 連携情報
+  integrationId String
+
+  // イベント情報
+  eventName     String
+  eventCategory String?
+  eventLabel    String?
+  eventValue    Float?
+  parameters    Json    @default("{}")
+
+  // ユーザー情報
+  userId    String?
+  sessionId String?
+  clientId  String?
+
+  // 送信状態
+  status     AnalyticsEventStatus @default(PENDING)
+  sentAt     DateTime?
+  retryCount Int                  @default(0)
+
+  // エラー情報
+  errorMessage String?
+
+  // タイムスタンプ
+  occurredAt            DateTime             @default(now())
+  createdAt             DateTime             @default(now())
+  ExternalIntegration   ExternalIntegration? @relation(fields: [externalIntegrationId], references: [id])
+  externalIntegrationId String?
+
+  @@index([integrationId, status])
+  @@index([eventName, occurredAt])
+  @@index([status, createdAt])
+  @@map("analytics_events")
+}
+
+model AccountingExport {
+  id String @id @default(cuid())
+
+  // 連携情報
+  integrationId String
+
+  // エクスポート設定
+  exportType  AccountingExportType
+  periodStart DateTime
+  periodEnd   DateTime
+  format      AccountingFormat     @default(CSV)
+
+  // データ範囲
+  includeOrders   Boolean @default(true)
+  includeRefunds  Boolean @default(true)
+  includeShipping Boolean @default(true)
+  includeFees     Boolean @default(true)
+
+  // 実行情報
+  status      AccountingExportStatus @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  // 結果
+  totalRecords Int    @default(0)
+  totalAmount  Float  @default(0)
+  currency     String @default("JPY")
+
+  // ファイル情報
+  fileUrl  String?
+  fileSize Int?
+
+  // エラー情報
+  errorMessage String?
+
+  // タイムスタンプ
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  ExternalIntegration   ExternalIntegration? @relation(fields: [externalIntegrationId], references: [id])
+  externalIntegrationId String?
+
+  @@index([integrationId, createdAt])
+  @@index([status])
+  @@map("accounting_exports")
+}
+
+model AccountingMapping {
+  id String @id @default(cuid())
+
+  // マッピング情報
+  provider       String // freee, yayoi, moneyforward
+  sourceField    String // RAKUDAのフィールド
+  targetField    String // 外部サービスのフィールド
+  transformation String? // 変換ルール
+
+  // カテゴリマッピング
+  categoryType AccountingCategoryType?
+  categoryCode String?
+  categoryName String?
+
+  // ステータス
+  isActive Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, sourceField])
+  @@map("accounting_mappings")
+}
+
+enum IntegrationType {
+  ANALYTICS // 分析ツール
+  ACCOUNTING // 会計ソフト
+  MARKETING // マーケティング
+  SHIPPING // 配送
+  PAYMENT // 決済
+  CRM // 顧客管理
+  CUSTOM // カスタム
+}
+
+enum IntegrationAuthType {
+  OAUTH2
+  API_KEY
+  BASIC
+  BEARER
+  CUSTOM
+}
+
+enum IntegrationHealthStatus {
+  HEALTHY
+  DEGRADED
+  UNHEALTHY
+  UNKNOWN
+}
+
+enum IntegrationSyncType {
+  FULL // 全件同期
+  INCREMENTAL // 差分同期
+  MANUAL // 手動同期
+  WEBHOOK // Webhook起動
+  SCHEDULED // スケジュール同期
+}
+
+enum SyncDirection {
+  INBOUND // 外部→RAKUDA
+  OUTBOUND // RAKUDA→外部
+  BIDIRECTIONAL // 双方向
+}
+
+enum IntegrationSyncStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  PARTIAL // 一部成功
+}
+
+enum AnalyticsEventStatus {
+  PENDING
+  SENT
+  FAILED
+  RETRYING
+}
+
+enum AccountingExportType {
+  SALES // 売上
+  PURCHASES // 仕入
+  EXPENSES // 経費
+  JOURNAL // 仕訳
+  FULL // 全部
+}
+
+enum AccountingFormat {
+  CSV
+  JSON
+  XML
+  FREEE
+  YAYOI
+  MONEYFORWARD
+}
+
+enum AccountingExportStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum AccountingCategoryType {
+  REVENUE // 収益
+  COST // 原価
+  EXPENSE // 経費
+  ASSET // 資産
+  LIABILITY // 負債
+}
+
+enum PriceRecommendedAction {
+  INCREASE
+  DECREASE
+  MAINTAIN
+  REVIEW
+}
+
+enum DemandForecastTarget {
+  PRODUCT // 個別商品
+  CATEGORY // カテゴリ
+  BRAND // ブランド
+  MARKETPLACE // マーケットプレイス全体
+  OVERALL // 全体
+}
+
+enum ForecastPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+}
+
+enum DemandTrend {
+  INCREASING
+  DECREASING
+  STABLE
+  VOLATILE
+}
+
+enum RecommendationType {
+  SIMILAR_PRODUCTS // 類似商品
+  FREQUENTLY_BOUGHT // よく一緒に購入
+  TRENDING // トレンド
+  PERSONALIZED // パーソナライズ
+  CROSS_SELL // クロスセル
+  UP_SELL // アップセル
+  NEW_ARRIVALS // 新着
+  BEST_SELLERS // ベストセラー
+}
+
+enum PriceOptimizationTarget {
+  PRODUCT // 個別商品
+  CATEGORY // カテゴリ
+  BRAND // ブランド
+  GLOBAL // 全体
+}
+
+enum PriceOptimizationStrategy {
+  COMPETITIVE // 競合価格追従
+  PROFIT_MAXIMIZATION // 利益最大化
+  MARKET_PENETRATION // 市場浸透
+  DYNAMIC // 動的価格設定
+  RULE_BASED // ルールベース
+}
+
+enum PriceOptimizationMetric {
+  PROFIT // 利益
+  REVENUE // 売上
+  MARGIN // マージン
+  VOLUME // 販売数
+}
+
+
+// ========================================
+// Phase 37: データ可視化
+// ========================================
+
+// グラフ設定
+model ChartConfig {
+  id String @id @default(cuid())
+
+  // 基本情報
+  name        String
+  description String?
+  chartType   ChartType
+
+  // データソース
+  dataSource ChartDataSource
+  query      Json // データ取得クエリ設定
+
+  // 表示設定
+  options     Json     @default("{}") // Chart.js/Rechartsオプション
+  colors      String[] // カラーパレット
+  showLegend  Boolean  @default(true)
+  showTooltip Boolean  @default(true)
+  animated    Boolean  @default(true)
+
+  // 更新設定
+  refreshInterval Int? // 自動更新間隔（秒）
+  cacheTimeout    Int? // キャッシュ有効期間（秒）
+
+  // フィルター
+  defaultFilters Json @default("{}") // デフォルトフィルター
+
+  // オーナー
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  // ステータス
+  isPublic Boolean @default(false)
+  isActive Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  dataPoints     ChartData[]
+  dashboardItems DashboardChartItem[]
+
+  @@index([chartType, isActive])
+  @@index([createdById])
+  @@map("chart_configs")
+}
+
+
+// グラフデータ（キャッシュ）
+model ChartData {
+  id String @id @default(cuid())
+
+  // グラフ設定
+  chartId String
+  chart   ChartConfig @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  // データ期間
+  periodStart DateTime
+  periodEnd   DateTime
+  granularity DataGranularity
+
+  // データ
+  labels   String[] // X軸ラベル
+  datasets Json // データセット配列
+
+  // メタデータ
+  totalRecords    Int              @default(0)
+  aggregationType AggregationType?
+
+  // キャッシュ情報
+  cachedAt  DateTime @default(now())
+  expiresAt DateTime
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+
+  @@index([chartId, periodStart, periodEnd])
+  @@index([expiresAt])
+  @@map("chart_data")
+}
+
+
+// ダッシュボードグラフ配置
+model DashboardChartItem {
+  id String @id @default(cuid())
+
+  // ダッシュボード
+  dashboardId String
+  dashboard   Dashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+
+  // グラフ
+  chartId String
+  chart   ChartConfig @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  // 配置
+  position Int // 表示順序
+  width    Int @default(6) // グリッド幅（1-12）
+  height   Int @default(4) // グリッド高さ
+
+  // カスタマイズ
+  title     String? // カスタムタイトル
+  overrides Json    @default("{}") // 設定オーバーライド
+
+  // ステータス
+  isVisible Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([dashboardId, chartId])
+  @@index([dashboardId, position])
+  @@map("dashboard_chart_items")
+}
+
+
+// ウィジェットプリセット
+model WidgetPreset {
+  id String @id @default(cuid())
+
+  // 基本情報
+  name        String
+  description String?
+  category    WidgetCategory
+
+  // 設定
+  widgetType String // kpi, chart, table, etc.
+  config     Json // ウィジェット設定
+
+  // サムネイル
+  thumbnail String? // プレビュー画像URL
+
+  // ステータス
+  isSystem Boolean @default(false) // システムプリセット
+  isPublic Boolean @default(true)
+
+  // 使用統計
+  usageCount Int @default(0)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category, isPublic])
+  @@map("widget_presets")
+}
+
+
+// ユーザーフィードバック
+model UserFeedback {
+  id String @id @default(cuid())
+
+  // ユーザー
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sessionId String? // 匿名ユーザー用
+
+  // 対象
+  targetType FeedbackTargetType
+  targetId   String
+
+  // フィードバック
+  feedbackType FeedbackType
+  rating       Int? // 1-5スケール
+  comment      String?      @db.Text
+
+  // メタデータ
+  context   Json    @default("{}") // ページURL、アクション等
+  userAgent String?
+  ipAddress String?
+
+  // ステータス
+  status     FeedbackStatus @default(NEW)
+  resolvedAt DateTime?
+  resolvedBy String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([targetType, targetId])
+  @@index([userId])
+  @@index([feedbackType, status])
+  @@map("user_feedbacks")
+}
+
+
+// AI予測フィードバック
+model PredictionFeedback {
+  id String @id @default(cuid())
+
+  // ユーザー
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 予測対象
+  predictionType PredictionFeedbackType
+  predictionId   String
+
+  // フィードバック
+  isHelpful     Boolean // 役立ったか
+  actualOutcome String? // 実際の結果
+  comment       String? @db.Text
+
+  // 予測との比較
+  predictedValue Float?
+  actualValue    Float?
+  accuracy       Float? // 予測精度
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+
+  @@index([predictionType, predictionId])
+  @@index([userId])
+  @@index([isHelpful])
+  @@map("prediction_feedbacks")
+}
+
+
+// ========================================
+// Phase 38: 検索機能強化
+// ========================================
+
+// 検索インデックス設定
+model SearchIndex {
+  id String @id @default(cuid())
+
+  // 基本情報
+  name        String  @unique
+  description String?
+  entityType  String // products, orders, listings等
+
+  // インデックス設定
+  fields   Json // インデックス対象フィールド
+  weights  Json           @default("{}") // フィールド重み
+  analyzer SearchAnalyzer @default(JAPANESE)
+
+  // 更新設定
+  syncMode   SearchSyncMode   @default(REALTIME)
+  lastSyncAt DateTime?
+  syncStatus SearchSyncStatus @default(IDLE)
+
+  // 統計
+  documentCount Int @default(0)
+  indexSize     Int @default(0) // バイト
+
+  // ステータス
+  isActive Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([entityType, isActive])
+  @@map("search_indexes")
+}
+
+
+// 検索ログ
+model SearchLog {
+  id String @id @default(cuid())
+
+  // ユーザー
+  userId    String?
+  sessionId String?
+
+  // 検索クエリ
+  query     String
+  queryType SearchQueryType @default(KEYWORD)
+  filters   Json            @default("{}") // 適用されたフィルター
+
+  // 検索対象
+  entityType String // products, orders等
+  indexName  String?
+
+  // 結果
+  resultCount   Int      @default(0)
+  topResults    String[] // 上位結果のID
+  executionTime Int? // ミリ秒
+
+  // ユーザー行動
+  clickedResults String[] // クリックした結果のID
+  selectedResult String? // 最終選択したID
+  hasConversion  Boolean  @default(false) // コンバージョンしたか
+
+  // メタデータ
+  source    String? // 検索ソース（header, page, api等）
+  userAgent String?
+  ipAddress String?
+
+  // タイムスタンプ
+  searchedAt DateTime @default(now())
+
+  @@index([query])
+  @@index([entityType, searchedAt])
+  @@index([userId, searchedAt])
+  @@map("search_logs")
+}
+
+
+// 検索シノニム（同義語）
+model SearchSynonym {
+  id String @id @default(cuid())
+
+  // 対象
+  entityType String? // null = 全エンティティ
+
+  // シノニム設定
+  term        String // 元の単語
+  synonyms    String[] // 同義語リスト
+  synonymType SynonymType @default(EQUIVALENT)
+
+  // 優先度
+  priority Int @default(0)
+
+  // ステータス
+  isActive Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([entityType, term])
+  @@index([term])
+  @@map("search_synonyms")
+}
+
+
+// 検索フィルター定義
+model SearchFilter {
+  id String @id @default(cuid())
+
+  // 基本情報
+  name        String
+  displayName String
+  description String?
+
+  // 対象
+  entityType String
+
+  // フィルター設定
+  field      String // フィルター対象フィールド
+  filterType SearchFilterType
+  options    Json             @default("[]") // 選択肢（SELECTタイプ用）
+
+  // 表示設定
+  position    Int     @default(0)
+  isCollapsed Boolean @default(false)
+  showCount   Boolean @default(true) // 件数表示
+
+  // ステータス
+  isActive Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([entityType, isActive])
+  @@map("search_filters")
+}
+
+
+// 人気検索ワード
+model PopularSearch {
+  id String @id @default(cuid())
+
+  // 検索ワード
+  query      String
+  entityType String
+
+  // 統計
+  searchCount     Int @default(1)
+  clickCount      Int @default(0)
+  conversionCount Int @default(0)
+
+  // トレンド
+  trendScore     Float    @default(0) // トレンドスコア
+  lastSearchedAt DateTime @default(now())
+
+  // 期間
+  periodStart DateTime
+  periodEnd   DateTime
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([query, entityType, periodStart])
+  @@index([entityType, trendScore])
+  @@index([searchCount])
+  @@map("popular_searches")
+}
+
+
+// 検索サジェスト
+model SearchSuggestion {
+  id String @id @default(cuid())
+
+  // サジェスト
+  prefix     String // 入力プレフィックス
+  suggestion String // サジェスト文字列
+  entityType String
+
+  // 重み
+  weight Float            @default(1.0)
+  source SuggestionSource @default(QUERY)
+
+  // 統計
+  selectCount Int @default(0)
+
+  // ステータス
+  isActive Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([prefix, entityType])
+  @@index([weight])
+  @@map("search_suggestions")
+}
+
+
+// ========================================
+// Phase 37-38 Enums
+// ========================================
+
+enum ChartType {
+  LINE // 折れ線グラフ
+  BAR // 棒グラフ
+  PIE // 円グラフ
+  DOUGHNUT // ドーナツグラフ
+  AREA // エリアグラフ
+  SCATTER // 散布図
+  RADAR // レーダーチャート
+  TREEMAP // ツリーマップ
+  HEATMAP // ヒートマップ
+  FUNNEL // ファネルチャート
+  GAUGE // ゲージ
+  COMBO // 複合グラフ
+}
+
+enum ChartDataSource {
+  SALES // 売上データ
+  ORDERS // 注文データ
+  PRODUCTS // 商品データ
+  INVENTORY // 在庫データ
+  PREDICTIONS // AI予測データ
+  ANALYTICS // 分析データ
+  CUSTOM // カスタムクエリ
+}
+
+enum DataGranularity {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum AggregationType {
+  SUM
+  AVG
+  COUNT
+  MIN
+  MAX
+  MEDIAN
+}
+
+enum WidgetCategory {
+  SALES // 売上
+  INVENTORY // 在庫
+  ORDERS // 注文
+  ANALYTICS // 分析
+  AI // AI/予測
+  SYSTEM // システム
+}
+
+enum FeedbackTargetType {
+  FEATURE // 機能
+  PAGE // ページ
+  PREDICTION // 予測
+  REPORT // レポート
+  DASHBOARD // ダッシュボード
+  GENERAL // 一般
+}
+
+enum FeedbackType {
+  BUG // バグ報告
+  FEATURE_REQUEST // 機能要望
+  IMPROVEMENT // 改善提案
+  PRAISE // 称賛
+  QUESTION // 質問
+  OTHER // その他
+}
+
+enum FeedbackStatus {
+  NEW
+  REVIEWED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  WONT_FIX
+}
+
+enum PredictionFeedbackType {
+  PRICE // 価格予測
+  DEMAND // 需要予測
+  RECOMMENDATION // 商品推薦
+}
+
+enum SearchAnalyzer {
+  STANDARD // 標準
+  JAPANESE // 日本語
+  ENGLISH // 英語
+  MULTILINGUAL // 多言語
+}
+
+enum SearchSyncMode {
+  REALTIME // リアルタイム同期
+  BATCH // バッチ同期
+  MANUAL // 手動同期
+}
+
+enum SearchSyncStatus {
+  IDLE
+  SYNCING
+  COMPLETED
+  FAILED
+}
+
+enum SearchQueryType {
+  KEYWORD // キーワード検索
+  PHRASE // フレーズ検索
+  FUZZY // あいまい検索
+  PREFIX // 前方一致
+  WILDCARD // ワイルドカード
+  SEMANTIC // 意味検索
+}
+
+enum SynonymType {
+  EQUIVALENT // 同等（双方向）
+  EXPANSION // 拡張（一方向）
+}
+
+enum SearchFilterType {
+  SELECT // 選択式
+  MULTI_SELECT // 複数選択
+  RANGE // 範囲
+  DATE_RANGE // 日付範囲
+  BOOLEAN // ブール
+  TEXT // テキスト
+}
+
+enum SuggestionSource {
+  QUERY // 検索クエリから
+  PRODUCT // 商品名から
+  CATEGORY // カテゴリから
+  BRAND // ブランドから
+  MANUAL // 手動登録
+}
+
+enum BatchPublishStatus {
+  PENDING // 待機中
+  PROCESSING // 処理中
+  COMPLETED // 完了
+  PARTIAL // 一部完了
+  FAILED // 失敗
+  CANCELLED // キャンセル
+}
+
+
+// ========================================
+// Phase 43: ジョブリカバリー・冪等性
+// ========================================
+
+// 失敗ジョブ追跡
+model FailedJob {
+  id String @id @default(cuid())
+
+  // ジョブ情報
+  queueName String
+  jobId     String
+  jobName   String
+  jobData   Json
+
+  // エラー情報
+  error      String  @db.Text
+  stackTrace String? @db.Text
+
+  // リトライ情報
+  attemptsMade Int
+  maxAttempts  Int
+  canRetry     Boolean   @default(true)
+  retryAfter   DateTime?
+
+  // ステータス
+  status    FailedJobStatus @default(PENDING)
+  retriedAt DateTime?
+  newJobId  String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([queueName, status])
+  @@index([canRetry, retryAfter])
+  @@index([status, createdAt])
+  @@map("failed_jobs")
+}
+
+enum FailedJobStatus {
+  PENDING // リトライ待ち
+  RETRIED // リトライ済み
+  ABANDONED // 諦め
+}
+
+
+// 冪等性キー
+model IdempotencyKey {
+  id String @id @default(cuid())
+
+  // キー情報
+  key    String @unique
+  result Json?
+
+  // 有効期限
+  expiresAt DateTime
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
+
+// ========================================
+// Phase 70: ダッシュボードウィジェット
+// ========================================
+
+enum DashboardWidgetType {
+  SALES_SUMMARY // 売上サマリー
+  ORDER_STATUS // 注文ステータス
+  INVENTORY_ALERT // 在庫アラート
+  RECENT_ORDERS // 最近の注文
+  TOP_PRODUCTS // 人気商品
+  PROFIT_CHART // 利益チャート
+  MARKETPLACE_COMPARISON // マーケットプレイス比較
+  SHIPMENT_STATUS // 発送ステータス
+  FORECAST_SUMMARY // 売上予測サマリー
+  JOB_QUEUE_STATUS // ジョブキューステータス
+  QUICK_ACTIONS // クイックアクション
+  CUSTOM // カスタムウィジェット
+}
+
+model DashboardLayout {
+  id String @id @default(cuid())
+
+  // レイアウト情報
+  name        String // レイアウト名
+  description String?
+
+  // グリッド設定
+  columns   Int @default(4)
+  rowHeight Int @default(100)
+
+  // ウィジェット配置
+  widgets Json @default("[]") // [{widgetId, x, y, w, h}]
+
+  // ステータス
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  // 所有者
+  userId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, isActive])
+  @@map("dashboard_layouts")
+}
+
+
+// ========================================
+// Phase 73: ワークフロー自動化エンジン
+// ========================================
+
+model WorkflowRule {
+  id String @id @default(cuid())
+
+  // ルール基本情報
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+  priority    Int     @default(0) // 高いほど優先
+
+  // トリガー設定
+  triggerType   WorkflowTriggerType
+  triggerConfig Json                @default("{}") // トリガー固有の設定
+
+  // 条件設定（JSONで条件ツリーを表現）
+  conditions Json @default("[]") // [{field, operator, value, logic}]
+
+  // アクション設定
+  actions Json @default("[]") // [{type, config}]
+
+  // スケジュール設定（SCHEDULE トリガー用）
+  cronExpression String?
+  timezone       String? @default("Asia/Tokyo")
+
+  // 実行制限
+  maxExecutionsPerDay Int?
+  cooldownMinutes     Int? // 同一対象への再実行防止時間
+
+  // 統計
+  executionCount Int       @default(0)
+  lastExecutedAt DateTime?
+  lastError      String?   @db.Text
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, priority])
+  @@index([triggerType, isActive])
+  @@map("workflow_rules")
+}
+
+
+// ========================================
+// Phase 74: AIチャットボット
+// ========================================
+
+model ChatSession {
+  id String @id @default(cuid())
+
+  // セッション識別
+  sessionKey  String @unique // 外部識別子（顧客ID + マーケットプレイス）
+  marketplace String // 'joom', 'ebay' など
+
+  // 顧客情報
+  customerId     String?
+  customerName   String?
+  customerEmail  String?
+  customerLocale String? @default("en") // 顧客の言語
+
+  // コンテキスト
+  context  Json @default("{}") // {orderId, productId, etc.}
+  metadata Json @default("{}")
+
+  // セッション状態
+  status        ChatSessionStatus @default(ACTIVE)
+  lastMessageAt DateTime?
+  messageCount  Int               @default(0)
+
+  // エスカレーション
+  isEscalated      Boolean   @default(false)
+  escalatedAt      DateTime?
+  escalationReason String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages ChatMessage[]
+
+  @@index([marketplace, customerId])
+  @@index([status, lastMessageAt])
+  @@index([isEscalated])
+  @@map("chat_sessions")
+}
+
+enum ChatSessionStatus {
+  ACTIVE // アクティブ
+  WAITING // 返信待ち
+  RESOLVED // 解決済み
+  ESCALATED // エスカレーション済み
+  EXPIRED // 期限切れ
+}
+
+model ChatMessage {
+  id String @id @default(cuid())
+
+  // セッション参照
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id])
+
+  // メッセージ情報
+  role      ChatMessageRole
+  content   String          @db.Text
+  contentEn String?         @db.Text // 英語翻訳（必要な場合）
+
+  // AI処理情報
+  intent     String? // 検出されたインテント
+  confidence Float? // 信頼度 (0-1)
+  entities   Json    @default("{}") // 抽出されたエンティティ
+
+  // 参照情報
+  referencedOrderId   String?
+  referencedProductId String?
+
+  // メタデータ
+  metadata    Json    @default("{}")
+  isAutoReply Boolean @default(false)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([role, createdAt])
+  @@map("chat_messages")
+}
+
+enum ChatMessageRole {
+  USER // 顧客
+  ASSISTANT // AI/ボット
+  SYSTEM // システムメッセージ
+  OPERATOR // 人間オペレーター
+}
+
+model ChatbotConfig {
+  id String @id @default(cuid())
+
+  // 設定識別
+  marketplace String @unique // 'joom', 'ebay', 'default'
+
+  // AI設定
+  model       String @default("gpt-4o") // 使用するモデル
+  temperature Float  @default(0.7)
+  maxTokens   Int    @default(1000)
+
+  // システムプロンプト
+  systemPrompt String @db.Text
+
+  // 応答設定
+  defaultLanguage    String   @default("en")
+  supportedLanguages String[] @default(["en", "ja"])
+  responseTimeoutMs  Int      @default(30000)
+
+  // エスカレーション設定
+  autoEscalateOnNegativeSentiment Boolean  @default(true)
+  autoEscalateAfterMessages       Int      @default(5) // N回やり取り後
+  escalationKeywords              String[] @default(["refund", "cancel", "complaint", "angry"])
+
+  // 制限設定
+  maxMessagesPerSession Int @default(50)
+  sessionTimeoutMinutes Int @default(60)
+
+  // 有効/無効
+  isActive Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("chatbot_configs")
+}
+
+
+// ========================================
+// Phase 77: A/Bテスト機能
+// ========================================
+
+model ABTest {
+  id String @id @default(cuid())
+
+  // テスト識別
+  name        String
+  description String? @db.Text
+
+  // テスト設定
+  testType     ABTestType
+  targetEntity String // 'listing', 'product', 'pricing'
+  targetField  String // 'title', 'description', 'price', 'images'
+
+  // フィルター条件（対象リスティング/商品）
+  filters Json @default("{}") // { marketplace: 'joom', category: 'watches' }
+
+  // トラフィック配分
+  trafficPercent Int @default(100) // 対象の何%をテストに含めるか
+
+  // 期間
+  startAt DateTime
+  endAt   DateTime?
+
+  // 成功指標
+  primaryMetric    ABTestMetric @default(CONVERSION_RATE)
+  secondaryMetrics String[]     @default([])
+
+  // 最小サンプルサイズ
+  minSampleSize Int @default(100)
+
+  // 統計設定
+  confidenceLevel Float @default(0.95) // 95% confidence
+
+  // ステータス
+  status ABTestStatus @default(DRAFT)
+
+  // 結果サマリー
+  winningVariantId String?
+  conclusion       String? @db.Text
+  isSignificant    Boolean @default(false)
+
+  // タイムスタンプ
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
+  // リレーション
+  variants    ABTestVariant[]
+  assignments ABTestAssignment[]
+
+  @@index([status, startAt])
+  @@index([testType])
+  @@map("ab_tests")
+}
+
+enum ABTestType {
+  TITLE // タイトルテスト
+  DESCRIPTION // 説明文テスト
+  PRICE // 価格テスト
+  IMAGE // 画像テスト
+  MULTI // 複合テスト
+}
+
+enum ABTestMetric {
+  CONVERSION_RATE // コンバージョン率
+  CLICK_RATE // クリック率（インプレッション→クリック）
+  VIEW_TO_SALE // 閲覧→購入率
+  REVENUE // 収益
+  PROFIT // 利益
+  AVG_ORDER_VALUE // 平均注文額
+}
+
+enum ABTestStatus {
+  DRAFT // 下書き
+  SCHEDULED // スケジュール済み
+  RUNNING // 実行中
+  PAUSED // 一時停止
+  COMPLETED // 完了
+  CANCELLED // キャンセル
+}
+
+model ABTestVariant {
+  id String @id @default(cuid())
+
+  // テスト参照
+  testId String
+  test   ABTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  // バリアント情報
+  name        String // 'Control', 'Variant A', 'Variant B'
+  isControl   Boolean @default(false) // コントロールグループか
+  description String?
+
+  // 変更内容
+  changes Json // { title: '...', price: 100 }
+
+  // トラフィック配分（テスト内での割合）
+  weight Int @default(50) // 50 = 50%
+
+  // 結果統計
+  impressions Int   @default(0) // インプレッション数
+  clicks      Int   @default(0) // クリック数
+  views       Int   @default(0) // 閲覧数
+  sales       Int   @default(0) // 販売数
+  revenue     Float @default(0) // 収益
+  profit      Float @default(0) // 利益
+
+  // 計算指標
+  conversionRate Float? // 計算済みコンバージョン率
+  clickRate      Float? // 計算済みクリック率
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  assignments ABTestAssignment[]
+
+  @@index([testId])
+  @@map("ab_test_variants")
+}
+
+model ABTestAssignment {
+  id String @id @default(cuid())
+
+  // テスト参照
+  testId String
+  test   ABTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  // バリアント参照
+  variantId String
+  variant   ABTestVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  // 割り当て対象
+  listingId String?
+  productId String?
+
+  // 元の値（復元用）
+  originalValue Json @default("{}")
+
+  // イベント追跡
+  impressions Int   @default(0)
+  clicks      Int   @default(0)
+  views       Int   @default(0)
+  conversions Int   @default(0)
+  revenue     Float @default(0)
+
+  // タイムスタンプ
+  assignedAt  DateTime  @default(now())
+  lastEventAt DateTime?
+
+  @@unique([testId, listingId])
+  @@unique([testId, productId])
+  @@index([testId, variantId])
+  @@index([listingId])
+  @@index([productId])
+  @@map("ab_test_assignments")
+}
+
+
+// ========================================
+// Phase 78: サプライヤー管理
+// ========================================
+
+model Supplier {
+  id String @id @default(cuid())
+
+  // 基本情報
+  name        String
+  code        String  @unique // 仕入先コード（例: SUP001）
+  description String?
+
+  // 連絡先
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  website      String?
+
+  // 住所
+  address    String?
+  city       String?
+  prefecture String? // 都道府県/州
+  postalCode String?
+  country    String  @default("JP")
+
+  // 支払い条件
+  paymentTerms String? // '月末締め翌月払い', 'COD', etc.
+  currency     String  @default("JPY")
+
+  // 評価
+  rating      Float? // 1-5
+  reliability Float? // 信頼性スコア 0-1
+  avgLeadTime Int? // 平均納期（日）
+  onTimeRate  Float? // 納期遵守率 0-1
+
+  // ステータス
+  status SupplierStatus @default(ACTIVE)
+
+  // メタデータ
+  notes    String? @db.Text
+  metadata Json    @default("{}")
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  products         SupplierProduct[]
+  orders           PurchaseOrder[]
+  autoReorderRules AutoReorderRule[]
+
+  @@index([status])
+  @@index([code])
+  @@map("suppliers")
+}
+
+enum SupplierStatus {
+  ACTIVE // アクティブ
+  INACTIVE // 非アクティブ
+  SUSPENDED // 一時停止
+  BLACKLISTED // ブラックリスト
+}
+
+model SupplierProduct {
+  id String @id @default(cuid())
+
+  // サプライヤー参照
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+
+  // 商品情報
+  productId   String? // 内部商品との紐付け（あれば）
+  sku         String // サプライヤーSKU
+  name        String
+  description String?
+
+  // 価格
+  unitPrice   Float // 単価
+  currency    String @default("JPY")
+  minOrderQty Int    @default(1) // 最小発注数量
+  priceBreaks Json   @default("[]") // 数量割引 [{ qty: 10, price: 900 }]
+
+  // 在庫・納期
+  stockLevel  Int? // サプライヤー在庫（わかる場合）
+  leadTime    Int? // 納期（日）
+  isAvailable Boolean @default(true)
+
+  // カテゴリ
+  category String?
+  brand    String?
+
+  // URL
+  sourceUrl String? // 仕入れ元URL
+
+  // メタデータ
+  metadata Json @default("{}")
+
+  // タイムスタンプ
+  lastPriceUpdate DateTime?
+  lastStockCheck  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // リレーション
+  orderItems PurchaseOrderItem[]
+
+  @@unique([supplierId, sku])
+  @@index([supplierId])
+  @@index([productId])
+  @@index([isAvailable])
+  @@map("supplier_products")
+}
+
+model PurchaseOrder {
+  id String @id @default(cuid())
+
+  // サプライヤー参照
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id])
+
+  // 発注番号
+  orderNumber String @unique // PO-2024-0001
+
+  // 関連注文（顧客注文に紐付く場合）
+  relatedOrderId String?
+
+  // 金額
+  subtotal Float  @default(0)
+  tax      Float  @default(0)
+  shipping Float  @default(0)
+  total    Float  @default(0)
+  currency String @default("JPY")
+
+  // ステータス
+  status PurchaseOrderStatus @default(DRAFT)
+
+  // 日付
+  orderedAt   DateTime?
+  expectedAt  DateTime? // 予定納期
+  deliveredAt DateTime? // 実際の納品日
+
+  // 配送先
+  shipTo         String? // 配送先住所
+  trackingNumber String?
+
+  // 備考
+  notes String? @db.Text
+
+  // 承認
+  approvedBy String?
+  approvedAt DateTime?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  items PurchaseOrderItem[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderNumber])
+  @@index([relatedOrderId])
+  @@map("purchase_orders")
+}
+
+enum PurchaseOrderStatus {
+  DRAFT // 下書き
+  PENDING // 承認待ち
+  APPROVED // 承認済み
+  ORDERED // 発注済み
+  SHIPPED // 出荷済み
+  DELIVERED // 納品完了
+  CANCELLED // キャンセル
+  RETURNED // 返品
+}
+
+model PurchaseOrderItem {
+  id String @id @default(cuid())
+
+  // 発注参照
+  orderId String
+  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  // 商品参照
+  supplierProductId String
+  supplierProduct   SupplierProduct @relation(fields: [supplierProductId], references: [id])
+
+  // 数量・価格
+  quantity  Int
+  unitPrice Float
+  lineTotal Float
+
+  // 入荷追跡
+  receivedQty Int       @default(0)
+  receivedAt  DateTime?
+
+  // 備考
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([supplierProductId])
+  @@map("purchase_order_items")
+}
+
+
+// ========================================
+// Phase 80: 在庫予測・自動発注
+// ========================================
+
+model InventoryForecast {
+  id String @id @default(cuid())
+
+  // 商品参照
+  productId String
+  listingId String?
+
+  // 予測期間
+  forecastDate   DateTime // 予測対象日
+  forecastPeriod Int      @default(30) // 予測期間（日）
+
+  // 現在の在庫状況
+  currentStock   Int @default(0)
+  reservedStock  Int @default(0) // 予約済み
+  availableStock Int @default(0) // 利用可能
+
+  // 需要予測
+  predictedDemand  Float // 予測需要数
+  demandConfidence Float @default(0.5) // 信頼度 (0-1)
+
+  // 安全在庫
+  safetyStock  Int @default(0) // 安全在庫数
+  reorderPoint Int @default(0) // 発注点
+
+  // 予測結果
+  daysUntilStockout Int? // 在庫切れまでの日数
+  stockoutRisk      StockoutRisk   @default(LOW)
+  recommendedAction ReorderAction?
+
+  // 予測モデル情報
+  modelType   String @default("moving_average")
+  modelParams Json   @default("{}") // モデルパラメータ
+
+  // タイムスタンプ
+  calculatedAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([productId, forecastDate])
+  @@index([listingId, forecastDate])
+  @@index([stockoutRisk])
+  @@map("inventory_forecasts")
+}
+
+enum StockoutRisk {
+  CRITICAL // 緊急（7日以内）
+  HIGH // 高（14日以内）
+  MEDIUM // 中（30日以内）
+  LOW // 低（30日以上）
+}
+
+enum ReorderAction {
+  ORDER_NOW // 今すぐ発注
+  ORDER_SOON // 近日中に発注
+  MONITOR // 監視継続
+  REDUCE // 在庫削減検討
+}
+
+model AutoReorderRule {
+  id String @id @default(cuid())
+
+  // ルール識別
+  name        String
+  description String?
+
+  // 対象条件
+  targetType AutoReorderTargetType
+  targetId   String? // 特定商品/カテゴリ/サプライヤー
+  filters    Json                  @default("{}") // フィルター条件
+
+  // 発注条件
+  triggerType        AutoReorderTriggerType
+  reorderPoint       Int? // 発注点（在庫数）
+  daysBeforeStockout Int? // 在庫切れ前日数
+  safetyStockDays    Int                    @default(7) // 安全在庫日数
+
+  // 発注量設定
+  orderQuantityType OrderQuantityType @default(FIXED)
+  fixedQuantity     Int? // 固定数量
+  daysOfStock       Int? // 在庫日数分
+  minOrderQuantity  Int               @default(1)
+  maxOrderQuantity  Int?
+
+  // サプライヤー設定
+  preferredSupplierId String?
+  supplier            Supplier? @relation(fields: [preferredSupplierId], references: [id])
+
+  // 承認設定
+  requiresApproval Boolean @default(true)
+  autoApproveLimit Float? // 自動承認上限額
+
+  // 通知設定
+  notifyOnTrigger Boolean  @default(true)
+  notifyChannels  String[] @default([])
+
+  // ステータス
+  isActive Boolean @default(true)
+  priority Int     @default(50) // 優先度（低い方が高優先）
+
+  // 統計
+  timesTriggered  Int       @default(0)
+  lastTriggeredAt DateTime?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  orders AutoReorderOrder[]
+
+  @@index([isActive, priority])
+  @@index([targetType, targetId])
+  @@map("auto_reorder_rules")
+}
+
+enum AutoReorderTargetType {
+  ALL // 全商品
+  PRODUCT // 特定商品
+  CATEGORY // カテゴリ
+  SUPPLIER // サプライヤー
+  LISTING // 特定出品
+}
+
+enum AutoReorderTriggerType {
+  REORDER_POINT // 発注点到達
+  STOCKOUT_FORECAST // 在庫切れ予測
+  SCHEDULE // スケジュール
+  MANUAL // 手動
+}
+
+enum OrderQuantityType {
+  FIXED // 固定数量
+  DAYS_STOCK // 在庫日数分
+  EOQ // 経済的発注量
+  MIN_ORDER // 最小発注数量
+}
+
+model AutoReorderOrder {
+  id String @id @default(cuid())
+
+  // ルール参照
+  ruleId String
+  rule   AutoReorderRule @relation(fields: [ruleId], references: [id])
+
+  // 商品情報
+  productId String
+  listingId String?
+
+  // 発注情報
+  quantity       Int
+  unitPrice      Float?
+  estimatedTotal Float?
+  currency       String @default("JPY")
+
+  // サプライヤー
+  supplierId        String?
+  supplierProductId String?
+
+  // トリガー情報
+  triggerReason     String // トリガー理由
+  stockAtTrigger    Int // トリガー時の在庫数
+  forecastAtTrigger Json? // トリガー時の予測情報
+
+  // ステータス
+  status AutoReorderStatus @default(PENDING)
+
+  // 承認
+  approvedBy     String?
+  approvedAt     DateTime?
+  rejectedReason String?
+
+  // 発注連携
+  purchaseOrderId String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ruleId])
+  @@index([productId])
+  @@index([status])
+  @@map("auto_reorder_orders")
+}
+
+enum AutoReorderStatus {
+  PENDING // 承認待ち
+  APPROVED // 承認済み
+  REJECTED // 却下
+  ORDERED // 発注済み
+  CANCELLED // キャンセル
+}
+
+
+// ========================================
+// Phase 81: 外部連携
+// ========================================
+
+enum IntegrationStatus {
+  INACTIVE // 未接続
+  CONNECTING // 接続中
+  ACTIVE // 接続済み
+  ERROR // エラー
+  SUSPENDED // 一時停止
+}
+
+enum SyncStatus {
+  SUCCESS // 成功
+  PARTIAL // 部分成功
+  FAILED // 失敗
+  RUNNING // 実行中
+}
+
+enum SyncType {
+  FULL // 全件同期
+  INCREMENTAL // 差分同期
+  MANUAL // 手動同期
+  WEBHOOK // Webhook起因
+}
+
+model IntegrationWebhookLog {
+  id String @id @default(cuid())
+
+  // 連携参照
+  integrationId String
+
+  // リクエスト情報
+  eventType String
+  payload   Json
+  headers   Json   @default("{}")
+
+  // 処理結果
+  status       WebhookStatus @default(PENDING)
+  responseCode Int?
+  responseBody String?       @db.Text
+  errorMessage String?       @db.Text
+
+  // 処理時間
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  retryCount  Int       @default(0)
+
+  @@index([integrationId, receivedAt])
+  @@index([status])
+  @@map("integration_webhook_logs")
+}
+
+enum WebhookStatus {
+  PENDING // 未処理
+  PROCESSING // 処理中
+  SUCCESS // 成功
+  FAILED // 失敗
+  IGNORED // 無視
+}
+
+
+// freee連携用モデル
+model FreeeTransaction {
+  id String @id @default(cuid())
+
+  // 連携参照
+  integrationId String
+
+  // 取引情報
+  freeeTransactionId String?              @unique // freee側のID
+  orderId            String? // RAKUDA側の注文ID
+  transactionType    FreeeTransactionType
+
+  // 金額
+  amount    Int // 取引金額
+  taxAmount Int    @default(0) // 消費税額
+  currency  String @default("JPY")
+
+  // 勘定科目
+  accountItemId   String? // 勘定科目ID（freee）
+  accountItemName String? // 勘定科目名
+
+  // 日付
+  issueDate DateTime
+  dueDate   DateTime?
+
+  // ステータス
+  status       FreeeTransactionStatus @default(PENDING)
+  syncedAt     DateTime?
+  errorMessage String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([integrationId])
+  @@index([orderId])
+  @@index([status])
+  @@map("freee_transactions")
+}
+
+enum FreeeTransactionType {
+  SALES // 売上
+  PURCHASE // 仕入
+  EXPENSE // 経費
+  REFUND // 返金
+}
+
+enum FreeeTransactionStatus {
+  PENDING // 同期待ち
+  SYNCED // 同期済み
+  FAILED // 同期失敗
+  SKIPPED // スキップ
+}
+
+
+// ========================================
+// Phase 83: カスタマーサクセス
+// ========================================
+
+model Customer {
+  id String @id @default(cuid())
+
+  // 基本情報
+  email    String  @unique
+  name     String?
+  phone    String?
+  country  String?
+  language String  @default("en")
+
+  // マーケットプレイス情報
+  marketplace String?
+  externalId  String?
+
+  // セグメント
+  segment CustomerSegment @default(NEW)
+  tier    CustomerTier    @default(STANDARD)
+
+  // LTV関連
+  totalOrders       Int   @default(0)
+  totalSpent        Float @default(0)
+  averageOrderValue Float @default(0)
+  lifetimeValue     Float @default(0)
+
+  // エンゲージメント
+  firstOrderAt       DateTime?
+  lastOrderAt        DateTime?
+  lastActiveAt       DateTime?
+  daysSinceLastOrder Int?
+
+  // チャーン予測
+  churnRisk        ChurnRisk @default(LOW)
+  churnScore       Float     @default(0)
+  predictedChurnAt DateTime?
+
+  // 購買行動
+  preferredCategories String[] @default([])
+  preferredBrands     String[] @default([])
+  purchaseFrequency   Float    @default(0)
+
+  // レコメンド
+  recommendedProducts String[]  @default([])
+  lastRecommendedAt   DateTime?
+
+  // タグ・メモ
+  tags  String[] @default([])
+  notes String?  @db.Text
+
+  // ステータス
+  status         CustomerStatus @default(ACTIVE)
+  organizationId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  analytics  CustomerAnalytics?
+  activities CustomerActivity[]
+
+  @@index([segment])
+  @@index([tier])
+  @@index([churnRisk])
+  @@index([organizationId])
+  @@map("customers")
+}
+
+enum CustomerSegment {
+  NEW
+  ACTIVE
+  AT_RISK
+  DORMANT
+  CHURNED
+  VIP
+  LOYAL
+}
+
+enum CustomerTier {
+  STANDARD
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum ChurnRisk {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+model CustomerAnalytics {
+  id String @id @default(cuid())
+
+  customerId String   @unique
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // RFM分析
+  recencyScore   Int     @default(0)
+  frequencyScore Int     @default(0)
+  monetaryScore  Int     @default(0)
+  rfmScore       Int     @default(0)
+  rfmSegment     String?
+
+  // コホート分析
+  cohortMonth String?
+  cohortWeek  String?
+
+  // 購買パターン
+  avgDaysBetweenOrders Float @default(0)
+  orderConsistency     Float @default(0)
+  seasonalPattern      Json?
+
+  // 価値予測
+  predictedNextOrderAt    DateTime?
+  predictedNextOrderValue Float?
+  predicted12MonthValue   Float     @default(0)
+
+  engagementScore   Float  @default(0)
+  satisfactionScore Float?
+
+  lastAnalyzedAt DateTime @default(now())
+
+  @@map("customer_analytics")
+}
+
+model CustomerActivity {
+  id String @id @default(cuid())
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  type        CustomerActivityType
+  description String?
+  orderId     String?
+  listingId   String?
+  productId   String?
+  amount      Float?
+  metadata    Json                 @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId, createdAt])
+  @@index([type])
+  @@map("customer_activities")
+}
+
+enum CustomerActivityType {
+  ORDER_PLACED
+  ORDER_CANCELLED
+  REFUND_REQUESTED
+  REVIEW_SUBMITTED
+  MESSAGE_SENT
+  PRODUCT_VIEWED
+  WISHLIST_ADDED
+  REPEAT_PURCHASE
+}
+
+
+// ========================================
+// Phase 84: 高度なレポーティング
+// ========================================
+
+model CustomReport {
+  id String @id @default(cuid())
+
+  name        String
+  description String?
+  slug        String  @unique
+
+  type       CustomReportType
+  dataSource ReportDataSource
+  query      Json
+
+  columns      Json
+  filters      Json     @default("[]")
+  sorting      Json?
+  groupBy      String[] @default([])
+  aggregations Json     @default("[]")
+
+  chartType   ChartType?
+  chartConfig Json       @default("{}")
+
+  visibility     ReportVisibility @default(PRIVATE)
+  createdBy      String
+  sharedWith     String[]         @default([])
+  sharedWithOrgs String[]         @default([])
+
+  scheduleEnabled    Boolean            @default(false)
+  scheduleCron       String?
+  scheduleRecipients String[]           @default([])
+  scheduleFormat     ReportExportFormat @default(PDF)
+
+  viewCount       Int       @default(0)
+  lastViewedAt    DateTime?
+  lastGeneratedAt DateTime?
+  isFavorite      Boolean   @default(false)
+  organizationId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdBy])
+  @@index([visibility])
+  @@index([organizationId])
+  @@map("custom_reports")
+}
+
+enum CustomReportType {
+  TABLE
+  CHART
+  PIVOT
+  DASHBOARD
+  KPI
+}
+
+enum ReportDataSource {
+  ORDERS
+  PRODUCTS
+  LISTINGS
+  CUSTOMERS
+  INVENTORY
+  SALES
+  SHIPMENTS
+  CUSTOM_SQL
+}
+
+enum ReportVisibility {
+  PRIVATE
+  TEAM
+  ORGANIZATION
+  PUBLIC
+}
+
+enum ReportExportFormat {
+  PDF
+  EXCEL
+  CSV
+  JSON
+  PNG
+}
+
+enum ReportExecutionType {
+  MANUAL
+  SCHEDULED
+  API
+}
+
+enum ReportExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model SharedDashboard {
+  id String @id @default(cuid())
+
+  name        String
+  description String?
+  slug        String  @unique
+
+  layout  Json
+  widgets Json @default("[]")
+
+  globalFilters    Json   @default("[]")
+  defaultDateRange String @default("last_30_days")
+
+  autoRefresh     Boolean @default(true)
+  refreshInterval Int     @default(300)
+
+  visibility     ReportVisibility @default(PRIVATE)
+  createdBy      String
+  sharedWith     String[]         @default([])
+  sharedWithOrgs String[]         @default([])
+
+  embedEnabled Boolean  @default(false)
+  embedToken   String?  @unique
+  embedDomains String[] @default([])
+
+  viewCount      Int       @default(0)
+  lastViewedAt   DateTime?
+  organizationId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdBy])
+  @@index([visibility])
+  @@index([organizationId])
+  @@map("shared_dashboards")
+}
+
+
+// ========================================
+// Phase 87: 多通貨対応強化
+// ========================================
+model Currency {
+  id String @id @default(cuid())
+
+  code     String  @unique
+  name     String
+  nameJa   String?
+  symbol   String
+  decimals Int     @default(2)
+
+  isBaseCurrency Boolean @default(false)
+  isEnabled      Boolean @default(true)
+  sortOrder      Int     @default(100)
+
+  currentRate    Float     @default(1)
+  lastRateUpdate DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  priceConversions PriceConversion[]
+  currencySettings CurrencySetting[]
+
+  @@index([isEnabled, sortOrder])
+  @@map("currencies")
+}
+
+enum ExchangeRateSource {
+  MANUAL
+  OPENEXCHANGERATES
+  CURRENCYLAYER
+  FIXER
+  ECB
+  YAHOO_FINANCE
+  CUSTOM_API
+}
+
+model PriceConversion {
+  id String @id @default(cuid())
+
+  entityType PriceEntityType
+  entityId   String
+
+  originalCurrencyId String
+  originalCurrency   Currency @relation(fields: [originalCurrencyId], references: [id])
+  originalAmount     Float
+
+  convertedCurrency String
+  convertedAmount   Float
+
+  exchangeRate  Float
+  rateTimestamp DateTime
+
+  conversionType ConversionType @default(DISPLAY)
+  metadata       Json           @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([originalCurrencyId])
+  @@map("price_conversions")
+}
+
+enum PriceEntityType {
+  PRODUCT
+  LISTING
+  ORDER
+  SHIPMENT
+  INVOICE
+  REFUND
+}
+
+enum ConversionType {
+  DISPLAY
+  TRANSACTION
+  REPORT
+  SETTLEMENT
+}
+
+model CurrencySetting {
+  id String @id @default(cuid())
+
+  scope   CurrencySettingScope @default(GLOBAL)
+  scopeId String?
+
+  baseCurrencyId String
+  baseCurrency   Currency @relation(fields: [baseCurrencyId], references: [id])
+
+  displayCurrencies String[] @default([])
+  autoConvert       Boolean  @default(true)
+  showOriginal      Boolean  @default(true)
+
+  roundingMode  RoundingMode @default(HALF_UP)
+  roundingScale Int          @default(2)
+
+  rateUpdateInterval Int       @default(3600)
+  lastRateSync       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, scopeId])
+  @@map("currency_settings")
+}
+
+enum CurrencySettingScope {
+  GLOBAL
+  ORGANIZATION
+  USER
+  MARKETPLACE
+}
+
+enum RoundingMode {
+  HALF_UP
+  HALF_DOWN
+  CEILING
+  FLOOR
+  HALF_EVEN
+}
+
+
+// ========================================
+// Phase 88: 監査・コンプライアンス
+// ========================================
+model DataRetentionPolicy {
+  id String @id @default(cuid())
+
+  name        String
+  description String?
+  isEnabled   Boolean @default(true)
+
+  entityType RetentionEntityType
+  conditions Json                @default("{}")
+
+  retentionDays   Int
+  retentionAction RetentionAction @default(ARCHIVE)
+
+  schedule       String?
+  lastExecutedAt DateTime?
+  nextExecuteAt  DateTime?
+
+  totalProcessed     Int @default(0)
+  lastProcessedCount Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  executions RetentionExecution[]
+
+  @@index([isEnabled, entityType])
+  @@map("data_retention_policies")
+}
+
+enum RetentionEntityType {
+  ORDER
+  CUSTOMER
+  AUDIT_LOG
+  API_LOG
+  SESSION
+  NOTIFICATION
+  MESSAGE
+  REPORT
+  EXPORT
+  BACKUP
+}
+
+enum RetentionAction {
+  ARCHIVE
+  ANONYMIZE
+  DELETE
+  EXPORT_AND_DELETE
+}
+
+model RetentionExecution {
+  id String @id @default(cuid())
+
+  policyId String
+  policy   DataRetentionPolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  status      RetentionExecutionStatus @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  recordsScanned   Int     @default(0)
+  recordsProcessed Int     @default(0)
+  recordsFailed    Int     @default(0)
+  errorMessage     String?
+
+  archiveLocation String?
+  archiveSize     BigInt?
+
+  createdAt DateTime @default(now())
+
+  @@index([policyId, createdAt])
+  @@index([status])
+  @@map("retention_executions")
+}
+
+enum RetentionExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model GdprRequest {
+  id String @id @default(cuid())
+
+  requestType GdprRequestType
+  status      GdprRequestStatus   @default(PENDING)
+  priority    GdprRequestPriority @default(NORMAL)
+
+  subjectType  GdprSubjectType
+  subjectId    String
+  subjectEmail String
+  subjectName  String?
+
+  verificationMethod String?
+  verifiedAt         DateTime?
+  verifiedBy         String?
+
+  assignedTo  String?
+  dueDate     DateTime
+  processedAt DateTime?
+  processedBy String?
+
+  description String?
+  notes       String? @db.Text
+  attachments Json    @default("[]")
+
+  resultSummary       String?   @db.Text
+  dataExportUrl       String?
+  dataExportExpiresAt DateTime?
+
+  notificationSent   Boolean   @default(false)
+  notificationSentAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities GdprActivity[]
+
+  @@index([status, dueDate])
+  @@index([subjectEmail])
+  @@index([requestType, status])
+  @@map("gdpr_requests")
+}
+
+enum GdprRequestType {
+  ACCESS
+  RECTIFICATION
+  ERASURE
+  RESTRICTION
+  PORTABILITY
+  OBJECTION
+  WITHDRAW_CONSENT
+}
+
+enum GdprRequestStatus {
+  PENDING
+  VERIFIED
+  IN_PROGRESS
+  AWAITING_INFO
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum GdprRequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum GdprSubjectType {
+  CUSTOMER
+  USER
+  EMPLOYEE
+  VENDOR
+  OTHER
+}
+
+model GdprActivity {
+  id String @id @default(cuid())
+
+  requestId String
+  request   GdprRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  action      String
+  description String?
+  performedBy String
+  metadata    Json    @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([requestId, createdAt])
+  @@map("gdpr_activities")
+}
+
+model DataMaskingRule {
+  id String @id @default(cuid())
+
+  name        String
+  description String?
+  isEnabled   Boolean @default(true)
+  priority    Int     @default(100)
+
+  entityType String
+  fieldPath  String
+
+  maskingType   MaskingType
+  maskingConfig Json        @default("{}")
+
+  conditions Json @default("{}")
+
+  appliedCount  Int       @default(0)
+  lastAppliedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isEnabled, priority])
+  @@index([entityType, fieldPath])
+  @@map("data_masking_rules")
+}
+
+enum MaskingType {
+  FULL
+  PARTIAL
+  HASH
+  ENCRYPT
+  TOKENIZE
+  REDACT
+  PSEUDONYMIZE
+  TRUNCATE
+  GENERALIZE
+  NOISE
+}
+
+model ComplianceAuditLog {
+  id String @id @default(cuid())
+
+  category    ComplianceCategory
+  action      String
+  description String?
+
+  entityType String?
+  entityId   String?
+
+  performedBy     String?
+  performedByType String?
+
+  oldValue Json?
+  newValue Json?
+  metadata Json  @default("{}")
+
+  ipAddress String?
+  userAgent String?
+  sessionId String?
+
+  isCompliant Boolean   @default(true)
+  riskLevel   RiskLevel @default(LOW)
+  findings    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([category, createdAt])
+  @@index([entityType, entityId])
+  @@index([performedBy, createdAt])
+  @@index([riskLevel, isCompliant])
+  @@map("compliance_audit_logs")
+}
+
+enum ComplianceCategory {
+  DATA_ACCESS
+  DATA_MODIFICATION
+  DATA_DELETION
+  DATA_EXPORT
+  USER_MANAGEMENT
+  PERMISSION_CHANGE
+  CONFIGURATION
+  AUTHENTICATION
+  GDPR
+  SECURITY
+  FINANCIAL
+  SYSTEM
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model ConsentRecord {
+  id String @id @default(cuid())
+
+  subjectType  String
+  subjectId    String
+  subjectEmail String?
+
+  consentType ConsentType
+  purpose     String
+  description String?
+
+  status      ConsentStatus @default(PENDING)
+  consentedAt DateTime?
+  withdrawnAt DateTime?
+  expiresAt   DateTime?
+
+  consentMethod String?
+  consentSource String?
+  ipAddress     String?
+  userAgent     String?
+
+  policyVersion String?
+  termsVersion  String?
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([subjectType, subjectId])
+  @@index([consentType, status])
+  @@index([expiresAt])
+  @@map("consent_records")
+}
+
+enum ConsentType {
+  MARKETING
+  ANALYTICS
+  THIRD_PARTY_SHARING
+  PROFILING
+  AUTOMATED_DECISION
+  DATA_RETENTION
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+  COOKIES
+  NEWSLETTER
+}
+
+enum ConsentStatus {
+  PENDING
+  GRANTED
+  DENIED
+  WITHDRAWN
+  EXPIRED
+}
+
+
+// ========================================
+// Phase 89: 高度な検索・フィルタリング
+// ========================================
+
+model SavedSearch {
+  id String @id @default(cuid())
+
+  organizationId String
+  userId         String
+
+  name        String
+  description String?
+
+  entityType SearchEntityType
+  filters    Json             @default("{}")
+  sortBy     String?
+  sortOrder  String?          @default("desc")
+  columns    Json             @default("[]")
+
+  isDefault Boolean @default(false)
+  isShared  Boolean @default(false)
+  shareWith Json    @default("[]")
+
+  usageCount Int       @default(0)
+  lastUsedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, userId])
+  @@index([entityType])
+  @@map("saved_searches")
+}
+
+enum SearchEntityType {
+  PRODUCT
+  ORDER
+  LISTING
+  CUSTOMER
+  SHIPMENT
+  SUPPLIER
+  INVENTORY
+}
+
+model SearchHistory {
+  id String @id @default(cuid())
+
+  organizationId String
+  userId         String
+
+  entityType      SearchEntityType
+  query           String
+  filters         Json             @default("{}")
+  resultCount     Int              @default(0)
+  executionTimeMs Int              @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, userId])
+  @@index([entityType, createdAt])
+  @@map("search_history")
+}
+
+model AdvancedFilter {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+  entityType  SearchEntityType
+
+  fieldName String
+  fieldType FilterFieldType
+  operator  FilterOperator
+  values    Json            @default("[]")
+
+  isActive Boolean @default(true)
+  priority Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, entityType])
+  @@map("advanced_filters")
+}
+
+enum FilterFieldType {
+  TEXT
+  NUMBER
+  DATE
+  DATETIME
+  BOOLEAN
+  ENUM
+  ARRAY
+  JSON
+}
+
+enum FilterOperator {
+  EQUALS
+  NOT_EQUALS
+  CONTAINS
+  NOT_CONTAINS
+  STARTS_WITH
+  ENDS_WITH
+  GREATER_THAN
+  LESS_THAN
+  GREATER_THAN_OR_EQUALS
+  LESS_THAN_OR_EQUALS
+  BETWEEN
+  IN
+  NOT_IN
+  IS_NULL
+  IS_NOT_NULL
+  REGEX
+}
+
+
+// ========================================
+// Phase 90: データエクスポート・インポート強化
+// ========================================
+
+model DataExport {
+  id String @id @default(cuid())
+
+  organizationId String
+  userId         String
+
+  name        String
+  description String?
+
+  entityType ExportEntityType
+  format     ExportFormat
+  status     ExportStatus     @default(PENDING)
+
+  filters Json @default("{}")
+  columns Json @default("[]")
+  options Json @default("{}")
+
+  totalRecords     Int?
+  processedRecords Int  @default(0)
+
+  fileUrl  String?
+  fileSize Int?
+  fileName String?
+
+  errorMessage String?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  expiresAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, userId])
+  @@index([status, createdAt])
+  @@map("data_exports")
+}
+
+enum ExportEntityType {
+  PRODUCTS
+  ORDERS
+  LISTINGS
+  CUSTOMERS
+  SHIPMENTS
+  SUPPLIERS
+  INVENTORY
+  ANALYTICS
+  AUDIT_LOGS
+  ALL
+}
+
+enum ExportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+model DataImport {
+  id String @id @default(cuid())
+
+  organizationId String
+  userId         String
+
+  name        String
+  description String?
+
+  entityType ImportEntityType
+  format     ImportFormat
+  status     ImportStatus     @default(PENDING)
+
+  sourceUrl      String?
+  sourceFileName String?
+  sourceFileSize Int?
+
+  mappings Json @default("{}")
+  options  Json @default("{}")
+
+  totalRecords     Int?
+  processedRecords Int  @default(0)
+  successCount     Int  @default(0)
+  errorCount       Int  @default(0)
+  skipCount        Int  @default(0)
+
+  validationErrors Json @default("[]")
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  logs ImportLog[]
+
+  @@index([organizationId, userId])
+  @@index([status, createdAt])
+  @@map("data_imports")
+}
+
+enum ImportEntityType {
+  PRODUCTS
+  ORDERS
+  LISTINGS
+  CUSTOMERS
+  SUPPLIERS
+  INVENTORY
+  PRICES
+}
+
+enum ImportFormat {
+  CSV
+  XLSX
+  JSON
+  XML
+}
+
+enum ImportStatus {
+  PENDING
+  VALIDATING
+  VALIDATED
+  PROCESSING
+  COMPLETED
+  PARTIALLY_COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model ImportLog {
+  id String @id @default(cuid())
+
+  importId String
+  import   DataImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  rowNumber Int
+  status    ImportRowStatus
+
+  originalData  Json  @default("{}")
+  processedData Json?
+
+  errorMessage String?
+  errorDetails Json    @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([importId, status])
+  @@index([importId, rowNumber])
+  @@map("import_logs")
+}
+
+enum ImportRowStatus {
+  PENDING
+  SUCCESS
+  ERROR
+  SKIPPED
+  DUPLICATE
+}
+
+model ImportTemplate {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+  entityType  ImportEntityType
+
+  mappings        Json @default("{}")
+  validations     Json @default("[]")
+  transformations Json @default("[]")
+
+  isDefault  Boolean @default(false)
+  usageCount Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, entityType])
+  @@map("import_templates")
+}
+
+model ExportSchedule {
+  id String @id @default(cuid())
+
+  organizationId String
+  userId         String
+
+  name        String
+  description String?
+
+  entityType ExportEntityType
+  format     ExportFormat
+
+  filters Json @default("{}")
+  columns Json @default("[]")
+  options Json @default("{}")
+
+  schedule String
+  timezone String @default("Asia/Tokyo")
+
+  recipients     Json                 @default("[]")
+  deliveryMethod ExportDeliveryMethod @default(EMAIL)
+  deliveryConfig Json                 @default("{}")
+
+  isActive  Boolean   @default(true)
+  lastRunAt DateTime?
+  nextRunAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([isActive, nextRunAt])
+  @@map("export_schedules")
+}
+
+enum ExportDeliveryMethod {
+  EMAIL
+  SFTP
+  S3
+  WEBHOOK
+  SLACK
+}
+
+
+// ========================================
+// Phase 91: Webhook配信システム強化
+// ========================================
+
+enum WebhookRetryPolicy {
+  NONE
+  LINEAR
+  EXPONENTIAL
+  FIXED
+}
+
+model WebhookLog {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  endpointId String?
+  deliveryId String?
+
+  action  String
+  level   WebhookLogLevel @default(INFO)
+  message String
+  details Json            @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([endpointId, createdAt])
+  @@map("webhook_logs")
+}
+
+enum WebhookLogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+
+// ========================================
+// Phase 92: API利用統計＆レート制限強化
+// ========================================
+
+model ApiKeyUsageLog {
+  id String @id @default(cuid())
+
+  apiKeyId String
+
+  endpoint String
+  method   String
+
+  statusCode Int
+  latencyMs  Int
+
+  requestSize  Int?
+  responseSize Int?
+
+  ipAddress String?
+  userAgent String?
+
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([apiKeyId, createdAt])
+  @@index([endpoint, createdAt])
+  @@map("api_key_usage_logs")
+}
+
+model RateLimitRule {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+
+  target      RateLimitTarget
+  targetValue String?
+
+  limit         Int
+  windowSeconds Int
+
+  action RateLimitAction @default(REJECT)
+
+  isActive Boolean @default(true)
+  priority Int     @default(0)
+
+  currentCount Int       @default(0)
+  windowStart  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, isActive])
+  @@index([target, targetValue])
+  @@map("rate_limit_rules")
+}
+
+enum RateLimitTarget {
+  GLOBAL
+  ORGANIZATION
+  API_KEY
+  IP_ADDRESS
+  ENDPOINT
+  USER
+}
+
+enum RateLimitAction {
+  REJECT
+  THROTTLE
+  QUEUE
+  LOG_ONLY
+}
+
+model ApiQuota {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  quotaType ApiQuotaType
+
+  limit Int
+  used  Int @default(0)
+
+  periodStart DateTime
+  periodEnd   DateTime
+
+  alertThreshold Float   @default(0.8)
+  alertSent      Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, quotaType, periodStart])
+  @@index([organizationId])
+  @@map("api_quotas")
+}
+
+enum ApiQuotaType {
+  REQUESTS_DAILY
+  REQUESTS_MONTHLY
+  BANDWIDTH_DAILY
+  BANDWIDTH_MONTHLY
+  STORAGE
+  EXPORTS
+  IMPORTS
+}
+
+
+// ========================================
+// Phase 93: バックアップ・リカバリ強化
+// ========================================
+
+model BackupJob {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+
+  backupType BackupType
+  target     BackupTarget
+  storage    BackupStorage
+
+  status BackupJobStatus @default(PENDING)
+
+  sizeBytes      BigInt?
+  compressedSize BigInt?
+
+  storageUrl  String?
+  storagePath String?
+
+  encryptionKey String?
+  checksum      String?
+
+  startedAt    DateTime?
+  completedAt  DateTime?
+  errorMessage String?
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scheduleId String?
+
+  recoveryPoints RecoveryPoint[]
+
+  @@index([organizationId, status])
+  @@index([scheduleId])
+  @@index([createdAt])
+  @@map("backup_jobs")
+}
+
+enum BackupTarget {
+  DATABASE
+  FILES
+  REDIS
+  FULL_SYSTEM
+  CUSTOM
+}
+
+enum BackupStorage {
+  LOCAL
+  S3
+  GCS
+  AZURE_BLOB
+  SFTP
+}
+
+enum BackupJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  VERIFYING
+}
+
+model RecoveryPoint {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  backupJobId String
+  backupJob   BackupJob @relation(fields: [backupJobId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+
+  pointInTime DateTime
+
+  sizeBytes BigInt
+  checksum  String
+
+  isVerified         Boolean                     @default(false)
+  verifiedAt         DateTime?
+  verificationStatus RecoveryVerificationStatus?
+
+  restorable Boolean   @default(true)
+  expiresAt  DateTime?
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, pointInTime])
+  @@index([backupJobId])
+  @@map("recovery_points")
+}
+
+enum RecoveryVerificationStatus {
+  PENDING
+  VERIFIED
+  CORRUPTED
+  PARTIAL
+}
+
+enum RestoreJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  ROLLBACK
+}
+
+
+// ========================================
+// Phase 98: 利益計算・原価管理
+// ========================================
+
+model ProductCost {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  listingId String?
+  productId String?
+  sku       String?
+
+  purchasePrice    Float
+  purchaseCurrency String @default("JPY")
+
+  domesticShipping      Float @default(0)
+  internationalShipping Float @default(0)
+
+  platformFee     Float   @default(0)
+  platformFeeType FeeType @default(PERCENTAGE)
+
+  paymentFee     Float   @default(0)
+  paymentFeeType FeeType @default(PERCENTAGE)
+
+  otherCosts Json   @default("[]")
+  totalCost  Float?
+
+  exchangeRate     Float?
+  exchangeRateDate DateTime?
+
+  supplierName String?
+  purchaseDate DateTime?
+  purchaseUrl  String?
+
+  notes    String?
+  metadata Json    @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profitCalculations ProfitCalculation[]
+
+  @@index([organizationId])
+  @@index([listingId])
+  @@index([sku])
+  @@map("product_costs")
+}
+
+enum FeeType {
+  FIXED
+  PERCENTAGE
+}
+
+model ProfitCalculation {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  listingId  String
+  ebayItemId String?
+
+  costId String?
+  cost   ProductCost? @relation(fields: [costId], references: [id], onDelete: SetNull)
+
+  salePrice    Float
+  saleCurrency String @default("USD")
+
+  totalCost    Float
+  costCurrency String @default("JPY")
+
+  ebayFinalValueFee Float @default(0)
+  ebayFixedFee      Float @default(0)
+  paypalFee         Float @default(0)
+  shippingCost      Float @default(0)
+  otherFees         Float @default(0)
+
+  totalFees    Float
+  totalCostUsd Float
+
+  grossProfit  Float
+  netProfit    Float
+  profitMargin Float
+
+  exchangeRate     Float
+  exchangeRateDate DateTime?
+
+  profitStatus ProfitStatus @default(PROFITABLE)
+
+  calculatedAt DateTime @default(now())
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, profitStatus])
+  @@index([listingId])
+  @@map("profit_calculations")
+}
+
+enum ProfitStatus {
+  HIGHLY_PROFITABLE
+  PROFITABLE
+  MARGINAL
+  BREAK_EVEN
+  LOSS
+}
+
+model FeeStructure {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+
+  platform FeePlatform
+  category String?
+
+  finalValueFeePercent Float  @default(12.9)
+  fixedFeeAmount       Float  @default(0.30)
+  fixedFeeCurrency     String @default("USD")
+
+  paymentFeePercent Float @default(2.9)
+  paymentFixedFee   Float @default(0.30)
+
+  promotedListingFeePercent Float?
+  internationalFeePercent   Float?
+
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  effectiveFrom DateTime?
+  effectiveTo   DateTime?
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, platform])
+  @@map("fee_structures")
+}
+
+enum FeePlatform {
+  EBAY_US
+  EBAY_UK
+  EBAY_DE
+  EBAY_AU
+  EBAY_JP
+  JOOM
+  AMAZON
+  OTHER
+}
+
+model ProfitTarget {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+
+  targetType TargetType
+  category   String?
+
+  minProfitMargin    Float  @default(15)
+  targetProfitMargin Float  @default(25)
+  maxProfitMargin    Float?
+
+  minProfitAmount    Float?
+  targetProfitAmount Float?
+
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  alertOnBelow   Boolean @default(true)
+  alertThreshold Float   @default(10)
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, isActive])
+  @@map("profit_targets")
+}
+
+enum TargetType {
+  GLOBAL
+  CATEGORY
+  SUPPLIER
+  BRAND
+  CUSTOM
+}
+
+enum BulkOperationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+

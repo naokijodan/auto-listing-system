@@ -1,0 +1,57 @@
+// Prisma Schema - Depop Domain Models
+
+
+// Depop出品データ
+model DepopListing {
+  id        String  @id @default(cuid())
+  productId String
+  listingId String? // rakuda Listing ID
+
+  depopProductId Int? // Depop側のproduct_id
+  sku            String? @unique // Depop SKU
+
+  description String?  @db.Text // Depop向け説明文
+  pictures    String[] // Depop画像URL（最大4枚）
+
+  categoryId Int? // Depop Category ID
+  brandId    Int? // Depop Brand ID
+  condition  String? // NEW_WITH_TAGS, NEW_WITHOUT_TAGS, LIKE_NEW, GOOD, FAIR
+  colour     String?
+  size       String?
+
+  price    Float? // 販売価格
+  currency String @default("USD") // USD, GBP, AUD, EUR
+  quantity Int    @default(1)
+
+  shippingType String @default("MANUAL") // MANUAL or DEPOP_MANAGED
+  shippingCost Float? // Manual shipping cost
+
+  status       DepopListingStatus @default(DRAFT)
+  errorMessage String?
+  errorCount   Int                @default(0)
+
+  depopUrl  String? // Depop商品ページURL
+  depopSlug String?
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([status])
+  @@index([depopProductId])
+  @@map("depop_listings")
+}
+
+enum DepopListingStatus {
+  DRAFT
+  READY
+  PUBLISHING
+  ACTIVE
+  SOLD_OUT
+  ERROR
+  DELETED
+}
+

@@ -1,0 +1,1077 @@
+// Prisma Schema - Authentication & Users
+
+
+// ========================================
+// Phase 23: ユーザー管理/RBAC
+// ========================================
+
+model User {
+  id String @id @default(cuid())
+
+  // 認証情報
+  email           String    @unique
+  passwordHash    String? // nullの場合はOAuth専用
+  emailVerified   Boolean   @default(false)
+  emailVerifiedAt DateTime?
+
+  // プロフィール
+  name   String?
+  avatar String?
+
+  // ステータス
+  status      UserStatus @default(ACTIVE)
+  lastLoginAt DateTime?
+  lastLoginIp String?
+
+  // 二要素認証
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+
+  // リレーション
+  roles     UserRole[]
+  sessions  UserSession[]
+  apiKeys   UserApiKey[]
+  auditLogs UserAuditLog[]
+
+  // Phase 33: セキュリティ強化
+  securityEvents      SecurityEvent[]
+  loginAttempts       LoginAttempt[]
+  deviceSessions      DeviceSession[]
+  twoFactorAuth       TwoFactorAuth?
+  twoFactorChallenges TwoFactorChallenge[]
+  passwordHistory     PasswordHistory[]
+
+  // Phase 35: ワークフロー自動化
+  createdWorkflows       Workflow[]
+  createdAutomationRules AutomationRule[]
+  approvalActions        ApprovalAction[]
+
+  // Phase 37: データ可視化
+  createdCharts       ChartConfig[]
+  userFeedbacks       UserFeedback[]
+  predictionFeedbacks PredictionFeedback[]
+
+  // Phase 40: Joom出品
+  joomPublishBatches JoomPublishBatch[]
+
+  // Phase 79: マルチテナント
+  organizationMemberships OrganizationMember[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([status])
+  @@map("users")
+}
+
+model Role {
+  id String @id @default(cuid())
+
+  // ロール情報
+  name        String  @unique
+  displayName String
+  description String?
+
+  // 権限
+  permissions Permission[]
+
+  // システムロール（削除不可）
+  isSystem Boolean @default(false)
+
+  // リレーション
+  users UserRole[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@map("roles")
+}
+
+model Permission {
+  id String @id @default(cuid())
+
+  // 権限情報
+  resource String // 対象リソース（products, orders, etc.）
+  action   PermissionAction // 操作種別
+
+  // リレーション
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([roleId, resource, action])
+  @@index([resource, action])
+  @@map("permissions")
+}
+
+model UserRole {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  // 付与情報
+  grantedBy String?
+  grantedAt DateTime  @default(now())
+  expiresAt DateTime? // 期限付きロール
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model UserSession {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // セッション情報
+  token        String  @unique
+  refreshToken String? @unique
+  userAgent    String?
+  ipAddress    String?
+
+  // 有効期限
+  expiresAt        DateTime
+  refreshExpiresAt DateTime?
+
+  // ステータス
+  isActive      Boolean   @default(true)
+  revokedAt     DateTime?
+  revokedReason String?
+
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([isActive, expiresAt])
+  @@map("user_sessions")
+}
+
+model UserApiKey {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // キー情報
+  name      String
+  keyHash   String @unique
+  keyPrefix String
+
+  // 権限（ユーザーの権限をオーバーライド）
+  scopes      String[] // 許可されたスコープ
+  permissions Json     @default("[]") // カスタム権限
+
+  // ステータス
+  isActive   Boolean   @default(true)
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+
+  // 使用制限
+  rateLimit  Int  @default(1000)
+  dailyLimit Int?
+
+  // Phase 33: セキュリティ強化
+  policy ApiKeyPolicy?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([keyHash])
+  @@map("user_api_keys")
+}
+
+model UserAuditLog {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 操作情報
+  action      String // login, logout, password_change, etc.
+  description String @db.Text
+
+  // コンテキスト
+  ipAddress String?
+  userAgent String?
+  metadata  Json    @default("{}")
+
+  // 結果
+  success      Boolean @default(true)
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@map("user_audit_logs")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum PermissionAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  MANAGE // 全権限
+  EXPORT
+  IMPORT
+  APPROVE
+  PUBLISH
+}
+
+
+// ========================================
+// Phase 33: セキュリティ強化
+// ========================================
+
+model SecurityEvent {
+  id String @id @default(cuid())
+
+  // イベント情報
+  eventType   SecurityEventType
+  severity    SecurityEventSeverity @default(INFO)
+  description String
+  details     Json                  @default("{}")
+
+  // アクター情報
+  userId    String?
+  user      User?   @relation(fields: [userId], references: [id])
+  apiKeyId  String?
+  ipAddress String?
+  userAgent String? @db.Text
+  deviceId  String?
+
+  // リソース情報
+  resourceType String?
+  resourceId   String?
+  action       String?
+
+  // 結果
+  success      Boolean @default(true)
+  errorCode    String?
+  errorMessage String?
+
+  // タイムスタンプ
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([eventType, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([ipAddress, occurredAt])
+  @@index([severity])
+  @@map("security_events")
+}
+
+model LoginAttempt {
+  id String @id @default(cuid())
+
+  // ユーザー情報
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id])
+  email    String?
+  username String?
+
+  // 接続情報
+  ipAddress         String
+  userAgent         String? @db.Text
+  deviceFingerprint String?
+  geoLocation       Json? // { country, city, region }
+
+  // 結果
+  success       Boolean             @default(false)
+  failureReason LoginFailureReason?
+  mfaRequired   Boolean             @default(false)
+  mfaCompleted  Boolean             @default(false)
+
+  // ブルートフォース保護
+  attemptCount Int       @default(1)
+  isBlocked    Boolean   @default(false)
+  blockedUntil DateTime?
+
+  // タイムスタンプ
+  attemptedAt DateTime @default(now())
+
+  @@index([email, attemptedAt])
+  @@index([ipAddress, attemptedAt])
+  @@index([userId, attemptedAt])
+  @@index([isBlocked])
+  @@map("login_attempts")
+}
+
+model DeviceSession {
+  id String @id @default(cuid())
+
+  // ユーザー情報
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // デバイス情報
+  deviceId       String
+  deviceName     String?
+  deviceType     DeviceType @default(UNKNOWN)
+  browser        String?
+  browserVersion String?
+  os             String?
+  osVersion      String?
+
+  // 接続情報
+  ipAddress   String
+  geoLocation Json? // { country, city, region }
+
+  // セッション状態
+  isTrusted      Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  lastActivityAt DateTime @default(now())
+
+  // タイムスタンプ
+  firstSeenAt DateTime  @default(now())
+  lastSeenAt  DateTime  @default(now())
+  revokedAt   DateTime?
+
+  @@unique([userId, deviceId])
+  @@index([userId, isActive])
+  @@index([lastActivityAt])
+  @@map("device_sessions")
+}
+
+model TwoFactorAuth {
+  id String @id @default(cuid())
+
+  // ユーザー情報
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 2FA設定
+  method     TwoFactorMethod
+  isEnabled  Boolean         @default(false)
+  isVerified Boolean         @default(false)
+
+  // TOTP用
+  totpSecret String? // 暗号化済み
+  totpUri    String?
+
+  // バックアップコード
+  backupCodes     String[] // 暗号化済み
+  backupCodesUsed Int      @default(0)
+
+  // SMS/Email用
+  phoneNumber String?
+  email       String?
+
+  // 使用履歴
+  lastUsedAt DateTime?
+  useCount   Int       @default(0)
+
+  // タイムスタンプ
+  enabledAt  DateTime?
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("two_factor_auth")
+}
+
+model TwoFactorChallenge {
+  id String @id @default(cuid())
+
+  // ユーザー情報
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // チャレンジ情報
+  method    TwoFactorMethod
+  code      String? // 送信されたコード（SMS/Email用）
+  expiresAt DateTime
+
+  // 状態
+  isUsed      Boolean @default(false)
+  attempts    Int     @default(0)
+  maxAttempts Int     @default(3)
+
+  // タイムスタンプ
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("two_factor_challenges")
+}
+
+model PasswordPolicy {
+  id String @id @default(cuid())
+
+  // 識別
+  name        String  @unique
+  description String?
+  isDefault   Boolean @default(false)
+
+  // パスワード要件
+  minLength         Int      @default(8)
+  maxLength         Int      @default(128)
+  requireUppercase  Boolean  @default(true)
+  requireLowercase  Boolean  @default(true)
+  requireNumbers    Boolean  @default(true)
+  requireSymbols    Boolean  @default(false)
+  forbiddenPatterns String[] // 禁止パターン
+
+  // 履歴・有効期限
+  passwordHistoryCount Int  @default(5) // 過去N個のパスワードを禁止
+  maxAgeDays           Int? // パスワード有効期限（日）
+  warnBeforeDays       Int? // 期限切れ警告（日前）
+
+  // ロックアウト
+  maxFailedAttempts      Int @default(5)
+  lockoutDurationMinutes Int @default(30)
+
+  // ステータス
+  isActive Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("password_policies")
+}
+
+model PasswordHistory {
+  id String @id @default(cuid())
+
+  // ユーザー情報
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // パスワード情報
+  passwordHash String // 過去のパスワードハッシュ
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("password_histories")
+}
+
+
+// ========================================
+// Phase 33-34 Enums
+// ========================================
+
+enum SecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_CHANGE
+  PASSWORD_RESET_REQUEST
+  PASSWORD_RESET_COMPLETE
+  MFA_ENABLED
+  MFA_DISABLED
+  MFA_CHALLENGE_SUCCESS
+  MFA_CHALLENGE_FAILURE
+  API_KEY_CREATED
+  API_KEY_REVOKED
+  API_KEY_USED
+  SESSION_CREATED
+  SESSION_REVOKED
+  PERMISSION_GRANTED
+  PERMISSION_REVOKED
+  ROLE_ASSIGNED
+  ROLE_REMOVED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  SUSPICIOUS_ACTIVITY
+  DATA_EXPORT
+  DATA_DELETE
+}
+
+enum SecurityEventSeverity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum LoginFailureReason {
+  INVALID_CREDENTIALS
+  ACCOUNT_LOCKED
+  ACCOUNT_DISABLED
+  MFA_REQUIRED
+  MFA_FAILED
+  IP_BLOCKED
+  RATE_LIMITED
+  SESSION_EXPIRED
+  INVALID_TOKEN
+}
+
+enum DeviceType {
+  DESKTOP
+  MOBILE
+  TABLET
+  API_CLIENT
+  UNKNOWN
+}
+
+enum TwoFactorMethod {
+  TOTP // Time-based One-Time Password
+  SMS // SMS認証
+  EMAIL // メール認証
+  BACKUP_CODE // バックアップコード
+}
+
+
+// ========================================
+// Phase 79: マルチテナント対応
+// ========================================
+
+model Organization {
+  id String @id @default(cuid())
+
+  // 基本情報
+  name        String
+  slug        String  @unique // URL用（例: my-company）
+  description String?
+
+  // ロゴ・ブランディング
+  logo         String?
+  primaryColor String? // ブランドカラー
+
+  // 連絡先
+  email   String?
+  phone   String?
+  website String?
+
+  // 住所
+  address String?
+  city    String?
+  country String  @default("JP")
+
+  // プラン・制限
+  plan        OrganizationPlan @default(FREE)
+  maxUsers    Int              @default(3)
+  maxProducts Int              @default(100)
+  maxListings Int              @default(100)
+
+  // 設定
+  settings Json     @default("{}")
+  features String[] @default([]) // 有効な機能フラグ
+
+  // ステータス
+  status OrganizationStatus @default(ACTIVE)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  members     OrganizationMember[]
+  invitations OrganizationInvitation[]
+
+  @@index([slug])
+  @@index([status])
+  @@map("organizations")
+}
+
+enum OrganizationPlan {
+  FREE // 無料プラン
+  STARTER // スタータープラン
+  PROFESSIONAL // プロフェッショナルプラン
+  ENTERPRISE // エンタープライズプラン
+}
+
+enum OrganizationStatus {
+  ACTIVE // アクティブ
+  SUSPENDED // 一時停止
+  CANCELLED // 解約済み
+}
+
+model OrganizationMember {
+  id String @id @default(cuid())
+
+  // 組織参照
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // ユーザー参照
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ロール
+  role OrganizationRole @default(MEMBER)
+
+  // 招待情報
+  invitedBy String?
+  invitedAt DateTime @default(now())
+  joinedAt  DateTime @default(now())
+
+  // ステータス
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("organization_members")
+}
+
+enum OrganizationRole {
+  OWNER // オーナー（全権限）
+  ADMIN // 管理者（設定変更可能）
+  MEMBER // メンバー（基本操作）
+  VIEWER // 閲覧者（読み取り専用）
+}
+
+model OrganizationInvitation {
+  id String @id @default(cuid())
+
+  // 組織参照
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // 招待情報
+  email   String
+  role    OrganizationRole @default(MEMBER)
+  token   String           @unique // 招待トークン
+  message String? // 招待メッセージ
+
+  // 招待者
+  invitedBy String
+  invitedAt DateTime @default(now())
+
+  // 有効期限
+  expiresAt DateTime
+
+  // ステータス
+  status     InvitationStatus @default(PENDING)
+  acceptedAt DateTime?
+  declinedAt DateTime?
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([token])
+  @@index([status])
+  @@map("organization_invitations")
+}
+
+enum InvitationStatus {
+  PENDING // 保留中
+  ACCEPTED // 承諾済み
+  DECLINED // 辞退
+  EXPIRED // 期限切れ
+  CANCELLED // キャンセル
+}
+
+
+// ========================================
+// Phase 82: セキュリティ強化
+// ========================================
+
+model SecurityAuditLog {
+  id String @id @default(cuid())
+
+  // アクション情報
+  action   SecurityAction
+  category SecurityCategory
+  severity AuditSeverity    @default(INFO)
+
+  // ユーザー情報
+  userId    String?
+  userEmail String?
+  userRole  String?
+
+  // リソース情報
+  resourceType String?
+  resourceId   String?
+  resourceName String?
+
+  // リクエスト情報
+  ipAddress     String?
+  userAgent     String?
+  requestMethod String?
+  requestPath   String?
+  requestBody   Json?
+
+  // 結果
+  status       AuditStatus @default(SUCCESS)
+  errorMessage String?
+
+  // 詳細
+  details Json  @default("{}")
+  changes Json? // 変更前後の値
+
+  // 地理情報
+  country String?
+  city    String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+
+  // 組織（マルチテナント対応）
+  organizationId String?
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([category, createdAt])
+  @@index([severity, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("security_audit_logs")
+}
+
+enum SecurityAction {
+  // 認証関連
+  LOGIN
+  LOGOUT
+  LOGIN_FAILED
+  PASSWORD_CHANGE
+  PASSWORD_RESET
+  TWO_FACTOR_ENABLE
+  TWO_FACTOR_DISABLE
+  TWO_FACTOR_VERIFY
+
+  // セッション関連
+  SESSION_CREATE
+  SESSION_REVOKE
+  SESSION_REVOKE_ALL
+
+  // API関連
+  API_KEY_CREATE
+  API_KEY_REVOKE
+  API_KEY_USE
+
+  // データアクセス
+  DATA_EXPORT
+  DATA_DELETE
+  BULK_OPERATION
+
+  // 設定変更
+  SETTINGS_CHANGE
+  PERMISSION_CHANGE
+  ROLE_CHANGE
+
+  // 組織関連
+  MEMBER_INVITE
+  MEMBER_REMOVE
+  MEMBER_ROLE_CHANGE
+
+  // セキュリティ
+  IP_BLOCKED
+  RATE_LIMITED
+  SUSPICIOUS_ACTIVITY
+}
+
+enum SecurityCategory {
+  AUTHENTICATION
+  AUTHORIZATION
+  DATA_ACCESS
+  CONFIGURATION
+  SECURITY
+  ORGANIZATION
+  API
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+  BLOCKED
+  PENDING
+}
+
+model IpWhitelist {
+  id String @id @default(cuid())
+
+  // IP情報
+  ipAddress String // IPアドレスまたはCIDR
+  ipType    IpType @default(SINGLE)
+
+  // 説明
+  name        String?
+  description String?
+
+  // 適用範囲
+  scope          IpScope @default(GLOBAL)
+  userId         String? // ユーザー固有の場合
+  organizationId String? // 組織固有の場合
+
+  // 有効期限
+  expiresAt DateTime?
+
+  // ステータス
+  isActive Boolean @default(true)
+
+  // 統計
+  lastUsedAt DateTime?
+  useCount   Int       @default(0)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  @@unique([ipAddress, scope, userId, organizationId])
+  @@index([isActive])
+  @@index([scope])
+  @@map("ip_whitelist")
+}
+
+enum IpType {
+  SINGLE // 単一IP
+  RANGE // IP範囲（CIDR）
+}
+
+enum IpScope {
+  GLOBAL // グローバル（全ユーザー）
+  ORGANIZATION // 組織
+  USER // ユーザー
+}
+
+model SecuritySetting {
+  id String @id @default(cuid())
+
+  // スコープ
+  scope          SecuritySettingScope @default(GLOBAL)
+  organizationId String?
+  userId         String?
+
+  // パスワードポリシー
+  passwordMinLength      Int     @default(8)
+  passwordRequireUpper   Boolean @default(true)
+  passwordRequireLower   Boolean @default(true)
+  passwordRequireNumber  Boolean @default(true)
+  passwordRequireSpecial Boolean @default(false)
+  passwordExpiryDays     Int? // null = 無期限
+
+  // セッションポリシー
+  sessionTimeoutMinutes Int     @default(60)
+  maxConcurrentSessions Int     @default(5)
+  enforceIpBinding      Boolean @default(false)
+
+  // 2FAポリシー
+  require2FA        Boolean           @default(false)
+  allowed2FAMethods TwoFactorMethod[] @default([TOTP])
+
+  // ログインポリシー
+  maxLoginAttempts       Int @default(5)
+  lockoutDurationMinutes Int @default(30)
+
+  // IPポリシー
+  enforceIpWhitelist Boolean  @default(false)
+  allowedCountries   String[] @default([])
+  blockedCountries   String[] @default([])
+
+  // 通知
+  notifyOnNewDevice          Boolean @default(true)
+  notifyOnSuspiciousActivity Boolean @default(true)
+  notifyOnPasswordChange     Boolean @default(true)
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, organizationId, userId])
+  @@map("security_settings")
+}
+
+enum SecuritySettingScope {
+  GLOBAL // システム全体
+  ORGANIZATION // 組織
+  USER // ユーザー
+}
+
+
+// ========================================
+// Phase 85: SSO/SAML対応
+// ========================================
+model SSOProvider {
+  id String @id @default(cuid())
+
+  name        String
+  displayName String
+  type        SSOProviderType
+  status      SSOProviderStatus @default(INACTIVE)
+
+  // OAuth/OIDC設定
+  clientId         String?
+  clientSecret     String?
+  issuerUrl        String?
+  authorizationUrl String?
+  tokenUrl         String?
+  userInfoUrl      String?
+  jwksUrl          String?
+
+  // SAML設定
+  entityId           String?
+  ssoUrl             String?
+  sloUrl             String?
+  certificate        String? @db.Text
+  signatureAlgorithm String  @default("SHA256")
+  nameIdFormat       String  @default("emailAddress")
+
+  // スコープ・属性マッピング
+  scopes           String[] @default(["openid", "email", "profile"])
+  attributeMapping Json     @default("{}")
+
+  // セキュリティ設定
+  allowedDomains String[] @default([])
+  defaultRole    String   @default("MEMBER")
+  autoProvision  Boolean  @default(true)
+  autoSync       Boolean  @default(true)
+  syncInterval   Int      @default(3600)
+
+  // 組織紐付け
+  organizationId String?
+
+  // メタデータ
+  metadata    Json      @default("{}")
+  lastSyncAt  DateTime?
+  lastErrorAt DateTime?
+  lastError   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions  SSOSession[]
+  auditLogs SSOAuditLog[]
+
+  @@unique([organizationId, type])
+  @@index([status])
+  @@index([type])
+  @@map("sso_providers")
+}
+
+enum SSOProviderType {
+  GOOGLE
+  MICROSOFT
+  OKTA
+  AUTH0
+  SAML
+  OIDC
+  LDAP
+}
+
+enum SSOProviderStatus {
+  INACTIVE
+  CONFIGURING
+  TESTING
+  ACTIVE
+  ERROR
+  SUSPENDED
+}
+
+model SSOSession {
+  id String @id @default(cuid())
+
+  providerId String
+  provider   SSOProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  userId         String
+  externalUserId String
+
+  // セッション情報
+  accessToken    String?   @db.Text
+  refreshToken   String?   @db.Text
+  idToken        String?   @db.Text
+  tokenExpiresAt DateTime?
+
+  // SAML用
+  sessionIndex String?
+  nameId       String?
+
+  // メタデータ
+  claims     Json    @default("{}")
+  ipAddress  String?
+  userAgent  String?
+  deviceInfo Json    @default("{}")
+
+  // 状態
+  status         SSOSessionStatus @default(ACTIVE)
+  lastActivityAt DateTime         @default(now())
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([providerId, userId])
+  @@index([externalUserId])
+  @@index([status, expiresAt])
+  @@map("sso_sessions")
+}
+
+enum SSOSessionStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  LOGGED_OUT
+}
+
+model SSOAuditLog {
+  id String @id @default(cuid())
+
+  providerId String
+  provider   SSOProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  userId         String?
+  externalUserId String?
+
+  action   SSOAuditAction
+  status   SSOAuditStatus
+  category String
+
+  details      Json    @default("{}")
+  errorMessage String?
+
+  ipAddress String?
+  userAgent String?
+  country   String?
+  city      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([providerId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action, status])
+  @@map("sso_audit_logs")
+}
+
+enum SSOAuditAction {
+  LOGIN_INITIATED
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  TOKEN_REFRESH
+  TOKEN_REVOKE
+  USER_PROVISIONED
+  USER_SYNCED
+  USER_DEPROVISIONED
+  PROVIDER_CONFIGURED
+  PROVIDER_ACTIVATED
+  PROVIDER_DEACTIVATED
+  PROVIDER_ERROR
+  SESSION_CREATED
+  SESSION_EXPIRED
+  SESSION_REVOKED
+}
+
+enum SSOAuditStatus {
+  SUCCESS
+  FAILURE
+  WARNING
+}
+

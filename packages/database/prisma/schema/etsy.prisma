@@ -1,0 +1,53 @@
+// Prisma Schema - Etsy Domain Models
+
+
+// Etsy出品データ（JoomListingと同様の専用テーブル）
+model EtsyListing {
+  id        String  @id @default(cuid())
+  productId String
+  listingId String? // rakuda Listing ID
+
+  etsyListingId Int? // Etsy側のlisting_id（数値）
+  etsyShopId    Int? // Etsy Shop ID
+
+  title       String? // Etsy向け最適化タイトル（最大140文字）
+  description String? // Etsy向け説明文
+  tags        String[] // 最大13タグ
+  materials   String[] // 素材
+
+  categoryId Int? // Etsy Taxonomy ID
+  whoMade    String  @default("someone_else") // i_did, someone_else, collective
+  whenMade   String  @default("before_2005") // ヴィンテージ用
+  isSupply   Boolean @default(false)
+
+  price             Float? // USD
+  quantity          Int    @default(1)
+  shippingProfileId Int? // Etsy配送プロファイルID
+
+  status       EtsyListingStatus @default(DRAFT)
+  errorMessage String?
+  errorCount   Int               @default(0)
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([etsyListingId])
+  @@index([status])
+  @@map("etsy_listings")
+}
+
+enum EtsyListingStatus {
+  DRAFT
+  READY
+  PUBLISHING
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  ERROR
+  DELETED
+}
+

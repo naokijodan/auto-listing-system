@@ -1,0 +1,475 @@
+// Prisma Schema - Notifications & Alerts
+
+
+// ========================================
+// 通知
+// ========================================
+model Notification {
+  id String @id @default(cuid())
+
+  type     NotificationType
+  title    String
+  message  String               @db.Text
+  severity NotificationSeverity @default(INFO)
+
+  // 関連データ
+  productId String?
+  listingId String?
+  jobLogId  String?
+  metadata  Json    @default("{}")
+
+  // ステータス
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([isRead, createdAt])
+  @@index([type])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  SCRAPE_COMPLETE
+  SCRAPE_FAILED
+  TRANSLATE_COMPLETE
+  TRANSLATE_FAILED
+  IMAGE_COMPLETE
+  IMAGE_FAILED
+  PUBLISH_COMPLETE
+  PUBLISH_FAILED
+  OUT_OF_STOCK
+  PRICE_CHANGE
+  SYSTEM
+  // 注文関連
+  ORDER_RECEIVED
+  ORDER_PAID
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  ORDER_DISPUTE
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+}
+
+
+// ========================================
+// 通知チャンネル設定
+// ========================================
+model NotificationChannel {
+  id String @id @default(cuid())
+
+  channel NotificationChannelType
+  name    String // チャンネル名（例: "メイン Slack", "緊急用 LINE"）
+
+  // 認証情報
+  webhookUrl String? // Slack, Discord
+  token      String? // LINE Notify
+  email      String? // メールアドレス（EMAIL チャンネル用）
+
+  // SMTP設定（EMAIL チャンネル用、環境変数のオーバーライド）
+  smtpHost   String?
+  smtpPort   Int?
+  smtpUser   String?
+  smtpPass   String?
+  smtpSecure Boolean @default(true)
+
+  // 通知設定
+  enabledTypes NotificationChannelEventType[] // 有効な通知タイプ
+  minSeverity  NotificationSeverity           @default(INFO) // 最低重要度
+
+  // マーケットプレイスフィルター（Phase 45）
+  // 空配列 = 全マーケットプレイスの通知を受信
+  // 特定のマーケットプレイスのみ = そのマーケットの通知のみ受信
+  marketplaceFilter Marketplace[] @default([])
+
+  // 状態
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+  lastError  String?
+  errorCount Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([channel, isActive])
+  @@map("notification_channels")
+}
+
+enum NotificationChannelType {
+  SLACK
+  DISCORD
+  LINE
+  EMAIL
+}
+
+enum NotificationChannelEventType {
+  // ジョブ関連
+  JOB_COMPLETE
+  JOB_FAILED
+  // 注文関連
+  ORDER_RECEIVED
+  ORDER_PAID
+  ORDER_SHIPPED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+  // 在庫関連
+  OUT_OF_STOCK
+  PRICE_CHANGE
+  INVENTORY_LOW
+  // 出品関連
+  LISTING_PUBLISHED
+  LISTING_ERROR
+  LISTING_SOLD
+  // システム
+  DAILY_REPORT
+  SYSTEM_ERROR
+  EXCHANGE_RATE
+}
+
+
+// ========================================
+// アラートルール（Phase 26）
+// ========================================
+model AlertRule {
+  id                 String   @id @default(cuid())
+  name               String
+  eventType          String
+  conditions         Json     @default("[]")
+  severity           String   @default("info")
+  channels           String[]
+  cooldownMinutes    Int      @default(30)
+  batchWindowMinutes Int      @default(5)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([eventType])
+  @@index([isActive])
+  @@map("alert_rules")
+}
+
+
+// ========================================
+// アラートログ（Phase 26）
+// ========================================
+model AlertLog {
+  id        String    @id @default(cuid())
+  ruleId    String?
+  eventType String
+  severity  String
+  title     String
+  message   String    @db.Text
+  metadata  Json?
+  channels  String[]
+  status    String    @default("pending")
+  batchId   String?
+  sentAt    DateTime?
+  errorMsg  String?
+  createdAt DateTime  @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([status])
+  @@index([batchId])
+  @@map("alert_logs")
+}
+
+
+// ========================================
+// Phase 27: 通知チャンネル拡張
+// ========================================
+
+model NotificationDispatch {
+  id String @id @default(cuid())
+
+  // 通知チャンネル
+  channelId   String
+  channelType NotificationChannelType
+
+  // 通知内容
+  eventType String // 通知イベント種別
+  title     String
+  message   String               @db.Text
+  severity  NotificationSeverity @default(INFO)
+
+  // ペイロード
+  payload          Json  @default("{}")
+  formattedPayload Json? // チャンネル別フォーマット済み
+
+  // 送信状態
+  status       NotificationDispatchStatus @default(PENDING)
+  attemptCount Int                        @default(0)
+  maxAttempts  Int                        @default(3)
+  nextRetryAt  DateTime?
+
+  // レスポンス
+  providerResponse  Json?
+  providerMessageId String?
+
+  // エラー情報
+  errorCode    String?
+  errorMessage String? @db.Text
+
+  // タイムスタンプ
+  scheduledAt DateTime? // 予約送信
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([channelId, status])
+  @@index([status, nextRetryAt])
+  @@index([eventType, createdAt])
+  @@map("notification_dispatches")
+}
+
+model NotificationTemplate {
+  id String @id @default(cuid())
+
+  // テンプレート情報
+  name        String  @unique
+  description String?
+  eventType   String // トリガーイベント
+
+  // チャンネル別テンプレート
+  slackTemplate   Json? // Slack Block Kit形式
+  discordTemplate Json? // Discord Embed形式
+  lineTemplate    Json? // LINE Flex Message形式
+  emailTemplate   Json? // HTML/テキスト
+
+  // プレースホルダー
+  placeholders String[] // 使用可能な変数
+
+  // 設定
+  isActive Boolean @default(true)
+  isSystem Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([eventType])
+  @@map("notification_templates")
+}
+
+model NotificationPreference {
+  id String @id @default(cuid())
+
+  // ユーザー/グループ
+  userId  String?
+  groupId String?
+
+  // 通知設定
+  eventType String
+  channels  String[] // 有効なチャンネルID
+  isEnabled Boolean  @default(true)
+
+  // 頻度設定
+  frequency       NotificationFrequency @default(IMMEDIATE)
+  digestHour      Int? // ダイジェスト送信時刻（0-23）
+  quietHoursStart Int? // 通知停止開始時刻
+  quietHoursEnd   Int? // 通知停止終了時刻
+
+  // フィルター
+  minSeverity NotificationSeverity @default(INFO)
+  filters     Json                 @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, eventType])
+  @@index([userId])
+  @@index([eventType])
+  @@map("notification_preferences")
+}
+
+enum NotificationDispatchStatus {
+  PENDING
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum NotificationFrequency {
+  IMMEDIATE // 即時
+  HOURLY // 1時間ごとのダイジェスト
+  DAILY // 日次ダイジェスト
+  WEEKLY // 週次ダイジェスト
+}
+
+
+// ========================================
+// Phase 94: 監視アラート強化
+// ========================================
+
+enum AlertCondition {
+  GREATER_THAN
+  LESS_THAN
+  EQUALS
+  NOT_EQUALS
+  THRESHOLD
+  ANOMALY
+  PATTERN
+  ABSENCE
+}
+
+model AlertIncident {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  ruleId String
+
+  title       String
+  description String?
+
+  severity AlertSeverity
+  status   AlertIncidentStatus @default(OPEN)
+
+  triggeredAt    DateTime  @default(now())
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  resolvedAt     DateTime?
+  resolvedBy     String?
+
+  metricValue Float?
+  threshold   Float?
+
+  affectedResources Json    @default("[]")
+  impactScope       String?
+
+  rootCause  String?
+  resolution String?
+
+  notificationsSent Int       @default(0)
+  lastNotifiedAt    DateTime?
+
+  metadata Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notifications AlertNotification[]
+
+  @@index([organizationId, status])
+  @@index([ruleId, triggeredAt])
+  @@index([severity, status])
+  @@map("alert_incidents")
+}
+
+enum AlertIncidentStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  SUPPRESSED
+}
+
+model AlertEscalation {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  ruleId String
+
+  level        Int @default(1)
+  delayMinutes Int @default(15)
+
+  notificationChannels Json @default("[]")
+  assignees            Json @default("[]")
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ruleId, level])
+  @@map("alert_escalations")
+}
+
+model AlertNotificationChannel {
+  id String @id @default(cuid())
+
+  organizationId String
+
+  name        String
+  description String?
+
+  channelType   AlertChannelType
+  configuration Json             @default("{}")
+
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
+
+  testStatus       AlertChannelTestStatus?
+  lastTestedAt     DateTime?
+  lastErrorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, isActive])
+  @@map("alert_notification_channels")
+}
+
+enum AlertChannelType {
+  EMAIL
+  SLACK
+  DISCORD
+  WEBHOOK
+  SMS
+  PAGERDUTY
+  OPSGENIE
+  TEAMS
+}
+
+enum AlertChannelTestStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+model AlertNotification {
+  id String @id @default(cuid())
+
+  incidentId String
+  incident   AlertIncident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  channelType AlertChannelType
+  channelId   String?
+
+  status AlertNotificationStatus @default(PENDING)
+
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  failedAt     DateTime?
+  errorMessage String?
+
+  retryCount Int @default(0)
+  maxRetries Int @default(3)
+
+  payload Json @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([incidentId, status])
+  @@map("alert_notifications")
+}
+
+enum AlertNotificationStatus {
+  PENDING
+  SENDING
+  SENT
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+

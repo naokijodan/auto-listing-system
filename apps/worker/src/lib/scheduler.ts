@@ -1348,7 +1348,7 @@ export async function triggerAutoPublish(options?: {
 /**
  * 手動でトークン更新をトリガー（Phase 46）
  */
-export async function triggerTokenRefresh(marketplace?: 'joom' | 'ebay') {
+export async function triggerTokenRefresh(marketplace?: 'joom' | 'ebay' | 'etsy') {
   const job = await scrapeQueue.add(
     'token-refresh',
     {
@@ -1377,7 +1377,7 @@ export async function triggerTokenRefresh(marketplace?: 'joom' | 'ebay') {
 export async function checkTokenExpiry(options: {
   refreshBeforeExpiry?: number;
   warnBeforeExpiry?: number;
-  marketplace?: 'joom' | 'ebay';
+  marketplace?: 'joom' | 'ebay' | 'etsy';
 }): Promise<{
   checked: number;
   refreshed: number;
@@ -1476,6 +1476,36 @@ export async function checkTokenExpiry(options: {
               marketplace: cred.marketplace,
               expiresAt,
               message: refreshResult.error || 'Token refresh failed. Re-authorization may be required.',
+            });
+          }
+        } catch (error: any) {
+          result.errors.push({
+            marketplace: cred.marketplace,
+            error: error.message,
+          });
+          log.error({
+            type: 'token_refresh_failed',
+            marketplace: cred.marketplace,
+            error: error.message,
+          });
+        }
+      } else if (cred.marketplace === 'ETSY') {
+        try {
+          const { refreshEtsyToken } = await import('./etsy-api');
+          const refreshResult = await refreshEtsyToken();
+
+          if (refreshResult.success) {
+            result.refreshed++;
+            log.info({
+              type: 'token_refreshed',
+              marketplace: cred.marketplace,
+              expiresAt: refreshResult.expiresAt,
+            });
+          } else {
+            result.warnings.push({
+              marketplace: cred.marketplace,
+              expiresAt,
+              message: refreshResult.error || 'Token refresh failed. OAuth re-authorization may be required.',
             });
           }
         } catch (error: any) {

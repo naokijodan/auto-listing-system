@@ -67,7 +67,7 @@ jobs:
             # Run database migrations
             echo "Running database migrations..."
             docker compose -f docker-compose.prod.yml run --rm api \
-              npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma
+              npx prisma migrate deploy --schema=packages/database/prisma/schema
 
             # Restart services with zero downtime
             echo "Restarting services..."

@@ -1,0 +1,47 @@
+// Prisma Schema - Shopify Domain Models
+
+
+// Shopify連携用モデル
+model ShopifyProduct {
+  id String @id @default(cuid())
+
+  // 連携参照
+  integrationId String
+
+  // Shopify情報
+  shopifyProductId String  @unique
+  shopifyVariantId String?
+  handle           String?
+
+  // RAKUDA情報
+  productId String? // RAKUDA側の商品ID
+  listingId String? // RAKUDA側の出品ID
+
+  // 同期設定
+  syncEnabled   Boolean @default(true)
+  syncPrice     Boolean @default(true)
+  syncInventory Boolean @default(true)
+
+  // ステータス
+  status        ShopifyProductStatus @default(PENDING)
+  lastSyncAt    DateTime?
+  lastSyncError String?
+
+  // タイムスタンプ
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([integrationId])
+  @@index([productId])
+  @@index([shopifyProductId])
+  @@map("shopify_products")
+}
+
+enum ShopifyProductStatus {
+  PENDING // 同期待ち
+  ACTIVE // 同期中
+  PAUSED // 一時停止
+  ERROR // エラー
+  DELETED // 削除済み
+}
+
