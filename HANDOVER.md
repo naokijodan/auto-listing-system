@@ -90,6 +90,32 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - API（Coolify env）とWorker（systemd env）に設定済み
 - テスト送信成功（HTTP 204）
 
+### Shopify本番環境接続 完了（2026-03-01セッション②）
+- Prismaマイグレーション適用（Marketplace enum拡張 + 全チャネルテーブル追加）
+- marketplaceCredentialテーブルにShopify認証情報登録（レガシーカスタムアプリトークン）
+- Coolify env + Worker systemdにShopify環境変数追加
+- shopify.ts の認証チェック修正（integrationCredential → marketplaceCredential）
+- API再デプロイ（コミット33fd0828）
+- /api/shopify/status: connected=true ✅
+- /api/shopify-products/status: isAuthenticated=true, Online Store=CONNECTED ✅
+- テスト商品作成・削除成功（Shopify Admin API直接）
+
+### eBay Production OAuth 要再認証（2026-03-01セッション②）
+- 本番クライアントID/Secretは正常動作（client_credentials tokenで確認）
+- **Refresh Tokenが無効**（sandbox用トークンの可能性）
+- 再認証URL: https://api.rakuda.dev/api/ebay/auth（ブラウザでOAuth同意フロー要）
+- Business Policy（Fulfillment/Payment/Return）のIDも未設定
+
+### 運用整備 完了（2026-03-01セッション②）
+- PostgreSQLバックアップ: `/opt/rakuda-backup.sh` (毎日3:00 UTC, 7日保持)
+  - 初回バックアップ成功: 76KB
+  - 失敗時Discord通知
+- ヘルスチェックモニタリング: `/opt/rakuda-healthcheck.sh` (5分毎)
+  - API, Web, Worker, DB, Redis, ディスク容量を監視
+  - 異常時Discord通知
+- Dockerイメージクリーンアップ実施（旧イメージ11個削除、ディスク100GB空き）
+- Worker最新イメージ(33fd0828)で再起動完了
+
 ### Etsy OAuth ブロック中（2026-03-01セッション）
 - アプリが「Pending Personal Approval」ステータス
 - コールバックURLがlocalhost:3010で登録されており変更不可
@@ -158,7 +184,7 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 ### eBay本番認証情報（2026-03-01設定）
 - Production Client ID: `NaokiKab-Createak-PRD-a265b3311-5f1d9341`
 - Production Client Secret: Coolify env + Worker systemdに設定済み
-- OAuth Refresh Token: 設定済み（EBAY_REFRESH_TOKEN）
+- OAuth Refresh Token: **要再取得**（現在のトークンは無効 - sandbox用の可能性）
 - Callback URL: `https://api.rakuda.dev/api/ebay/callback`
 - EBAY_SANDBOX=false, EBAY_ENV=production
 
@@ -171,27 +197,29 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 ## 次のセッションでやること
 
-### Phase 6: チャネル拡大 & 運用整備
+### Phase 6: チャネル拡大（続き）
 
-#### 1. Shopify OAuth認証（最優先）
-- Shopifyを「Social Commerce Hub」として認証
-- Webhook基盤構築
-- Instagram/TikTok連携の疎通確認（Shopify経由）
+#### 1. eBay Production再認証（最優先）
+- ブラウザで https://api.rakuda.dev/api/ebay/auth にアクセス
+- eBayにログインしてOAuth権限を承認
+- コールバック後にRefresh Tokenが自動保存される
+- Business Policy（Fulfillment/Payment/Return）を確認・設定
+- テスト出品実行
 
-#### 2. テスト出品
-- eBay本番テスト出品（Production環境確認）
+#### 2. Shopify Social Commerce Hub拡張
+- Instagram Shop連携（Shopify管理画面→「Facebook & Instagram」チャネル追加）
+- TikTok Shop連携（Shopify管理画面→「TikTok」チャネル追加）
+- Webhook基盤構築（注文通知等）
+
+#### 3. テスト出品
+- eBay本番テスト出品（再認証後）
 - Joomテスト出品
-- Shopifyテスト出品
+- Shopify本番出品テスト（RAKUDA UIから）
 
-#### 3. Etsy OAuth（承認後）
+#### 4. Etsy OAuth（承認後）
 - Pending Personal Approval が下りたらコールバックURLを変更
 - https://api.rakuda.dev/api/etsy/callback でOAuth実行
 - 環境変数は既に設定済み
-
-#### 4. 運用整備
-- バックアップ設定（PostgreSQL）
-- モニタリング設定（Coolify + 外部サービス）
-- Coolify APIのヘルスチェック再有効化
 
 ---
 
@@ -199,6 +227,7 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 | コミット | 内容 |
 |---------|------|
+| `33fd0828` | feat: Shopify本番環境対応 - DB認証チェック修正 + 全チャネルマイグレーション |
 | `801370ba` | feat: Dockerfile に Web (Next.js) ステージ追加 + standalone モード有効化 |
 | `e64466f7` | docs: HANDOVER.md更新 - 本番デプロイ完了 |
 | `4fcb7af4` | fix: BullMQ Redis接続をURL直接指定に変更 |
@@ -227,6 +256,10 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 - [x] eBay本番環境切替（Production OAuth完了）
 - [x] Discord Webhook設定（API + Worker）
 - [x] Worker systemdサービス化
-- [ ] Shopify OAuth認証（次の最優先タスク）
+- [x] Shopify本番環境接続（認証情報登録・API動作確認・テスト出品成功）
+- [x] Prismaマイグレーション本番適用（全チャネルテーブル追加）
+- [x] 運用整備（PostgreSQLバックアップ毎日3:00・ヘルスチェック5分毎・Discord通知）
+- [ ] eBay Production再認証（Refresh Token無効→OAuth再取得が必要）
 - [ ] Etsy OAuth完了（承認待ち→後回し）
-- [ ] テスト出品（eBay/Joom/Shopify）
+- [ ] テスト出品（eBay/Joom）
+- [ ] Shopify Social Commerce Hub拡張（Instagram/TikTok連携）
