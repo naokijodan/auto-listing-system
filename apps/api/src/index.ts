@@ -24,14 +24,17 @@ const app = express();
 const PORT = process.env.API_PORT || 3000;
 const BULL_BOARD_PORT = process.env.BULL_BOARD_PORT || 3001;
 
-// Redis接続
-const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+// Redis接続URL
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+
+// Redis接続（ヘルスチェック・一般用）
+const redis = new IORedis(REDIS_URL, {
   maxRetriesPerRequest: null,
 });
 
-// BullMQキュー
+// BullMQキュー（URLから直接接続設定を渡す）
 const queues = Object.values(QUEUE_NAMES).map(
-  (name) => new Queue(name, { connection: redis })
+  (name) => new Queue(name, { connection: new IORedis(REDIS_URL, { maxRetriesPerRequest: null }) })
 );
 
 // Bull Board セットアップ
