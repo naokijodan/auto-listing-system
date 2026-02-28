@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-01 (eBay本番テスト出品成功 + OAuthコールバック修正 + Joom本番設定セッション)
+## 最終更新: 2026-03-01 (Worker修正 + Shopify出品・Webhook + OpenAI修正セッション)
 
 ---
 
@@ -128,6 +128,43 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - **テスト出品成功**: Joom Product ID `69a32981171b160126427ee2`（ACTIVE）
   - 商品: Seiko Presage SARX035, $299.99
   - 注意: shippingCostはUSD単位で指定（JPYだとエラー）
+
+### Worker scheduled job dispatch修正（2026-03-01セッション④）
+- **問題**: webhook-processing、message-sending、inventory-alert-processingの3ジョブがデフォルトプロセッサーにフォールスルー
+  - scrape-queue: "Unknown source type: undefined"
+  - inventory-queue: "prisma.product.findUnique({ where: { id: undefined } })"
+- **修正**: worker-manager.tsに3つの専用ハンドラーを追加
+  - handleMessageSending: 未読通知のバッチ処理
+  - handleWebhookProcessing: Webhookイベント処理（プレースホルダー）
+  - handleInventoryAlertProcessing: processScheduledResumes()による自動再開処理
+- **コミット**: 7b23bd7d
+- **デプロイ**: Worker Dockerイメージ再ビルド + systemd再起動完了
+- **確認**: エラーゼロ、全ジョブ正常動作
+
+### Shopify本番テスト出品成功（2026-03-01セッション④）
+- **テスト出品成功**: Shopify Product ID `9149468541144`（ACTIVE）
+  - 商品: Seiko Presage SARX035 - Titanium Automatic Watch, $399.99
+  - Variant ID: 51431097991384
+  - SKU: RAKUDA-SHOPIFY-TEST-001
+- Shopify Admin API直接呼び出しで出品確認
+
+### Shopify Webhook基盤構築（2026-03-01セッション④）
+- 6つのWebhook登録完了:
+  - orders/create (ID: 1610264215768)
+  - orders/updated (ID: 1610264248536)
+  - orders/cancelled (ID: 1610264281304)
+  - products/update (ID: 1610264314072)
+  - inventory_levels/update (ID: 1610264346840)
+  - app/uninstalled (ID: 1610264379608)
+- Webhook受信エンドポイント: https://api.rakuda.dev/api/shopify/webhook
+- HMAC検証 + DB保存（webhook_eventsテーブル）
+- express.json()との競合を修正（webhookパスを除外）
+- **コミット**: 1a078790
+
+### OpenAI API本番設定修正（2026-03-01セッション④）
+- **問題**: OpenAI APIキーがVPS上で切り詰められていた（164文字→83文字）
+- **修正**: Worker systemd + Coolify APIの両方で完全なキーに更新
+- **確認**: enrichmentジョブ成功（confidence: 0.95, status: APPROVED, duration: 4986ms）
 
 ### 運用整備 完了（2026-03-01セッション②）
 - PostgreSQLバックアップ: `/opt/rakuda-backup.sh` (毎日3:00 UTC, 7日保持)
@@ -286,5 +323,10 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 - [x] eBay OAuthコールバックリダイレクト修正（FRONTEND_URL対応）
 - [x] Joom本番環境設定（DB + Coolify + Worker環境変数）
 - [x] Joom本番OAuth完了 + テスト出品成功（Product ID: 69a32981171b160126427ee2, ACTIVE）
+- [x] Worker scheduled job dispatch修正（3ジョブのフォールスルー解消）
+- [x] Shopify本番テスト出品成功（Product ID: 9149468541144, ACTIVE）
+- [x] Shopify Webhook基盤構築（6つのWebhook登録 + HMAC検証 + body parsing修正）
+- [x] OpenAI API本番設定修正（APIキー切り詰め問題解消、enrichment動作確認）
 - [ ] Etsy OAuth完了（承認待ち→後回し）
-- [ ] Shopify Social Commerce Hub拡張（Instagram/TikTok連携）
+- [ ] Instagram Shop連携（Shopify管理画面で「Facebook & Instagram」チャネル追加）
+- [ ] TikTok Shop連携（Shopify管理画面で「TikTok」チャネル追加）
