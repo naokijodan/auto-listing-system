@@ -55,7 +55,8 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 
   if (error) {
     log.error({ type: 'ebay_auth_error', error });
-    res.status(400).json({ error: `OAuth error: ${error}` });
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3012';
+    res.redirect(`${frontendUrl}/settings?ebay=error&message=${encodeURIComponent(error as string)}`);
     return;
   }
 
@@ -130,7 +131,8 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
     });
 
     log.info({ type: 'ebay_auth_success', expiresAt });
-    res.redirect('/settings?ebay=connected');
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3012';
+    res.redirect(`${frontendUrl}/settings?ebay=connected`);
   } catch (error) {
     next(error);
   }
