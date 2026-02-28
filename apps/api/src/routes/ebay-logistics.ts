@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * eBayクロスボーダー物流API
  * Phase 127: 国際配送最適化、キャリア比較、関税計算
@@ -128,7 +128,7 @@ router.get('/dashboard', async (req, res) => {
         id: true,
         shippingAddress: true,
         shippingCost: true,
-        metadata: true,
+        rawData: true,
         createdAt: true,
       },
     });

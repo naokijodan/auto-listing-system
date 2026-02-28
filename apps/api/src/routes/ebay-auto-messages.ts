@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * eBayメッセージ自動応答API
  * Phase 125: AI自動応答、ルールベース応答、応答分析
@@ -188,13 +188,13 @@ router.get('/dashboard', async (req, res) => {
         status: true,
         createdAt: true,
         sentAt: true,
-        metadata: true,
+        marketplaceResponse: true,
       },
     });
 
     // 自動応答されたメッセージ
-    const autoResponded = messages.filter((m: any) => m.metadata?.autoResponded);
-    const manualResponded = messages.filter((m: any) => !m.metadata?.autoResponded && m.status === 'SENT');
+    const autoResponded = messages.filter((m: any) => (m.marketplaceResponse as any)?.autoResponded);
+    const manualResponded = messages.filter((m: any) => !(m.marketplaceResponse as any)?.autoResponded && m.status === 'SENT');
 
     // 平均応答時間
     const responseTimes = messages
@@ -564,7 +564,7 @@ router.get('/stats', async (req, res) => {
         status: true,
         createdAt: true,
         sentAt: true,
-        metadata: true,
+        marketplaceResponse: true,
       },
     });
 
@@ -594,7 +594,7 @@ router.get('/stats', async (req, res) => {
       .filter(m => m.sentAt && m.createdAt)
       .map(m => ({
         minutes: (new Date(m.sentAt!).getTime() - new Date(m.createdAt).getTime()) / 1000 / 60,
-        isAuto: (m.metadata as any)?.autoResponded || false,
+        isAuto: (m.marketplaceResponse as any)?.autoResponded || false,
       }));
 
     const autoResponseTimes = responseTimes.filter(r => r.isAuto);

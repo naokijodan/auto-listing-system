@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { Router, Request, Response } from 'express';
 import { prisma } from '@rakuda/database';
 import { z } from 'zod';
@@ -24,7 +24,7 @@ router.get('/stats', async (_req: Request, res: Response) => {
         where: { createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
       }),
       prisma.exchangeRate.count({
-        where: { createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
+        where: { fetchedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
       }),
     ]);
 
@@ -149,17 +149,13 @@ router.get('/rates', async (req: Request, res: Response) => {
     const { from, to, limit = '100' } = req.query;
 
     const where: any = {};
-    if (from) where.fromCurrency = { code: from };
-    if (to) where.toCurrency = { code: to };
+    if (from) where.fromCurrency = from as string;
+    if (to) where.toCurrency = to as string;
 
     const rates = await prisma.exchangeRate.findMany({
       where,
-      orderBy: { validFrom: 'desc' },
+      orderBy: { fetchedAt: 'desc' },
       take: parseInt(limit as string),
-      include: {
-        fromCurrency: { select: { code: true, symbol: true, name: true } },
-        toCurrency: { select: { code: true, symbol: true, name: true } },
-      },
     });
 
     res.json(rates);
@@ -184,28 +180,22 @@ router.get('/rates/latest', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Base currency not found' });
     }
 
+    // ExchangeRate uses string fields fromCurrency/toCurrency (not relation IDs)
     const rates = await prisma.exchangeRate.findMany({
       where: {
-        fromCurrencyId: baseCurrency.id,
-        OR: [
-          { validUntil: null },
-          { validUntil: { gt: new Date() } },
-        ],
+        fromCurrency: base as string,
       },
-      orderBy: { validFrom: 'desc' },
-      distinct: ['toCurrencyId'],
-      include: {
-        toCurrency: { select: { code: true, symbol: true, name: true } },
-      },
+      orderBy: { fetchedAt: 'desc' },
+      distinct: ['toCurrency'],
     });
 
     res.json({
       base: base,
       timestamp: new Date().toISOString(),
       rates: rates.map((r) => ({
-        currency: r.toCurrency.code,
+        currency: r.toCurrency,
         rate: r.rate,
-        change24h: r.change24h,
+        fetchedAt: r.fetchedAt,
       })),
     });
   } catch (error) {
@@ -221,57 +211,34 @@ const updateRateSchema = z.object({
   fromCurrency: z.string().length(3),
   toCurrency: z.string().length(3),
   rate: z.number().positive(),
-  source: z.enum([
-    'MANUAL',
-    'OPENEXCHANGERATES',
-    'CURRENCYLAYER',
-    'FIXER',
-    'ECB',
-    'YAHOO_FINANCE',
-    'CUSTOM_API',
-  ]).optional(),
+  source: z.string().optional(),
 });
 
 router.post('/rates', async (req: Request, res: Response) => {
   try {
     const data = updateRateSchema.parse(req.body);
 
-    const [fromCurrency, toCurrency] = await Promise.all([
+    const [fromCurrencyRecord, toCurrencyRecord] = await Promise.all([
       prisma.currency.findUnique({ where: { code: data.fromCurrency } }),
       prisma.currency.findUnique({ where: { code: data.toCurrency } }),
     ]);
 
-    if (!fromCurrency || !toCurrency) {
+    if (!fromCurrencyRecord || !toCurrencyRecord) {
       return res.status(404).json({ error: 'Currency not found' });
     }
 
-    // 前のレートを取得して変動率計算
-    const previousRate = await prisma.exchangeRate.findFirst({
-      where: {
-        fromCurrencyId: fromCurrency.id,
-        toCurrencyId: toCurrency.id,
-      },
-      orderBy: { validFrom: 'desc' },
-    });
-
-    const change24h = previousRate
-      ? ((data.rate - previousRate.rate) / previousRate.rate) * 100
-      : null;
-
     const rate = await prisma.exchangeRate.create({
       data: {
-        fromCurrencyId: fromCurrency.id,
-        toCurrencyId: toCurrency.id,
+        fromCurrency: data.fromCurrency,
+        toCurrency: data.toCurrency,
         rate: data.rate,
-        inverseRate: 1 / data.rate,
-        source: data.source || 'MANUAL',
-        change24h,
+        source: data.source || 'manual',
       },
     });
 
     // 通貨の現在レートも更新
     await prisma.currency.update({
-      where: { id: toCurrency.id },
+      where: { id: toCurrencyRecord.id },
       data: {
         currentRate: data.rate,
         lastRateUpdate: new Date(),
@@ -303,47 +270,48 @@ router.post('/convert', async (req: Request, res: Response) => {
   try {
     const data = convertSchema.parse(req.body);
 
-    const [fromCurrency, toCurrency] = await Promise.all([
+    const [fromCurrencyRecord, toCurrencyRecord] = await Promise.all([
       prisma.currency.findUnique({ where: { code: data.from } }),
       prisma.currency.findUnique({ where: { code: data.to } }),
     ]);
 
-    if (!fromCurrency || !toCurrency) {
+    if (!fromCurrencyRecord || !toCurrencyRecord) {
       return res.status(404).json({ error: 'Currency not found' });
     }
 
     // 最新のレートを取得
-    let rate = await prisma.exchangeRate.findFirst({
+    let rateRecord = await prisma.exchangeRate.findFirst({
       where: {
-        fromCurrencyId: fromCurrency.id,
-        toCurrencyId: toCurrency.id,
+        fromCurrency: data.from,
+        toCurrency: data.to,
       },
-      orderBy: { validFrom: 'desc' },
+      orderBy: { fetchedAt: 'desc' },
     });
 
     // 直接のレートがない場合、逆レートを探す
-    if (!rate) {
-      const inverseRate = await prisma.exchangeRate.findFirst({
+    if (!rateRecord) {
+      const inverseRateRecord = await prisma.exchangeRate.findFirst({
         where: {
-          fromCurrencyId: toCurrency.id,
-          toCurrencyId: fromCurrency.id,
+          fromCurrency: data.to,
+          toCurrency: data.from,
         },
-        orderBy: { validFrom: 'desc' },
+        orderBy: { fetchedAt: 'desc' },
       });
 
-      if (inverseRate) {
-        rate = {
-          ...inverseRate,
-          rate: inverseRate.inverseRate,
-        } as any;
+      if (inverseRateRecord) {
+        // Create a virtual rate record using inverse
+        rateRecord = {
+          ...inverseRateRecord,
+          rate: 1 / inverseRateRecord.rate,
+        };
       }
     }
 
-    if (!rate) {
+    if (!rateRecord) {
       return res.status(404).json({ error: 'Exchange rate not found' });
     }
 
-    const convertedAmount = data.amount * rate.rate;
+    const convertedAmount = data.amount * rateRecord.rate;
 
     // 変換履歴を保存
     if (data.entityType && data.entityId) {
@@ -351,12 +319,12 @@ router.post('/convert', async (req: Request, res: Response) => {
         data: {
           entityType: data.entityType,
           entityId: data.entityId,
-          originalCurrencyId: fromCurrency.id,
+          originalCurrencyId: fromCurrencyRecord.id,
           originalAmount: data.amount,
-          convertedCurrency: toCurrency.code,
+          convertedCurrency: toCurrencyRecord.code,
           convertedAmount,
-          exchangeRate: rate.rate,
-          rateTimestamp: rate.validFrom,
+          exchangeRate: rateRecord.rate,
+          rateTimestamp: rateRecord.fetchedAt,
         },
       });
     }
@@ -365,15 +333,15 @@ router.post('/convert', async (req: Request, res: Response) => {
       from: {
         currency: data.from,
         amount: data.amount,
-        symbol: fromCurrency.symbol,
+        symbol: fromCurrencyRecord.symbol,
       },
       to: {
         currency: data.to,
-        amount: Math.round(convertedAmount * Math.pow(10, toCurrency.decimals)) / Math.pow(10, toCurrency.decimals),
-        symbol: toCurrency.symbol,
+        amount: Math.round(convertedAmount * Math.pow(10, toCurrencyRecord.decimals)) / Math.pow(10, toCurrencyRecord.decimals),
+        symbol: toCurrencyRecord.symbol,
       },
-      rate: rate.rate,
-      timestamp: rate.validFrom,
+      rate: rateRecord.rate,
+      timestamp: rateRecord.fetchedAt,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -422,7 +390,7 @@ router.get('/settings', async (req: Request, res: Response) => {
       where: {
         scope_scopeId: {
           scope: scope as any,
-          scopeId: (scopeId as string) || null,
+          scopeId: (scopeId as string) || '',
         },
       },
       include: {
@@ -483,7 +451,7 @@ router.put('/settings', async (req: Request, res: Response) => {
       where: {
         scope_scopeId: {
           scope,
-          scopeId: scopeId || null,
+          scopeId: scopeId || '',
         },
       },
       update: {
@@ -496,7 +464,7 @@ router.put('/settings', async (req: Request, res: Response) => {
       },
       create: {
         scope,
-        scopeId: scopeId || null,
+        scopeId: scopeId || '',
         baseCurrencyId: baseCurrency.id,
         displayCurrencies: displayCurrencies || [],
         autoConvert: autoConvert ?? true,

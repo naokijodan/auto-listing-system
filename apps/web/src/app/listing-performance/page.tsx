@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -611,7 +611,7 @@ export default function ListingPerformancePage() {
                           type="number"
                           value={newThreshold.daysListedMin || ''}
                           onChange={(e) =>
-                            setNewThreshold({ ...newThreshold, daysListedMin: parseInt(e.target.value) || undefined })
+                            setNewThreshold({ ...newThreshold, daysListedMin: parseInt(e.target.value) || 0 })
                           }
                         />
                       </div>

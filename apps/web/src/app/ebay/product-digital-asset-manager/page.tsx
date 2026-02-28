@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -16,7 +16,7 @@ const tabs = [
 
 const apiBase = '/api/ebay-product-digital-asset-manager/';
 
-export default function ProductDigitalAssetManagerPage(): JSX.Element {
+export default function ProductDigitalAssetManagerPage(): React.ReactElement {
   const [active, setActive] = useState<typeof tabs[number]['key']>('dashboard');
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);

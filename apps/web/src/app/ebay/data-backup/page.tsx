@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -126,25 +126,25 @@ export default function EbayDataBackupPage() {
   const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
 
   // データ取得
-  const { data: statsData, mutate: mutateStats } = useSWR('/api/ebay-data-backup/stats', fetcher);
+  const { data: statsData, mutate: mutateStats } = useSWR<any>('/api/ebay-data-backup/stats', fetcher);
   const stats = statsData?.data;
 
-  const { data: backupsData, mutate: mutateBackups, isLoading: isLoadingBackups } = useSWR(
+  const { data: backupsData, mutate: mutateBackups, isLoading: isLoadingBackups } = useSWR<any>(
     activeTab === 'backups' ? `/api/ebay-data-backup/backups?page=${page}&limit=10` : null,
     fetcher
   );
 
-  const { data: schedulesData, mutate: mutateSchedules, isLoading: isLoadingSchedules } = useSWR(
+  const { data: schedulesData, mutate: mutateSchedules, isLoading: isLoadingSchedules } = useSWR<any>(
     activeTab === 'schedules' ? '/api/ebay-data-backup/schedules' : null,
     fetcher
   );
 
-  const { data: restoreData, isLoading: isLoadingRestore } = useSWR(
+  const { data: restoreData, isLoading: isLoadingRestore } = useSWR<any>(
     activeTab === 'restore' ? `/api/ebay-data-backup/restore-jobs?page=${page}&limit=10` : null,
     fetcher
   );
 
-  const { data: storageData, isLoading: isLoadingStorage } = useSWR(
+  const { data: storageData, isLoading: isLoadingStorage } = useSWR<any>(
     activeTab === 'storage' ? '/api/ebay-data-backup/storage-configs' : null,
     fetcher
   );

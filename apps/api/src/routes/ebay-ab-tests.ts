@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * eBay A/BテストAPI
  * Phase 119: AI最適化のA/Bテスト機能
@@ -37,7 +37,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
     // eBay関連のテストのみカウント
     const [total, running, completed, pendingOptimizations] = await Promise.all([
       prisma.aBTest.count({
-        where: { targetEntity: 'listing', filters: { path: '$.marketplace', equals: 'EBAY' } },
+        where: { targetEntity: 'listing', filters: { path: ['marketplace'], equals: 'EBAY' } },
       }),
       prisma.aBTest.count({
         where: { status: 'RUNNING', targetEntity: 'listing' },
@@ -522,8 +522,18 @@ router.post('/:id/apply-winner', async (req: Request, res: Response) => {
       include: {
         variants: true,
         assignments: {
-          include: {
-            listing: true,
+          select: {
+            id: true,
+            testId: true,
+            variantId: true,
+            listingId: true,
+            productId: true,
+            impressions: true,
+            clicks: true,
+            views: true,
+            conversions: true,
+            revenue: true,
+            assignedAt: true,
           },
         },
       },
@@ -541,7 +551,7 @@ router.post('/:id/apply-winner', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No winning variant determined' });
     }
 
-    const winner = test.variants.find(v => v.id === test.winningVariantId);
+    const winner = test.variants.find((v: any) => v.id === test.winningVariantId);
     if (!winner) {
       return res.status(400).json({ error: 'Winning variant not found' });
     }
@@ -714,7 +724,7 @@ router.get('/stats', async (req: Request, res: Response) => {
 
     for (const test of significantResults) {
       const control = test.variants.find(v => v.isControl);
-      const winner = test.variants.find(v => v.id === test.winningVariantId);
+      const winner = test.variants.find((v: any) => v.id === test.winningVariantId);
 
       if (control && winner && !winner.isControl) {
         const controlRate = control.views > 0 ? control.sales / control.views : 0;

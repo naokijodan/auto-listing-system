@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -33,11 +33,11 @@ export default function MobileApiPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   // データ取得
-  const { data: dashboardData } = useSWR('/api/ebay-mobile-api/dashboard', fetcher);
-  const { data: pushSettingsData, mutate: mutatePushSettings } = useSWR('/api/ebay-mobile-api/push-settings', fetcher);
-  const { data: quickActionsData } = useSWR('/api/ebay-mobile-api/quick-actions', fetcher);
-  const { data: appSettingsData, mutate: mutateSettings } = useSWR('/api/ebay-mobile-api/settings', fetcher);
-  const { data: healthData } = useSWR('/api/ebay-mobile-api/health', fetcher);
+  const { data: dashboardData } = useSWR<any>('/api/ebay-mobile-api/dashboard', fetcher);
+  const { data: pushSettingsData, mutate: mutatePushSettings } = useSWR<any>('/api/ebay-mobile-api/push-settings', fetcher);
+  const { data: quickActionsData } = useSWR<any>('/api/ebay-mobile-api/quick-actions', fetcher);
+  const { data: appSettingsData, mutate: mutateSettings } = useSWR<any>('/api/ebay-mobile-api/settings', fetcher);
+  const { data: healthData } = useSWR<any>('/api/ebay-mobile-api/health', fetcher);
 
   const dashboard = dashboardData ?? { summary: {}, alerts: [], quickStats: [] };
   const pushSettings = pushSettingsData ?? { enabled: false, settings: {} };

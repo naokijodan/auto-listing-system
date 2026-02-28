@@ -1,7 +1,8 @@
-// @ts-nocheck
+
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '@rakuda/database';
+import { Prisma } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import OpenAI from 'openai';
 
@@ -454,7 +455,7 @@ router.get('/cross-sell-pairs', async (req, res) => {
         marketplace: 'EBAY',
         marketplaceData: {
           path: ['crossSellPairs'],
-          not: null,
+          not: Prisma.AnyNull,
         },
       },
       include: { product: true },

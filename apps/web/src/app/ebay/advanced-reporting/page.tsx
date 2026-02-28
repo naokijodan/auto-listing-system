@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -38,15 +38,15 @@ export default function AdvancedReportingPage() {
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
   // データ取得
-  const { data: templatesData, mutate: mutateTemplates } = useSWR(
+  const { data: templatesData, mutate: mutateTemplates } = useSWR<any>(
     `/api/ebay-advanced-reporting/templates${selectedCategory ? `?category=${selectedCategory}` : ''}`,
     fetcher
   );
-  const { data: reportsData, mutate: mutateReports } = useSWR('/api/ebay-advanced-reporting/reports', fetcher);
-  const { data: schedulesData, mutate: mutateSchedules } = useSWR('/api/ebay-advanced-reporting/schedules', fetcher);
-  const { data: dashboardData } = useSWR('/api/ebay-advanced-reporting/dashboard', fetcher);
-  const { data: metricsData } = useSWR('/api/ebay-advanced-reporting/metrics', fetcher);
-  const { data: dimensionsData } = useSWR('/api/ebay-advanced-reporting/dimensions', fetcher);
+  const { data: reportsData, mutate: mutateReports } = useSWR<any>('/api/ebay-advanced-reporting/reports', fetcher);
+  const { data: schedulesData, mutate: mutateSchedules } = useSWR<any>('/api/ebay-advanced-reporting/schedules', fetcher);
+  const { data: dashboardData } = useSWR<any>('/api/ebay-advanced-reporting/dashboard', fetcher);
+  const { data: metricsData } = useSWR<any>('/api/ebay-advanced-reporting/metrics', fetcher);
+  const { data: dimensionsData } = useSWR<any>('/api/ebay-advanced-reporting/dimensions', fetcher);
 
   const templates = templatesData?.templates ?? [];
   const reports = reportsData?.reports ?? [];

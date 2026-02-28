@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client'
 
 import React, { useEffect, useState } from 'react'
@@ -35,7 +35,7 @@ function pathFor(tab: TabKey): string {
   }
 }
 
-export default function ListingCrossSellEnginePage(): JSX.Element {
+export default function ListingCrossSellEnginePage(): React.ReactElement {
   const [active, setActive] = useState<TabKey>('dashboard')
   const [data, setData] = useState<unknown>(null)
   const [loading, setLoading] = useState<boolean>(false)

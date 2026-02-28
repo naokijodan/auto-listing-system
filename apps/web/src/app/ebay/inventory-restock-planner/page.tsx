@@ -1,9 +1,9 @@
-// @ts-nocheck
+
 'use client';
 
 import useSWR from 'swr';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from 'shadcn/ui';
-import { Card, CardHeader, CardTitle, CardContent } from 'shadcn/ui';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 

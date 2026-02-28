@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -119,28 +119,28 @@ export default function EbayInventoryAlertsPage() {
   const [severityFilter, setSeverityFilter] = useState('');
 
   // Dashboard data
-  const { data: dashboardData, mutate: mutateDashboard } = useSWR('/api/ebay-inventory-alerts/dashboard', fetcher);
+  const { data: dashboardData, mutate: mutateDashboard } = useSWR<any>('/api/ebay-inventory-alerts/dashboard', fetcher);
 
   // Alerts
-  const { data: alertsData, mutate: mutateAlerts } = useSWR(
+  const { data: alertsData, mutate: mutateAlerts } = useSWR<any>(
     `/api/ebay-inventory-alerts/alerts${typeFilter ? `?type=${typeFilter}` : ''}${statusFilter ? `${typeFilter ? '&' : '?'}status=${statusFilter}` : ''}`,
     fetcher
   );
 
   // Rules
-  const { data: rulesData, mutate: mutateRules } = useSWR(
+  const { data: rulesData, mutate: mutateRules } = useSWR<any>(
     activeTab === 'rules' ? '/api/ebay-inventory-alerts/rules' : null,
     fetcher
   );
 
   // Notification settings
-  const { data: notificationSettings, mutate: mutateNotifications } = useSWR(
+  const { data: notificationSettings, mutate: mutateNotifications } = useSWR<any>(
     activeTab === 'notifications' ? '/api/ebay-inventory-alerts/notifications/settings' : null,
     fetcher
   );
 
   // Settings
-  const { data: settingsData } = useSWR(
+  const { data: settingsData } = useSWR<any>(
     activeTab === 'settings' ? '/api/ebay-inventory-alerts/settings' : null,
     fetcher
   );
@@ -206,7 +206,7 @@ export default function EbayInventoryAlertsPage() {
       const result = await postApi('/api/ebay-inventory-alerts/check', {});
       mutateDashboard();
       mutateAlerts();
-      addToast({ type: 'success', message: `${result.checkedItems}件をチェック、${result.newAlerts}件の新規アラート` });
+      addToast({ type: 'success', message: `${(result as any).checkedItems}件をチェック、${(result as any).newAlerts}件の新規アラート` });
     } catch (error) {
       addToast({ type: 'error', message: 'チェックに失敗しました' });
     }

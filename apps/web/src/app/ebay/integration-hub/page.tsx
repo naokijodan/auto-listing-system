@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -34,15 +34,15 @@ export default function IntegrationHubPage() {
   const [selectedCategory, setSelectedCategory] = useState('');
 
   // データ取得
-  const { data: integrationsData, mutate: mutateIntegrations } = useSWR(
+  const { data: integrationsData, mutate: mutateIntegrations } = useSWR<any>(
     `/api/ebay-integration-hub/integrations${selectedCategory ? `?category=${selectedCategory}` : ''}`,
     fetcher
   );
-  const { data: webhooksData, mutate: mutateWebhooks } = useSWR('/api/ebay-integration-hub/webhooks', fetcher);
-  const { data: apisData } = useSWR('/api/ebay-integration-hub/api-connections', fetcher);
-  const { data: logsData, mutate: mutateLogs } = useSWR('/api/ebay-integration-hub/sync-logs', fetcher);
-  const { data: marketplacesData, mutate: mutateMarketplaces } = useSWR('/api/ebay-integration-hub/marketplaces', fetcher);
-  const { data: dashboardData } = useSWR('/api/ebay-integration-hub/dashboard', fetcher);
+  const { data: webhooksData, mutate: mutateWebhooks } = useSWR<any>('/api/ebay-integration-hub/webhooks', fetcher);
+  const { data: apisData } = useSWR<any>('/api/ebay-integration-hub/api-connections', fetcher);
+  const { data: logsData, mutate: mutateLogs } = useSWR<any>('/api/ebay-integration-hub/sync-logs', fetcher);
+  const { data: marketplacesData, mutate: mutateMarketplaces } = useSWR<any>('/api/ebay-integration-hub/marketplaces', fetcher);
+  const { data: dashboardData } = useSWR<any>('/api/ebay-integration-hub/dashboard', fetcher);
 
   const integrations = integrationsData?.integrations ?? [];
   const webhooks = webhooksData?.webhooks ?? [];

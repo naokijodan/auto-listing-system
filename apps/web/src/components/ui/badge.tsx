@@ -1,14 +1,12 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { ReactNode } from 'react';
+import { HTMLAttributes } from 'react';
 
-type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info';
+type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'outline' | 'secondary' | 'destructive';
 
-interface BadgeProps {
-  children: ReactNode;
+export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: BadgeVariant;
-  className?: string;
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
@@ -17,9 +15,12 @@ const variantStyles: Record<BadgeVariant, string> = {
   warning: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   error: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
   info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  outline: 'border border-zinc-300 bg-transparent text-zinc-700 dark:border-zinc-600 dark:text-zinc-300',
+  secondary: 'bg-zinc-200 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100',
+  destructive: 'bg-red-500 text-white dark:bg-red-600',
 };
 
-export function Badge({ children, variant = 'default', className }: BadgeProps) {
+export function Badge({ children, variant = 'default', className, ...props }: BadgeProps) {
   return (
     <span
       className={cn(
@@ -27,6 +28,7 @@ export function Badge({ children, variant = 'default', className }: BadgeProps) 
         variantStyles[variant],
         className
       )}
+      {...props}
     >
       {children}
     </span>

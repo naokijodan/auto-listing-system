@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -27,7 +27,7 @@ export default function EbayReturnManagerPage() {
     switch (status) {
       case 'PENDING': return '審明待';
       case 'APPROVED': return '承認済';
-      case 'RECEIVED': return '受�l済';
+      case 'RECEIVED': return '受�l済';
       case 'REFUNDED': return '返金完了';
       case 'REJECTED': return '拒否';
       default: return status;
@@ -107,7 +107,7 @@ export default function EbayReturnManagerPage() {
                 {returnsData?.returns?.map((ret: any) => (
                   <div key={ret.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center font-bold text-purple-600">{wet.id.slice(1, 3)}</div>
+                      <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center font-bold text-purple-600">{ret.id.slice(1, 3)}</div>
                       <div><div className="font-medium">{ret.orderId} - {ret.sku}</div><div className="text-sm text-gray-500">{ret.reason} • {ret.createdAt}</div></div>
                     </div>
                     <div className="flex items-center gap-4">
@@ -179,7 +179,7 @@ export default function EbayReturnManagerPage() {
 
         <TabsContent value="reports">
           <Card>
-            <CardHeader><CardTitle>レポート出力�ookunoline</CardTitle><CardDescription>返品データをエクスポート</CardDescription></CardHeader>
+            <CardHeader><CardTitle>レポート出力�ookunoline</CardTitle><CardDescription>返品データをエクスポート</CardDescription></CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="hover:shadow-md transition-shadow cursor-pointer">

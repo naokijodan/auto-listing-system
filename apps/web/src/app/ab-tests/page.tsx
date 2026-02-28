@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -115,7 +115,7 @@ export default function ABTestsPage() {
     fetcher
   );
 
-  const { data: testsData, mutate: mutateTests } = useSWR(
+  const { data: testsData, mutate: mutateTests } = useSWR<any>(
     `${API_BASE}/ab-tests${selectedStatus !== 'all' ? `?status=${selectedStatus}` : ''}`,
     fetcher
   );

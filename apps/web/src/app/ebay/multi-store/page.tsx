@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -31,7 +31,7 @@ import {
   ExternalLink,
   TrendingUp,
   TrendingDown,
-  Sync,
+  RefreshCw as Sync,
   MoreVertical,
 } from 'lucide-react';
 
@@ -132,7 +132,7 @@ export default function EbayMultiStorePage() {
     fetcher
   );
 
-  const { data: comparisonData } = useSWR(
+  const { data: comparisonData } = useSWR<any>(
     selectedStores.size >= 2 ? `/api/ebay-multi-store/compare?storeIds=${Array.from(selectedStores).join(',')}` : null,
     fetcher
   );

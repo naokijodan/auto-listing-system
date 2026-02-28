@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -30,7 +30,7 @@ const ENDPOINT: Record<TabKey, string> = {
   settings: 'settings/get',
 };
 
-export default function Page(): JSX.Element {
+export default function Page(): React.ReactElement {
   const [active, setActive] = useState<TabKey>('dashboard');
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);

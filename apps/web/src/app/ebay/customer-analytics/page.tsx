@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -81,7 +81,7 @@ export default function CustomerAnalyticsPage() {
 }
 
 function DashboardTab() {
-  const { data: dashboard, isLoading } = useSWR('/api/ebay-customer-analytics/dashboard', fetcher);
+  const { data: dashboard, isLoading } = useSWR<any>('/api/ebay-customer-analytics/dashboard', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -185,7 +185,7 @@ function DashboardTab() {
 }
 
 function CustomersTab() {
-  const { data, isLoading } = useSWR('/api/ebay-customer-analytics/customers', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-customer-analytics/customers', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -260,7 +260,7 @@ function CustomersTab() {
 }
 
 function SegmentsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-customer-analytics/segments', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-customer-analytics/segments', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -313,7 +313,7 @@ function SegmentsTab() {
 }
 
 function RfmTab() {
-  const { data, isLoading } = useSWR('/api/ebay-customer-analytics/rfm', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-customer-analytics/rfm', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -372,7 +372,7 @@ function RfmTab() {
 }
 
 function BehaviorTab() {
-  const { data: purchase, isLoading: purchaseLoading } = useSWR('/api/ebay-customer-analytics/behavior/purchase', fetcher);
+  const { data: purchase, isLoading: purchaseLoading } = useSWR<any>('/api/ebay-customer-analytics/behavior/purchase', fetcher);
 
   if (purchaseLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -428,7 +428,7 @@ function BehaviorTab() {
 }
 
 function SettingsTab() {
-  const { data: analyticsSettings, isLoading: analyticsLoading } = useSWR('/api/ebay-customer-analytics/settings/analytics', fetcher);
+  const { data: analyticsSettings, isLoading: analyticsLoading } = useSWR<any>('/api/ebay-customer-analytics/settings/analytics', fetcher);
 
   if (analyticsLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;

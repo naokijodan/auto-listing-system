@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { Router, Request, Response } from 'express';
 import { prisma } from '@rakuda/database';
 import { z } from 'zod';
@@ -453,7 +453,7 @@ router.get('/providers/:id/authorize', async (req: Request, res: Response) => {
       .update(codeVerifier)
       .digest('base64url');
 
-    const authState = state || crypto.randomBytes(16).toString('hex');
+    const authState = (state as string) || crypto.randomBytes(16).toString('hex');
 
     // 認証URLを構築
     const params = new URLSearchParams({

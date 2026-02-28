@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -32,7 +32,7 @@ import {
 import { cn } from '@/lib/utils';
 import { fetcher, postApi, syncScheduleApi, SyncSchedule, SyncScheduleConfig } from '@/lib/api';
 import { Switch } from '@/components/ui/switch';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const tabs = [
   { id: 'price', label: '価格設定', icon: DollarSign },
@@ -1089,8 +1089,15 @@ interface SyncTypeConfigProps {
   config: SyncScheduleConfig;
   onIntervalChange: (value: number) => void;
   onEnabledChange: (value: boolean) => void;
-  color: 'amber' | 'blue';
+  color: 'amber' | 'blue' | 'orange' | 'green';
 }
+
+const colorMap: Record<string, { bg: string; text: string }> = {
+  amber: { bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-600 dark:text-amber-400' },
+  blue: { bg: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-600 dark:text-blue-400' },
+  orange: { bg: 'bg-orange-50 dark:bg-orange-900/20', text: 'text-orange-600 dark:text-orange-400' },
+  green: { bg: 'bg-green-50 dark:bg-green-900/20', text: 'text-green-600 dark:text-green-400' },
+};
 
 function SyncTypeConfig({
   label,
@@ -1100,8 +1107,8 @@ function SyncTypeConfig({
   onEnabledChange,
   color,
 }: SyncTypeConfigProps) {
-  const bgColor = color === 'amber' ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-blue-50 dark:bg-blue-900/20';
-  const textColor = color === 'amber' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400';
+  const bgColor = colorMap[color]?.bg ?? colorMap.blue.bg;
+  const textColor = colorMap[color]?.text ?? colorMap.blue.text;
 
   return (
     <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
@@ -1128,10 +1135,17 @@ function SyncTypeConfig({
           <label className="text-sm text-zinc-600 dark:text-zinc-400">実行間隔:</label>
           <Select
             value={config.interval.toString()}
-            onChange={(e) => onIntervalChange(Number(e.target.value))}
-            options={intervalOptions}
-            className="w-32"
-          />
+            onValueChange={(v: string) => onIntervalChange(Number(v))}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {intervalOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {config.lastRun && (
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
               前回: {new Date(config.lastRun).toLocaleString('ja-JP')}

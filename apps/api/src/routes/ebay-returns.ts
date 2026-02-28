@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 110: eBay返品・返金管理 API
  */

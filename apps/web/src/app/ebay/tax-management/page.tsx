@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -88,7 +88,7 @@ export default function TaxManagementPage() {
 }
 
 function DashboardTab() {
-  const { data, isLoading } = useSWR('/api/ebay-tax-management/dashboard', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-tax-management/dashboard', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-rose-500" /></div>;
@@ -215,7 +215,7 @@ function DashboardTab() {
 }
 
 function RatesTab() {
-  const { data, isLoading } = useSWR('/api/ebay-tax-management/rates', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-tax-management/rates', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-rose-500" /></div>;
@@ -312,7 +312,7 @@ function RatesTab() {
 }
 
 function ExemptionsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-tax-management/exemptions', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-tax-management/exemptions', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-rose-500" /></div>;
@@ -386,7 +386,7 @@ function ExemptionsTab() {
 }
 
 function NexusTab() {
-  const { data, isLoading } = useSWR('/api/ebay-tax-management/nexus', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-tax-management/nexus', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-rose-500" /></div>;
@@ -452,7 +452,7 @@ function NexusTab() {
 }
 
 function RemittancesTab() {
-  const { data, isLoading } = useSWR('/api/ebay-tax-management/remittances', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-tax-management/remittances', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-rose-500" /></div>;
@@ -534,7 +534,7 @@ function RemittancesTab() {
 }
 
 function SettingsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-tax-management/settings', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-tax-management/settings', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-rose-500" /></div>;

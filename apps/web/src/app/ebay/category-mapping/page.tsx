@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -121,16 +121,16 @@ export default function EbayCategoryMappingPage() {
   const [suggestResults, setSuggestResults] = useState<any[]>([]);
 
   // Dashboard data
-  const { data: dashboardData, mutate: mutateDashboard } = useSWR('/api/ebay-category-mapping/dashboard', fetcher);
+  const { data: dashboardData, mutate: mutateDashboard } = useSWR<any>('/api/ebay-category-mapping/dashboard', fetcher);
 
   // Categories
-  const { data: categoriesData, mutate: mutateCategories } = useSWR(
+  const { data: categoriesData, mutate: mutateCategories } = useSWR<any>(
     activeTab === 'categories' ? `/api/ebay-category-mapping/categories?level=L1` : null,
     fetcher
   );
 
   // Mappings
-  const { data: mappingsData, mutate: mutateMappings } = useSWR(
+  const { data: mappingsData, mutate: mutateMappings } = useSWR<any>(
     activeTab === 'mappings'
       ? `/api/ebay-category-mapping/mappings${sourceFilter ? `?source=${sourceFilter}` : ''}`
       : null,
@@ -138,19 +138,19 @@ export default function EbayCategoryMappingPage() {
   );
 
   // Suggestions
-  const { data: suggestionsData, mutate: mutateSuggestions } = useSWR(
+  const { data: suggestionsData, mutate: mutateSuggestions } = useSWR<any>(
     activeTab === 'suggestions' ? '/api/ebay-category-mapping/suggestions?status=PENDING' : null,
     fetcher
   );
 
   // Settings
-  const { data: settingsData, mutate: mutateSettings } = useSWR(
+  const { data: settingsData, mutate: mutateSettings } = useSWR<any>(
     activeTab === 'settings' ? '/api/ebay-category-mapping/settings' : null,
     fetcher
   );
 
   // Category details when selected
-  const { data: categoryDetails } = useSWR(
+  const { data: categoryDetails } = useSWR<any>(
     selectedCategory ? `/api/ebay-category-mapping/categories/${selectedCategory.id}` : null,
     fetcher
   );
@@ -177,7 +177,7 @@ export default function EbayCategoryMappingPage() {
       const response = await postApi('/api/ebay-category-mapping/suggest', {
         productTitle: suggestInput,
       });
-      setSuggestResults(response.suggestions || []);
+      setSuggestResults((response as any).suggestions || []);
     } catch (error) {
       addToast({ type: 'error', message: 'カテゴリ推薦に失敗しました' });
     } finally {

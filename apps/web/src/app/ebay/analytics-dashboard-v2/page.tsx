@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -34,16 +34,16 @@ export default function AnalyticsDashboardV2Page() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [period, setPeriod] = useState('30d');
 
-  const { data: summary } = useSWR(`/api/ebay-analytics-dashboard-v2/summary?period=${period}`, fetcher);
-  const { data: realtime } = useSWR('/api/ebay-analytics-dashboard-v2/realtime', fetcher);
-  const { data: salesTrends } = useSWR(`/api/ebay-analytics-dashboard-v2/sales/trends?period=${period}`, fetcher);
-  const { data: salesByCategory } = useSWR('/api/ebay-analytics-dashboard-v2/sales/by-category', fetcher);
-  const { data: salesByRegion } = useSWR('/api/ebay-analytics-dashboard-v2/sales/by-region', fetcher);
-  const { data: topSellers } = useSWR('/api/ebay-analytics-dashboard-v2/products/top-sellers', fetcher);
-  const { data: customersOverview } = useSWR('/api/ebay-analytics-dashboard-v2/customers/overview', fetcher);
-  const { data: trafficOverview } = useSWR('/api/ebay-analytics-dashboard-v2/traffic/overview', fetcher);
-  const { data: reports } = useSWR('/api/ebay-analytics-dashboard-v2/reports', fetcher);
-  const { data: alerts } = useSWR('/api/ebay-analytics-dashboard-v2/alerts', fetcher);
+  const { data: summary } = useSWR<any>(`/api/ebay-analytics-dashboard-v2/summary?period=${period}`, fetcher);
+  const { data: realtime } = useSWR<any>('/api/ebay-analytics-dashboard-v2/realtime', fetcher);
+  const { data: salesTrends } = useSWR<any>(`/api/ebay-analytics-dashboard-v2/sales/trends?period=${period}`, fetcher);
+  const { data: salesByCategory } = useSWR<any>('/api/ebay-analytics-dashboard-v2/sales/by-category', fetcher);
+  const { data: salesByRegion } = useSWR<any>('/api/ebay-analytics-dashboard-v2/sales/by-region', fetcher);
+  const { data: topSellers } = useSWR<any>('/api/ebay-analytics-dashboard-v2/products/top-sellers', fetcher);
+  const { data: customersOverview } = useSWR<any>('/api/ebay-analytics-dashboard-v2/customers/overview', fetcher);
+  const { data: trafficOverview } = useSWR<any>('/api/ebay-analytics-dashboard-v2/traffic/overview', fetcher);
+  const { data: reports } = useSWR<any>('/api/ebay-analytics-dashboard-v2/reports', fetcher);
+  const { data: alerts } = useSWR<any>('/api/ebay-analytics-dashboard-v2/alerts', fetcher);
 
   const tabs = [
     { id: 'overview' as TabType, label: '概要', icon: BarChart3 },

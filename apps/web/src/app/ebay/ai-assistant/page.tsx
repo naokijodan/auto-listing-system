@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -94,12 +94,12 @@ export default function AiAssistantPage() {
     fetcher
   );
 
-  const { data: preferencesData } = useSWR(
+  const { data: preferencesData } = useSWR<any>(
     '/api/ebay-ai-assistant/preferences',
     fetcher
   );
 
-  const { data: usageData } = useSWR(
+  const { data: usageData } = useSWR<any>(
     '/api/ebay-ai-assistant/usage',
     fetcher
   );

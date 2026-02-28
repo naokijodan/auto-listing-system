@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -372,9 +372,9 @@ export default function EbayAutoPricingPage() {
                     </Badge>
                     <Badge variant="outline">{sourceLabels[h.source] || h.source}</Badge>
                     {h.platformUpdated ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" title="eBay同期済み" />
+                      <CheckCircle className="h-4 w-4 text-green-500" />
                     ) : (
-                      <Clock className="h-4 w-4 text-yellow-500" title="同期待ち" />
+                      <Clock className="h-4 w-4 text-yellow-500" />
                     )}
                   </div>
                 </div>

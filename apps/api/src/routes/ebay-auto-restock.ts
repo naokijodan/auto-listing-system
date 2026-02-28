@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 117: eBay在庫自動補充 API
  */
@@ -373,23 +373,30 @@ router.get('/orders', async (req: Request, res: Response) => {
       where,
       orderBy: { createdAt: 'desc' },
       take: parseInt(limit as string, 10),
-      include: {
-        product: { select: { title: true, titleEn: true, images: true } },
-        supplier: { select: { name: true } },
-      },
     });
 
+    // Fetch product info separately
+    const productIds = orders.map(o => o.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, title: true, titleEn: true, images: true },
+    });
+    const productMap = new Map(products.map(p => [p.id, p]));
+
     res.json({
-      orders: orders.map(o => ({
-        id: o.id,
-        productTitle: o.product?.titleEn || o.product?.title,
-        productImage: o.product?.images?.[0],
-        quantity: o.quantity,
-        supplierName: o.supplier?.name,
-        status: o.status,
-        createdAt: o.createdAt,
-        completedAt: o.completedAt,
-      })),
+      orders: orders.map(o => {
+        const product = productMap.get(o.productId);
+        return {
+          id: o.id,
+          productTitle: product?.titleEn || product?.title,
+          productImage: product?.images?.[0],
+          quantity: o.quantity,
+          supplierId: o.supplierId,
+          status: o.status,
+          createdAt: o.createdAt,
+          completedAt: o.completedAt,
+        };
+      }),
     });
   } catch (error) {
     log.error({ type: 'list_orders_error', error });
@@ -402,7 +409,6 @@ router.post('/orders/:id/complete', async (req: Request, res: Response) => {
   try {
     const order = await prisma.restockOrder.findUnique({
       where: { id: req.params.id },
-      include: { product: true },
     });
 
     if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -410,7 +416,7 @@ router.post('/orders/:id/complete', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Order is not pending' });
     }
 
-    const previousStock = (order as any).product?.stockQuantity || 0;
+    const previousStock = 0; // Product doesn't have stockQuantity field
     const newStock = previousStock + order.quantity;
 
     await prisma.$transaction([

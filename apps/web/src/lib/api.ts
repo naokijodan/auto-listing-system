@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 // Generic fetcher for SWR
 export async function fetcher<T>(url: string): Promise<T> {
@@ -323,6 +323,18 @@ export async function deleteApi<T>(url: string, data?: unknown): Promise<T> {
   return res.json();
 }
 
+export async function putApi<T>(url: string, data?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${url}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: data ? JSON.stringify(data) : undefined,
+  });
+  if (!res.ok) {
+    throw new Error('API error');
+  }
+  return res.json();
+}
+
 export async function patchApi<T>(url: string, data?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
     method: 'PATCH',
@@ -470,7 +482,7 @@ export interface SyncScheduleConfig {
 }
 
 export interface SyncSchedule {
-  marketplace: 'JOOM' | 'EBAY';
+  marketplace: 'JOOM' | 'EBAY' | 'ETSY' | 'SHOPIFY';
   inventory: SyncScheduleConfig;
   orders: SyncScheduleConfig;
   prices: SyncScheduleConfig;

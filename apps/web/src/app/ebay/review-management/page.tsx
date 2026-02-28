@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -130,12 +130,12 @@ export default function ReviewManagementPage() {
   const [showRuleModal, setShowRuleModal] = useState(false);
 
   // データ取得
-  const { data: dashboardData, mutate: mutateDashboard } = useSWR(
+  const { data: dashboardData, mutate: mutateDashboard } = useSWR<any>(
     '/api/ebay-review-management/dashboard',
     fetcher2
   );
 
-  const { data: reviewsData, mutate: mutateReviews } = useSWR(
+  const { data: reviewsData, mutate: mutateReviews } = useSWR<any>(
     `/api/ebay-review-management/reviews?${new URLSearchParams({
       ...(typeFilter && { type: typeFilter }),
       ...(statusFilter && { responseStatus: statusFilter }),
@@ -144,17 +144,17 @@ export default function ReviewManagementPage() {
     fetcher2
   );
 
-  const { data: templatesData, mutate: mutateTemplates } = useSWR(
+  const { data: templatesData, mutate: mutateTemplates } = useSWR<any>(
     '/api/ebay-review-management/templates',
     fetcher2
   );
 
-  const { data: rulesData, mutate: mutateRules } = useSWR(
+  const { data: rulesData, mutate: mutateRules } = useSWR<any>(
     '/api/ebay-review-management/auto-reply-rules',
     fetcher2
   );
 
-  const { data: analysisData } = useSWR(
+  const { data: analysisData } = useSWR<any>(
     '/api/ebay-review-management/analysis',
     fetcher2
   );

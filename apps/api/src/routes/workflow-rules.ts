@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * ワークフロールール管理API
  * Phase 73: ワークフロー自動化エンジン
@@ -308,7 +308,7 @@ router.delete('/:id', async (req, res) => {
 
     // 実行履歴も削除
     await prisma.workflowExecution.deleteMany({
-      where: { ruleId: id },
+      where: { workflowId: id },
     });
 
     await prisma.workflowRule.delete({
@@ -394,7 +394,7 @@ router.get('/executions/:id', async (req, res) => {
 
     const execution = await prisma.workflowExecution.findUnique({
       where: { id },
-      include: { rule: { select: { name: true, triggerType: true } } },
+      include: { workflow: { select: { name: true, triggerType: true } } },
     });
 
     if (!execution) {
@@ -475,7 +475,7 @@ router.post('/:id/test', async (req, res) => {
     res.json({
       success: true,
       data: {
-        wouldTrigger: result.results.some(r => r.ruleId === id && r.status !== 'SKIPPED'),
+        wouldTrigger: result.results.some((r: any) => r.ruleId === id && r.status !== 'SKIPPED'),
         result: result.results.find(r => r.ruleId === id),
       },
     });

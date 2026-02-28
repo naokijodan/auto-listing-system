@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * 外部連携API
  * Phase 81: 外部連携強化
@@ -22,7 +22,7 @@ router.get('/stats', async (req, res, next) => {
   try {
     const [total, active, byType, recentSyncs] = await Promise.all([
       prisma.externalIntegration.count(),
-      prisma.externalIntegration.count({ where: { status: 'ACTIVE' } }),
+      prisma.externalIntegration.count({ where: { isEnabled: true } }),
       prisma.externalIntegration.groupBy({
         by: ['type'],
         _count: true,
@@ -35,11 +35,6 @@ router.get('/stats', async (req, res, next) => {
         },
         orderBy: { startedAt: 'desc' },
         take: 10,
-        include: {
-          integration: {
-            select: { name: true, type: true },
-          },
-        },
       }),
     ]);
 
@@ -55,7 +50,7 @@ router.get('/stats', async (req, res, next) => {
     });
 
     const totalSyncs = syncStats.reduce((sum, s) => sum + s._count, 0);
-    const successSyncs = syncStats.find(s => s.status === 'SUCCESS')?._count || 0;
+    const successSyncs = syncStats.find(s => s.status === 'COMPLETED')?._count || 0;
     const syncSuccessRate = totalSyncs > 0 ? (successSyncs / totalSyncs) * 100 : 0;
 
     res.json({
@@ -160,11 +155,10 @@ router.get('/types', async (req, res) => {
  */
 router.get('/', async (req, res, next) => {
   try {
-    const { type, status, search, page = '1', limit = '20' } = req.query;
+    const { type, search, page = '1', limit = '20' } = req.query;
 
     const where: Record<string, unknown> = {};
     if (type) where.type = type;
-    if (status) where.status = status;
     if (search) {
       where.OR = [
         { name: { contains: search as string, mode: 'insensitive' } },
@@ -182,7 +176,6 @@ router.get('/', async (req, res, next) => {
           _count: {
             select: {
               syncLogs: true,
-              webhookLogs: true,
             },
           },
         },
@@ -193,13 +186,10 @@ router.get('/', async (req, res, next) => {
       prisma.externalIntegration.count({ where }),
     ]);
 
-    // 認証情報をマスク
+    // 認証情報をマスク (config may contain sensitive info)
     const maskedIntegrations = integrations.map(integration => ({
       ...integration,
-      credentials: '***',
-      accessToken: integration.accessToken ? '***' : null,
-      refreshToken: integration.refreshToken ? '***' : null,
-      webhookSecret: integration.webhookSecret ? '***' : null,
+      config: '***',
     }));
 
     res.json({
@@ -228,47 +218,34 @@ router.post('/', async (req, res, next) => {
     const {
       type,
       name,
+      displayName,
       description,
-      credentials,
-      apiEndpoint,
-      syncEnabled,
-      syncInterval,
-      fieldMappings,
-      categoryMappings,
-      organizationId,
+      provider,
+      config,
+      webhookUrl,
+      scopes,
     } = req.body;
 
     if (!type || !name) {
       return res.status(400).json({ error: 'type and name are required' });
     }
 
-    // Webhook用のシークレットを生成
-    const webhookSecret = crypto.randomBytes(32).toString('hex');
-
     const integration = await prisma.externalIntegration.create({
       data: {
         type,
         name,
+        displayName: displayName || name,
         description,
-        credentials: credentials || {},
-        apiEndpoint,
-        webhookSecret,
-        syncEnabled: syncEnabled ?? true,
-        syncInterval: syncInterval || 60,
-        fieldMappings: fieldMappings || {},
-        categoryMappings: categoryMappings || {},
-        organizationId,
-        status: 'INACTIVE',
+        provider: provider || type.toLowerCase(),
+        config: config || {},
+        webhookUrl,
+        scopes: scopes || [],
       },
     });
 
     logger.info(`External integration created: ${integration.id} - ${integration.name}`);
 
-    res.status(201).json({
-      ...integration,
-      credentials: '***',
-      webhookSecret,
-    });
+    res.status(201).json(integration);
   } catch (error) {
     next(error);
   }
@@ -290,10 +267,7 @@ router.get('/:id', async (req, res, next) => {
           orderBy: { startedAt: 'desc' },
           take: 10,
         },
-        webhookLogs: {
-          orderBy: { receivedAt: 'desc' },
-          take: 10,
-        },
+        credentials: true,
       },
     });
 
@@ -303,10 +277,7 @@ router.get('/:id', async (req, res, next) => {
 
     res.json({
       ...integration,
-      credentials: '***',
-      accessToken: integration.accessToken ? '***' : null,
-      refreshToken: integration.refreshToken ? '***' : null,
-      webhookSecret: integration.webhookSecret ? '***' : null,
+      config: '***',
     });
   } catch (error) {
     next(error);
@@ -324,39 +295,32 @@ router.patch('/:id', async (req, res, next) => {
   try {
     const {
       name,
+      displayName,
       description,
-      credentials,
-      apiEndpoint,
-      syncEnabled,
-      syncInterval,
-      fieldMappings,
-      categoryMappings,
-      status,
-      isActive,
+      config,
+      webhookUrl,
+      scopes,
+      isEnabled,
+      isConfigured,
     } = req.body;
 
     const integration = await prisma.externalIntegration.update({
       where: { id: req.params.id },
       data: {
         ...(name && { name }),
+        ...(displayName && { displayName }),
         ...(description !== undefined && { description }),
-        ...(credentials && { credentials }),
-        ...(apiEndpoint !== undefined && { apiEndpoint }),
-        ...(syncEnabled !== undefined && { syncEnabled }),
-        ...(syncInterval && { syncInterval }),
-        ...(fieldMappings && { fieldMappings }),
-        ...(categoryMappings && { categoryMappings }),
-        ...(status && { status }),
-        ...(isActive !== undefined && { isActive }),
+        ...(config && { config }),
+        ...(webhookUrl !== undefined && { webhookUrl }),
+        ...(scopes && { scopes }),
+        ...(isEnabled !== undefined && { isEnabled }),
+        ...(isConfigured !== undefined && { isConfigured }),
       },
     });
 
     res.json({
       ...integration,
-      credentials: '***',
-      accessToken: integration.accessToken ? '***' : null,
-      refreshToken: integration.refreshToken ? '***' : null,
-      webhookSecret: integration.webhookSecret ? '***' : null,
+      config: '***',
     });
   } catch (error) {
     next(error);
@@ -391,15 +355,12 @@ router.delete('/:id', async (req, res, next) => {
  */
 router.post('/:id/connect', async (req, res, next) => {
   try {
-    const { accessToken, refreshToken, tokenExpiresAt } = req.body;
-
     const integration = await prisma.externalIntegration.update({
       where: { id: req.params.id },
       data: {
-        accessToken,
-        refreshToken,
-        tokenExpiresAt: tokenExpiresAt ? new Date(tokenExpiresAt) : null,
-        status: 'ACTIVE',
+        isEnabled: true,
+        isConfigured: true,
+        healthStatus: 'HEALTHY',
       },
     });
 
@@ -407,7 +368,7 @@ router.post('/:id/connect', async (req, res, next) => {
 
     res.json({
       id: integration.id,
-      status: integration.status,
+      isEnabled: integration.isEnabled,
       message: '接続が完了しました',
     });
   } catch (error) {
@@ -427,10 +388,8 @@ router.post('/:id/disconnect', async (req, res, next) => {
     const integration = await prisma.externalIntegration.update({
       where: { id: req.params.id },
       data: {
-        accessToken: null,
-        refreshToken: null,
-        tokenExpiresAt: null,
-        status: 'INACTIVE',
+        isEnabled: false,
+        healthStatus: 'UNKNOWN',
       },
     });
 
@@ -438,7 +397,7 @@ router.post('/:id/disconnect', async (req, res, next) => {
 
     res.json({
       id: integration.id,
-      status: integration.status,
+      isEnabled: integration.isEnabled,
       message: '切断が完了しました',
     });
   } catch (error) {
@@ -465,7 +424,7 @@ router.post('/:id/sync', async (req, res, next) => {
       return res.status(404).json({ error: 'Integration not found' });
     }
 
-    if (integration.status !== 'ACTIVE') {
+    if (!integration.isEnabled) {
       return res.status(400).json({ error: 'Integration is not active' });
     }
 
@@ -475,7 +434,7 @@ router.post('/:id/sync', async (req, res, next) => {
         integrationId: integration.id,
         syncType,
         direction,
-        status: 'RUNNING',
+        status: 'IN_PROGRESS',
         startedAt: new Date(),
       },
     });
@@ -484,18 +443,17 @@ router.post('/:id/sync', async (req, res, next) => {
     // ここでは同期ログを返す
     logger.info(`Manual sync started: ${syncLog.id}`);
 
-    // 更新
+    // 統計更新
     await prisma.externalIntegration.update({
       where: { id: req.params.id },
       data: {
-        lastSyncAt: new Date(),
-        lastSyncStatus: 'RUNNING',
+        totalSyncs: { increment: 1 },
       },
     });
 
     res.json({
       syncLogId: syncLog.id,
-      status: 'RUNNING',
+      status: 'IN_PROGRESS',
       message: '同期を開始しました',
     });
   } catch (error) {
@@ -561,9 +519,11 @@ router.post('/:id/webhook', async (req, res, next) => {
 
     // 署名検証（オプション）
     const signature = req.headers['x-webhook-signature'];
-    if (integration.webhookSecret && signature) {
+    const configData = integration.config as Record<string, unknown> | null;
+    const webhookSecret = configData?.webhookSecret as string | undefined;
+    if (webhookSecret && signature) {
       const expectedSignature = crypto
-        .createHmac('sha256', integration.webhookSecret)
+        .createHmac('sha256', webhookSecret)
         .update(JSON.stringify(req.body))
         .digest('hex');
 
@@ -578,7 +538,7 @@ router.post('/:id/webhook', async (req, res, next) => {
         integrationId: integration.id,
         eventType: req.body.event || req.body.type || 'unknown',
         payload: req.body,
-        headers: req.headers as Record<string, unknown>,
+        headers: req.headers as any,
         status: 'PENDING',
       },
     });

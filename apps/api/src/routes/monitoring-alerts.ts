@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { Router } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
@@ -65,9 +65,6 @@ monitoringAlertsRouter.get('/rules', async (req, res) => {
     const rules = await prisma.alertRule.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: {
-        _count: { select: { incidents: true, escalations: true } },
-      },
     });
 
     res.json(rules);
@@ -82,34 +79,23 @@ monitoringAlertsRouter.post('/rules', async (req, res) => {
   try {
     const {
       name,
-      description,
-      metricName,
-      condition = 'GREATER_THAN',
-      threshold,
-      thresholdUnit,
-      windowMinutes = 5,
-      evaluationPeriods = 1,
-      severity = 'WARNING',
+      eventType,
+      conditions = [],
+      severity = 'info',
+      channels = [],
       cooldownMinutes = 30,
-      notificationChannels = [],
-      tags = [],
+      batchWindowMinutes = 5,
     } = req.body;
 
     const rule = await prisma.alertRule.create({
       data: {
-        organizationId: 'default',
         name,
-        description,
-        metricName,
-        condition,
-        threshold,
-        thresholdUnit,
-        windowMinutes,
-        evaluationPeriods,
+        eventType,
+        conditions,
         severity,
+        channels,
         cooldownMinutes,
-        notificationChannels,
-        tags,
+        batchWindowMinutes,
         isActive: true,
       },
     });
@@ -191,8 +177,7 @@ monitoringAlertsRouter.get('/incidents', async (req, res) => {
         take: parseInt(limit as string),
         skip: parseInt(offset as string),
         include: {
-          rule: { select: { name: true, metricName: true } },
-          _count: { select: { notifications: true } },
+          notifications: true,
         },
       }),
       prisma.alertIncident.count({ where }),
@@ -262,9 +247,6 @@ monitoringAlertsRouter.get('/escalations', async (req, res) => {
     const escalations = await prisma.alertEscalation.findMany({
       where,
       orderBy: [{ ruleId: 'asc' }, { level: 'asc' }],
-      include: {
-        rule: { select: { name: true } },
-      },
     });
 
     res.json(escalations);
@@ -392,7 +374,7 @@ monitoringAlertsRouter.post('/channels/:id/test', async (req, res) => {
 // POST /api/monitoring-alerts/test - テストアラート送信
 monitoringAlertsRouter.post('/test', async (req, res) => {
   try {
-    const { ruleId, severity = 'INFO' } = req.body;
+    const { ruleId, severity = 'LOW' } = req.body;
 
     let rule;
     if (ruleId) {
@@ -429,12 +411,12 @@ monitoringAlertsRouter.post('/test', async (req, res) => {
 // POST /api/monitoring-alerts/trigger - アラートトリガー（内部用）
 monitoringAlertsRouter.post('/trigger', async (req, res) => {
   try {
-    const { metricName, value, metadata = {} } = req.body;
+    const { eventType, value, metadata = {} } = req.body;
 
     // マッチするルールを検索
     const rules = await prisma.alertRule.findMany({
       where: {
-        metricName,
+        eventType,
         isActive: true,
       },
     });
@@ -442,54 +424,48 @@ monitoringAlertsRouter.post('/trigger', async (req, res) => {
     const triggeredIncidents = [];
 
     for (const rule of rules) {
+      // Parse conditions from Json field to determine threshold
+      const conditions = rule.conditions as any;
+      const threshold = Array.isArray(conditions) && conditions.length > 0
+        ? conditions[0]?.threshold ?? 0
+        : 0;
+      const conditionType = Array.isArray(conditions) && conditions.length > 0
+        ? conditions[0]?.condition ?? 'GREATER_THAN'
+        : 'GREATER_THAN';
+
       let shouldTrigger = false;
 
-      switch (rule.condition) {
+      switch (conditionType) {
         case 'GREATER_THAN':
-          shouldTrigger = value > rule.threshold;
+          shouldTrigger = value > threshold;
           break;
         case 'LESS_THAN':
-          shouldTrigger = value < rule.threshold;
+          shouldTrigger = value < threshold;
           break;
         case 'EQUALS':
-          shouldTrigger = value === rule.threshold;
+          shouldTrigger = value === threshold;
           break;
         case 'NOT_EQUALS':
-          shouldTrigger = value !== rule.threshold;
+          shouldTrigger = value !== threshold;
           break;
         default:
-          shouldTrigger = value > rule.threshold;
+          shouldTrigger = value > threshold;
       }
 
       if (shouldTrigger) {
-        // クールダウンチェック
-        if (rule.lastTriggeredAt) {
-          const cooldownEnd = new Date(
-            rule.lastTriggeredAt.getTime() + rule.cooldownMinutes * 60 * 1000
-          );
-          if (new Date() < cooldownEnd) {
-            continue;
-          }
-        }
-
         const incident = await prisma.alertIncident.create({
           data: {
             organizationId: 'default',
             ruleId: rule.id,
             title: `${rule.name} triggered`,
-            description: `Metric ${metricName} value ${value} exceeded threshold ${rule.threshold}`,
-            severity: rule.severity,
+            description: `Event ${eventType} value ${value} exceeded threshold ${threshold}`,
+            severity: rule.severity as any,
             status: 'OPEN',
             triggeredAt: new Date(),
             metricValue: value,
-            threshold: rule.threshold,
+            threshold,
             metadata,
           },
-        });
-
-        await prisma.alertRule.update({
-          where: { id: rule.id },
-          data: { lastTriggeredAt: new Date() },
         });
 
         triggeredIncidents.push(incident);

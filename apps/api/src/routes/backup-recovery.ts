@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { Router } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
@@ -71,9 +71,8 @@ backupRecoveryRouter.get('/jobs', async (req, res) => {
         take: parseInt(limit as string),
         skip: parseInt(offset as string),
         include: {
-          schedule: { select: { name: true } },
           _count: { select: { recoveryPoints: true } },
-        },
+        } as any,
       }),
       prisma.backupJob.count({ where }),
     ]);
@@ -164,9 +163,6 @@ backupRecoveryRouter.get('/schedules', async (req, res) => {
     const schedules = await prisma.backupSchedule.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: {
-        _count: { select: { jobs: true } },
-      },
     });
 
     res.json(schedules);
@@ -194,17 +190,13 @@ backupRecoveryRouter.post('/schedules', async (req, res) => {
 
     const schedule = await prisma.backupSchedule.create({
       data: {
-        organizationId: 'default',
         name,
         description,
         backupType,
-        target,
-        storage,
         cronExpression,
         retentionDays,
         maxBackups,
-        encryptionEnabled,
-        compressionEnabled,
+        isEncrypted: encryptionEnabled,
         isActive: true,
         nextRunAt: new Date(Date.now() + 86400000),
       },
@@ -318,10 +310,8 @@ backupRecoveryRouter.post('/restore', async (req, res) => {
 
     const restoreJob = await prisma.restoreJob.create({
       data: {
-        organizationId: 'default',
-        recoveryPointId,
-        status: 'RUNNING',
-        targetEnvironment,
+        backupId: recoveryPointId,
+        status: 'IN_PROGRESS',
         startedAt: new Date(),
         totalItems: 100,
       },
@@ -334,7 +324,7 @@ backupRecoveryRouter.post('/restore', async (req, res) => {
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
-          restoredItems: 100,
+          processedItems: 100,
         },
       });
       logger.info(`Restore job ${restoreJob.id} completed`);

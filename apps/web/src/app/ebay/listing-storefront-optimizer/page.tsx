@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -16,7 +16,7 @@ const TABS: Array<{ key: string; label: string; defaultAction: string }> = [
 
 const API_BASE = '/api/ebay-listing-storefront-optimizer';
 
-export default function ListingStorefrontOptimizerPage(): JSX.Element {
+export default function ListingStorefrontOptimizerPage(): React.ReactElement {
   const [active, setActive] = useState<string>(TABS[0]!.key);
   const [data, setData] = useState<ApiData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);

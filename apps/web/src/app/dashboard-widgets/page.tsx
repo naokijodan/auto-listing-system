@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -205,7 +205,7 @@ export default function DashboardWidgetsPage() {
       case 'RECENT_ORDERS':
         return (
           <div className="space-y-2">
-            {(content as unknown[]).slice(0, 3).map((order: unknown, idx: number) => {
+            {(content as unknown as unknown[]).slice(0, 3).map((order: unknown, idx: number) => {
               const o = order as Record<string, unknown>;
               return (
                 <div key={idx} className="flex justify-between text-sm">
@@ -220,7 +220,7 @@ export default function DashboardWidgetsPage() {
       case 'TOP_PRODUCTS':
         return (
           <div className="space-y-2">
-            {(content as unknown[]).slice(0, 3).map((product: unknown, idx: number) => {
+            {(content as unknown as unknown[]).slice(0, 3).map((product: unknown, idx: number) => {
               const p = product as Record<string, unknown>;
               return (
                 <div key={idx} className="flex justify-between text-sm">

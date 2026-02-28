@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * ダッシュボードウィジェットAPI
  * Phase 70: カスタマイズ可能なダッシュボードウィジェット
@@ -122,17 +122,13 @@ router.get('/types', async (_req, res) => {
  */
 router.get('/', async (req, res, next) => {
   try {
-    const { userId } = req.query;
+    const { isActive } = req.query;
 
     const widgets = await prisma.dashboardWidget.findMany({
       where: {
-        OR: [
-          { userId: userId as string },
-          { userId: null }, // グローバルウィジェット
-        ],
+        ...(isActive !== undefined && { isActive: isActive === 'true' }),
       },
       orderBy: [
-        { order: 'asc' },
         { createdAt: 'asc' },
       ],
     });
@@ -155,55 +151,32 @@ router.post('/', async (req, res, next) => {
   try {
     const {
       name,
-      type,
+      widgetType,
       description,
-      gridX = 0,
-      gridY = 0,
-      gridWidth = 2,
-      gridHeight = 2,
-      config = {},
-      refreshInterval = 60,
-      userId,
+      title,
+      dataSource = 'default',
+      query = {},
+      displayOptions = {},
+      refreshInterval = 300,
     } = req.body;
 
     // タイプ検証
-    if (!WIDGET_TYPES[type as keyof typeof WIDGET_TYPES]) {
-      throw new AppError(400, 'Invalid widget type', 'INVALID_WIDGET_TYPE');
-    }
-
-    const widgetType = WIDGET_TYPES[type as keyof typeof WIDGET_TYPES];
-
-    // サイズ検証
-    if (gridWidth < widgetType.minWidth || gridHeight < widgetType.minHeight) {
-      throw new AppError(
-        400,
-        `Minimum size for ${type} is ${widgetType.minWidth}x${widgetType.minHeight}`,
-        'INVALID_WIDGET_SIZE'
-      );
-    }
-
-    // 既存ウィジェット数を取得して順序を決定
-    const existingCount = await prisma.dashboardWidget.count({
-      where: { userId: userId || null },
-    });
+    const typeKey = widgetType || 'METRIC';
 
     const widget = await prisma.dashboardWidget.create({
       data: {
-        name: name || widgetType.name,
-        type,
-        description: description || widgetType.description,
-        gridX,
-        gridY,
-        gridWidth,
-        gridHeight,
-        config: { ...widgetType.defaultConfig, ...config },
+        name: name || 'New Widget',
+        widgetType: typeKey,
+        title: title || name || 'Widget',
+        description,
+        dataSource,
+        query,
+        displayOptions,
         refreshInterval,
-        order: existingCount,
-        userId: userId || null,
       },
     });
 
-    log.info({ widgetId: widget.id, type }, 'Widget created');
+    log.info({ widgetId: widget.id, widgetType: widget.widgetType }, 'Widget created');
 
     res.status(201).json({
       success: true,
@@ -224,14 +197,13 @@ router.patch('/:id', async (req, res, next) => {
     const { id } = req.params;
     const {
       name,
-      gridX,
-      gridY,
-      gridWidth,
-      gridHeight,
-      config,
+      title,
+      description,
+      dataSource,
+      query,
+      displayOptions,
       refreshInterval,
-      isVisible,
-      order,
+      isActive,
     } = req.body;
 
     const existing = await prisma.dashboardWidget.findUnique({
@@ -246,14 +218,13 @@ router.patch('/:id', async (req, res, next) => {
       where: { id },
       data: {
         ...(name !== undefined && { name }),
-        ...(gridX !== undefined && { gridX }),
-        ...(gridY !== undefined && { gridY }),
-        ...(gridWidth !== undefined && { gridWidth }),
-        ...(gridHeight !== undefined && { gridHeight }),
-        ...(config !== undefined && { config }),
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(dataSource !== undefined && { dataSource }),
+        ...(query !== undefined && { query }),
+        ...(displayOptions !== undefined && { displayOptions }),
         ...(refreshInterval !== undefined && { refreshInterval }),
-        ...(isVisible !== undefined && { isVisible }),
-        ...(order !== undefined && { order }),
+        ...(isActive !== undefined && { isActive }),
       },
     });
 
@@ -302,12 +273,12 @@ router.delete('/:id', async (req, res, next) => {
 });
 
 /**
- * ウィジェットの順序を一括更新
+ * ウィジェットの順序を一括更新(displayOptionsで管理)
  * PATCH /api/dashboard-widgets/reorder
  */
 router.patch('/reorder', async (req, res, next) => {
   try {
-    const { widgets } = req.body; // [{id, gridX, gridY, order}]
+    const { widgets } = req.body; // [{id, displayOptions}]
 
     if (!Array.isArray(widgets)) {
       throw new AppError(400, 'widgets must be an array', 'INVALID_INPUT');
@@ -315,13 +286,11 @@ router.patch('/reorder', async (req, res, next) => {
 
     // トランザクションで一括更新
     await prisma.$transaction(
-      widgets.map((w: { id: string; gridX?: number; gridY?: number; order?: number }) =>
+      widgets.map((w: { id: string; displayOptions?: Record<string, unknown> }) =>
         prisma.dashboardWidget.update({
           where: { id: w.id },
           data: {
-            ...(w.gridX !== undefined && { gridX: w.gridX }),
-            ...(w.gridY !== undefined && { gridY: w.gridY }),
-            ...(w.order !== undefined && { order: w.order }),
+            ...(w.displayOptions !== undefined && { displayOptions: w.displayOptions as any }),
           },
         })
       )
@@ -356,7 +325,7 @@ router.get('/:id/data', async (req, res, next) => {
     }
 
     // ウィジェットタイプに応じてデータを取得
-    const data = await getWidgetData(widget.type, widget.config as Record<string, unknown>);
+    const data = await getWidgetData(widget.widgetType, widget.query as Record<string, unknown>);
 
     res.json({
       success: true,
@@ -378,43 +347,31 @@ router.get('/:id/data', async (req, res, next) => {
  */
 router.get('/data/all', async (req, res, next) => {
   try {
-    const { userId } = req.query;
-
     const widgets = await prisma.dashboardWidget.findMany({
       where: {
-        isVisible: true,
-        OR: [
-          { userId: userId as string },
-          { userId: null },
-        ],
+        isActive: true,
       },
-      orderBy: { order: 'asc' },
+      orderBy: { createdAt: 'asc' },
     });
 
     const widgetData = await Promise.all(
       widgets.map(async (widget) => {
         try {
-          const content = await getWidgetData(widget.type, widget.config as Record<string, unknown>);
+          const content = await getWidgetData(widget.widgetType, widget.query as Record<string, unknown>);
           return {
             id: widget.id,
-            type: widget.type,
+            widgetType: widget.widgetType,
             name: widget.name,
-            gridX: widget.gridX,
-            gridY: widget.gridY,
-            gridWidth: widget.gridWidth,
-            gridHeight: widget.gridHeight,
+            title: widget.title,
             content,
             error: null,
           };
         } catch (error) {
           return {
             id: widget.id,
-            type: widget.type,
+            widgetType: widget.widgetType,
             name: widget.name,
-            gridX: widget.gridX,
-            gridY: widget.gridY,
-            gridWidth: widget.gridWidth,
-            gridHeight: widget.gridHeight,
+            title: widget.title,
             content: null,
             error: (error as Error).message,
           };
@@ -439,46 +396,38 @@ router.get('/data/all', async (req, res, next) => {
  */
 router.post('/setup-defaults', async (req, res, next) => {
   try {
-    const { userId } = req.body;
-
-    // 既存ウィジェットを削除
+    // 既存のシステムウィジェットを削除
     await prisma.dashboardWidget.deleteMany({
-      where: { userId: userId || null },
+      where: { isSystem: true },
     });
 
     // デフォルトウィジェットを作成
     const defaultWidgets = [
-      { type: 'SALES_SUMMARY', gridX: 0, gridY: 0, gridWidth: 2, gridHeight: 1 },
-      { type: 'ORDER_STATUS', gridX: 2, gridY: 0, gridWidth: 2, gridHeight: 1 },
-      { type: 'SHIPMENT_STATUS', gridX: 0, gridY: 1, gridWidth: 2, gridHeight: 1 },
-      { type: 'JOB_QUEUE_STATUS', gridX: 2, gridY: 1, gridWidth: 2, gridHeight: 1 },
-      { type: 'RECENT_ORDERS', gridX: 0, gridY: 2, gridWidth: 2, gridHeight: 2 },
-      { type: 'TOP_PRODUCTS', gridX: 2, gridY: 2, gridWidth: 2, gridHeight: 2 },
-      { type: 'FORECAST_SUMMARY', gridX: 0, gridY: 4, gridWidth: 2, gridHeight: 2 },
-      { type: 'INVENTORY_ALERT', gridX: 2, gridY: 4, gridWidth: 2, gridHeight: 2 },
+      { widgetType: 'METRIC' as const, dataSource: 'sales_summary', title: '売上サマリー' },
+      { widgetType: 'TABLE' as const, dataSource: 'order_status', title: '注文ステータス' },
+      { widgetType: 'LIST' as const, dataSource: 'recent_orders', title: '最近の注文' },
+      { widgetType: 'TABLE' as const, dataSource: 'top_products', title: '人気商品' },
+      { widgetType: 'COUNTER' as const, dataSource: 'shipment_status', title: '発送ステータス' },
+      { widgetType: 'METRIC' as const, dataSource: 'forecast_summary', title: '売上予測' },
+      { widgetType: 'LIST' as const, dataSource: 'inventory_alert', title: '在庫アラート' },
+      { widgetType: 'COUNTER' as const, dataSource: 'job_queue_status', title: 'ジョブキュー' },
     ];
 
     const widgets = await prisma.$transaction(
-      defaultWidgets.map((w, index) => {
-        const widgetType = WIDGET_TYPES[w.type as keyof typeof WIDGET_TYPES];
+      defaultWidgets.map((w) => {
         return prisma.dashboardWidget.create({
           data: {
-            name: widgetType.name,
-            type: w.type,
-            description: widgetType.description,
-            gridX: w.gridX,
-            gridY: w.gridY,
-            gridWidth: w.gridWidth,
-            gridHeight: w.gridHeight,
-            config: widgetType.defaultConfig,
-            order: index,
-            userId: userId || null,
+            name: w.title,
+            widgetType: w.widgetType,
+            title: w.title,
+            dataSource: w.dataSource,
+            isSystem: true,
           },
         });
       })
     );
 
-    log.info({ count: widgets.length, userId }, 'Default widgets created');
+    log.info({ count: widgets.length }, 'Default widgets created');
 
     res.json({
       success: true,

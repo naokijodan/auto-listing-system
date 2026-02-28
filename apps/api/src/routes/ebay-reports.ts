@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * eBayレポート自動生成API
  * Phase 122: 売上・パフォーマンスレポート
@@ -64,9 +64,9 @@ router.get('/dashboard', async (req: Request, res: Response) => {
 
     const salesStats = {
       count: sales.length,
-      revenue: sales.reduce((sum, s) => sum + (s.salePrice || 0), 0),
+      revenue: sales.reduce((sum, s) => sum + (s.totalPrice || 0), 0),
       avgOrderValue: sales.length > 0
-        ? sales.reduce((sum, s) => sum + (s.salePrice || 0), 0) / sales.length
+        ? sales.reduce((sum, s) => sum + (s.totalPrice || 0), 0) / sales.length
         : 0,
     };
 
@@ -212,7 +212,7 @@ async function generateSalesSummary(startDate: Date, endDate: Date) {
     },
   });
 
-  const totalRevenue = sales.reduce((sum, s) => sum + (s.salePrice || 0), 0);
+  const totalRevenue = sales.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
   const totalCost = sales.reduce((sum, s) => sum + (s.listing?.product?.price || 0), 0);
   const totalProfit = totalRevenue - totalCost;
 
@@ -224,7 +224,7 @@ async function generateSalesSummary(startDate: Date, endDate: Date) {
       dailySales[date] = { count: 0, revenue: 0 };
     }
     dailySales[date].count++;
-    dailySales[date].revenue += sale.salePrice || 0;
+    dailySales[date].revenue += sale.totalPrice || 0;
   });
 
   // カテゴリ別売上
@@ -235,7 +235,7 @@ async function generateSalesSummary(startDate: Date, endDate: Date) {
       categorySales[category] = { count: 0, revenue: 0 };
     }
     categorySales[category].count++;
-    categorySales[category].revenue += sale.salePrice || 0;
+    categorySales[category].revenue += sale.totalPrice || 0;
   });
 
   return {
@@ -264,7 +264,7 @@ async function generateSalesSummary(startDate: Date, endDate: Date) {
           };
         }
         acc[productId].count++;
-        acc[productId].revenue += sale.salePrice || 0;
+        acc[productId].revenue += sale.totalPrice || 0;
         return acc;
       }, {})
   };
@@ -436,7 +436,7 @@ async function generatePromotionEffectiveness(startDate: Date, endDate: Date) {
       const existing = promotionData.find(p => p.promotionId === promo.id);
       if (existing) {
         existing.salesCount += listing.sales.length;
-        existing.revenue += listing.sales.reduce((sum, s) => sum + (s.salePrice || 0), 0);
+        existing.revenue += listing.sales.reduce((sum, s) => sum + (s.totalPrice || 0), 0);
       } else {
         promotionData.push({
           promotionId: promo.id as string,
@@ -444,7 +444,7 @@ async function generatePromotionEffectiveness(startDate: Date, endDate: Date) {
           type: promo.type as string,
           discountValue: promo.discountValue as number,
           salesCount: listing.sales.length,
-          revenue: listing.sales.reduce((sum, s) => sum + (s.salePrice || 0), 0),
+          revenue: listing.sales.reduce((sum, s) => sum + (s.totalPrice || 0), 0),
         });
       }
     });
@@ -673,7 +673,7 @@ router.get('/stats', async (req: Request, res: Response) => {
     const dailyRevenue: Record<string, number> = {};
     sales.forEach(sale => {
       const date = sale.createdAt.toISOString().split('T')[0];
-      dailyRevenue[date] = (dailyRevenue[date] || 0) + (sale.salePrice || 0);
+      dailyRevenue[date] = (dailyRevenue[date] || 0) + (sale.totalPrice || 0);
     });
 
     res.json({
@@ -682,7 +682,7 @@ router.get('/stats', async (req: Request, res: Response) => {
         .sort((a, b) => a.date.localeCompare(b.date)),
       summary: {
         totalSales: sales.length,
-        totalRevenue: Math.round(sales.reduce((sum, s) => sum + (s.salePrice || 0), 0) * 100) / 100,
+        totalRevenue: Math.round(sales.reduce((sum, s) => sum + (s.totalPrice || 0), 0) * 100) / 100,
       },
     });
   } catch (error) {

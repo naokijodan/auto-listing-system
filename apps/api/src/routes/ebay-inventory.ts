@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 106: eBay在庫監視 API
  *
@@ -119,7 +119,7 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
         id: alert.id,
         type: alert.alertType,
         severity: alert.severity,
-        message: alert.message,
+        message: alert.reason,
         listingId: alert.listingId,
         productTitle: alert.listing?.product?.title || 'Unknown',
         actionTaken: alert.actionTaken,
@@ -239,7 +239,7 @@ router.get('/settings', async (_req: Request, res: Response) => {
     });
 
     const settings: InventorySettings = setting?.value
-      ? { ...DEFAULT_SETTINGS, ...(setting.value as Record<string, unknown>) }
+      ? { ...DEFAULT_SETTINGS, ...(setting.value as unknown as Record<string, unknown>) }
       : DEFAULT_SETTINGS;
 
     res.json(settings);
@@ -266,7 +266,7 @@ router.put('/settings', async (req: Request, res: Response) => {
     });
 
     const currentSettings: InventorySettings = existing?.value
-      ? { ...DEFAULT_SETTINGS, ...(existing.value as Record<string, unknown>) }
+      ? { ...DEFAULT_SETTINGS, ...(existing.value as unknown as Record<string, unknown>) }
       : DEFAULT_SETTINGS;
 
     const newSettings = { ...currentSettings, ...updates };
@@ -337,7 +337,7 @@ router.get('/alerts', async (req: Request, res: Response) => {
         id: alert.id,
         type: alert.alertType,
         severity: alert.severity,
-        message: alert.message,
+        message: alert.reason,
         listing: {
           id: alert.listing?.id,
           status: alert.listing?.status,
@@ -432,10 +432,10 @@ router.post('/pause-out-of-stock', async (req: Request, res: Response) => {
         await prisma.inventoryAlert.create({
           data: {
             listingId: listing.id,
-            alertType: 'OUT_OF_STOCK',
+            alertType: 'STOCK_OUT',
             severity: 'HIGH',
-            message: `在庫切れにより一時停止: ${listing.product?.title || 'Unknown'}`,
-            actionTaken: 'PAUSED',
+            reason: `在庫切れにより一時停止: ${listing.product?.title || 'Unknown'}`,
+            actionTaken: 'PAUSE_LISTING',
           },
         });
 
@@ -515,10 +515,10 @@ router.post('/resume-restocked', async (req: Request, res: Response) => {
         await prisma.inventoryAlert.create({
           data: {
             listingId: listing.id,
-            alertType: 'RESTOCKED',
-            severity: 'INFO',
-            message: `在庫復活により再開準備: ${listing.product?.title || 'Unknown'}`,
-            actionTaken: 'RESUMED',
+            alertType: 'STOCK_RECOVERED',
+            severity: 'LOW',
+            reason: `在庫復活により再開準備: ${listing.product?.title || 'Unknown'}`,
+            actionTaken: 'RESUME_LISTING',
           },
         });
 

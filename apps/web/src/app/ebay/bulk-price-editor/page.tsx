@@ -1,10 +1,9 @@
-// @ts-nocheck
+
 'use client';
 
 import React from 'react';
 import useSWR from 'swr';
-// shadcn/ui Tabs primitives (assumed available in project)
-import { Tabs, TabsList, TabsTrigger, TabsContent } from 'shadcn/ui';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 

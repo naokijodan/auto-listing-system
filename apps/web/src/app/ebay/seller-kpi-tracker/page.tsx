@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -35,7 +35,7 @@ function endpointForTab(key: string): string {
   }
 }
 
-export default function SellerKpiTrackerPage(): JSX.Element {
+export default function SellerKpiTrackerPage(): React.ReactElement {
   const [active, setActive] = useState<string>('dashboard');
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);

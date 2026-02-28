@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * eBay広告連携API
  * Phase 123: Promoted Listings管理
@@ -497,7 +497,7 @@ router.delete('/campaigns/:campaignId', async (req: Request, res: Response) => {
         await prisma.listing.update({
           where: { id: listing.id },
           data: {
-            marketplaceData: restData,
+            marketplaceData: restData as Record<string, any>,
           },
         });
         deletedCount++;

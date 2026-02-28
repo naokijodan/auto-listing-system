@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -85,7 +85,7 @@ export default function RealtimeCollabPage() {
     fetcher
   );
 
-  const { data: settingsData } = useSWR(
+  const { data: settingsData } = useSWR<any>(
     '/api/ebay-realtime-collab/settings',
     fetcher
   );

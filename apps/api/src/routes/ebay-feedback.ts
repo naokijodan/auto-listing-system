@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 111: eBayフィードバック管理 API
  */

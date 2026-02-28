@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -32,6 +32,7 @@ import {
   ShieldCheck,
   ShieldAlert,
   Activity,
+  MessageSquare,
 } from 'lucide-react';
 
 interface Session {
@@ -69,7 +70,7 @@ interface ApiKey {
 export default function SecurityCenterPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'sessions' | '2fa' | 'api-keys' | 'audit' | 'settings'>('overview');
 
-  const { data: dashboardData } = useSWR(
+  const { data: dashboardData } = useSWR<any>(
     '/api/ebay-security-center/dashboard',
     fetcher
   );
@@ -84,22 +85,22 @@ export default function SecurityCenterPage() {
     fetcher
   );
 
-  const { data: twoFaData } = useSWR(
+  const { data: twoFaData } = useSWR<any>(
     '/api/ebay-security-center/2fa',
     fetcher
   );
 
-  const { data: apiKeysData } = useSWR(
+  const { data: apiKeysData } = useSWR<any>(
     '/api/ebay-security-center/api-keys',
     fetcher
   );
 
-  const { data: auditLogsData } = useSWR(
+  const { data: auditLogsData } = useSWR<any>(
     '/api/ebay-security-center/audit-logs',
     fetcher
   );
 
-  const { data: settingsData } = useSWR(
+  const { data: settingsData } = useSWR<any>(
     '/api/ebay-security-center/settings',
     fetcher
   );

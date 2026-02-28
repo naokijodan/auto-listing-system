@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 112: eBay分析・レポート強化 API
  */
@@ -24,7 +24,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       // 前期間
       prevOrders, prevRevenue,
       // 追加指標
-      activeListings, avgOrderValue, topCategories, topProducts
+      activeListings, avgOrderValue, topProducts
     ] = await Promise.all([
       prisma.order.count({ where: { marketplace: Marketplace.EBAY, orderedAt: { gte: since } } }),
       prisma.order.aggregate({ where: { marketplace: Marketplace.EBAY, orderedAt: { gte: since }, paymentStatus: 'PAID' }, _sum: { total: true } }),
@@ -34,17 +34,13 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       prisma.order.aggregate({ where: { marketplace: Marketplace.EBAY, orderedAt: { gte: prevPeriodStart, lt: since }, paymentStatus: 'PAID' }, _sum: { total: true } }),
       prisma.listing.count({ where: { marketplace: Marketplace.EBAY, status: 'ACTIVE' } }),
       prisma.order.aggregate({ where: { marketplace: Marketplace.EBAY, orderedAt: { gte: since }, paymentStatus: 'PAID' }, _avg: { total: true } }),
-      prisma.sale.groupBy({
-        by: ['category'],
-        where: { marketplace: Marketplace.EBAY, createdAt: { gte: since } },
-        _sum: { totalPrice: true },
-        _count: true,
-        orderBy: { _sum: { totalPrice: 'desc' } },
-        take: 5,
-      }),
+      // Top products via sale joined through order
       prisma.sale.groupBy({
         by: ['sku', 'title'],
-        where: { marketplace: Marketplace.EBAY, createdAt: { gte: since } },
+        where: {
+          createdAt: { gte: since },
+          order: { marketplace: Marketplace.EBAY },
+        },
         _sum: { totalPrice: true, quantity: true },
         orderBy: { _sum: { totalPrice: 'desc' } },
         take: 10,
@@ -66,16 +62,11 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         activeListings,
         avgOrderValue: avgOrderValue._avg.total || 0,
       },
-      topCategories: topCategories.map(c => ({
-        category: c.category || 'その他',
-        revenue: c._sum.totalPrice || 0,
-        count: c._count,
-      })),
       topProducts: topProducts.map(p => ({
         sku: p.sku,
         title: p.title,
-        revenue: p._sum.totalPrice || 0,
-        quantity: p._sum.quantity || 0,
+        revenue: p._sum?.totalPrice || 0,
+        quantity: p._sum?.quantity || 0,
       })),
     });
   } catch (error) {
@@ -164,32 +155,28 @@ router.get('/listing-performance', async (req: Request, res: Response) => {
   }
 });
 
-// カテゴリ分析
+// カテゴリ分析 (Sale has no category, use sku-based grouping instead)
 router.get('/category-analysis', async (req: Request, res: Response) => {
   try {
     const { days = '30' } = req.query;
     const since = new Date(Date.now() - parseInt(days as string, 10) * 24 * 60 * 60 * 1000);
 
-    const [salesByCategory, listingsByCategory] = await Promise.all([
-      prisma.sale.groupBy({
-        by: ['category'],
-        where: { marketplace: Marketplace.EBAY, createdAt: { gte: since } },
-        _sum: { totalPrice: true, quantity: true },
-        _count: true,
-      }),
-      prisma.listing.groupBy({
-        by: ['product'],
-        where: { marketplace: Marketplace.EBAY, status: 'ACTIVE' },
-        _count: true,
-      }),
-    ]);
+    const salesBySku = await prisma.sale.groupBy({
+      by: ['sku'],
+      where: {
+        createdAt: { gte: since },
+        order: { marketplace: Marketplace.EBAY },
+      },
+      _sum: { totalPrice: true, quantity: true },
+      _count: { _all: true },
+    });
 
-    const categories = salesByCategory.map(s => ({
-      category: s.category || 'その他',
-      revenue: s._sum.totalPrice || 0,
-      quantity: s._sum.quantity || 0,
-      orderCount: s._count,
-      avgOrderValue: s._count > 0 ? ((s._sum.totalPrice || 0) / s._count).toFixed(2) : '0',
+    const categories = salesBySku.map(s => ({
+      sku: s.sku,
+      revenue: s._sum?.totalPrice || 0,
+      quantity: s._sum?.quantity || 0,
+      orderCount: s._count?._all || 0,
+      avgOrderValue: (s._count?._all || 0) > 0 ? (((s._sum?.totalPrice || 0)) / (s._count._all)).toFixed(2) : '0',
     }));
 
     res.json({ categories: categories.sort((a, b) => b.revenue - a.revenue) });
@@ -247,25 +234,28 @@ router.get('/profit-analysis', async (req: Request, res: Response) => {
     const since = new Date(Date.now() - parseInt(days as string, 10) * 24 * 60 * 60 * 1000);
 
     const sales = await prisma.sale.findMany({
-      where: { marketplace: Marketplace.EBAY, createdAt: { gte: since } },
-      select: { totalPrice: true, costPrice: true, profitJpy: true, profitRate: true, category: true },
+      where: {
+        createdAt: { gte: since },
+        order: { marketplace: Marketplace.EBAY },
+      },
+      select: { totalPrice: true, costPrice: true, profitJpy: true, profitRate: true, sku: true },
     });
 
     let totalRevenue = 0;
     let totalCost = 0;
     let totalProfit = 0;
-    const byCategory: Record<string, { revenue: number; cost: number; profit: number; count: number }> = {};
+    const bySku: Record<string, { revenue: number; cost: number; profit: number; count: number }> = {};
 
     for (const sale of sales) {
       totalRevenue += sale.totalPrice;
       totalCost += sale.costPrice || 0;
       totalProfit += sale.profitJpy || 0;
-      const cat = sale.category || 'その他';
-      if (!byCategory[cat]) byCategory[cat] = { revenue: 0, cost: 0, profit: 0, count: 0 };
-      byCategory[cat].revenue += sale.totalPrice;
-      byCategory[cat].cost += sale.costPrice || 0;
-      byCategory[cat].profit += sale.profitJpy || 0;
-      byCategory[cat].count += 1;
+      const skuKey = sale.sku || 'unknown';
+      if (!bySku[skuKey]) bySku[skuKey] = { revenue: 0, cost: 0, profit: 0, count: 0 };
+      bySku[skuKey].revenue += sale.totalPrice;
+      bySku[skuKey].cost += sale.costPrice || 0;
+      bySku[skuKey].profit += sale.profitJpy || 0;
+      bySku[skuKey].count += 1;
     }
 
     const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) + '%' : 'N/A';
@@ -278,8 +268,8 @@ router.get('/profit-analysis', async (req: Request, res: Response) => {
         profitMargin,
         orderCount: sales.length,
       },
-      byCategory: Object.entries(byCategory).map(([category, data]) => ({
-        category,
+      bySku: Object.entries(bySku).map(([sku, data]) => ({
+        sku,
         ...data,
         profitMargin: data.revenue > 0 ? ((data.profit / data.revenue) * 100).toFixed(1) + '%' : 'N/A',
       })).sort((a, b) => b.profit - a.profit),
@@ -306,7 +296,10 @@ router.get('/export', async (req: Request, res: Response) => {
       });
     } else if (type === 'sales') {
       data = await prisma.sale.findMany({
-        where: { marketplace: Marketplace.EBAY, createdAt: { gte: since } },
+        where: {
+          createdAt: { gte: since },
+          order: { marketplace: Marketplace.EBAY },
+        },
         orderBy: { createdAt: 'desc' },
       });
     } else if (type === 'listings') {

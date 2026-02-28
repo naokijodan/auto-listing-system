@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
@@ -71,7 +71,7 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'settings', label: '設定' },
 ]
 
-export default function OrderFulfillmentTrackerProPage(): JSX.Element {
+export default function OrderFulfillmentTrackerProPage(): React.ReactElement {
   const [active, setActive] = useState<TabKey>('dashboard')
   const { data, loading, error } = useApi(active)
 

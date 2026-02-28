@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -103,7 +103,7 @@ export default function CustomerSupportHubPage() {
     fetcher
   );
 
-  const { data: statsData } = useSWR(
+  const { data: statsData } = useSWR<any>(
     '/api/ebay-customer-support-hub/stats',
     fetcher
   );

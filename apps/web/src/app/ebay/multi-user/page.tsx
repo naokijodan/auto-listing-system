@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -37,15 +37,15 @@ export default function MultiUserPage() {
   const [showTeamModal, setShowTeamModal] = useState(false);
 
   // データ取得
-  const { data: usersData, mutate: mutateUsers } = useSWR(
+  const { data: usersData, mutate: mutateUsers } = useSWR<any>(
     `/api/ebay-multi-user/users${searchQuery ? `?search=${searchQuery}` : ''}${selectedRole ? `${searchQuery ? '&' : '?'}role=${selectedRole}` : ''}`,
     fetcher
   );
-  const { data: rolesData, mutate: mutateRoles } = useSWR('/api/ebay-multi-user/roles', fetcher);
-  const { data: teamsData, mutate: mutateTeams } = useSWR('/api/ebay-multi-user/teams', fetcher);
-  const { data: permissionsData } = useSWR('/api/ebay-multi-user/permissions', fetcher);
-  const { data: activityData } = useSWR('/api/ebay-multi-user/activity', fetcher);
-  const { data: dashboardData } = useSWR('/api/ebay-multi-user/dashboard', fetcher);
+  const { data: rolesData, mutate: mutateRoles } = useSWR<any>('/api/ebay-multi-user/roles', fetcher);
+  const { data: teamsData, mutate: mutateTeams } = useSWR<any>('/api/ebay-multi-user/teams', fetcher);
+  const { data: permissionsData } = useSWR<any>('/api/ebay-multi-user/permissions', fetcher);
+  const { data: activityData } = useSWR<any>('/api/ebay-multi-user/activity', fetcher);
+  const { data: dashboardData } = useSWR<any>('/api/ebay-multi-user/dashboard', fetcher);
 
   const users = usersData?.users ?? [];
   const roles = rolesData?.roles ?? [];

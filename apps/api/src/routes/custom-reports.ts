@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * カスタムレポートAPI
  * Phase 84: 高度なレポーティング
@@ -49,12 +49,9 @@ router.get('/stats', async (req, res, next) => {
       }),
       prisma.reportExecution.findMany({
         where: {
-          createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+          startedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
         },
-        include: {
-          report: { select: { name: true, type: true } },
-        },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { startedAt: 'desc' },
         take: 10,
       }),
     ]);
@@ -164,9 +161,6 @@ router.get('/', async (req, res, next) => {
     const [reports, total] = await Promise.all([
       prisma.customReport.findMany({
         where,
-        include: {
-          _count: { select: { executions: true } },
-        },
         orderBy: { updatedAt: 'desc' },
         skip: (pageNum - 1) * limitNum,
         take: limitNum,
@@ -261,12 +255,6 @@ router.get('/:id', async (req, res, next) => {
   try {
     const report = await prisma.customReport.findUnique({
       where: { id: req.params.id },
-      include: {
-        executions: {
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        },
-      },
     });
 
     if (!report) {
@@ -386,11 +374,7 @@ router.post('/:id/execute', async (req, res, next) => {
     const execution = await prisma.reportExecution.create({
       data: {
         reportId: report.id,
-        executedBy,
-        executionType: 'MANUAL',
-        parameters: parameters || {},
-        dateRange,
-        status: 'RUNNING',
+        status: 'GENERATING',
         startedAt: new Date(),
       },
     });
@@ -446,10 +430,8 @@ router.post('/:id/execute', async (req, res, next) => {
         where: { id: execution.id },
         data: {
           status: 'COMPLETED',
-          resultData,
-          rowCount,
           completedAt: new Date(),
-          durationMs: Date.now() - execution.startedAt!.getTime(),
+          duration: Date.now() - execution.startedAt.getTime(),
         },
       });
 
@@ -691,7 +673,7 @@ router.get('/templates/list', async (req, res, next) => {
 
     const templates = await prisma.reportTemplate.findMany({
       where,
-      orderBy: [{ isSystem: 'desc' }, { useCount: 'desc' }],
+      orderBy: [{ isSystem: 'desc' }, { createdAt: 'desc' }],
     });
 
     res.json(templates);
@@ -725,20 +707,14 @@ router.post('/templates/:id/use', async (req, res, next) => {
         name: name || `${template.name}のコピー`,
         description: template.description,
         slug: generateSlug(name || template.name),
-        type: template.type,
-        dataSource: template.dataSource,
-        query: template.defaultQuery,
-        columns: template.defaultColumns,
-        filters: template.defaultFilters as unknown[],
-        chartConfig: template.defaultChartConfig,
-        createdBy,
+        type: 'TABLE',
+        dataSource: 'ORDERS',
+        query: template.dataSources || {},
+        columns: template.sections || [],
+        filters: template.charts as any || [],
+        chartConfig: template.customStyles || {},
+        createdBy: createdBy || 'system',
       },
-    });
-
-    // テンプレートの使用回数を更新
-    await prisma.reportTemplate.update({
-      where: { id: req.params.id },
-      data: { useCount: { increment: 1 } },
     });
 
     logger.info(`Report created from template: ${report.id} from ${template.id}`);

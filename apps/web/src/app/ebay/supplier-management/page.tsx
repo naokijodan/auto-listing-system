@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -87,7 +87,7 @@ export default function SupplierManagementPage() {
 }
 
 function DashboardTab() {
-  const { data, isLoading } = useSWR('/api/ebay-supplier-management/dashboard', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-supplier-management/dashboard', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-violet-500" /></div>;
@@ -224,7 +224,7 @@ function DashboardTab() {
 }
 
 function SuppliersTab() {
-  const { data, isLoading } = useSWR('/api/ebay-supplier-management/suppliers', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-supplier-management/suppliers', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-violet-500" /></div>;
@@ -332,7 +332,7 @@ function SuppliersTab() {
 }
 
 function OrdersTab() {
-  const { data, isLoading } = useSWR('/api/ebay-supplier-management/orders', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-supplier-management/orders', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-violet-500" /></div>;
@@ -423,7 +423,7 @@ function OrdersTab() {
 }
 
 function ReceiptsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-supplier-management/receipts', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-supplier-management/receipts', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-violet-500" /></div>;
@@ -550,7 +550,7 @@ function ReportsTab() {
 }
 
 function SettingsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-supplier-management/settings', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-supplier-management/settings', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-violet-500" /></div>;

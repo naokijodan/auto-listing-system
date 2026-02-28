@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -114,7 +114,7 @@ export default function OrganizationsPage() {
     fetcher
   );
 
-  const { data: orgsData, mutate: mutateOrgs } = useSWR(
+  const { data: orgsData, mutate: mutateOrgs } = useSWR<any>(
     `${API_BASE}/organizations`,
     fetcher
   );

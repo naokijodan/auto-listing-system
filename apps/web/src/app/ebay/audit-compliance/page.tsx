@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -32,18 +32,18 @@ export default function AuditCompliancePage() {
   const [selectedViolationStatus, setSelectedViolationStatus] = useState('');
 
   // データ取得
-  const { data: rulesData, mutate: mutateRules } = useSWR(
+  const { data: rulesData, mutate: mutateRules } = useSWR<any>(
     `/api/ebay-audit-compliance/rules${selectedRuleCategory ? `?category=${selectedRuleCategory}` : ''}`,
     fetcher
   );
-  const { data: violationsData, mutate: mutateViolations } = useSWR(
+  const { data: violationsData, mutate: mutateViolations } = useSWR<any>(
     `/api/ebay-audit-compliance/violations${selectedViolationStatus ? `?status=${selectedViolationStatus}` : ''}`,
     fetcher
   );
-  const { data: reportsData, mutate: mutateReports } = useSWR('/api/ebay-audit-compliance/reports', fetcher);
-  const { data: frameworksData } = useSWR('/api/ebay-audit-compliance/frameworks', fetcher);
-  const { data: dashboardData } = useSWR('/api/ebay-audit-compliance/dashboard', fetcher);
-  const { data: evidenceData } = useSWR('/api/ebay-audit-compliance/evidence', fetcher);
+  const { data: reportsData, mutate: mutateReports } = useSWR<any>('/api/ebay-audit-compliance/reports', fetcher);
+  const { data: frameworksData } = useSWR<any>('/api/ebay-audit-compliance/frameworks', fetcher);
+  const { data: dashboardData } = useSWR<any>('/api/ebay-audit-compliance/dashboard', fetcher);
+  const { data: evidenceData } = useSWR<any>('/api/ebay-audit-compliance/evidence', fetcher);
 
   const rules = rulesData?.rules ?? [];
   const violations = violationsData?.violations ?? [];

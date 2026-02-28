@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -132,31 +132,31 @@ export default function EbayActivityLogPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // データ取得
-  const { data: statsData, mutate: mutateStats } = useSWR('/api/ebay-activity-log/stats', fetcher);
+  const { data: statsData, mutate: mutateStats } = useSWR<any>('/api/ebay-activity-log/stats', fetcher);
   const stats = statsData?.data;
 
   const activitiesUrl = `/api/ebay-activity-log/activities?page=${page}&limit=20${categoryFilter ? `&category=${categoryFilter}` : ''}${severityFilter ? `&severity=${severityFilter}` : ''}${searchQuery ? `&search=${searchQuery}` : ''}`;
-  const { data: activitiesData, mutate: mutateActivities, isLoading: isLoadingActivities } = useSWR(
+  const { data: activitiesData, mutate: mutateActivities, isLoading: isLoadingActivities } = useSWR<any>(
     activeTab === 'activities' ? activitiesUrl : null,
     fetcher
   );
 
-  const { data: auditData, isLoading: isLoadingAudit } = useSWR(
+  const { data: auditData, isLoading: isLoadingAudit } = useSWR<any>(
     activeTab === 'audit' ? `/api/ebay-activity-log/audit-trails?page=${page}&limit=20` : null,
     fetcher
   );
 
-  const { data: sessionsData, isLoading: isLoadingSessions } = useSWR(
+  const { data: sessionsData, isLoading: isLoadingSessions } = useSWR<any>(
     activeTab === 'sessions' ? `/api/ebay-activity-log/sessions?page=${page}&limit=20` : null,
     fetcher
   );
 
-  const { data: errorsData, mutate: mutateErrors, isLoading: isLoadingErrors } = useSWR(
+  const { data: errorsData, mutate: mutateErrors, isLoading: isLoadingErrors } = useSWR<any>(
     activeTab === 'errors' ? `/api/ebay-activity-log/errors?page=${page}&limit=20` : null,
     fetcher
   );
 
-  const { data: retentionData } = useSWR(
+  const { data: retentionData } = useSWR<any>(
     activeTab === 'settings' ? '/api/ebay-activity-log/retention-settings' : null,
     fetcher
   );

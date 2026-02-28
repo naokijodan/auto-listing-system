@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -133,12 +133,12 @@ export default function ShipmentTrackingPage() {
   const [isUpdatingTracking, setIsUpdatingTracking] = useState(false);
 
   // データ取得
-  const { data: dashboardData, mutate: mutateDashboard } = useSWR(
+  const { data: dashboardData, mutate: mutateDashboard } = useSWR<any>(
     '/api/ebay-shipment-tracking/dashboard',
     fetcher2
   );
 
-  const { data: shipmentsData, mutate: mutateShipments } = useSWR(
+  const { data: shipmentsData, mutate: mutateShipments } = useSWR<any>(
     `/api/ebay-shipment-tracking/shipments?${new URLSearchParams({
       ...(statusFilter && { status: statusFilter }),
       ...(carrierFilter && { carrier: carrierFilter }),
@@ -147,12 +147,12 @@ export default function ShipmentTrackingPage() {
     fetcher2
   );
 
-  const { data: statsData } = useSWR(
+  const { data: statsData } = useSWR<any>(
     '/api/ebay-shipment-tracking/stats',
     fetcher2
   );
 
-  const { data: labelConfigsData, mutate: mutateLabelConfigs } = useSWR(
+  const { data: labelConfigsData, mutate: mutateLabelConfigs } = useSWR<any>(
     '/api/ebay-shipment-tracking/label-configs',
     fetcher2
   );

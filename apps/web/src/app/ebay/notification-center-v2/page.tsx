@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -63,7 +63,7 @@ export default function NotificationCenterV2Page() {
     fetcher
   );
 
-  const { data: settingsData } = useSWR(
+  const { data: settingsData } = useSWR<any>(
     '/api/ebay-notification-center-v2/settings',
     fetcher
   );
@@ -73,7 +73,7 @@ export default function NotificationCenterV2Page() {
     fetcher
   );
 
-  const { data: statsData } = useSWR(
+  const { data: statsData } = useSWR<any>(
     '/api/ebay-notification-center-v2/stats',
     fetcher
   );

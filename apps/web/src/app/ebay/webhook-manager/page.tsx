@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -75,20 +75,20 @@ export default function EbayWebhookManagerPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   // データ取得
-  const { data: statsData, mutate: mutateStats } = useSWR('/api/ebay-webhook-manager/stats', fetcher);
+  const { data: statsData, mutate: mutateStats } = useSWR<any>('/api/ebay-webhook-manager/stats', fetcher);
   const stats = statsData?.data;
 
-  const { data: webhooksData, mutate: mutateWebhooks, isLoading: isLoadingWebhooks } = useSWR(
+  const { data: webhooksData, mutate: mutateWebhooks, isLoading: isLoadingWebhooks } = useSWR<any>(
     activeTab === 'webhooks' ? `/api/ebay-webhook-manager/webhooks?page=${page}&limit=10` : null,
     fetcher
   );
 
-  const { data: logsData, isLoading: isLoadingLogs } = useSWR(
+  const { data: logsData, isLoading: isLoadingLogs } = useSWR<any>(
     activeTab === 'logs' ? `/api/ebay-webhook-manager/delivery-logs?page=${page}&limit=20` : null,
     fetcher
   );
 
-  const { data: eventTypesData } = useSWR('/api/ebay-webhook-manager/event-types', fetcher);
+  const { data: eventTypesData } = useSWR<any>('/api/ebay-webhook-manager/event-types', fetcher);
 
   // アクション
   const handleToggleWebhook = async (id: string) => {

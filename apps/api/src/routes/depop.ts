@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Depop出品管理 API
  *
@@ -249,6 +249,7 @@ router.get('/orders', async (req: Request, res: Response) => {
     const { status, limit = '50', offset = '0' } = req.query;
 
     // Depop APIから注文を取得
+    // @ts-expect-error Cross-app dynamic import - valid at runtime in monorepo
     const { DepopApiClient } = await import('../../worker/src/lib/depop-api');
     const client = new DepopApiClient();
     const orders = await client.getOrders(
@@ -327,6 +328,7 @@ router.post('/settings/api-key', async (req: Request, res: Response) => {
  */
 router.post('/settings/test-connection', async (req: Request, res: Response) => {
   try {
+    // @ts-expect-error Cross-app dynamic import - valid at runtime in monorepo
     const { DepopApiClient } = await import('../../worker/src/lib/depop-api');
     const client = new DepopApiClient();
     const connected = await client.testConnection();

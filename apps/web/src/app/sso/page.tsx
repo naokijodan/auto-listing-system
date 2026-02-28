@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -51,9 +51,9 @@ import {
   XCircle,
   Clock,
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { API_BASE, postApi, deleteApi } from '@/lib/api';
 
-const fetcher = (url: string) => api.get(url).then((res) => res.data);
+const fetcher = (url: string) => fetch(`${API_BASE}${url}`).then((res) => res.json());
 
 export default function SSOPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -67,7 +67,7 @@ export default function SSOPage() {
 
   const handleCreateProvider = async (formData: any) => {
     try {
-      await api.post('/api/sso/providers', formData);
+      await postApi('/api/sso/providers', formData);
       refreshProviders();
       setIsCreateDialogOpen(false);
     } catch (error) {
@@ -77,7 +77,7 @@ export default function SSOPage() {
 
   const handleActivate = async (id: string) => {
     try {
-      await api.post(`/api/sso/providers/${id}/activate`);
+      await postApi(`/api/sso/providers/${id}/activate`);
       refreshProviders();
     } catch (error) {
       console.error('Failed to activate provider:', error);
@@ -86,7 +86,7 @@ export default function SSOPage() {
 
   const handleDeactivate = async (id: string) => {
     try {
-      await api.post(`/api/sso/providers/${id}/deactivate`);
+      await postApi(`/api/sso/providers/${id}/deactivate`);
       refreshProviders();
     } catch (error) {
       console.error('Failed to deactivate provider:', error);
@@ -96,7 +96,7 @@ export default function SSOPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('このプロバイダーを削除しますか？')) return;
     try {
-      await api.delete(`/api/sso/providers/${id}`);
+      await deleteApi(`/api/sso/providers/${id}`);
       refreshProviders();
     } catch (error) {
       console.error('Failed to delete provider:', error);
@@ -105,7 +105,7 @@ export default function SSOPage() {
 
   const handleRevokeSession = async (id: string) => {
     try {
-      await api.post(`/api/sso/sessions/${id}/revoke`);
+      await postApi(`/api/sso/sessions/${id}/revoke`);
       mutate('/api/sso/sessions?limit=50');
     } catch (error) {
       console.error('Failed to revoke session:', error);

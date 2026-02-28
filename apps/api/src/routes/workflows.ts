@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 35: ワークフロー自動化 API
  */
@@ -78,7 +78,7 @@ router.get('/workflows/:id', async (req: Request, res: Response) => {
         createdBy: {
           select: { id: true, name: true, email: true },
         },
-        executions: {
+        WorkflowExecution: {
           orderBy: { createdAt: 'desc' },
           take: 10,
         },

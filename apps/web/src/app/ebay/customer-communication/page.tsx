@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -127,34 +127,34 @@ export default function EbayCustomerCommunicationPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Dashboard data
-  const { data: dashboardData, mutate: mutateDashboard } = useSWR('/api/ebay-customer-communication/dashboard', fetcher);
+  const { data: dashboardData, mutate: mutateDashboard } = useSWR<any>('/api/ebay-customer-communication/dashboard', fetcher);
 
   // Threads
-  const { data: threadsData, mutate: mutateThreads } = useSWR(
+  const { data: threadsData, mutate: mutateThreads } = useSWR<any>(
     `/api/ebay-customer-communication/threads${statusFilter ? `?status=${statusFilter}` : ''}${typeFilter ? `${statusFilter ? '&' : '?'}type=${typeFilter}` : ''}`,
     fetcher
   );
 
   // Selected thread details
-  const { data: threadDetails, mutate: mutateThread } = useSWR(
+  const { data: threadDetails, mutate: mutateThread } = useSWR<any>(
     selectedThread ? `/api/ebay-customer-communication/threads/${selectedThread.id}` : null,
     fetcher
   );
 
   // Templates
-  const { data: templatesData, mutate: mutateTemplates } = useSWR(
+  const { data: templatesData, mutate: mutateTemplates } = useSWR<any>(
     activeTab === 'templates' ? '/api/ebay-customer-communication/templates' : null,
     fetcher
   );
 
   // Auto rules
-  const { data: autoRulesData, mutate: mutateAutoRules } = useSWR(
+  const { data: autoRulesData, mutate: mutateAutoRules } = useSWR<any>(
     activeTab === 'auto-rules' ? '/api/ebay-customer-communication/auto-rules' : null,
     fetcher
   );
 
   // Settings
-  const { data: settingsData } = useSWR(
+  const { data: settingsData } = useSWR<any>(
     activeTab === 'settings' ? '/api/ebay-customer-communication/settings' : null,
     fetcher
   );
@@ -188,7 +188,7 @@ export default function EbayCustomerCommunicationPage() {
 
     try {
       const response = await postApi(`/api/ebay-customer-communication/threads/${selectedThread.id}/suggest-reply`, {});
-      setReplyContent(response.suggestion);
+      setReplyContent((response as any).suggestion);
       addToast({ type: 'success', message: 'AI提案を取得しました' });
     } catch (error) {
       addToast({ type: 'error', message: '提案の取得に失敗しました' });

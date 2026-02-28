@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 113: eBayバルクエディター API
  */
@@ -77,7 +77,7 @@ router.get('/listings', async (req: Request, res: Response) => {
         shippingCost: l.shippingCost,
         currency: l.currency,
         status: l.status,
-        externalId: l.externalId,
+        externalId: l.marketplaceListingId,
         listedAt: l.listedAt,
       })),
       total,
@@ -186,7 +186,7 @@ router.post('/edit', async (req: Request, res: Response) => {
     // 履歴保存
     await prisma.notification.create({
       data: {
-        type: 'BULK_EDIT',
+        type: 'SYSTEM',
         title: '一括編集完了',
         message: `${results.success}件を更新しました`,
         severity: 'INFO',
@@ -254,7 +254,7 @@ router.post('/delete', async (req: Request, res: Response) => {
 router.get('/history', async (_req: Request, res: Response) => {
   try {
     const history = await prisma.notification.findMany({
-      where: { type: 'BULK_EDIT' },
+      where: { type: 'SYSTEM', title: { contains: '一括編集' } },
       orderBy: { createdAt: 'desc' },
       take: 20,
     });

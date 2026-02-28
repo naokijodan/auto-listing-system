@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * カスタマーサクセスAPI
  * Phase 83: カスタマーサクセス機能
@@ -6,6 +6,7 @@
 
 import { Router } from 'express';
 import { prisma } from '@rakuda/database';
+import { CustomerSegment, CustomerTier } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 
 const router = Router();
@@ -87,7 +88,7 @@ function determineSegment(
   orderCount: number,
   totalSpent: number,
   firstOrderAt: Date | null
-): string {
+): CustomerSegment {
   if (!firstOrderAt) return 'NEW';
 
   const daysSinceFirstOrder = Math.floor(
@@ -121,7 +122,7 @@ function determineSegment(
 /**
  * ティアを決定
  */
-function determineTier(totalSpent: number): string {
+function determineTier(totalSpent: number): CustomerTier {
   if (totalSpent >= 100000) return 'DIAMOND';
   if (totalSpent >= 50000) return 'PLATINUM';
   if (totalSpent >= 20000) return 'GOLD';

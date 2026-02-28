@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -89,7 +89,7 @@ export default function ProductCatalogPage() {
 }
 
 function DashboardTab() {
-  const { data, isLoading } = useSWR('/api/ebay-product-catalog/dashboard', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-product-catalog/dashboard', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-indigo-500" /></div>;
@@ -244,7 +244,7 @@ function DashboardTab() {
 }
 
 function ProductsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-product-catalog/products', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-product-catalog/products', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-indigo-500" /></div>;
@@ -372,7 +372,7 @@ function ProductsTab() {
 }
 
 function CategoriesTab() {
-  const { data, isLoading } = useSWR('/api/ebay-product-catalog/categories', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-product-catalog/categories', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-indigo-500" /></div>;
@@ -417,7 +417,7 @@ function CategoriesTab() {
 }
 
 function AttributesTab() {
-  const { data, isLoading } = useSWR('/api/ebay-product-catalog/attributes', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-product-catalog/attributes', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-indigo-500" /></div>;
@@ -501,7 +501,7 @@ function AttributesTab() {
 }
 
 function ImagesTab() {
-  const { data, isLoading } = useSWR('/api/ebay-product-catalog/images', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-product-catalog/images', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-indigo-500" /></div>;
@@ -559,7 +559,7 @@ function ImagesTab() {
 }
 
 function SettingsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-product-catalog/settings', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-product-catalog/settings', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-indigo-500" /></div>;

@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -89,7 +89,7 @@ export default function PricingIntelligencePage() {
 }
 
 function DashboardTab() {
-  const { data, isLoading } = useSWR('/api/ebay-pricing-intelligence/dashboard', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-pricing-intelligence/dashboard', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-emerald-500" /></div>;
@@ -245,7 +245,7 @@ function DashboardTab() {
 }
 
 function AnalysisTab() {
-  const { data, isLoading } = useSWR('/api/ebay-pricing-intelligence/analysis', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-pricing-intelligence/analysis', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-emerald-500" /></div>;
@@ -346,7 +346,7 @@ function AnalysisTab() {
 }
 
 function CompetitorsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-pricing-intelligence/competitors', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-pricing-intelligence/competitors', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-emerald-500" /></div>;
@@ -435,7 +435,7 @@ function CompetitorsTab() {
 }
 
 function AlertsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-pricing-intelligence/alerts', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-pricing-intelligence/alerts', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-emerald-500" /></div>;
@@ -531,7 +531,7 @@ function AlertsTab() {
 }
 
 function RecommendationsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-pricing-intelligence/recommendations', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-pricing-intelligence/recommendations', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-emerald-500" /></div>;
@@ -615,7 +615,7 @@ function RecommendationsTab() {
 }
 
 function SettingsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-pricing-intelligence/settings', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-pricing-intelligence/settings', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-emerald-500" /></div>;

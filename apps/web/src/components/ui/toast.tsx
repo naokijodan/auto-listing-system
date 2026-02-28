@@ -28,7 +28,12 @@ function notifyListeners() {
   listeners.forEach((listener) => listener());
 }
 
-export function addToast(toast: Omit<Toast, 'id'>) {
+export function addToast(toast: Omit<Toast, 'id'>): string;
+export function addToast(message: string, type: ToastType): string;
+export function addToast(toastOrMessage: Omit<Toast, 'id'> | string, type?: ToastType): string {
+  const toast: Omit<Toast, 'id'> = typeof toastOrMessage === 'string'
+    ? { message: toastOrMessage, type: type ?? 'info' }
+    : toastOrMessage;
   const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   toasts = [...toasts, { ...toast, id }];
   notifyListeners();

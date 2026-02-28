@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * 在庫予測・自動発注API
  * Phase 80: 在庫予測・自動発注
@@ -213,7 +213,7 @@ router.post('/calculate', async (req, res, next) => {
       ? await prisma.listing.findUnique({ where: { id: listingId } })
       : null;
 
-    const currentStock = listing?.stock || 1;
+    const currentStock = (listing as any)?.stock || 1;
     const avgDailySales = demand / forecastDays;
 
     // 安全在庫を計算
@@ -281,7 +281,7 @@ router.post('/bulk-calculate', async (req, res, next) => {
     // アクティブなリスティングを取得
     const listings = await prisma.listing.findMany({
       where: {
-        status: { in: ['ACTIVE', 'LISTED'] },
+        status: { in: ['ACTIVE', 'PAUSED'] },
       },
       take: 100, // バッチサイズ制限
     });
@@ -324,7 +324,7 @@ router.post('/bulk-calculate', async (req, res, next) => {
 
         const { demand, confidence } = calculateDemandForecast(dailySales, forecastDays);
         const avgDailySales = demand / forecastDays;
-        const currentStock = listing.stock || 1;
+        const currentStock = (listing as any).stock || 1;
         const safetyStock = calculateSafetyStock(avgDailySales, leadTime);
         const reorderPoint = safetyStock + Math.ceil(avgDailySales * leadTime);
         const daysUntilStockout = avgDailySales > 0

@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '@rakuda/database';
@@ -162,7 +162,7 @@ router.get('/customers', async (req, res) => {
           feedbackScore: (Math.random() * 2 + 3).toFixed(1),
         },
         nextAction: Object.values(ENGAGEMENT_ACTIONS).find(a =>
-          a.stage.includes(randomStage as any)
+          (a.stage as readonly string[]).includes(randomStage)
         )?.code || null,
       };
     });
@@ -181,7 +181,7 @@ router.get('/customers', async (req, res) => {
         case 'orderCount':
           return b.metrics.orderCount - a.metrics.orderCount;
         case 'recent':
-          return a.metrics.daysSinceLast - b.metrics.daysSinceLast;
+          return a.metrics.daysSinceLastPurchase - b.metrics.daysSinceLastPurchase;
         default:
           return b.metrics.ltv - a.metrics.ltv;
       }

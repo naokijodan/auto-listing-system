@@ -179,10 +179,10 @@ model Listing {
   updatedAt DateTime  @updatedAt
 
   // リレーション
-  inventoryAlerts    InventoryAlert[]
-  sales              Sale[]
-  scheduledListings  ScheduledListing[]
-  optimizations      ListingOptimization[]
+  inventoryAlerts   InventoryAlert[]
+  sales             Sale[]
+  scheduledListings ScheduledListing[]
+  optimizations     ListingOptimization[]
 
   @@unique([productId, marketplace])
   @@index([marketplace, status])
@@ -221,7 +221,7 @@ enum ListingStatus {
 // スケジュール出品（Phase 116）
 // ========================================
 model ScheduledListing {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   listingId String
   listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
@@ -296,7 +296,7 @@ model RestockLog {
 
 // 在庫発注（Phase 117）
 model RestockOrder {
-  id         String   @id @default(cuid())
+  id         String  @id @default(cuid())
   productId  String
   supplierId String?
 
@@ -326,13 +326,13 @@ enum RestockOrderStatus {
 // 出品最適化（Phase 118）
 // ========================================
 model ListingOptimization {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   listingId String
   listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   type           String // TITLE, DESCRIPTION, KEYWORDS
-  originalValue  String @db.Text
-  suggestedValue String @db.Text
+  originalValue  String  @db.Text
+  suggestedValue String  @db.Text
   reason         String?
 
   status    OptimizationStatus @default(PENDING)
@@ -10490,16 +10490,16 @@ enum TargetType {
 // ========================================
 
 model EbayListingTemplate {
-  id                  String   @id @default(cuid())
-  name                String
-  description         String?
+  id          String  @id @default(cuid())
+  name        String
+  description String?
 
   // カテゴリ設定
-  ebayCategoryId      String
-  ebayCategoryName    String?
+  ebayCategoryId   String
+  ebayCategoryName String?
 
   // コンディション
-  conditionId         String?
+  conditionId          String?
   conditionDescription String?
 
   // ポリシー設定
@@ -10509,20 +10509,20 @@ model EbayListingTemplate {
 
   // 価格・送料設定
   defaultShippingCost Float?
-  priceMultiplier     Float    @default(1.0)  // 仕入れ価格に対する倍率
+  priceMultiplier     Float  @default(1.0) // 仕入れ価格に対する倍率
 
   // Item Specifics
-  itemSpecifics       Json     @default("{}")
+  itemSpecifics Json @default("{}")
 
   // 説明文テンプレート
-  descriptionTemplate String?  @db.Text
+  descriptionTemplate String? @db.Text
 
   // フラグ
-  isDefault           Boolean  @default(false)
-  isActive            Boolean  @default(true)
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([ebayCategoryId])
   @@index([isActive, isDefault])
@@ -10530,54 +10530,54 @@ model EbayListingTemplate {
 }
 
 model EbayAutoRelistConfig {
-  id                String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // 基本設定
-  enabled           Boolean  @default(false)
-  maxRelistCount    Int      @default(3)    // 最大再出品回数
+  enabled        Boolean @default(false)
+  maxRelistCount Int     @default(3) // 最大再出品回数
 
   // 価格調整
-  priceAdjustment   Float    @default(0)    // パーセンテージ（-5 = 5%値下げ）
-  minPrice          Float?                   // 最低価格
+  priceAdjustment Float  @default(0) // パーセンテージ（-5 = 5%値下げ）
+  minPrice        Float? // 最低価格
 
   // 除外設定
   excludeCategories String[] @default([])
   excludeBrands     String[] @default([])
 
   // スケジュール
-  runHour           Int      @default(9)    // 実行時刻（時）
-  runDays           Int[]    @default([1, 2, 3, 4, 5])  // 実行曜日（1-7）
+  runHour Int   @default(9) // 実行時刻（時）
+  runDays Int[] @default([1, 2, 3, 4, 5]) // 実行曜日（1-7）
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("ebay_auto_relist_config")
 }
 
 model EbayBulkOperation {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
   operationType EbayBulkOperationType
   status        BulkOperationStatus   @default(PENDING)
 
   // 対象
-  listingIds    String[]
-  totalCount    Int
+  listingIds String[]
+  totalCount Int
 
   // 結果
-  successCount  Int      @default(0)
-  failureCount  Int      @default(0)
-  results       Json     @default("[]")
+  successCount Int  @default(0)
+  failureCount Int  @default(0)
+  results      Json @default("[]")
 
   // パラメータ
-  parameters    Json     @default("{}")
+  parameters Json @default("{}")
 
   // エラー
-  errorMessage  String?
+  errorMessage String?
 
-  startedAt     DateTime?
-  completedAt   DateTime?
-  createdAt     DateTime @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
 
   @@index([status, createdAt])
   @@map("ebay_bulk_operations")
@@ -10604,24 +10604,24 @@ enum BulkOperationStatus {
 
 // 在庫変動イベント（全プラットフォーム共通）
 model InventoryEvent {
-  id        String   @id @default(cuid())
+  id        String @id @default(cuid())
   productId String
 
-  eventType   InventoryEventType
-  quantity    Int      // 変動数（正: 入荷、負: 出荷/販売）
-  prevStock   Int      // 変動前在庫
-  newStock    Int      // 変動後在庫
+  eventType InventoryEventType
+  quantity  Int // 変動数（正: 入荷、負: 出荷/販売）
+  prevStock Int // 変動前在庫
+  newStock  Int // 変動後在庫
 
-  marketplace Marketplace?  // どのプラットフォームで発生したか（手動調整はnull）
-  orderId     String?       // 注文起因の場合
-  reason      String?       // 変動理由
+  marketplace Marketplace? // どのプラットフォームで発生したか（手動調整はnull）
+  orderId     String? // 注文起因の場合
+  reason      String? // 変動理由
 
-  syncedTo    String[]      // 同期済みプラットフォーム一覧
-  syncErrors  Json?         // 同期エラー詳細
+  syncedTo   String[] // 同期済みプラットフォーム一覧
+  syncErrors Json? // 同期エラー詳細
 
   createdAt DateTime @default(now())
 
-  product   Product @relation(fields: [productId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([eventType])
@@ -10630,37 +10630,37 @@ model InventoryEvent {
 }
 
 enum InventoryEventType {
-  SALE           // 販売
-  RESTOCK        // 入荷
-  ADJUSTMENT     // 手動調整
-  RETURN         // 返品
-  SYNC           // 同期による補正
-  RESERVED       // 予約（出品中のロック）
+  SALE // 販売
+  RESTOCK // 入荷
+  ADJUSTMENT // 手動調整
+  RETURN // 返品
+  SYNC // 同期による補正
+  RESERVED // 予約（出品中のロック）
 }
 
 // マーケットプレイス同期状態
 model MarketplaceSyncState {
-  id            String      @id @default(cuid())
-  marketplace   Marketplace
-  productId     String
-  listingId     String?     // プラットフォーム側のID
+  id          String      @id @default(cuid())
+  marketplace Marketplace
+  productId   String
+  listingId   String? // プラットフォーム側のID
 
-  syncStatus    MarketplaceSyncStatus  @default(PENDING)
+  syncStatus    MarketplaceSyncStatus @default(PENDING)
   lastSyncAt    DateTime?
   lastSyncError String?
-  retryCount    Int         @default(0)
+  retryCount    Int                   @default(0)
 
-  localStock    Int         @default(0)  // rakuda側の在庫数
-  remoteStock   Int?        // プラットフォーム側の在庫数
-  localPrice    Float?      // rakuda側の価格
-  remotePrice   Float?      // プラットフォーム側の価格
+  localStock  Int    @default(0) // rakuda側の在庫数
+  remoteStock Int? // プラットフォーム側の在庫数
+  localPrice  Float? // rakuda側の価格
+  remotePrice Float? // プラットフォーム側の価格
 
-  isActive      Boolean     @default(true)
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  product   Product @relation(fields: [productId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@unique([marketplace, productId])
   @@index([syncStatus])
@@ -10678,36 +10678,36 @@ enum MarketplaceSyncStatus {
 
 // Etsy出品データ（JoomListingと同様の専用テーブル）
 model EtsyListing {
-  id            String   @id @default(cuid())
-  productId     String
-  listingId     String?  // rakuda Listing ID
+  id        String  @id @default(cuid())
+  productId String
+  listingId String? // rakuda Listing ID
 
-  etsyListingId   Int?     // Etsy側のlisting_id（数値）
-  etsyShopId      Int?     // Etsy Shop ID
+  etsyListingId Int? // Etsy側のlisting_id（数値）
+  etsyShopId    Int? // Etsy Shop ID
 
-  title           String?  // Etsy向け最適化タイトル（最大140文字）
-  description     String?  // Etsy向け説明文
-  tags            String[] // 最大13タグ
-  materials       String[] // 素材
+  title       String? // Etsy向け最適化タイトル（最大140文字）
+  description String? // Etsy向け説明文
+  tags        String[] // 最大13タグ
+  materials   String[] // 素材
 
-  categoryId      Int?     // Etsy Taxonomy ID
-  whoMade         String   @default("someone_else")  // i_did, someone_else, collective
-  whenMade        String   @default("before_2005")   // ヴィンテージ用
-  isSupply        Boolean  @default(false)
+  categoryId Int? // Etsy Taxonomy ID
+  whoMade    String  @default("someone_else") // i_did, someone_else, collective
+  whenMade   String  @default("before_2005") // ヴィンテージ用
+  isSupply   Boolean @default(false)
 
-  price           Float?   // USD
-  quantity        Int      @default(1)
-  shippingProfileId Int?   // Etsy配送プロファイルID
+  price             Float? // USD
+  quantity          Int    @default(1)
+  shippingProfileId Int? // Etsy配送プロファイルID
 
-  status          EtsyListingStatus @default(DRAFT)
-  errorMessage    String?
-  errorCount      Int      @default(0)
+  status       EtsyListingStatus @default(DRAFT)
+  errorMessage String?
+  errorCount   Int               @default(0)
 
-  publishedAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  product   Product @relation(fields: [productId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([etsyListingId])
@@ -10728,41 +10728,41 @@ enum EtsyListingStatus {
 
 // Depop出品データ
 model DepopListing {
-  id            String   @id @default(cuid())
-  productId     String
-  listingId     String?  // rakuda Listing ID
+  id        String  @id @default(cuid())
+  productId String
+  listingId String? // rakuda Listing ID
 
-  depopProductId  Int?     // Depop側のproduct_id
-  sku             String?  @unique // Depop SKU
+  depopProductId Int? // Depop側のproduct_id
+  sku            String? @unique // Depop SKU
 
-  description     String?  @db.Text // Depop向け説明文
-  pictures        String[] // Depop画像URL（最大4枚）
+  description String?  @db.Text // Depop向け説明文
+  pictures    String[] // Depop画像URL（最大4枚）
 
-  categoryId      Int?     // Depop Category ID
-  brandId         Int?     // Depop Brand ID
-  condition       String?  // NEW_WITH_TAGS, NEW_WITHOUT_TAGS, LIKE_NEW, GOOD, FAIR
-  colour          String?
-  size            String?
+  categoryId Int? // Depop Category ID
+  brandId    Int? // Depop Brand ID
+  condition  String? // NEW_WITH_TAGS, NEW_WITHOUT_TAGS, LIKE_NEW, GOOD, FAIR
+  colour     String?
+  size       String?
 
-  price           Float?   // 販売価格
-  currency        String   @default("USD") // USD, GBP, AUD, EUR
-  quantity        Int      @default(1)
+  price    Float? // 販売価格
+  currency String @default("USD") // USD, GBP, AUD, EUR
+  quantity Int    @default(1)
 
-  shippingType    String   @default("MANUAL") // MANUAL or DEPOP_MANAGED
-  shippingCost    Float?   // Manual shipping cost
+  shippingType String @default("MANUAL") // MANUAL or DEPOP_MANAGED
+  shippingCost Float? // Manual shipping cost
 
-  status          DepopListingStatus @default(DRAFT)
-  errorMessage    String?
-  errorCount      Int      @default(0)
+  status       DepopListingStatus @default(DRAFT)
+  errorMessage String?
+  errorCount   Int                @default(0)
 
-  depopUrl        String?  // Depop商品ページURL
-  depopSlug       String?
+  depopUrl  String? // Depop商品ページURL
+  depopSlug String?
 
-  publishedAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  product   Product @relation(fields: [productId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@index([productId])
   @@index([status])
@@ -10785,15 +10785,15 @@ enum DepopListingStatus {
 // ========================================
 
 model SupplierSource {
-  id            String      @id @default(cuid())
+  id            String     @id @default(cuid())
   productId     String
   type          SupplyType
   supplierUrl   String?
-  quantity      Int         @default(0)
-  priority      Int         @default(0)
+  quantity      Int        @default(0)
+  priority      Int        @default(0)
   lastCheckedAt DateTime?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   product Product @relation(fields: [productId], references: [id])
 

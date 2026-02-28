@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -139,12 +139,12 @@ export default function AlertHubPage() {
   const [selectedAlerts, setSelectedAlerts] = useState<Set<string>>(new Set());
 
   // データ取得
-  const { data: dashboardData, mutate: mutateDashboard } = useSWR(
+  const { data: dashboardData, mutate: mutateDashboard } = useSWR<any>(
     '/api/ebay-alert-hub/dashboard',
     fetcher2
   );
 
-  const { data: alertsData, mutate: mutateAlerts } = useSWR(
+  const { data: alertsData, mutate: mutateAlerts } = useSWR<any>(
     `/api/ebay-alert-hub/alerts?${new URLSearchParams({
       ...(categoryFilter && { category: categoryFilter }),
       ...(severityFilter && { severity: severityFilter }),
@@ -154,17 +154,17 @@ export default function AlertHubPage() {
     fetcher2
   );
 
-  const { data: rulesData, mutate: mutateRules } = useSWR(
+  const { data: rulesData, mutate: mutateRules } = useSWR<any>(
     '/api/ebay-alert-hub/rules',
     fetcher2
   );
 
-  const { data: channelsData, mutate: mutateChannels } = useSWR(
+  const { data: channelsData, mutate: mutateChannels } = useSWR<any>(
     '/api/ebay-alert-hub/channels',
     fetcher2
   );
 
-  const { data: statsData } = useSWR(
+  const { data: statsData } = useSWR<any>(
     '/api/ebay-alert-hub/stats',
     fetcher2
   );

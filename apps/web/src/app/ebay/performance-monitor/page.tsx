@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -76,29 +76,29 @@ export default function EbayPerformanceMonitorPage() {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   // データ取得
-  const { data: overviewData, mutate: mutateOverview, isLoading: isLoadingOverview } = useSWR(
+  const { data: overviewData, mutate: mutateOverview, isLoading: isLoadingOverview } = useSWR<any>(
     '/api/ebay-performance-monitor/overview',
     fetcher,
     { refreshInterval: 30000 }
   );
   const overview = overviewData?.data;
 
-  const { data: healthData, isLoading: isLoadingHealth } = useSWR(
+  const { data: healthData, isLoading: isLoadingHealth } = useSWR<any>(
     activeTab === 'services' ? '/api/ebay-performance-monitor/health' : null,
     fetcher
   );
 
-  const { data: apiMetricsData, isLoading: isLoadingApi } = useSWR(
+  const { data: apiMetricsData, isLoading: isLoadingApi } = useSWR<any>(
     activeTab === 'api' ? '/api/ebay-performance-monitor/api-metrics' : null,
     fetcher
   );
 
-  const { data: systemData, isLoading: isLoadingSystem } = useSWR(
+  const { data: systemData, isLoading: isLoadingSystem } = useSWR<any>(
     activeTab === 'system' ? '/api/ebay-performance-monitor/system-metrics' : null,
     fetcher
   );
 
-  const { data: alertsData, mutate: mutateAlerts, isLoading: isLoadingAlerts } = useSWR(
+  const { data: alertsData, mutate: mutateAlerts, isLoading: isLoadingAlerts } = useSWR<any>(
     activeTab === 'alerts' ? '/api/ebay-performance-monitor/active-alerts' : null,
     fetcher
   );

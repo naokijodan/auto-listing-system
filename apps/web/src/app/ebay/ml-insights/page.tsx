@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -35,14 +35,14 @@ export default function MlInsightsPage() {
   const [predictionPeriod, setPredictionPeriod] = useState('30');
 
   // データ取得
-  const { data: salesPredictions } = useSWR(`/api/ebay-ml-insights/predictions/sales?period=${predictionPeriod}`, fetcher);
-  const { data: demandPredictions } = useSWR('/api/ebay-ml-insights/predictions/demand', fetcher);
-  const { data: pricingData } = useSWR('/api/ebay-ml-insights/predictions/pricing', fetcher);
-  const { data: segmentsData } = useSWR('/api/ebay-ml-insights/segments/customers', fetcher);
-  const { data: anomaliesData, mutate: mutateAnomalies } = useSWR('/api/ebay-ml-insights/anomalies', fetcher);
-  const { data: trendsData } = useSWR('/api/ebay-ml-insights/trends', fetcher);
-  const { data: modelsData, mutate: mutateModels } = useSWR('/api/ebay-ml-insights/models', fetcher);
-  const { data: summaryData } = useSWR('/api/ebay-ml-insights/summary', fetcher);
+  const { data: salesPredictions } = useSWR<any>(`/api/ebay-ml-insights/predictions/sales?period=${predictionPeriod}`, fetcher);
+  const { data: demandPredictions } = useSWR<any>('/api/ebay-ml-insights/predictions/demand', fetcher);
+  const { data: pricingData } = useSWR<any>('/api/ebay-ml-insights/predictions/pricing', fetcher);
+  const { data: segmentsData } = useSWR<any>('/api/ebay-ml-insights/segments/customers', fetcher);
+  const { data: anomaliesData, mutate: mutateAnomalies } = useSWR<any>('/api/ebay-ml-insights/anomalies', fetcher);
+  const { data: trendsData } = useSWR<any>('/api/ebay-ml-insights/trends', fetcher);
+  const { data: modelsData, mutate: mutateModels } = useSWR<any>('/api/ebay-ml-insights/models', fetcher);
+  const { data: summaryData } = useSWR<any>('/api/ebay-ml-insights/summary', fetcher);
 
   const predictions = salesPredictions?.predictions ?? [];
   const demandList = demandPredictions?.predictions ?? [];

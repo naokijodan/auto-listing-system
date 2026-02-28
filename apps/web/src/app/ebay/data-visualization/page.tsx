@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -35,14 +35,14 @@ export default function DataVisualizationPage() {
   const [selectedDashboard, setSelectedDashboard] = useState<string | null>(null);
 
   // データ取得
-  const { data: dashboardsData, mutate: mutateDashboards } = useSWR('/api/ebay-data-visualization/dashboards', fetcher);
-  const { data: widgetsData, mutate: mutateWidgets } = useSWR(
+  const { data: dashboardsData, mutate: mutateDashboards } = useSWR<any>('/api/ebay-data-visualization/dashboards', fetcher);
+  const { data: widgetsData, mutate: mutateWidgets } = useSWR<any>(
     selectedDashboard ? `/api/ebay-data-visualization/widgets?dashboardId=${selectedDashboard}` : '/api/ebay-data-visualization/widgets',
     fetcher
   );
-  const { data: templatesData } = useSWR('/api/ebay-data-visualization/chart-templates', fetcher);
-  const { data: sourcesData } = useSWR('/api/ebay-data-visualization/data-sources', fetcher);
-  const { data: summaryData } = useSWR('/api/ebay-data-visualization/summary', fetcher);
+  const { data: templatesData } = useSWR<any>('/api/ebay-data-visualization/chart-templates', fetcher);
+  const { data: sourcesData } = useSWR<any>('/api/ebay-data-visualization/data-sources', fetcher);
+  const { data: summaryData } = useSWR<any>('/api/ebay-data-visualization/summary', fetcher);
 
   const dashboards = dashboardsData?.dashboards ?? [];
   const widgets = widgetsData?.widgets ?? [];

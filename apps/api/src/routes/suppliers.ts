@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * サプライヤー管理API
  * Phase 78: サプライヤー管理機能
@@ -736,7 +736,7 @@ router.get('/recommendations', async (req, res, next) => {
     // 在庫が少ない商品で、サプライヤー紐付けがあるもの
     const lowStockProducts = await prisma.product.findMany({
       where: {
-        status: { in: ['ACTIVE', 'LISTED'] },
+        status: { in: ['ACTIVE', 'APPROVED'] },
       },
       take: 20,
     });

@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -150,7 +150,7 @@ export default function CompliancePage() {
     description: '',
     dataType: 'logs',
     retentionDays: 90,
-    action: 'DELETE' as const,
+    action: 'DELETE' as 'DELETE' | 'ARCHIVE' | 'ANONYMIZE',
   });
 
   // GDPRリクエストフォーム
@@ -497,7 +497,7 @@ export default function CompliancePage() {
                         <Label>アクション</Label>
                         <Select
                           value={newPolicy.action}
-                          onValueChange={(value: 'DELETE' | 'ARCHIVE' | 'ANONYMIZE') => setNewPolicy({ ...newPolicy, action: value })}
+                          onValueChange={(value: string) => setNewPolicy({ ...newPolicy, action: value as 'DELETE' | 'ARCHIVE' | 'ANONYMIZE' })}
                         >
                           <SelectTrigger>
                             <SelectValue />

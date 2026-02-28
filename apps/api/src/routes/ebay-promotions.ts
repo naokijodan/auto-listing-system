@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * eBayプロモーション連携API
  * Phase 121: プロモーション管理
@@ -70,8 +70,8 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       where: {
         marketplace: 'EBAY',
         marketplaceData: {
-          path: '$.promotions',
-          not: 'null',
+          path: ['promotions'],
+          not: 'null' as any,
         },
       },
       take: 10,
@@ -92,12 +92,12 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         promotionTypes,
       },
       promotionTypeOptions: PROMOTION_TYPES,
-      recentPromotions: recentPromotions.map(l => {
+      recentPromotions: recentPromotions.map((l: any) => {
         const data = l.marketplaceData as Record<string, unknown>;
         const promotions = (data?.promotions || []) as Array<Record<string, unknown>>;
         return {
           listingId: l.id,
-          title: l.product.titleEn || l.product.title,
+          title: l.product?.titleEn || l.product?.title,
           promotions: promotions.slice(0, 3),
           updatedAt: l.updatedAt,
         };
@@ -207,7 +207,7 @@ router.post('/', async (req: Request, res: Response) => {
             marketplaceData: {
               ...currentData,
               promotions: [...existingPromotions, promotion],
-            },
+            } as any,
           },
         });
 
@@ -255,8 +255,8 @@ router.get('/', async (req: Request, res: Response) => {
       where: {
         marketplace: 'EBAY',
         marketplaceData: {
-          path: '$.promotions',
-          not: 'null',
+          path: ['promotions'],
+          not: 'null' as any,
         },
       },
       include: {
@@ -285,7 +285,7 @@ router.get('/', async (req: Request, res: Response) => {
         allPromotions.push({
           promotionId: promo.id as string,
           listingId: listing.id,
-          listingTitle: listing.product.titleEn || listing.product.title,
+          listingTitle: (listing as any).product?.titleEn || (listing as any).product?.title,
           promotion: promo,
         });
       });
@@ -424,7 +424,7 @@ router.patch('/:listingId/:promotionId', async (req: Request, res: Response) => 
         marketplaceData: {
           ...currentData,
           promotions,
-        },
+        } as any,
       },
     });
 
@@ -475,7 +475,7 @@ router.delete('/:listingId/:promotionId', async (req: Request, res: Response) =>
         marketplaceData: {
           ...currentData,
           promotions: filteredPromotions,
-        },
+        } as any,
       },
     });
 
@@ -552,7 +552,7 @@ router.post('/bulk', async (req: Request, res: Response) => {
             marketplaceData: {
               ...currentData,
               promotions,
-            },
+            } as any,
           },
         });
 

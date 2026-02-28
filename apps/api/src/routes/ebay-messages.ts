@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 108: eBayメッセージ管理 API
  *
@@ -146,8 +146,8 @@ router.get('/', async (req: Request, res: Response) => {
           order: {
             select: {
               id: true,
-              externalOrderId: true,
-              totalAmount: true,
+              marketplaceOrderId: true,
+              total: true,
             },
           },
         },
@@ -156,10 +156,10 @@ router.get('/', async (req: Request, res: Response) => {
     ]);
 
     res.json({
-      messages: messages.map(msg => ({
+      messages: messages.map((msg: any) => ({
         id: msg.id,
         orderId: msg.orderId,
-        orderExternalId: msg.order?.externalOrderId,
+        orderExternalId: msg.order?.marketplaceOrderId,
         buyerUsername: msg.buyerUsername,
         buyerEmail: msg.buyerEmail,
         subject: msg.subject,
@@ -167,7 +167,7 @@ router.get('/', async (req: Request, res: Response) => {
         status: msg.status,
         templateId: msg.templateId,
         templateName: msg.template?.name,
-        attempts: msg.attempts,
+        attempts: msg.sendingAttempts,
         errorMessage: msg.errorMessage,
         createdAt: msg.createdAt,
         sentAt: msg.sentAt,
@@ -194,10 +194,8 @@ router.get('/:id', async (req: Request, res: Response) => {
         template: true,
         order: {
           include: {
-            items: {
-              include: {
-                product: { select: { title: true } },
-              },
+            sales: {
+              select: { title: true, quantity: true, unitPrice: true, totalPrice: true },
             },
           },
         },
@@ -250,12 +248,12 @@ router.post('/send', async (req: Request, res: Response) => {
         if (data.orderId) {
           const order = await prisma.order.findUnique({
             where: { id: data.orderId },
-            include: { items: { include: { product: true } } },
+            include: { sales: { select: { title: true } } },
           });
           if (order) {
-            variables.orderId = order.externalOrderId || order.id;
-            variables.orderTotal = `$${order.totalAmount.toFixed(2)}`;
-            variables.itemTitle = order.items[0]?.product?.title || '';
+            variables.orderId = order.marketplaceOrderId || order.id;
+            variables.orderTotal = `$${order.total.toFixed(2)}`;
+            variables.itemTitle = order.sales[0]?.title || '';
           }
         }
 
@@ -324,7 +322,7 @@ router.post('/:id/retry', async (req: Request, res: Response) => {
       data: {
         status: 'PENDING',
         errorMessage: null,
-        attempts: 0,
+        sendingAttempts: 0,
       },
     });
 

@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * セキュリティ管理API
  * Phase 82: セキュリティ強化
@@ -53,16 +53,15 @@ router.post('/2fa/setup', async (req, res, next) => {
       where: { userId },
       update: {
         method,
-        secret,
+        totpSecret: secret,
         backupCodes,
-        usedBackupCodes: [],
         isVerified: false,
         isEnabled: false,
       },
       create: {
         userId,
         method,
-        secret,
+        totpSecret: secret,
         backupCodes,
       },
     });
@@ -115,7 +114,7 @@ router.post('/2fa/verify', async (req, res, next) => {
     // コードを検証
     const isValid = authenticator.verify({
       token: code,
-      secret: twoFactorAuth.secret,
+      secret: twoFactorAuth.totpSecret || '',
     });
 
     if (!isValid) {
@@ -179,18 +178,10 @@ router.post('/2fa/validate', async (req, res, next) => {
       return res.status(400).json({ error: '2FA is not enabled' });
     }
 
-    // ロックアウトチェック
-    if (twoFactorAuth.lockedUntil && twoFactorAuth.lockedUntil > new Date()) {
-      return res.status(429).json({
-        error: 'Account is temporarily locked',
-        lockedUntil: twoFactorAuth.lockedUntil,
-      });
-    }
-
     // コードを検証（TOTP）
     let isValid = authenticator.verify({
       token: code,
-      secret: twoFactorAuth.secret,
+      secret: twoFactorAuth.totpSecret || '',
     });
 
     // バックアップコードで検証
@@ -200,28 +191,20 @@ router.post('/2fa/validate', async (req, res, next) => {
       await prisma.twoFactorAuth.update({
         where: { userId },
         data: {
-          usedBackupCodes: {
-            push: code.toUpperCase(),
-          },
           backupCodes: twoFactorAuth.backupCodes.filter(
             c => c !== code.toUpperCase()
           ),
+          backupCodesUsed: { increment: 1 },
         },
       });
     }
 
     if (!isValid) {
-      // 失敗回数をインクリメント
-      const newFailedAttempts = twoFactorAuth.failedAttempts + 1;
-      const lockoutThreshold = 5;
-
+      // 使用カウントをインクリメント（失敗追跡用）
       await prisma.twoFactorAuth.update({
         where: { userId },
         data: {
-          failedAttempts: newFailedAttempts,
-          ...(newFailedAttempts >= lockoutThreshold && {
-            lockedUntil: new Date(Date.now() + 30 * 60 * 1000), // 30分ロック
-          }),
+          useCount: { increment: 1 },
         },
       });
 
@@ -235,7 +218,7 @@ router.post('/2fa/validate', async (req, res, next) => {
           status: 'FAILURE',
           ipAddress,
           userAgent,
-          details: { failedAttempts: newFailedAttempts },
+          details: { reason: 'invalid_code' },
         },
       });
 
@@ -246,9 +229,8 @@ router.post('/2fa/validate', async (req, res, next) => {
     await prisma.twoFactorAuth.update({
       where: { userId },
       data: {
-        failedAttempts: 0,
-        lockedUntil: null,
         lastUsedAt: new Date(),
+        useCount: { increment: 1 },
       },
     });
 
@@ -297,7 +279,7 @@ router.post('/2fa/disable', async (req, res, next) => {
     // コードを検証
     const isValid = authenticator.verify({
       token: code,
-      secret: twoFactorAuth.secret,
+      secret: twoFactorAuth.totpSecret || '',
     });
 
     if (!isValid) {
@@ -309,7 +291,6 @@ router.post('/2fa/disable', async (req, res, next) => {
       where: { userId },
       data: {
         isEnabled: false,
-        disabledAt: new Date(),
       },
     });
 
@@ -660,14 +641,20 @@ router.post('/ip-whitelist/check', async (req, res, next) => {
     const entries = await prisma.ipWhitelist.findMany({
       where: {
         isActive: true,
-        OR: [
-          { scope: 'GLOBAL' },
-          { scope: 'USER', userId },
-          { scope: 'ORGANIZATION', organizationId },
-        ],
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } },
+        AND: [
+          {
+            OR: [
+              { scope: 'GLOBAL' },
+              { scope: 'USER', userId },
+              { scope: 'ORGANIZATION', organizationId },
+            ],
+          },
+          {
+            OR: [
+              { expiresAt: null },
+              { expiresAt: { gt: new Date() } },
+            ],
+          },
         ],
       },
     });
@@ -713,21 +700,16 @@ router.get('/sessions', async (req, res, next) => {
     const [sessions, total] = await Promise.all([
       prisma.userSession.findMany({
         where,
-        orderBy: { lastActivityAt: 'desc' },
+        orderBy: { lastUsedAt: 'desc' },
         skip: (pageNum - 1) * limitNum,
         take: limitNum,
         select: {
           id: true,
           userId: true,
-          deviceName: true,
-          deviceType: true,
-          browser: true,
-          os: true,
+          userAgent: true,
           ipAddress: true,
-          country: true,
-          city: true,
           isActive: true,
-          lastActivityAt: true,
+          lastUsedAt: true,
           createdAt: true,
           expiresAt: true,
         },

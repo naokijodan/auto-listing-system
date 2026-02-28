@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 109: eBay注文管理 API
  *
@@ -255,7 +255,7 @@ router.get('/', async (req: Request, res: Response) => {
       orders: orders.map((order) => ({
         id: order.id,
         marketplaceOrderId: order.marketplaceOrderId,
-        externalOrderId: order.externalOrderId,
+        externalOrderId: order.marketplaceOrderId,
         buyerUsername: order.buyerUsername,
         buyerName: order.buyerName,
         buyerEmail: order.buyerEmail,
@@ -376,7 +376,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     // 注文メモを取得（メタデータから）
-    const metadata = (order.metadata as Record<string, unknown>) || {};
+    const metadata = (order.rawData as Record<string, unknown>) || {};
     const notes = (metadata.notes as Array<{ note: string; type: string; createdAt: string }>) || [];
 
     res.json({
@@ -519,14 +519,14 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
 
     // メモを追加
     if (notes) {
-      const metadata = (order.metadata as Record<string, unknown>) || {};
-      const existingNotes = (metadata.notes as Array<unknown>) || [];
+      const rawData = (order.rawData as Record<string, unknown>) || {};
+      const existingNotes = (rawData.notes as Array<unknown>) || [];
       existingNotes.push({
         note: notes,
         type: 'STATUS_CHANGE',
         createdAt: new Date().toISOString(),
       });
-      updateData.metadata = { ...metadata, notes: existingNotes };
+      updateData.rawData = { ...rawData, notes: existingNotes };
     }
 
     const updatedOrder = await prisma.order.update({
@@ -588,8 +588,8 @@ router.post('/:id/cancel', async (req: Request, res: Response) => {
     }
 
     // メモを追加
-    const metadata = (order.metadata as Record<string, unknown>) || {};
-    const existingNotes = (metadata.notes as Array<unknown>) || [];
+    const rawData = (order.rawData as Record<string, unknown>) || {};
+    const existingNotes = (rawData.notes as Array<unknown>) || [];
     existingNotes.push({
       note: `キャンセル理由: ${reason}`,
       type: 'CANCELLATION',
@@ -600,7 +600,7 @@ router.post('/:id/cancel', async (req: Request, res: Response) => {
       where: { id },
       data: {
         status: 'CANCELLED',
-        metadata: { ...metadata, notes: existingNotes, cancelReason: reason },
+        rawData: { ...rawData, notes: existingNotes, cancelReason: reason } as any,
       },
     });
 
@@ -681,8 +681,8 @@ router.post('/:id/notes', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    const metadata = (order.metadata as Record<string, unknown>) || {};
-    const existingNotes = (metadata.notes as Array<unknown>) || [];
+    const rawData = (order.rawData as Record<string, unknown>) || {};
+    const existingNotes = (rawData.notes as Array<unknown>) || [];
     existingNotes.push({
       note,
       type,
@@ -692,7 +692,7 @@ router.post('/:id/notes', async (req: Request, res: Response) => {
     const updatedOrder = await prisma.order.update({
       where: { id },
       data: {
-        metadata: { ...metadata, notes: existingNotes },
+        rawData: { ...rawData, notes: existingNotes } as any,
       },
     });
 

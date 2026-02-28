@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { Router } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
@@ -19,7 +19,7 @@ automationRulesRouter.get('/stats', async (_req, res) => {
       prisma.automationRule.count(),
       prisma.automationRule.count({ where: { isActive: true } }),
       prisma.automationExecution.count(),
-      prisma.automationExecution.count({ where: { status: 'COMPLETED' } }),
+      prisma.automationExecution.count({ where: { status: 'SUCCESS' } }),
       prisma.automationExecution.count({ where: { status: 'FAILED' } }),
       prisma.automationExecution.count({
         where: {
@@ -61,7 +61,7 @@ automationRulesRouter.get('/rules', async (req, res) => {
 
     const where: any = {};
     if (active !== undefined) where.isActive = active === 'true';
-    if (trigger) where.trigger = trigger;
+    if (trigger) where.triggerEvent = trigger;
 
     const rules = await prisma.automationRule.findMany({
       where,
@@ -85,35 +85,22 @@ automationRulesRouter.post('/rules', async (req, res) => {
       name,
       description,
       trigger,
-      triggerConfig = {},
       conditions = [],
       conditionLogic = 'AND',
       action,
-      actionConfig = {},
-      scheduleType = 'MANUAL',
-      cronExpression,
-      requiresConfirmation = true,
-      maxExecutionsPerDay = 100,
       cooldownMinutes = 60,
       priority = 0,
     } = req.body;
 
     const rule = await prisma.automationRule.create({
       data: {
-        organizationId: 'default',
         name,
         description,
-        trigger,
-        triggerConfig,
+        triggerEvent: trigger || 'manual',
         conditions,
         conditionLogic,
-        action,
-        actionConfig,
-        scheduleType,
-        cronExpression,
-        requiresConfirmation,
-        maxExecutionsPerDay,
-        cooldownMinutes,
+        actions: action ? [action] : [],
+        cooldownPeriod: cooldownMinutes * 60,
         priority,
         isActive: false, // 初期状態は無効
       },
@@ -206,12 +193,10 @@ automationRulesRouter.post('/rules/:id/test', async (req, res) => {
     // ドライラン実行を作成
     const execution = await prisma.automationExecution.create({
       data: {
-        organizationId: 'default',
         ruleId: id,
-        status: 'RUNNING',
-        triggeredBy: 'USER',
-        triggerReason: 'Manual test (dry run)',
-        isDryRun: true,
+        triggerEvent: 'manual_test',
+        triggerData: { triggeredBy: 'USER', reason: 'Manual test (dry run)', isDryRun: true },
+        status: 'SKIPPED',
         startedAt: new Date(),
       },
     });
@@ -227,22 +212,18 @@ automationRulesRouter.post('/rules/:id/test', async (req, res) => {
       listingId: listing.id,
       title: listing.title,
       wouldApply: true,
-      action: rule.action,
-      reason: `Would ${rule.action} based on trigger ${rule.trigger}`,
+      action: rule.actions,
+      reason: `Would apply actions based on trigger ${rule.triggerEvent}`,
     }));
 
     // 実行完了
     await prisma.automationExecution.update({
       where: { id: execution.id },
       data: {
-        status: 'DRY_RUN_COMPLETED',
+        status: 'SUCCESS',
         completedAt: new Date(),
-        targetCount: mockTargets.length,
-        processedCount: mockTargets.length,
-        successCount: mockTargets.length,
-        targetListings: mockTargets.map((l) => l.id),
-        results,
-        durationMs: Math.floor(Math.random() * 1000) + 500,
+        actionsExecuted: results,
+        duration: Math.floor(Math.random() * 1000) + 500,
       },
     });
 
@@ -285,12 +266,10 @@ automationRulesRouter.post('/rules/:id/execute', async (req, res) => {
     // 実行を作成
     const execution = await prisma.automationExecution.create({
       data: {
-        organizationId: 'default',
         ruleId: id,
-        status: 'RUNNING',
-        triggeredBy: 'USER',
-        triggerReason: 'Manual execution',
-        isDryRun: false,
+        triggerEvent: 'manual_execution',
+        triggerData: { triggeredBy: 'USER', reason: 'Manual execution' },
+        status: 'SUCCESS',
         startedAt: new Date(),
       },
     });
@@ -303,13 +282,10 @@ automationRulesRouter.post('/rules/:id/execute', async (req, res) => {
       await prisma.automationExecution.update({
         where: { id: execution.id },
         data: {
-          status: 'COMPLETED',
+          status: 'SUCCESS',
           completedAt: new Date(),
-          targetCount,
-          processedCount: targetCount,
-          successCount,
-          failedCount: targetCount - successCount,
-          durationMs: Math.floor(Math.random() * 5000) + 1000,
+          actionsExecuted: { targetCount, processedCount: targetCount, successCount, failedCount: targetCount - successCount },
+          duration: Math.floor(Math.random() * 5000) + 1000,
         },
       });
 
@@ -318,9 +294,9 @@ automationRulesRouter.post('/rules/:id/execute', async (req, res) => {
         where: { id },
         data: {
           lastExecutedAt: new Date(),
-          executionCount: { increment: 1 },
-          successCount: { increment: successCount },
-          failureCount: { increment: targetCount - successCount },
+          totalExecutions: { increment: 1 },
+          successfulExecutions: { increment: successCount },
+          failedExecutions: { increment: targetCount - successCount },
         },
       });
 
@@ -350,7 +326,7 @@ automationRulesRouter.get('/executions', async (req, res) => {
         take: parseInt(limit as string),
         skip: parseInt(offset as string),
         include: {
-          rule: { select: { name: true, action: true, trigger: true } },
+          rule: { select: { name: true, actions: true, triggerEvent: true } },
         },
       }),
       prisma.automationExecution.count({ where }),

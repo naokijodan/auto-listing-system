@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -421,7 +421,7 @@ export default function EbayScheduledPage() {
                       </div>
                     )}
                     {s.status === 'FAILED' && s.error && (
-                      <AlertCircle className="h-4 w-4 text-red-500" title={s.error} />
+                      <AlertCircle className="h-4 w-4 text-red-500" />
                     )}
                   </div>
                 </CardContent>

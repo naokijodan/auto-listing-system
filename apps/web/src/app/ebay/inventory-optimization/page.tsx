@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -249,7 +249,7 @@ export default function EbayInventoryOptimizationPage() {
             </Card>
             <Card className="p-3">
               <p className="text-xs text-zinc-500">在庫価値</p>
-              <p className="text-xl font-bold">${(stats?.totalValue / 1000)?.toFixed(0) || 0}K</p>
+              <p className="text-xl font-bold">${((stats?.totalValue ?? 0) / 1000).toFixed(0) || 0}K</p>
             </Card>
             <Card className="p-3">
               <p className="text-xs text-zinc-500">倉庫稼働率</p>
@@ -281,7 +281,7 @@ export default function EbayInventoryOptimizationPage() {
                     <circle cx="64" cy="64" r="56" fill="none" stroke="#e5e7eb" strokeWidth="12" />
                     <circle
                       cx="64" cy="64" r="56" fill="none"
-                      stroke={healthScore?.overall >= 80 ? '#10b981' : healthScore?.overall >= 60 ? '#f59e0b' : '#ef4444'}
+                      stroke={(healthScore?.overall ?? 0) >= 80 ? '#10b981' : (healthScore?.overall ?? 0) >= 60 ? '#f59e0b' : '#ef4444'}
                       strokeWidth="12"
                       strokeDasharray={`${(healthScore?.overall || 0) * 3.52} 352`}
                       strokeLinecap="round"

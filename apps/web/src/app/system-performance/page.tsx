@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -51,9 +51,9 @@ import {
   TrendingDown,
   Globe,
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { API_BASE, postApi, patchApi, deleteApi } from '@/lib/api';
 
-const fetcher = (url: string) => api.get(url).then((res) => res.data);
+const fetcher = (url: string) => fetch(`${API_BASE}${url}`).then((res) => res.json());
 
 export default function SystemPerformancePage() {
   const [period, setPeriod] = useState('24h');
@@ -86,7 +86,7 @@ export default function SystemPerformancePage() {
 
   const handleCreateCdn = async (formData: any) => {
     try {
-      await api.post('/api/system-performance/cdn-configs', formData);
+      await postApi('/api/system-performance/cdn-configs', formData);
       refreshCdnConfigs();
       setIsCreateCdnDialogOpen(false);
     } catch (error) {
@@ -96,7 +96,7 @@ export default function SystemPerformancePage() {
 
   const handleActivateCdn = async (id: string) => {
     try {
-      await api.post(`/api/system-performance/cdn-configs/${id}/activate`);
+      await postApi(`/api/system-performance/cdn-configs/${id}/activate`);
       refreshCdnConfigs();
     } catch (error) {
       console.error('Failed to activate CDN:', error);
@@ -105,7 +105,7 @@ export default function SystemPerformancePage() {
 
   const handleToggleRule = async (id: string) => {
     try {
-      await api.patch(`/api/system-performance/optimization-rules/${id}/toggle`);
+      await patchApi(`/api/system-performance/optimization-rules/${id}/toggle`);
       refreshRules();
     } catch (error) {
       console.error('Failed to toggle rule:', error);
@@ -115,7 +115,7 @@ export default function SystemPerformancePage() {
   const handleDeleteRule = async (id: string) => {
     if (!confirm('このルールを削除しますか？')) return;
     try {
-      await api.delete(`/api/system-performance/optimization-rules/${id}`);
+      await deleteApi(`/api/system-performance/optimization-rules/${id}`);
       refreshRules();
     } catch (error) {
       console.error('Failed to delete rule:', error);

@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -82,7 +82,7 @@ export default function ReturnCenterPage() {
 }
 
 function DashboardTab() {
-  const { data: dashboard, isLoading } = useSWR('/api/ebay-return-center/dashboard', fetcher);
+  const { data: dashboard, isLoading } = useSWR<any>('/api/ebay-return-center/dashboard', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -209,7 +209,7 @@ function DashboardTab() {
 }
 
 function ReturnsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-return-center/returns', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-return-center/returns', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -280,7 +280,7 @@ function ReturnsTab() {
 }
 
 function RefundsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-return-center/refunds', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-return-center/refunds', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -335,7 +335,7 @@ function RefundsTab() {
 }
 
 function DisputesTab() {
-  const { data, isLoading } = useSWR('/api/ebay-return-center/disputes', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-return-center/disputes', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -405,7 +405,7 @@ function DisputesTab() {
 }
 
 function AutomationTab() {
-  const { data, isLoading } = useSWR('/api/ebay-return-center/automation/rules', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-return-center/automation/rules', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -446,7 +446,7 @@ function AutomationTab() {
 }
 
 function SettingsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-return-center/settings/general', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-return-center/settings/general', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;

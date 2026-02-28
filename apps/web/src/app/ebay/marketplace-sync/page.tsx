@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -32,14 +32,14 @@ type TabType = 'dashboard' | 'marketplaces' | 'sync' | 'inventory' | 'prices' | 
 export default function MarketplaceSyncPage() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
 
-  const { data: dashboard } = useSWR('/api/ebay-marketplace-sync/dashboard', fetcher);
-  const { data: marketplaces } = useSWR('/api/ebay-marketplace-sync/marketplaces', fetcher);
-  const { data: syncHistory } = useSWR('/api/ebay-marketplace-sync/sync/history', fetcher);
-  const { data: syncSchedule } = useSWR('/api/ebay-marketplace-sync/sync/schedule', fetcher);
-  const { data: inventoryStatus } = useSWR('/api/ebay-marketplace-sync/inventory/status', fetcher);
-  const { data: pricesStatus } = useSWR('/api/ebay-marketplace-sync/prices/status', fetcher);
-  const { data: errors } = useSWR('/api/ebay-marketplace-sync/errors', fetcher);
-  const { data: settings } = useSWR('/api/ebay-marketplace-sync/settings', fetcher);
+  const { data: dashboard } = useSWR<any>('/api/ebay-marketplace-sync/dashboard', fetcher);
+  const { data: marketplaces } = useSWR<any>('/api/ebay-marketplace-sync/marketplaces', fetcher);
+  const { data: syncHistory } = useSWR<any>('/api/ebay-marketplace-sync/sync/history', fetcher);
+  const { data: syncSchedule } = useSWR<any>('/api/ebay-marketplace-sync/sync/schedule', fetcher);
+  const { data: inventoryStatus } = useSWR<any>('/api/ebay-marketplace-sync/inventory/status', fetcher);
+  const { data: pricesStatus } = useSWR<any>('/api/ebay-marketplace-sync/prices/status', fetcher);
+  const { data: errors } = useSWR<any>('/api/ebay-marketplace-sync/errors', fetcher);
+  const { data: settings } = useSWR<any>('/api/ebay-marketplace-sync/settings', fetcher);
 
   const tabs = [
     { id: 'dashboard' as TabType, label: 'ダッシュボード', icon: Store },

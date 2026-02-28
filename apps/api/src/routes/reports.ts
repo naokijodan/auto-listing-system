@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { Router } from 'express';
 import { prisma, ReportFormat, ReportType, ReportStatus } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
@@ -258,7 +258,7 @@ router.post('/:id/generate', async (req, res, next) => {
       throw new AppError(404, 'Report not found', 'NOT_FOUND');
     }
 
-    if (report.status === 'PROCESSING') {
+    if (report.status === 'GENERATING') {
       throw new AppError(400, 'Report is already being processed', 'ALREADY_PROCESSING');
     }
 

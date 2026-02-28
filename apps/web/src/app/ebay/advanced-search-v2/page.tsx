@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -62,12 +62,12 @@ export default function AdvancedSearchV2Page() {
     fetcher
   );
 
-  const { data: analyticsData } = useSWR(
+  const { data: analyticsData } = useSWR<any>(
     '/api/ebay-advanced-search-v2/analytics',
     fetcher
   );
 
-  const { data: settingsData } = useSWR(
+  const { data: settingsData } = useSWR<any>(
     '/api/ebay-advanced-search-v2/settings',
     fetcher
   );

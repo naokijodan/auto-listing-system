@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -120,7 +120,7 @@ export default function EbayVariationsPage() {
     fetcher
   );
 
-  const { data: matrixData } = useSWR(
+  const { data: matrixData } = useSWR<any>(
     selectedGroupId ? `/api/ebay-variations/matrix/${selectedGroupId}` : null,
     fetcher
   );

@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -90,7 +90,7 @@ export default function SellerPerformancePage() {
 }
 
 function DashboardTab() {
-  const { data, isLoading } = useSWR('/api/ebay-seller-performance/dashboard', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-seller-performance/dashboard', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-amber-500" /></div>;
@@ -181,7 +181,7 @@ function DashboardTab() {
         <Card className="p-4">
           <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">パフォーマンス指標</h3>
           <div className="space-y-4">
-            {Object.entries(dashboard.metrics).map(([key, metric]: [string, { value: number; target: number; status: string }]) => (
+            {Object.entries(dashboard.metrics as Record<string, any>).map(([key, metric]: [string, { value: number; target: number; status: string }]) => (
               <div key={key} className="space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -290,7 +290,7 @@ function DashboardTab() {
 }
 
 function ShippingTab() {
-  const { data, isLoading } = useSWR('/api/ebay-seller-performance/shipping', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-seller-performance/shipping', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-amber-500" /></div>;
@@ -402,8 +402,8 @@ function ShippingTab() {
 }
 
 function CustomerServiceTab() {
-  const { data, isLoading } = useSWR('/api/ebay-seller-performance/customer-service', fetcher);
-  const { data: casesData } = useSWR('/api/ebay-seller-performance/customer-service/cases', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-seller-performance/customer-service', fetcher);
+  const { data: casesData } = useSWR<any>('/api/ebay-seller-performance/customer-service/cases', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-amber-500" /></div>;
@@ -520,7 +520,7 @@ function CustomerServiceTab() {
 }
 
 function FeedbackTab() {
-  const { data, isLoading } = useSWR('/api/ebay-seller-performance/feedback', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-seller-performance/feedback', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-amber-500" /></div>;
@@ -628,7 +628,7 @@ function FeedbackTab() {
 }
 
 function ComplianceTab() {
-  const { data, isLoading } = useSWR('/api/ebay-seller-performance/policy-compliance', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-seller-performance/policy-compliance', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-amber-500" /></div>;
@@ -700,7 +700,7 @@ function ComplianceTab() {
 }
 
 function SettingsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-seller-performance/settings', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-seller-performance/settings', fetcher);
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><RefreshCw className="h-8 w-8 animate-spin text-amber-500" /></div>;

@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -97,22 +97,22 @@ export default function EbaySellerHubPage() {
     fetcher
   );
 
-  const { data: performanceData } = useSWR(
+  const { data: performanceData } = useSWR<any>(
     activeTab === 'performance' ? '/api/ebay-seller-hub/performance' : null,
     fetcher
   );
 
-  const { data: salesData } = useSWR(
+  const { data: salesData } = useSWR<any>(
     activeTab === 'sales' ? '/api/ebay-seller-hub/sales' : null,
     fetcher
   );
 
-  const { data: trafficData } = useSWR(
+  const { data: trafficData } = useSWR<any>(
     activeTab === 'traffic' ? '/api/ebay-seller-hub/traffic' : null,
     fetcher
   );
 
-  const { data: tasksData, mutate: mutateTasks } = useSWR(
+  const { data: tasksData, mutate: mutateTasks } = useSWR<any>(
     activeTab === 'tasks' ? '/api/ebay-seller-hub/tasks' : null,
     fetcher
   );

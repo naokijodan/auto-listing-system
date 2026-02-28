@@ -1,10 +1,10 @@
-// @ts-nocheck
+
 /**
  * Phase 105-C: eBay自動再出品 API
  */
 
 import { Router, Request, Response } from 'express';
-import { PrismaClient, Marketplace } from '@prisma/client';
+import { PrismaClient, Prisma, Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
@@ -324,7 +324,7 @@ router.get('/stats', async (_req: Request, res: Response) => {
           marketplace: Marketplace.EBAY,
           marketplaceData: {
             path: ['relistedAt'],
-            not: null,
+            not: Prisma.AnyNull,
           },
           updatedAt: {
             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),

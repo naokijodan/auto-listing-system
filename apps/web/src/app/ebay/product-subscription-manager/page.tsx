@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -16,7 +16,7 @@ const TABS = [
   { key: 'settings', label: '設定', endpoint: 'settings' },
 ] as const;
 
-export default function Page(): JSX.Element {
+export default function Page(): React.ReactElement {
   const [active, setActive] = useState<typeof TABS[number]['key']>('dashboard');
   const [data, setData] = useState<ApiResponse | null>(null);
   const [error, setError] = useState<string | null>(null);

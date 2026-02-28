@@ -1,17 +1,9 @@
-// @ts-nocheck
+
 'use client';
 
 import useSWR from 'swr';
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from 'shadcn/ui';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const API_PREFIX = '/api/ebay-product-sourcing-assistant/';
 

@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -16,7 +16,7 @@ const TABS: { key: TabKey; label: string; endpoint: string }[] = [
 
 const API_BASE = '/api/ebay-listing-compliance-monitor/';
 
-export default function ListingComplianceMonitorPage(): JSX.Element {
+export default function ListingComplianceMonitorPage(): React.ReactElement {
   const [active, setActive] = useState<TabKey>('dashboard');
   const [data, setData] = useState<unknown>(null);
   const [loading, setLoading] = useState<boolean>(false);

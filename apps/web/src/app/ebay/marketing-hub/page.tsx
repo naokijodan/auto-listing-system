@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -85,7 +85,7 @@ export default function MarketingHubPage() {
 }
 
 function DashboardTab() {
-  const { data: dashboard, isLoading } = useSWR('/api/ebay-marketing-hub/dashboard', fetcher);
+  const { data: dashboard, isLoading } = useSWR<any>('/api/ebay-marketing-hub/dashboard', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -236,7 +236,7 @@ function DashboardTab() {
 }
 
 function CampaignsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-marketing-hub/campaigns', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-marketing-hub/campaigns', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -308,7 +308,7 @@ function CampaignsTab() {
 }
 
 function PromotionsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-marketing-hub/promotions', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-marketing-hub/promotions', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -372,8 +372,8 @@ function PromotionsTab() {
 }
 
 function AdsTab() {
-  const { data: adGroups, isLoading: adGroupsLoading } = useSWR('/api/ebay-marketing-hub/ad-groups', fetcher);
-  const { data: keywords, isLoading: keywordsLoading } = useSWR('/api/ebay-marketing-hub/keywords', fetcher);
+  const { data: adGroups, isLoading: adGroupsLoading } = useSWR<any>('/api/ebay-marketing-hub/ad-groups', fetcher);
+  const { data: keywords, isLoading: keywordsLoading } = useSWR<any>('/api/ebay-marketing-hub/keywords', fetcher);
 
   if (adGroupsLoading || keywordsLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -465,7 +465,7 @@ function AdsTab() {
 }
 
 function AudiencesTab() {
-  const { data, isLoading } = useSWR('/api/ebay-marketing-hub/audiences', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-marketing-hub/audiences', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -516,7 +516,7 @@ function AudiencesTab() {
 }
 
 function SettingsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-marketing-hub/settings/general', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-marketing-hub/settings/general', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;

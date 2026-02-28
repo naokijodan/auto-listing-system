@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -169,7 +169,7 @@ function DashboardTab() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {health?.metrics && Object.entries(health.metrics).map(([key, metric]: [string, { score: number; status: string }]) => (
+          {health?.metrics && Object.entries(health.metrics as Record<string, any>).map(([key, metric]: [string, { score: number; status: string }]) => (
             <div key={key} className="p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium capitalize">{key}</span>

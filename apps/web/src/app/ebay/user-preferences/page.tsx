@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -65,39 +65,39 @@ export default function EbayUserPreferencesPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   // データ取得
-  const { data: uiData, mutate: mutateUI, isLoading: isLoadingUI } = useSWR(
+  const { data: uiData, mutate: mutateUI, isLoading: isLoadingUI } = useSWR<any>(
     activeTab === 'ui' ? '/api/ebay-user-preferences/ui' : null,
     fetcher
   );
 
-  const { data: notificationsData, mutate: mutateNotifications, isLoading: isLoadingNotifications } = useSWR(
+  const { data: notificationsData, mutate: mutateNotifications, isLoading: isLoadingNotifications } = useSWR<any>(
     activeTab === 'notifications' ? '/api/ebay-user-preferences/notifications' : null,
     fetcher
   );
 
-  const { data: defaultsData, isLoading: isLoadingDefaults } = useSWR(
+  const { data: defaultsData, isLoading: isLoadingDefaults } = useSWR<any>(
     activeTab === 'defaults' ? '/api/ebay-user-preferences/defaults' : null,
     fetcher
   );
 
-  const { data: shortcutsData, isLoading: isLoadingShortcuts } = useSWR(
+  const { data: shortcutsData, isLoading: isLoadingShortcuts } = useSWR<any>(
     activeTab === 'shortcuts' ? '/api/ebay-user-preferences/shortcuts' : null,
     fetcher
   );
 
-  const { data: displayData, isLoading: isLoadingDisplay } = useSWR(
+  const { data: displayData, isLoading: isLoadingDisplay } = useSWR<any>(
     activeTab === 'display' ? '/api/ebay-user-preferences/display' : null,
     fetcher
   );
 
-  const { data: privacyData, isLoading: isLoadingPrivacy } = useSWR(
+  const { data: privacyData, isLoading: isLoadingPrivacy } = useSWR<any>(
     activeTab === 'privacy' ? '/api/ebay-user-preferences/privacy' : null,
     fetcher
   );
 
-  const { data: timezonesData } = useSWR('/api/ebay-user-preferences/timezones', fetcher);
-  const { data: languagesData } = useSWR('/api/ebay-user-preferences/languages', fetcher);
-  const { data: currenciesData } = useSWR('/api/ebay-user-preferences/currencies', fetcher);
+  const { data: timezonesData } = useSWR<any>('/api/ebay-user-preferences/timezones', fetcher);
+  const { data: languagesData } = useSWR<any>('/api/ebay-user-preferences/languages', fetcher);
+  const { data: currenciesData } = useSWR<any>('/api/ebay-user-preferences/currencies', fetcher);
 
   // UI設定保存
   const handleSaveUI = async (updates: Partial<UIPreferences>) => {

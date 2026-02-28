@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -139,43 +139,43 @@ export default function EbayProductResearchPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
 
   // Dashboard data
-  const { data: dashboardData, mutate: mutateDashboard } = useSWR('/api/ebay-product-research/dashboard', fetcher);
+  const { data: dashboardData, mutate: mutateDashboard } = useSWR<any>('/api/ebay-product-research/dashboard', fetcher);
 
   // Trending products
-  const { data: trendingData, mutate: mutateTrending } = useSWR(
+  const { data: trendingData, mutate: mutateTrending } = useSWR<any>(
     activeTab === 'trending' ? `/api/ebay-product-research/trending${categoryFilter ? `?category=${categoryFilter}` : ''}` : null,
     fetcher
   );
 
   // Opportunities
-  const { data: opportunitiesData } = useSWR(
+  const { data: opportunitiesData } = useSWR<any>(
     activeTab === 'opportunities' ? '/api/ebay-product-research/opportunities' : null,
     fetcher
   );
 
   // Seasonal
-  const { data: seasonalData } = useSWR(
+  const { data: seasonalData } = useSWR<any>(
     activeTab === 'seasonal' ? '/api/ebay-product-research/seasonal' : null,
     fetcher
   );
 
   // Saved researches
-  const { data: savedData, mutate: mutateSaved } = useSWR(
+  const { data: savedData, mutate: mutateSaved } = useSWR<any>(
     activeTab === 'saved' ? '/api/ebay-product-research/saved' : null,
     fetcher
   );
 
   // Categories
-  const { data: categoriesData } = useSWR('/api/ebay-product-research/categories', fetcher);
+  const { data: categoriesData } = useSWR<any>('/api/ebay-product-research/categories', fetcher);
 
   // Settings
-  const { data: settingsData } = useSWR(
+  const { data: settingsData } = useSWR<any>(
     activeTab === 'settings' ? '/api/ebay-product-research/settings' : null,
     fetcher
   );
 
   // Product analysis
-  const { data: analysisData } = useSWR(
+  const { data: analysisData } = useSWR<any>(
     selectedProduct ? `/api/ebay-product-research/analyze/${selectedProduct.id}` : null,
     fetcher
   );
@@ -193,7 +193,7 @@ export default function EbayProductResearchPage() {
         category: categoryFilter || undefined,
         sortBy: 'trendScore',
       });
-      setSearchResults(response.results || []);
+      setSearchResults((response as any).results || []);
     } catch (error) {
       addToast({ type: 'error', message: '検索に失敗しました' });
     } finally {
@@ -224,7 +224,7 @@ export default function EbayProductResearchPage() {
   const handleRunSavedResearch = async (researchId: string) => {
     try {
       const response = await postApi(`/api/ebay-product-research/saved/${researchId}/run`, {});
-      setSearchResults(response.results || []);
+      setSearchResults((response as any).results || []);
       setActiveTab('search');
       addToast({ type: 'success', message: '調査を実行しました' });
     } catch (error) {

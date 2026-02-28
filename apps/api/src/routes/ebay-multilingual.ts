@@ -1,10 +1,11 @@
-// @ts-nocheck
+
 /**
  * eBay多言語対応API
  * Phase 120: タイトル・説明文の多言語化
  */
 
 import { Router, Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { z } from 'zod';
@@ -50,8 +51,8 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       where: {
         marketplace: 'EBAY',
         marketplaceData: {
-          path: '$.translations',
-          not: 'null',
+          path: ['translations'],
+          not: Prisma.AnyNull,
         },
       },
     });
@@ -88,8 +89,8 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       where: {
         marketplace: 'EBAY',
         marketplaceData: {
-          path: '$.translations',
-          not: 'null',
+          path: ['translations'],
+          not: Prisma.AnyNull,
         },
       },
       take: 10,
@@ -113,7 +114,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
       supportedLanguages: SUPPORTED_LANGUAGES,
       recentTranslations: recentTranslations.map(l => ({
         id: l.id,
-        title: l.product.titleEn || l.product.title,
+        title: l.product?.titleEn || l.product?.title,
         languages: Object.keys((l.marketplaceData as any)?.translations || {}),
         updatedAt: l.updatedAt,
       })),
@@ -265,17 +266,19 @@ Return only a comma-separated list of keywords, nothing else.`,
     const currentData = (listing.marketplaceData || {}) as Record<string, unknown>;
     const existingTranslations = (currentData.translations || {}) as Record<string, unknown>;
 
+    const newMarketplaceData = {
+      ...currentData,
+      translations: {
+        ...existingTranslations,
+        ...translations,
+      },
+      lastTranslatedAt: new Date().toISOString(),
+    };
+
     await prisma.listing.update({
       where: { id: body.listingId },
       data: {
-        marketplaceData: {
-          ...currentData,
-          translations: {
-            ...existingTranslations,
-            ...translations,
-          },
-          lastTranslatedAt: new Date().toISOString(),
-        },
+        marketplaceData: newMarketplaceData as any,
       },
     });
 
@@ -359,14 +362,16 @@ router.post('/translate/bulk', async (req: Request, res: Response) => {
         const currentData = (listing.marketplaceData || {}) as Record<string, unknown>;
         const existingTranslations = (currentData.translations || {}) as Record<string, unknown>;
 
+        const newMarketplaceData = {
+          ...currentData,
+          translations: { ...existingTranslations, ...translations },
+          lastTranslatedAt: new Date().toISOString(),
+        };
+
         await prisma.listing.update({
           where: { id: listingId },
           data: {
-            marketplaceData: {
-              ...currentData,
-              translations: { ...existingTranslations, ...translations },
-              lastTranslatedAt: new Date().toISOString(),
-            },
+            marketplaceData: newMarketplaceData as any,
           },
         });
 
@@ -486,7 +491,7 @@ router.patch('/translations/:listingId', async (req: Request, res: Response) => 
             ...translations,
             [body.language]: updated,
           },
-        },
+        } as any,
       },
     });
 
@@ -533,7 +538,7 @@ router.delete('/translations/:listingId/:language', async (req: Request, res: Re
         marketplaceData: {
           ...currentData,
           translations,
-        },
+        } as any,
       },
     });
 

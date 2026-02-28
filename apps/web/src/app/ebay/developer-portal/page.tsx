@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -33,12 +33,12 @@ export default function DeveloperPortalPage() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [showSecret, setShowSecret] = useState<Record<string, boolean>>({});
 
-  const { data: dashboard } = useSWR('/api/ebay-developer-portal/dashboard', fetcher);
-  const { data: apps } = useSWR('/api/ebay-developer-portal/apps', fetcher);
-  const { data: webhooks } = useSWR('/api/ebay-developer-portal/webhooks', fetcher);
-  const { data: endpoints } = useSWR('/api/ebay-developer-portal/api-docs/endpoints', fetcher);
-  const { data: sandbox } = useSWR('/api/ebay-developer-portal/sandbox', fetcher);
-  const { data: usage } = useSWR('/api/ebay-developer-portal/usage', fetcher);
+  const { data: dashboard } = useSWR<any>('/api/ebay-developer-portal/dashboard', fetcher);
+  const { data: apps } = useSWR<any>('/api/ebay-developer-portal/apps', fetcher);
+  const { data: webhooks } = useSWR<any>('/api/ebay-developer-portal/webhooks', fetcher);
+  const { data: endpoints } = useSWR<any>('/api/ebay-developer-portal/api-docs/endpoints', fetcher);
+  const { data: sandbox } = useSWR<any>('/api/ebay-developer-portal/sandbox', fetcher);
+  const { data: usage } = useSWR<any>('/api/ebay-developer-portal/usage', fetcher);
 
   const tabs = [
     { id: 'dashboard' as TabType, label: 'ダッシュボード', icon: Activity },

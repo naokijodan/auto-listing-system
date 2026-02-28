@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -81,7 +81,7 @@ export default function InventoryForecastingPage() {
 }
 
 function DashboardTab() {
-  const { data: dashboard, isLoading } = useSWR('/api/ebay-inventory-forecasting/dashboard', fetcher);
+  const { data: dashboard, isLoading } = useSWR<any>('/api/ebay-inventory-forecasting/dashboard', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -223,7 +223,7 @@ function DashboardTab() {
 }
 
 function ForecastsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-inventory-forecasting/forecasts', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-inventory-forecasting/forecasts', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -298,7 +298,7 @@ function ForecastsTab() {
 }
 
 function ReorderTab() {
-  const { data, isLoading } = useSWR('/api/ebay-inventory-forecasting/reorder/recommendations', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-inventory-forecasting/reorder/recommendations', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -373,7 +373,7 @@ function ReorderTab() {
 }
 
 function SeasonalityTab() {
-  const { data, isLoading } = useSWR('/api/ebay-inventory-forecasting/seasonality', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-inventory-forecasting/seasonality', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -429,8 +429,8 @@ function SeasonalityTab() {
 }
 
 function OptimizationTab() {
-  const { data: suggestions, isLoading: suggestionsLoading } = useSWR('/api/ebay-inventory-forecasting/optimization/suggestions', fetcher);
-  const { data: abc, isLoading: abcLoading } = useSWR('/api/ebay-inventory-forecasting/optimization/abc-analysis', fetcher);
+  const { data: suggestions, isLoading: suggestionsLoading } = useSWR<any>('/api/ebay-inventory-forecasting/optimization/suggestions', fetcher);
+  const { data: abc, isLoading: abcLoading } = useSWR<any>('/api/ebay-inventory-forecasting/optimization/abc-analysis', fetcher);
 
   if (suggestionsLoading || abcLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -487,8 +487,8 @@ function OptimizationTab() {
 }
 
 function SettingsTab() {
-  const { data: forecastSettings, isLoading: forecastLoading } = useSWR('/api/ebay-inventory-forecasting/settings/forecasting', fetcher);
-  const { data: reorderSettings, isLoading: reorderLoading } = useSWR('/api/ebay-inventory-forecasting/settings/reorder', fetcher);
+  const { data: forecastSettings, isLoading: forecastLoading } = useSWR<any>('/api/ebay-inventory-forecasting/settings/forecasting', fetcher);
+  const { data: reorderSettings, isLoading: reorderLoading } = useSWR<any>('/api/ebay-inventory-forecasting/settings/reorder', fetcher);
 
   if (forecastLoading || reorderLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;

@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -128,12 +128,12 @@ export default function SuppliersPage() {
     fetcher
   );
 
-  const { data: suppliersData, mutate: mutateSuppliers } = useSWR(
+  const { data: suppliersData, mutate: mutateSuppliers } = useSWR<any>(
     `${API_BASE}/suppliers?${selectedStatus !== 'all' ? `status=${selectedStatus}&` : ''}${searchQuery ? `search=${searchQuery}` : ''}`,
     fetcher
   );
 
-  const { data: ordersData, mutate: mutateOrders } = useSWR(
+  const { data: ordersData, mutate: mutateOrders } = useSWR<any>(
     `${API_BASE}/suppliers/orders/list`,
     fetcher
   );

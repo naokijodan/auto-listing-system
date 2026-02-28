@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -533,7 +533,7 @@ function ReportsTab() {
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold mb-4">期間比較</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {comparison?.changes && Object.entries(comparison.changes).map(([key, change]: [string, { amount: number; percent: number }]) => (
+          {comparison?.changes && Object.entries(comparison.changes as Record<string, any>).map(([key, change]: [string, { amount: number; percent: number }]) => (
             <div key={key} className="p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-500 capitalize">{key}</p>
               <p className="text-xl font-bold">

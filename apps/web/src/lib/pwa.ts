@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * PWAユーティリティとフック
  * Phase 75: モバイル最適化 & PWA対応
@@ -146,7 +146,7 @@ export async function subscribeToPushNotifications(
   try {
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey).buffer as ArrayBuffer,
     });
     return subscription;
   } catch (error) {

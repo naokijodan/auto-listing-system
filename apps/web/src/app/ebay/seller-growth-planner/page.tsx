@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client'
 
 import React, { useEffect, useState } from 'react'
@@ -35,7 +35,7 @@ function pathFor(tab: TabKey): string {
   }
 }
 
-export default function SellerGrowthPlannerPage(): JSX.Element {
+export default function SellerGrowthPlannerPage(): React.ReactElement {
   const [active, setActive] = useState<TabKey>('dashboard')
   const [data, setData] = useState<unknown>(null)
   const [loading, setLoading] = useState<boolean>(false)

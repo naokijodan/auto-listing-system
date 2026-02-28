@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -105,12 +105,12 @@ export default function TemplatesV2Page() {
   const [isDuplicating, setIsDuplicating] = useState(false);
 
   // データ取得
-  const { data: dashboardData, mutate: mutateDashboard } = useSWR(
+  const { data: dashboardData, mutate: mutateDashboard } = useSWR<any>(
     '/api/ebay-templates-v2/dashboard',
     fetcher2
   );
 
-  const { data: templatesData, mutate: mutateTemplates } = useSWR(
+  const { data: templatesData, mutate: mutateTemplates } = useSWR<any>(
     `/api/ebay-templates-v2/templates?${new URLSearchParams({
       ...(typeFilter && { type: typeFilter }),
       ...(statusFilter && { status: statusFilter }),
@@ -119,12 +119,12 @@ export default function TemplatesV2Page() {
     fetcher2
   );
 
-  const { data: presetsData } = useSWR(
+  const { data: presetsData } = useSWR<any>(
     '/api/ebay-templates-v2/presets',
     fetcher2
   );
 
-  const { data: statsData } = useSWR(
+  const { data: statsData } = useSWR<any>(
     '/api/ebay-templates-v2/stats',
     fetcher2
   );
@@ -708,7 +708,7 @@ export default function TemplatesV2Page() {
             <Card className="p-4">
               <h3 className="font-medium mb-4">タイプ別パフォーマンス</h3>
               <div className="space-y-3">
-                {Object.entries(statsData.byType).map(([type, data]: [string, { count: number; avgSuccess: number }]) => {
+                {Object.entries(statsData.byType as Record<string, any>).map(([type, data]: [string, { count: number; avgSuccess: number }]) => {
                   const config = typeConfig[type.toUpperCase() as TemplateType];
                   if (!config) return null;
                   const Icon = config.icon;

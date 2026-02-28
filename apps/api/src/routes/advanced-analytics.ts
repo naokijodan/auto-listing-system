@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * 高度な分析API
  * Phase 76: カスタムチャート、ドリルダウン分析、データエクスポート
@@ -67,9 +67,9 @@ router.get('/sales-trend', async (req, res) => {
       if (!grouped[key]) {
         grouped[key] = { revenue: 0, orders: 0, profit: 0 };
       }
-      grouped[key].revenue += sale.revenue;
+      grouped[key].revenue += sale.totalPrice;
       grouped[key].orders += 1;
-      grouped[key].profit += sale.profit;
+      grouped[key].profit += sale.profitJpy || 0;
     }
 
     // 配列に変換
@@ -399,14 +399,14 @@ router.get('/summary', async (req, res) => {
     // 現在期間の統計
     const currentStats = await prisma.sale.aggregate({
       where: { createdAt: { gte: start, lte: end } },
-      _sum: { revenue: true, profit: true, cost: true },
+      _sum: { totalPrice: true, profitJpy: true, costPrice: true },
       _count: { id: true },
     });
 
     // 前期間の統計
     const prevStats = await prisma.sale.aggregate({
       where: { createdAt: { gte: prevStart, lte: prevEnd } },
-      _sum: { revenue: true, profit: true },
+      _sum: { totalPrice: true, profitJpy: true },
       _count: { id: true },
     });
 
@@ -424,10 +424,10 @@ router.get('/summary', async (req, res) => {
     });
 
     // 計算
-    const revenue = currentStats._sum.revenue || 0;
-    const prevRevenue = prevStats._sum.revenue || 0;
-    const profit = currentStats._sum.profit || 0;
-    const cost = currentStats._sum.cost || 0;
+    const revenue = currentStats._sum?.totalPrice || 0;
+    const prevRevenue = prevStats._sum?.totalPrice || 0;
+    const profit = currentStats._sum?.profitJpy || 0;
+    const cost = currentStats._sum?.costPrice || 0;
 
     res.json({
       success: true,
@@ -478,7 +478,7 @@ router.get('/export', async (req, res) => {
         include: {
           order: {
             select: {
-              externalOrderId: true,
+              marketplaceOrderId: true,
               marketplace: true,
               buyerName: true,
             },
@@ -491,7 +491,7 @@ router.get('/export', async (req, res) => {
       data = await prisma.order.findMany({
         where: { orderedAt: { gte: start, lte: end } },
         include: {
-          items: {
+          sales: {
             include: {
               listing: {
                 select: {

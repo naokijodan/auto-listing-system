@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -133,17 +133,17 @@ export default function InventoryForecastPage() {
     fetcher
   );
 
-  const { data: forecastsData, mutate: mutateForecasts } = useSWR(
+  const { data: forecastsData, mutate: mutateForecasts } = useSWR<any>(
     `${API_BASE}/inventory-forecast/forecasts${selectedRisk !== 'all' ? `?risk=${selectedRisk}` : ''}`,
     fetcher
   );
 
-  const { data: rulesData, mutate: mutateRules } = useSWR(
+  const { data: rulesData, mutate: mutateRules } = useSWR<any>(
     `${API_BASE}/inventory-forecast/rules`,
     fetcher
   );
 
-  const { data: ordersData, mutate: mutateOrders } = useSWR(
+  const { data: ordersData, mutate: mutateOrders } = useSWR<any>(
     `${API_BASE}/inventory-forecast/orders?status=PENDING`,
     fetcher
   );

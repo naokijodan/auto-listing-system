@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -67,20 +67,20 @@ export default function EbayApiKeysPage() {
   const [showKey, setShowKey] = useState<string | null>(null);
 
   // データ取得
-  const { data: statsData, mutate: mutateStats } = useSWR('/api/ebay-api-keys/stats', fetcher);
+  const { data: statsData, mutate: mutateStats } = useSWR<any>('/api/ebay-api-keys/stats', fetcher);
   const stats = statsData?.data;
 
-  const { data: keysData, mutate: mutateKeys, isLoading: isLoadingKeys } = useSWR(
+  const { data: keysData, mutate: mutateKeys, isLoading: isLoadingKeys } = useSWR<any>(
     activeTab === 'keys' ? `/api/ebay-api-keys/keys?page=${page}&limit=10` : null,
     fetcher
   );
 
-  const { data: usageData, isLoading: isLoadingUsage } = useSWR(
+  const { data: usageData, isLoading: isLoadingUsage } = useSWR<any>(
     activeTab === 'usage' ? `/api/ebay-api-keys/usage-logs?page=${page}&limit=20` : null,
     fetcher
   );
 
-  const { data: scopesData } = useSWR('/api/ebay-api-keys/scopes', fetcher);
+  const { data: scopesData } = useSWR<any>('/api/ebay-api-keys/scopes', fetcher);
 
   // アクション
   const handleRevokeKey = async (id: string) => {

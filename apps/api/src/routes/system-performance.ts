@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { Router, Request, Response } from 'express';
 import { prisma } from '@rakuda/database';
 import { z } from 'zod';
@@ -25,83 +25,68 @@ router.get('/stats', async (req: Request, res: Response) => {
     const [
       totalRequests,
       avgResponseTime,
-      cacheHitRate,
       errorRate,
       topEndpoints,
       slowestEndpoints,
       statusCodeDistribution,
     ] = await Promise.all([
       prisma.apiUsageLog.count({
-        where: { requestedAt: { gte: since } },
+        where: { createdAt: { gte: since } },
       }),
       prisma.apiUsageLog.aggregate({
-        where: { requestedAt: { gte: since } },
-        _avg: { responseTimeMs: true },
-      }),
-      prisma.apiUsageLog.groupBy({
-        by: ['cacheStatus'],
-        where: { requestedAt: { gte: since } },
-        _count: { id: true },
+        where: { createdAt: { gte: since } },
+        _avg: { responseTime: true },
       }),
       prisma.apiUsageLog.count({
         where: {
-          requestedAt: { gte: since },
+          createdAt: { gte: since },
           statusCode: { gte: 400 },
         },
       }),
       prisma.apiUsageLog.groupBy({
         by: ['endpoint'],
-        where: { requestedAt: { gte: since } },
-        _count: { id: true },
-        _avg: { responseTimeMs: true },
-        orderBy: { _count: { id: 'desc' } },
+        where: { createdAt: { gte: since } },
+        _count: { _all: true },
+        _avg: { responseTime: true },
+        orderBy: { _count: { endpoint: 'desc' } },
         take: 10,
       }),
       prisma.apiUsageLog.groupBy({
         by: ['endpoint'],
-        where: { requestedAt: { gte: since } },
-        _avg: { responseTimeMs: true },
-        _count: { id: true },
-        orderBy: { _avg: { responseTimeMs: 'desc' } },
+        where: { createdAt: { gte: since } },
+        _avg: { responseTime: true },
+        _count: { _all: true },
+        orderBy: { _avg: { responseTime: 'desc' } },
         take: 10,
       }),
       prisma.apiUsageLog.groupBy({
         by: ['statusCode'],
-        where: { requestedAt: { gte: since } },
-        _count: { id: true },
+        where: { createdAt: { gte: since } },
+        _count: { _all: true },
       }),
     ]);
-
-    const cacheStats = cacheHitRate.reduce(
-      (acc, c) => {
-        acc.total += c._count.id;
-        if (c.cacheStatus === 'HIT') acc.hits = c._count.id;
-        return acc;
-      },
-      { total: 0, hits: 0 }
-    );
 
     res.json({
       period,
       totalRequests,
-      avgResponseTimeMs: Math.round(avgResponseTime._avg.responseTimeMs || 0),
-      cacheHitRate: cacheStats.total > 0 ? (cacheStats.hits / cacheStats.total) * 100 : 0,
+      avgResponseTimeMs: Math.round(avgResponseTime._avg?.responseTime || 0),
+      cacheHitRate: 0,
       errorRate: totalRequests > 0 ? (errorRate / totalRequests) * 100 : 0,
       topEndpoints: topEndpoints.map((e) => ({
         endpoint: e.endpoint,
-        count: e._count.id,
-        avgResponseTimeMs: Math.round(e._avg.responseTimeMs || 0),
+        count: e._count._all,
+        avgResponseTimeMs: Math.round(e._avg?.responseTime || 0),
       })),
       slowestEndpoints: slowestEndpoints
-        .filter((e) => e._count.id >= 10)
+        .filter((e) => e._count._all >= 10)
         .map((e) => ({
           endpoint: e.endpoint,
-          avgResponseTimeMs: Math.round(e._avg.responseTimeMs || 0),
-          count: e._count.id,
+          avgResponseTimeMs: Math.round(e._avg?.responseTime || 0),
+          count: e._count._all,
         })),
       statusCodeDistribution: statusCodeDistribution.map((s) => ({
         statusCode: s.statusCode,
-        count: s._count.id,
+        count: s._count._all,
       })),
     });
   } catch (error) {
@@ -127,15 +112,15 @@ router.get('/api-logs', async (req: Request, res: Response) => {
     const where: any = {};
     if (endpoint) where.endpoint = { contains: endpoint };
     if (statusCode) where.statusCode = parseInt(statusCode as string);
-    if (minResponseTime) where.responseTimeMs = { gte: parseInt(minResponseTime as string) };
+    if (minResponseTime) where.responseTime = { gte: parseInt(minResponseTime as string) };
     if (maxResponseTime) {
-      where.responseTimeMs = { ...where.responseTimeMs, lte: parseInt(maxResponseTime as string) };
+      where.responseTime = { ...where.responseTime, lte: parseInt(maxResponseTime as string) };
     }
 
     const [logs, total] = await Promise.all([
       prisma.apiUsageLog.findMany({
         where,
-        orderBy: { requestedAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
         take: parseInt(limit as string),
         skip: parseInt(offset as string),
       }),
@@ -525,18 +510,18 @@ router.get('/realtime', async (_req: Request, res: Response) => {
       activeConnections,
     ] = await Promise.all([
       prisma.apiUsageLog.count({
-        where: { requestedAt: { gte: oneMinuteAgo } },
+        where: { createdAt: { gte: oneMinuteAgo } },
       }),
       prisma.apiUsageLog.count({
-        where: { requestedAt: { gte: fiveMinutesAgo } },
+        where: { createdAt: { gte: fiveMinutesAgo } },
       }),
       prisma.apiUsageLog.aggregate({
-        where: { requestedAt: { gte: oneMinuteAgo } },
-        _avg: { responseTimeMs: true },
+        where: { createdAt: { gte: oneMinuteAgo } },
+        _avg: { responseTime: true },
       }),
       prisma.apiUsageLog.count({
         where: {
-          requestedAt: { gte: oneMinuteAgo },
+          createdAt: { gte: oneMinuteAgo },
           statusCode: { gte: 500 },
         },
       }),
@@ -550,7 +535,7 @@ router.get('/realtime', async (_req: Request, res: Response) => {
       timestamp: now.toISOString(),
       requestsPerMinute: requestsLastMinute,
       requestsPerFiveMinutes: requestsLast5Minutes,
-      avgLatencyMs: Math.round(avgLatencyLastMinute._avg.responseTimeMs || 0),
+      avgLatencyMs: Math.round(avgLatencyLastMinute._avg?.responseTime || 0),
       errorCountLastMinute,
       activeConnections: activeConnections?.value || 0,
       throughput: requestsLastMinute,
@@ -624,9 +609,9 @@ router.get('/cache-stats', async (req: Request, res: Response) => {
     const since = new Date(Date.now() - periodMs);
 
     const cacheByEndpoint = await prisma.apiUsageLog.groupBy({
-      by: ['endpoint', 'cacheStatus'],
-      where: { requestedAt: { gte: since } },
-      _count: { id: true },
+      by: ['endpoint'],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
     });
 
     const endpointCache: Record<string, { hits: number; misses: number; hitRate: number }> = {};
@@ -635,11 +620,7 @@ router.get('/cache-stats', async (req: Request, res: Response) => {
       if (!endpointCache[row.endpoint]) {
         endpointCache[row.endpoint] = { hits: 0, misses: 0, hitRate: 0 };
       }
-      if (row.cacheStatus === 'HIT') {
-        endpointCache[row.endpoint].hits = row._count.id;
-      } else {
-        endpointCache[row.endpoint].misses += row._count.id;
-      }
+      endpointCache[row.endpoint].misses += row._count._all;
     });
 
     Object.keys(endpointCache).forEach((endpoint) => {

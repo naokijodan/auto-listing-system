@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -31,12 +31,12 @@ type TabType = 'dashboard' | 'languages' | 'translations' | 'glossary' | 'qualit
 export default function MultiLanguageV2Page() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
 
-  const { data: dashboard } = useSWR('/api/ebay-multi-language-v2/dashboard', fetcher);
-  const { data: languages } = useSWR('/api/ebay-multi-language-v2/languages', fetcher);
-  const { data: glossary } = useSWR('/api/ebay-multi-language-v2/glossary', fetcher);
-  const { data: quality } = useSWR('/api/ebay-multi-language-v2/quality/report', fetcher);
-  const { data: settings } = useSWR('/api/ebay-multi-language-v2/settings', fetcher);
-  const { data: stats } = useSWR('/api/ebay-multi-language-v2/stats', fetcher);
+  const { data: dashboard } = useSWR<any>('/api/ebay-multi-language-v2/dashboard', fetcher);
+  const { data: languages } = useSWR<any>('/api/ebay-multi-language-v2/languages', fetcher);
+  const { data: glossary } = useSWR<any>('/api/ebay-multi-language-v2/glossary', fetcher);
+  const { data: quality } = useSWR<any>('/api/ebay-multi-language-v2/quality/report', fetcher);
+  const { data: settings } = useSWR<any>('/api/ebay-multi-language-v2/settings', fetcher);
+  const { data: stats } = useSWR<any>('/api/ebay-multi-language-v2/stats', fetcher);
 
   const tabs = [
     { id: 'dashboard' as TabType, label: 'ダッシュボード', icon: BarChart3 },

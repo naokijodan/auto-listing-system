@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 114: eBay競合分析 API
  */
@@ -22,7 +22,7 @@ const competitorQueue = new Queue(QUEUE_NAMES.INVENTORY, { connection: redisConn
 const addCompetitorSchema = z.object({
   listingId: z.string(),
   competitorUrl: z.string().url(),
-  competitorSeller: z.string().optional(),
+  competitorIdentifier: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -38,37 +38,24 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
   try {
     const [
       trackedCount,
-      priceAlerts,
-      avgPriceDiff,
       recentChanges,
       topCompetitors,
     ] = await Promise.all([
       // 追跡中の競合数
       prisma.competitorTracker.count(),
-      // 価格アラート（自社より安い）
-      prisma.competitorTracker.count({
-        where: { priceDiff: { lt: 0 } },
-      }),
-      // 平均価格差
-      prisma.competitorTracker.aggregate({
-        _avg: { priceDiffPercent: true },
-      }),
       // 最近の価格変動
       prisma.competitorPriceLog.findMany({
-        orderBy: { createdAt: 'desc' },
+        orderBy: { recordedAt: 'desc' },
         take: 10,
         include: {
-          competitor: {
-            include: { listing: { include: { product: { select: { title: true } } } } },
-          },
+          tracker: true,
         },
       }),
-      // 頻出競合セラー
+      // 頻出競合マーケットプレイス
       prisma.competitorTracker.groupBy({
-        by: ['competitorSeller'],
-        where: { competitorSeller: { not: null } },
+        by: ['marketplace'],
         _count: true,
-        orderBy: { _count: { competitorSeller: 'desc' } },
+        orderBy: { _count: { marketplace: 'desc' } },
         take: 5,
       }),
     ]);
@@ -76,19 +63,17 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
     res.json({
       summary: {
         trackedCount,
-        priceAlerts,
-        avgPriceDiff: avgPriceDiff._avg.priceDiffPercent?.toFixed(1) || '0',
       },
       recentChanges: recentChanges.map((c: any) => ({
         id: c.id,
-        productTitle: c.competitor?.listing?.product?.title,
-        oldPrice: c.oldPrice,
-        newPrice: c.newPrice,
-        changePercent: ((c.newPrice - c.oldPrice) / c.oldPrice * 100).toFixed(1),
-        createdAt: c.createdAt,
+        competitorIdentifier: c.competitorIdentifier,
+        price: c.price,
+        priceChange: c.priceChange,
+        priceChangePercent: c.priceChangePercent,
+        recordedAt: c.recordedAt,
       })),
       topCompetitors: topCompetitors.map((c: any) => ({
-        seller: c.competitorSeller,
+        marketplace: c.marketplace,
         count: c._count,
       })),
     });
@@ -101,21 +86,21 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
 // 競合一覧
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { listingId, seller, hasAlert, limit = '50', offset = '0' } = req.query;
+    const { listingId, marketplace, limit = '50', offset = '0' } = req.query;
     const where: Record<string, unknown> = {};
     if (listingId) where.listingId = listingId;
-    if (seller) where.competitorSeller = { contains: seller as string, mode: 'insensitive' };
-    if (hasAlert === 'true') where.priceDiff = { lt: 0 };
+    if (marketplace) where.marketplace = { contains: marketplace as string, mode: 'insensitive' };
 
     const [competitors, total] = await Promise.all([
       prisma.competitorTracker.findMany({
         where,
         include: {
-          listing: {
-            include: { product: { select: { title: true, titleEn: true, images: true } } },
+          priceLogs: {
+            orderBy: { recordedAt: 'desc' },
+            take: 1,
           },
         },
-        orderBy: { priceDiffPercent: 'asc' },
+        orderBy: { lastCheckedAt: 'asc' },
         take: parseInt(limit as string, 10),
         skip: parseInt(offset as string, 10),
       }),
@@ -126,16 +111,14 @@ router.get('/', async (req: Request, res: Response) => {
       competitors: competitors.map((c: any) => ({
         id: c.id,
         listingId: c.listingId,
-        productTitle: c.listing?.product?.titleEn || c.listing?.product?.title,
-        productImage: c.listing?.product?.images?.[0],
-        myPrice: c.listing?.listingPrice,
-        competitorPrice: c.competitorPrice,
-        priceDiff: c.priceDiff,
-        priceDiffPercent: c.priceDiffPercent,
-        competitorUrl: c.competitorUrl,
-        competitorSeller: c.competitorSeller,
-        lastChecked: c.lastChecked,
-        isAlert: (c.priceDiff || 0) < 0,
+        competitorIdentifier: c.competitorIdentifier,
+        marketplace: c.marketplace,
+        url: c.url,
+        title: c.title,
+        lastPrice: c.lastPrice,
+        lastCheckedAt: c.lastCheckedAt,
+        isActive: c.isActive,
+        latestPriceLog: c.priceLogs?.[0] || null,
       })),
       total,
     });
@@ -153,7 +136,7 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Validation failed', details: validation.error.errors });
     }
 
-    const { listingId, competitorUrl, competitorSeller, notes } = validation.data;
+    const { listingId, competitorUrl, competitorIdentifier, notes } = validation.data;
 
     const listing = await prisma.listing.findFirst({
       where: { id: listingId, marketplace: Marketplace.EBAY },
@@ -163,12 +146,9 @@ router.post('/', async (req: Request, res: Response) => {
     const competitor = await prisma.competitorTracker.create({
       data: {
         listingId,
-        competitorUrl,
-        competitorSeller,
-        competitorPrice: 0, // 初回チェックで更新
-        priceDiff: 0,
-        priceDiffPercent: 0,
-        metadata: notes ? { notes } : {},
+        competitorIdentifier: competitorIdentifier || competitorUrl,
+        marketplace: 'EBAY',
+        url: competitorUrl,
       },
     });
 
@@ -201,8 +181,8 @@ router.get('/:id/history', async (req: Request, res: Response) => {
     const since = new Date(Date.now() - parseInt(days as string, 10) * 24 * 60 * 60 * 1000);
 
     const history = await prisma.competitorPriceLog.findMany({
-      where: { competitorId: req.params.id, createdAt: { gte: since } },
-      orderBy: { createdAt: 'asc' },
+      where: { trackerId: req.params.id, recordedAt: { gte: since } },
+      orderBy: { recordedAt: 'asc' },
     });
 
     res.json({ history });
@@ -229,30 +209,31 @@ router.post('/check', async (req: Request, res: Response) => {
   }
 });
 
-// 価格アラート一覧
+// 価格アラート一覧(lastPriceが設定されているトラッカーを返す)
 router.get('/alerts', async (_req: Request, res: Response) => {
   try {
     const alerts = await prisma.competitorTracker.findMany({
-      where: { priceDiff: { lt: 0 } },
+      where: { alertOnPriceDrop: true, lastPrice: { not: null } },
       include: {
-        listing: {
-          include: { product: { select: { title: true, titleEn: true } } },
+        priceLogs: {
+          orderBy: { recordedAt: 'desc' },
+          take: 1,
         },
       },
-      orderBy: { priceDiffPercent: 'asc' },
+      orderBy: { lastCheckedAt: 'desc' },
     });
 
     res.json({
       alerts: alerts.map((a: any) => ({
         id: a.id,
         listingId: a.listingId,
-        productTitle: a.listing?.product?.titleEn || a.listing?.product?.title,
-        myPrice: a.listing?.listingPrice,
-        competitorPrice: a.competitorPrice,
-        priceDiff: a.priceDiff,
-        priceDiffPercent: a.priceDiffPercent,
-        competitorSeller: a.competitorSeller,
-        suggestion: a.competitorPrice ? `$${(a.competitorPrice * 0.95).toFixed(2)}に値下げ推奨` : null,
+        competitorIdentifier: a.competitorIdentifier,
+        marketplace: a.marketplace,
+        url: a.url,
+        lastPrice: a.lastPrice,
+        alertThresholdPercent: a.alertThresholdPercent,
+        lastCheckedAt: a.lastCheckedAt,
+        latestPriceLog: a.priceLogs?.[0] || null,
       })),
       count: alerts.length,
     });
@@ -268,19 +249,19 @@ router.get('/stats/summary', async (req: Request, res: Response) => {
     const { days = '30' } = req.query;
     const since = new Date(Date.now() - parseInt(days as string, 10) * 24 * 60 * 60 * 1000);
 
-    const [total, withAlerts, priceChanges, avgDiff] = await Promise.all([
+    const [total, activeTrackers, priceChanges, avgPrice] = await Promise.all([
       prisma.competitorTracker.count(),
-      prisma.competitorTracker.count({ where: { priceDiff: { lt: 0 } } }),
-      prisma.competitorPriceLog.count({ where: { createdAt: { gte: since } } }),
-      prisma.competitorTracker.aggregate({ _avg: { priceDiffPercent: true } }),
+      prisma.competitorTracker.count({ where: { isActive: true } }),
+      prisma.competitorPriceLog.count({ where: { recordedAt: { gte: since } } }),
+      prisma.competitorTracker.aggregate({ _avg: { lastPrice: true } }),
     ]);
 
     res.json({
       summary: {
         totalTracked: total,
-        withAlerts,
+        activeTrackers,
         priceChangesInPeriod: priceChanges,
-        avgPriceDiffPercent: avgDiff._avg.priceDiffPercent?.toFixed(1) || '0',
+        avgLastPrice: avgPrice._avg?.lastPrice?.toFixed(2) || '0',
       },
     });
   } catch (error) {

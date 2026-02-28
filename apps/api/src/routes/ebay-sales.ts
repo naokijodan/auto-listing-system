@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 /**
  * Phase 107: eBay売上レポート API
  *
@@ -51,7 +51,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         _sum: { total: true },
       }),
       // 総販売点数
-      prisma.orderItem.count({
+      prisma.sale.count({
         where: {
           order: {
             marketplace: Marketplace.EBAY,
@@ -78,7 +78,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         },
       }),
       // トップ売上商品
-      prisma.orderItem.groupBy({
+      prisma.sale.groupBy({
         by: ['productId'],
         where: {
           order: {
@@ -87,9 +87,9 @@ router.get('/dashboard', async (req: Request, res: Response) => {
             status: { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'] },
           },
         },
-        _sum: { price: true, quantity: true },
+        _sum: { totalPrice: true, quantity: true },
         _count: true,
-        orderBy: { _sum: { price: 'desc' } },
+        orderBy: { _sum: { totalPrice: 'desc' } },
         take: 10,
       }),
       // 最近の注文
@@ -101,10 +101,8 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         orderBy: { orderedAt: 'desc' },
         take: 10,
         include: {
-          items: {
-            include: {
-              product: { select: { title: true } },
-            },
+          sales: {
+            select: { title: true, totalPrice: true, quantity: true },
           },
         },
       }),
@@ -125,7 +123,7 @@ router.get('/dashboard', async (req: Request, res: Response) => {
     ]);
 
     // トップ商品の詳細を取得
-    const productIds = topSellingProducts.map(p => p.productId);
+    const productIds = topSellingProducts.map((p: any) => p.productId).filter(Boolean) as string[];
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
       select: { id: true, title: true, category: true, brand: true },
@@ -141,30 +139,30 @@ router.get('/dashboard', async (req: Request, res: Response) => {
         avgOrderValue: avgOrderValue._avg.total || 0,
         soldListings,
       },
-      topProducts: topSellingProducts.map(p => ({
+      topProducts: topSellingProducts.map((p: any) => ({
         productId: p.productId,
         title: productMap.get(p.productId)?.title || 'Unknown',
         category: productMap.get(p.productId)?.category,
         brand: productMap.get(p.productId)?.brand,
-        revenue: p._sum.price || 0,
+        revenue: p._sum.totalPrice || 0,
         quantity: p._sum.quantity || 0,
         orderCount: p._count,
       })),
-      recentOrders: recentOrders.map(order => ({
+      recentOrders: recentOrders.map((order: any) => ({
         id: order.id,
-        externalId: order.externalOrderId,
+        externalId: order.marketplaceOrderId,
         amount: order.total,
         currency: order.currency,
         status: order.status,
-        itemCount: order.items.length,
-        items: order.items.slice(0, 3).map(item => ({
-          title: item.product?.title || 'Unknown',
-          price: item.price,
+        itemCount: order.sales.length,
+        items: order.sales.slice(0, 3).map((item: any) => ({
+          title: item.title || 'Unknown',
+          price: item.totalPrice,
           quantity: item.quantity,
         })),
         orderedAt: order.orderedAt,
       })),
-      dailySales: dailySales.map(d => ({
+      dailySales: dailySales.map((d: any) => ({
         date: d.date,
         orders: Number(d.orders),
         revenue: d.revenue,
@@ -233,7 +231,7 @@ router.get('/summary', async (req: Request, res: Response) => {
           soldAt: { gte: since, lte: until },
         },
         _count: true,
-        _sum: { soldPrice: true },
+        _sum: { listingPrice: true },
       }),
       // 前期間の注文（比較用）
       prisma.order.aggregate({
@@ -272,7 +270,7 @@ router.get('/summary', async (req: Request, res: Response) => {
         orders: currentOrders,
         revenue: currentRevenue,
         soldListings: listings._count,
-        listingRevenue: listings._sum.soldPrice || 0,
+        listingRevenue: listings._sum?.listingPrice || 0,
       },
       comparison: {
         orders: prevOrders,
@@ -300,7 +298,7 @@ router.get('/by-category', async (req: Request, res: Response) => {
     const since = new Date(Date.now() - parseInt(days as string, 10) * 24 * 60 * 60 * 1000);
 
     // カテゴリ別の売上を集計
-    const categoryStats = await prisma.orderItem.groupBy({
+    const categoryStats = await prisma.sale.groupBy({
       by: ['productId'],
       where: {
         order: {
@@ -309,12 +307,12 @@ router.get('/by-category', async (req: Request, res: Response) => {
           status: { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'] },
         },
       },
-      _sum: { price: true, quantity: true },
+      _sum: { totalPrice: true, quantity: true },
       _count: true,
     });
 
     // 商品情報を取得
-    const productIds = categoryStats.map(s => s.productId);
+    const productIds = categoryStats.map((s: any) => s.productId).filter(Boolean) as string[];
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
       select: { id: true, category: true },
@@ -324,11 +322,11 @@ router.get('/by-category', async (req: Request, res: Response) => {
     // カテゴリ別に集計
     const byCategory: Record<string, { revenue: number; quantity: number; orders: number }> = {};
     for (const stat of categoryStats) {
-      const category = productCategoryMap.get(stat.productId) || 'その他';
+      const category = (stat.productId ? productCategoryMap.get(stat.productId) : null) || 'その他';
       if (!byCategory[category]) {
         byCategory[category] = { revenue: 0, quantity: 0, orders: 0 };
       }
-      byCategory[category].revenue += stat._sum.price || 0;
+      byCategory[category].revenue += stat._sum.totalPrice || 0;
       byCategory[category].quantity += stat._sum.quantity || 0;
       byCategory[category].orders += stat._count;
     }
@@ -363,7 +361,7 @@ router.get('/top-products', async (req: Request, res: Response) => {
     const { days = '30', limit = '20' } = req.query;
     const since = new Date(Date.now() - parseInt(days as string, 10) * 24 * 60 * 60 * 1000);
 
-    const topProducts = await prisma.orderItem.groupBy({
+    const topProducts = await prisma.sale.groupBy({
       by: ['productId'],
       where: {
         order: {
@@ -372,13 +370,13 @@ router.get('/top-products', async (req: Request, res: Response) => {
           status: { in: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'] },
         },
       },
-      _sum: { price: true, quantity: true },
+      _sum: { totalPrice: true, quantity: true },
       _count: true,
-      orderBy: { _sum: { price: 'desc' } },
+      orderBy: { _sum: { totalPrice: 'desc' } },
       take: parseInt(limit as string, 10),
     });
 
-    const productIds = topProducts.map(p => p.productId);
+    const productIds = topProducts.map((p: any) => p.productId).filter(Boolean) as string[];
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } },
       select: { id: true, title: true, category: true, brand: true, images: true },
@@ -387,7 +385,7 @@ router.get('/top-products', async (req: Request, res: Response) => {
 
     res.json({
       period: { days: parseInt(days as string, 10), since: since.toISOString() },
-      products: topProducts.map((p, index) => {
+      products: topProducts.map((p: any, index: number) => {
         const product = productMap.get(p.productId);
         return {
           rank: index + 1,
@@ -396,10 +394,10 @@ router.get('/top-products', async (req: Request, res: Response) => {
           category: product?.category,
           brand: product?.brand,
           image: product?.images?.[0],
-          revenue: p._sum.price || 0,
+          revenue: p._sum.totalPrice || 0,
           quantity: p._sum.quantity || 0,
           orderCount: p._count,
-          avgPrice: p._sum.quantity ? (p._sum.price || 0) / p._sum.quantity : 0,
+          avgPrice: p._sum.quantity ? (p._sum.totalPrice || 0) / p._sum.quantity : 0,
         };
       }),
     });
@@ -524,7 +522,7 @@ router.get('/profit', async (req: Request, res: Response) => {
     // 利益計算
     const profitAnalysis = soldListings.map(listing => {
       const costPrice = listing.product?.price || 0;
-      const soldPrice = listing.soldPrice || listing.listingPrice;
+      const soldPrice = listing.listingPrice;
       const shippingCost = listing.shippingCost || 0;
       const fees = soldPrice * 0.13; // eBay手数料約13%想定
       const profit = soldPrice - costPrice - shippingCost - fees;

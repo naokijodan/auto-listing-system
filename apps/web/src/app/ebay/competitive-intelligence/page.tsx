@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -80,7 +80,7 @@ export default function CompetitiveIntelligencePage() {
 }
 
 function DashboardTab() {
-  const { data: dashboard, isLoading } = useSWR('/api/ebay-competitive-intelligence/dashboard', fetcher);
+  const { data: dashboard, isLoading } = useSWR<any>('/api/ebay-competitive-intelligence/dashboard', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -205,7 +205,7 @@ function DashboardTab() {
 }
 
 function CompetitorsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-competitive-intelligence/competitors', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-competitive-intelligence/competitors', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -280,7 +280,7 @@ function CompetitorsTab() {
 }
 
 function ProductsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-competitive-intelligence/products', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-competitive-intelligence/products', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -354,7 +354,7 @@ function ProductsTab() {
 }
 
 function AlertsTab() {
-  const { data, isLoading } = useSWR('/api/ebay-competitive-intelligence/alerts', fetcher);
+  const { data, isLoading } = useSWR<any>('/api/ebay-competitive-intelligence/alerts', fetcher);
 
   if (isLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -480,8 +480,8 @@ function ReportsTab() {
 }
 
 function SettingsTab() {
-  const { data: monitoring, isLoading: monitoringLoading } = useSWR('/api/ebay-competitive-intelligence/settings/monitoring', fetcher);
-  const { data: notifications, isLoading: notificationsLoading } = useSWR('/api/ebay-competitive-intelligence/settings/notifications', fetcher);
+  const { data: monitoring, isLoading: monitoringLoading } = useSWR<any>('/api/ebay-competitive-intelligence/settings/monitoring', fetcher);
+  const { data: notifications, isLoading: notificationsLoading } = useSWR<any>('/api/ebay-competitive-intelligence/settings/notifications', fetcher);
 
   if (monitoringLoading || notificationsLoading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;

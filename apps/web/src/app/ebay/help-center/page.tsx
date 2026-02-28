@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 'use client';
 
 import { useState } from 'react';
@@ -95,37 +95,37 @@ export default function EbayHelpCenterPage() {
   const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
 
   // データ取得
-  const { data: overviewData, isLoading: isLoadingOverview } = useSWR(
+  const { data: overviewData, isLoading: isLoadingOverview } = useSWR<any>(
     activeTab === 'home' ? '/api/ebay-help-center/overview' : null,
     fetcher
   );
 
-  const { data: articlesData, isLoading: isLoadingArticles } = useSWR(
+  const { data: articlesData, isLoading: isLoadingArticles } = useSWR<any>(
     activeTab === 'articles' ? '/api/ebay-help-center/articles' : null,
     fetcher
   );
 
-  const { data: faqsData, isLoading: isLoadingFaqs } = useSWR(
+  const { data: faqsData, isLoading: isLoadingFaqs } = useSWR<any>(
     activeTab === 'faqs' ? '/api/ebay-help-center/faqs' : null,
     fetcher
   );
 
-  const { data: tutorialsData, isLoading: isLoadingTutorials } = useSWR(
+  const { data: tutorialsData, isLoading: isLoadingTutorials } = useSWR<any>(
     activeTab === 'tutorials' ? '/api/ebay-help-center/tutorials' : null,
     fetcher
   );
 
-  const { data: ticketsData, mutate: mutateTickets, isLoading: isLoadingTickets } = useSWR(
+  const { data: ticketsData, mutate: mutateTickets, isLoading: isLoadingTickets } = useSWR<any>(
     activeTab === 'tickets' ? '/api/ebay-help-center/tickets' : null,
     fetcher
   );
 
-  const { data: searchResults, isLoading: isSearching } = useSWR(
+  const { data: searchResults, isLoading: isSearching } = useSWR<any>(
     searchQuery.length >= 2 ? `/api/ebay-help-center/search?q=${encodeURIComponent(searchQuery)}` : null,
     fetcher
   );
 
-  const { data: categoriesData } = useSWR('/api/ebay-help-center/categories', fetcher);
+  const { data: categoriesData } = useSWR<any>('/api/ebay-help-center/categories', fetcher);
 
   // アクション
   const handleFeedback = async (type: 'article' | 'faq', id: string, helpful: boolean) => {
