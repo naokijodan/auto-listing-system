@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-02-28 (Shopify接続テスト + OAuthトークン監視 + Prismaスキーマ分割セッション)
+## 最終更新: 2026-02-28 (本番デプロイ完了セッション - Vultr VPS + Coolify)
 
 ---
 
@@ -52,12 +52,32 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - CI/CD・Docker設定のスキーマパス更新済み
 - `prisma generate` 正常動作確認、DB差分なし
 
+### 本番デプロイ 完了（本セッション）
+- **VPS**: Vultr Tokyo (vhf-3c-8gb: 3vCPU/8GB RAM/256GB NVMe, $48/mo)
+  - IP: 45.32.28.61, Ubuntu 24.04 LTS
+- **Coolify**: v4.0.0-beta.463 (http://45.32.28.61:8000)
+- **PostgreSQL 16**: Coolify管理、coolifyネットワーク上
+- **Redis 7.2**: Coolify管理、coolifyネットワーク上
+- **rakuda-api**: Coolify管理でデプロイ成功、Traefik経由でアクセス可能
+  - URL: http://acg8g884ck4woc480cgcg8kk.45.32.28.61.sslip.io
+  - ヘルスチェック: /api/health → {"status":"ok"}
+- **rakuda-worker**: docker run で直接起動（Coolifyビルドエラー回避）
+  - 全スケジューラー正常初期化
+- **Prismaマイグレーション**: 2件適用済み（init + add_oauth_state）
+
+### デプロイ時に修正した問題
+1. Prismaスキーマパス（単一ファイル→フォルダ）
+2. Alpine Linux OpenSSL 3.x互換性（binaryTargets追加）
+3. Dockerネットワーク分離（coolifyネットワーク統一）
+4. エントリポイントのsedパース問題（簡略化で解決）
+5. パッケージmainフィールド（./src/index.ts → ./dist/index.js）
+6. BullMQ Redis接続（ioredisインスタンス→URL直接指定）
+
 ### 3者協議による本番デプロイ設計 完了
 Claude/GPT/Gemini全員一致の方針：
-- **デプロイ先**: Hetzner VPS (CPX31: 4vCPU/8GB RAM) + Coolify + Vercel(Web)
+- **デプロイ先**: Vultr VPS (Tokyo) + Coolify + Vercel(Web)
 - **MVP戦略**: eBay → Shopify の2軸優先。Etsy/Depopは後回し
 - **アーキテクチャ**: モノレポ維持。マイクロサービス化は不要
-- **月額コスト**: 約5,000〜8,000円
 
 ---
 
@@ -107,37 +127,27 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 ## 次のセッションでやること
 
-### Phase 5: 本番デプロイ + チャネル接続
+### Phase 5.5: 残りのデプロイ作業
 
-#### ステップ1: Hetzner VPS契約 + Coolifyインストール（ユーザー操作）
-1. https://www.hetzner.com/cloud でCPX31プラン（4vCPU/8GB RAM, €15/月）を契約
-2. Ubuntu 24.04 LTSを選択
-3. SSH鍵を登録
-4. CoolifyをVPSにインストール: `curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash`
-5. ドメインを取得・DNS設定（Cloudflare推奨）
+#### 1. ドメイン設定 + SSL
+- Cloudflareでドメインを取得・DNS設定
+- Coolifyでカスタムドメインを設定
+- Let's Encrypt SSL証明書設定
 
-#### ステップ2: 本番環境デプロイ（自動実行）
-1. Coolifyで各サービスを設定:
-   - PostgreSQL
-   - Redis
-   - API (Express.js) - Dockerfile
-   - Worker (BullMQ) - Dockerfile
-   - Web (Next.js) - Vercel無料枠にデプロイ
-2. 環境変数をCoolifyに設定（.envから移行）
-3. SSL証明書設定（Let's Encrypt）
-4. Prisma migrate deploy実行
+#### 2. Web (Next.js) デプロイ
+- Vercel無料枠にデプロイ（推奨）
+- または Coolify上でビルド
 
-#### ステップ3: チャネル接続（自動実行）
-1. ~~Shopify接続テスト~~ ✅ 完了
-2. Etsy OAuth実行（本番URL使用）: `npx tsx scripts/setup-etsy-credentials.ts`
-3. eBay本番環境設定（Sandbox → Production切替）
-4. Discord Webhook URLを.envに設定してトークン監視通知を有効化
+#### 3. チャネル接続
+- Etsy OAuth実行（本番URL使用）: `npx tsx scripts/setup-etsy-credentials.ts`
+- eBay本番環境設定（Sandbox → Production切替）
+- Discord Webhook URLを環境変数に設定してトークン監視通知を有効化
 
-#### ~~ステップ4: OAuthトークン監視ジョブ実装~~ ✅ 完了
-- eBay/Joom/Etsy 全対応済み（毎時チェック、1時間前自動リフレッシュ、24時間前警告通知）
-
-#### ~~ステップ5: Prismaスキーマ分割~~ ✅ 完了
-- 13ファイルに分割済み（prismaSchemaFolder機能）
+#### 4. 運用整備
+- Workerのsystemdサービス化またはCoolify管理への移行
+- バックアップ設定（PostgreSQL）
+- モニタリング設定（Coolify + 外部サービス）
+- Coolify APIのヘルスチェック再有効化
 
 ---
 
