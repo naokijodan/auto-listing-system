@@ -1050,10 +1050,9 @@ router.post('/bulk/publish', async (req, res, next) => {
       // 既存の出品がなければ作成
       const existingListing = await prisma.listing.findUnique({
         where: {
-          productId_marketplace_credentialId: {
+          productId_marketplace: {
             productId: product.id,
             marketplace: marketplace as any,
-            credentialId: null as unknown as string,
           },
         },
       });

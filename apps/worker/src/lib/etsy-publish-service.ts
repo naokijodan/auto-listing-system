@@ -169,40 +169,46 @@ export class EtsyPublishService {
       await etsyApi.publishListing(createdId);
 
       // 4. Listing テーブルにも記録
-      const listing = await prisma.listing.upsert({
-        where: {
-          productId_marketplace_credentialId: { productId: etsyListing.productId, marketplace: 'ETSY', credentialId: null as unknown as string },
-        },
-        create: {
-          productId: etsyListing.productId,
-          marketplace: 'ETSY',
-          marketplaceListingId: String(createdId),
-          listingPrice: priceUsd,
-          currency: 'USD',
-          status: 'ACTIVE',
-          listedAt: new Date(),
-          marketplaceData: {
-            title,
-            description,
-            taxonomyId,
-            shippingProfileId,
-            images: optimizedImages.slice(0, 10),
-          },
-        },
-        update: {
-          marketplaceListingId: String(createdId),
-          status: 'ACTIVE',
-          listingPrice: priceUsd,
-          listedAt: new Date(),
-          marketplaceData: {
-            title,
-            description,
-            taxonomyId,
-            shippingProfileId,
-            images: optimizedImages.slice(0, 10),
-          },
-        },
+      let listing = await prisma.listing.findFirst({
+        where: { productId: etsyListing.productId, marketplace: 'ETSY' },
       });
+      if (listing) {
+        listing = await prisma.listing.update({
+          where: { id: listing.id },
+          data: {
+            marketplaceListingId: String(createdId),
+            status: 'ACTIVE',
+            listingPrice: priceUsd,
+            listedAt: new Date(),
+            marketplaceData: {
+              title,
+              description,
+              taxonomyId,
+              shippingProfileId,
+              images: optimizedImages.slice(0, 10),
+            },
+          },
+        });
+      } else {
+        listing = await prisma.listing.create({
+          data: {
+            productId: etsyListing.productId,
+            marketplace: 'ETSY',
+            marketplaceListingId: String(createdId),
+            listingPrice: priceUsd,
+            currency: 'USD',
+            status: 'ACTIVE',
+            listedAt: new Date(),
+            marketplaceData: {
+              title,
+              description,
+              taxonomyId,
+              shippingProfileId,
+              images: optimizedImages.slice(0, 10),
+            },
+          },
+        });
+      }
 
       // 5. MarketplaceSyncState を SYNCED
       await prisma.marketplaceSyncState.upsert({

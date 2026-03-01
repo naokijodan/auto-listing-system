@@ -147,10 +147,15 @@ export class ShopifyPublishService {
     };
 
     try {
-      await prisma.listing.update({
-        where: { productId_marketplace: { productId: product.id, marketplace: 'SHOPIFY' } } as any,
-        data: { status: 'PUBLISHING' },
+      const listingToPublish = await prisma.listing.findFirst({
+        where: { productId: product.id, marketplace: 'SHOPIFY' },
       });
+      if (listingToPublish) {
+        await prisma.listing.update({
+          where: { id: listingToPublish.id },
+          data: { status: 'PUBLISHING' },
+        });
+      }
 
       const resp = await shopifyApi.createProduct(data);
       const created = (resp?.product || resp) as any;
@@ -240,10 +245,15 @@ export class ShopifyPublishService {
       log.info({ type: 'shopify_publish_success', productId, variantId });
       return { success: true, shopifyProductId: productId, shopifyVariantId: variantId || undefined, productUrl };
     } catch (error: any) {
-      await prisma.listing.update({
-        where: { productId_marketplace: { productId: product.id, marketplace: 'SHOPIFY' } } as any,
-        data: { status: 'ERROR', errorMessage: error.message },
+      const listingToError = await prisma.listing.findFirst({
+        where: { productId: product.id, marketplace: 'SHOPIFY' },
       });
+      if (listingToError) {
+        await prisma.listing.update({
+          where: { id: listingToError.id },
+          data: { status: 'ERROR', errorMessage: error.message },
+        });
+      }
       log.error({ type: 'shopify_publish_failed', productId: product.id, error: error.message });
       return { success: false, error: error.message };
     }
