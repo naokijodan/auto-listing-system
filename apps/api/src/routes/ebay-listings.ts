@@ -10,7 +10,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient, ListingStatus, Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
-import { addEbayBatchPublishJob, addEbayPriceSyncJob, getEbayPublishQueueStats, QUEUE_NAMES } from '@rakuda/queue';
+import { addEbayBatchPublishJob, addEbayPriceSyncJob, getEbayPublishQueueStats, QUEUE_NAMES, addEbayPublishJob } from '@rakuda/queue';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -30,16 +30,20 @@ function getApiUrl(): string {
 }
 
 // eBayアクセストークン取得
-async function getAccessToken(): Promise<string | null> {
+async function getAccessToken(credentialId?: string): Promise<string | null> {
   try {
-    const credential = await prisma.marketplaceCredential.findFirst({
-      where: {
-        marketplace: 'EBAY',
-        isActive: true,
-        tokenExpiresAt: { gt: new Date() },
-      },
-      orderBy: { updatedAt: 'desc' },
-    });
+    const credential = credentialId
+      ? await prisma.marketplaceCredential.findUnique({
+          where: { id: credentialId },
+        })
+      : await prisma.marketplaceCredential.findFirst({
+          where: {
+            marketplace: 'EBAY',
+            isActive: true,
+            tokenExpiresAt: { gt: new Date() },
+          },
+          orderBy: { updatedAt: 'desc' },
+        });
 
     const credentials = credential?.credentials as { accessToken?: string } | undefined;
     return credentials?.accessToken || null;
@@ -62,12 +66,14 @@ router.get('/listings', async (req: Request, res: Response) => {
       status,
       limit = '50',
       offset = '0',
+      credentialId,
     } = req.query;
 
     const where: Record<string, unknown> = {
       marketplace: Marketplace.EBAY,
+      ...(status && { status: status as ListingStatus }),
+      ...(credentialId && { credentialId: credentialId as string }),
     };
-    if (status) where.status = status as ListingStatus;
 
     const [listings, total] = await Promise.all([
       prisma.listing.findMany({
@@ -426,6 +432,7 @@ router.post('/listings/:id/preview', async (req: Request, res: Response) => {
 router.post('/listings/:id/publish', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { credentialId } = req.body as { credentialId?: string };
 
     const listing = await prisma.listing.findFirst({
       where: { id, marketplace: Marketplace.EBAY },
@@ -448,7 +455,7 @@ router.post('/listings/:id/publish', async (req: Request, res: Response) => {
 
     // 出品ジョブをキューに追加（バッチサイズ1として実行）
     const batchId = `single-${Date.now()}`;
-    const jobId = await addEbayBatchPublishJob(batchId, [id]);
+    const jobId = await addEbayPublishJob('batch-publish', { batchId, listingIds: [id], credentialId } as any);
 
     log.info({
       type: 'ebay_publish_job_created',
@@ -473,7 +480,7 @@ router.post('/listings/:id/publish', async (req: Request, res: Response) => {
  */
 router.post('/batch-publish', async (req: Request, res: Response) => {
   try {
-    const { listingIds: inputListingIds, dryRun = false } = req.body;
+    const { listingIds: inputListingIds, credentialId, dryRun = false } = req.body as { listingIds: string[]; credentialId?: string; dryRun?: boolean };
 
     if (!Array.isArray(inputListingIds) || inputListingIds.length === 0) {
       return res.status(400).json({ error: 'listingIds array is required' });
@@ -509,7 +516,7 @@ router.post('/batch-publish', async (req: Request, res: Response) => {
     // 一括出品ジョブを作成
     const batchId = `batch-${Date.now()}`;
     const listingIds = listings.map(l => l.id);
-    const jobId = await addEbayBatchPublishJob(batchId, listingIds);
+    const jobId = await addEbayPublishJob('batch-publish', { batchId, listingIds, credentialId } as any);
 
     log.info({
       type: 'ebay_batch_publish_started',

@@ -1,0 +1,282 @@
+## Task: eBayマルチアカウント対応 - API認証・出品ルート変更
+
+### 目的
+OAuth認証フローをマルチアカウント対応にし、出品APIにcredentialIdパラメータを追加する。
+
+### 変更対象ファイル
+1. `apps/api/src/routes/ebay-auth.ts`
+2. `apps/api/src/routes/ebay-listings.ts`
+
+---
+
+### 1. ebay-auth.ts の変更
+
+#### 1a. OAuth認証開始にaccountNameパラメータを追加
+
+現在（35行目）:
+```typescript
+router.get('/auth', (req: Request, res: Response) => {
+  if (!EBAY_CONFIG.clientId) {
+    res.status(500).json({ error: 'eBay client ID not configured' });
+    return;
+  }
+
+  const authUrl = new URL(`${getBaseUrl()}/oauth2/authorize`);
+  authUrl.searchParams.set('client_id', EBAY_CONFIG.clientId);
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('redirect_uri', EBAY_CONFIG.redirectUri);
+  authUrl.searchParams.set('scope', EBAY_CONFIG.scope);
+  authUrl.searchParams.set('state', 'ebay_oauth_state');
+```
+
+変更後:
+```typescript
+router.get('/auth', (req: Request, res: Response) => {
+  if (!EBAY_CONFIG.clientId) {
+    res.status(500).json({ error: 'eBay client ID not configured' });
+    return;
+  }
+
+  // マルチアカウント対応: accountName を state に含める
+  const accountName = (req.query.accountName as string) || 'default';
+  const stateData = JSON.stringify({ accountName });
+  const stateEncoded = Buffer.from(stateData).toString('base64');
+
+  const authUrl = new URL(`${getBaseUrl()}/oauth2/authorize`);
+  authUrl.searchParams.set('client_id', EBAY_CONFIG.clientId);
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('redirect_uri', EBAY_CONFIG.redirectUri);
+  authUrl.searchParams.set('scope', EBAY_CONFIG.scope);
+  authUrl.searchParams.set('state', stateEncoded);
+```
+
+#### 1b. コールバックでaccountNameを復元
+
+現在のコールバック（53行目〜）を変更:
+
+```typescript
+router.get('/callback', async (req: Request, res: Response, next: NextFunction) => {
+  const { code, error, state } = req.query;
+```
+
+stateからaccountNameを復元:
+```typescript
+  // accountName を state から復元
+  let accountName = 'default';
+  if (state && typeof state === 'string') {
+    try {
+      const stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
+      accountName = stateData.accountName || 'default';
+    } catch {
+      // state がパースできない場合はデフォルト
+    }
+  }
+```
+
+upsertの where を accountName に変更（98行目あたり）:
+
+現在:
+```typescript
+    await prisma.marketplaceCredential.upsert({
+      where: {
+        marketplace_name: {
+          marketplace: 'EBAY',
+          name: 'default',
+        },
+      },
+```
+
+変更後:
+```typescript
+    await prisma.marketplaceCredential.upsert({
+      where: {
+        marketplace_name: {
+          marketplace: 'EBAY',
+          name: accountName,
+        },
+      },
+```
+
+createの中のnameも変更:
+```typescript
+      create: {
+        marketplace: 'EBAY',
+        name: accountName,
+```
+
+リダイレクト先にaccountName情報を追加:
+```typescript
+    res.redirect(`${frontendUrl}/settings?ebay=connected&account=${encodeURIComponent(accountName)}`);
+```
+
+#### 1c. トークンリフレッシュをcredentialId対応に
+
+現在（142行目）:
+```typescript
+router.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: { marketplace: 'EBAY', isActive: true },
+    });
+```
+
+変更後:
+```typescript
+router.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { credentialId } = req.body;
+
+    const credential = credentialId
+      ? await prisma.marketplaceCredential.findUnique({
+          where: { id: credentialId },
+        })
+      : await prisma.marketplaceCredential.findFirst({
+          where: { marketplace: 'EBAY', isActive: true },
+        });
+```
+
+#### 1d. 認証状態を全アカウント返す新エンドポイント追加
+
+既存の `/status` の後ろに新エンドポイントを追加:
+
+```typescript
+// 全eBayアカウント一覧
+router.get('/accounts', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const credentials = await prisma.marketplaceCredential.findMany({
+      where: { marketplace: 'EBAY' },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const accounts = credentials.map(cred => {
+      const creds = cred.credentials as Record<string, unknown>;
+      const isExpired = cred.tokenExpiresAt ? cred.tokenExpiresAt < new Date() : false;
+      return {
+        id: cred.id,
+        name: cred.name,
+        isActive: cred.isActive,
+        sandbox: creds?.sandbox || false,
+        tokenExpiresAt: cred.tokenExpiresAt,
+        isExpired,
+        needsRefresh: isExpired,
+        createdAt: cred.createdAt,
+      };
+    });
+
+    res.json({ accounts });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// アカウント削除（無効化）
+router.delete('/accounts/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    await prisma.marketplaceCredential.update({
+      where: { id },
+      data: { isActive: false },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+```
+
+---
+
+### 2. ebay-listings.ts の変更
+
+#### 2a. getAccessToken関数をcredentialId対応に
+
+現在（33行目）:
+```typescript
+async function getAccessToken(): Promise<string | null> {
+  try {
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: {
+        marketplace: 'EBAY',
+        isActive: true,
+        tokenExpiresAt: { gt: new Date() },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const credentials = credential?.credentials as { accessToken?: string } | undefined;
+    return credentials?.accessToken || null;
+  } catch (error) {
+    log.error({ type: 'get_access_token_error', error });
+    return null;
+  }
+}
+```
+
+変更後:
+```typescript
+async function getAccessToken(credentialId?: string): Promise<string | null> {
+  try {
+    const credential = credentialId
+      ? await prisma.marketplaceCredential.findUnique({
+          where: { id: credentialId },
+        })
+      : await prisma.marketplaceCredential.findFirst({
+          where: {
+            marketplace: 'EBAY',
+            isActive: true,
+            tokenExpiresAt: { gt: new Date() },
+          },
+          orderBy: { updatedAt: 'desc' },
+        });
+
+    const credentials = credential?.credentials as { accessToken?: string } | undefined;
+    return credentials?.accessToken || null;
+  } catch (error) {
+    log.error({ type: 'get_access_token_error', error });
+    return null;
+  }
+}
+```
+
+#### 2b. 出品一覧にcredentialIdフィルターを追加
+
+GET /listings のハンドラ内の where 条件に credentialId フィルターを追加:
+
+```typescript
+router.get('/listings', async (req: Request, res: Response) => {
+  try {
+    const { status, limit = '50', offset = '0', credentialId } = req.query;
+```
+
+where条件に追加:
+```typescript
+    const where: any = {
+      marketplace: Marketplace.EBAY,
+      ...(status && { status: status as ListingStatus }),
+      ...(credentialId && { credentialId: credentialId as string }),
+    };
+```
+
+#### 2c. 出品時にcredentialIdを含める
+
+POSTやバッチ出品のエンドポイントで、request bodyからcredentialIdを受け取って
+addEbayPublishJobに渡すように変更する。
+
+バッチ出品（addEbayBatchPublishJob呼び出し箇所）では:
+```typescript
+const { listingIds, credentialId, dryRun } = req.body;
+// ...
+await addEbayBatchPublishJob(batchId, listingIds);
+```
+ここを:
+```typescript
+await addEbayPublishJob('batch-publish', { batchId, listingIds, credentialId });
+```
+に変更する。
+
+---
+
+### 注意事項
+- 既存の動作を壊さない。credentialId が未指定の場合はデフォルトアカウントが使われる
+- テストファイルは変更しない
+- importの追加が必要な場合は追加する

@@ -1,0 +1,98 @@
+## Task: eBayマルチアカウント対応 - Queue + Worker Job変更
+
+### 目的
+BullMQジョブデータにcredentialIdを追加し、ebay-publish-workerでcredentialIdを受け渡す。
+
+### 変更対象ファイル
+1. `packages/queue/src/index.ts`
+2. `apps/worker/src/jobs/ebay-publish-worker.ts`
+
+---
+
+### 1. packages/queue/src/index.ts の変更
+
+#### 1a. EbayPublishJobData に credentialId を追加
+
+現在（63行目あたり）:
+```typescript
+export interface EbayPublishJobData {
+  type: EbayPublishJobType;
+  listingId?: string;
+  batchId?: string;
+  listingIds?: string[];
+  options?: {
+    dryRun?: boolean;
+    concurrency?: number;
+    priceChangeThreshold?: number;
+    maxListings?: number;
+    syncToMarketplace?: boolean;
+  };
+}
+```
+
+変更後:
+```typescript
+export interface EbayPublishJobData {
+  type: EbayPublishJobType;
+  listingId?: string;
+  batchId?: string;
+  listingIds?: string[];
+  credentialId?: string; // マルチアカウント対応
+  options?: {
+    dryRun?: boolean;
+    concurrency?: number;
+    priceChangeThreshold?: number;
+    maxListings?: number;
+    syncToMarketplace?: boolean;
+  };
+}
+```
+
+これだけで十分。addEbayPublishJob関数はOMIT<EbayPublishJobData, 'type'>のdata引数を受け取るので、
+呼び出し側でcredentialIdを渡せば自動的にジョブデータに含まれる。
+
+---
+
+### 2. apps/worker/src/jobs/ebay-publish-worker.ts の変更
+
+#### 2a. publish ジョブで credentialId を ebayPublishService に渡す
+
+現在:
+```typescript
+case 'publish': {
+  const productId: string = job.data.productId;
+  // EnrichmentTaskを取得
+  const task = await prisma.enrichmentTask.findUnique({ where: { productId } });
+  if (!task) {
+    throw new Error(`No enrichment task for product: ${productId}`);
+  }
+  // 3段階実行
+  const listingId = await ebayPublishService.createEbayListing(task.id);
+  await ebayPublishService.processImagesForListing(listingId);
+  return await ebayPublishService.publishToEbay(listingId);
+}
+```
+
+変更後:
+```typescript
+case 'publish': {
+  const productId: string = job.data.productId;
+  const credentialId: string | undefined = job.data.credentialId;
+  // EnrichmentTaskを取得
+  const task = await prisma.enrichmentTask.findUnique({ where: { productId } });
+  if (!task) {
+    throw new Error(`No enrichment task for product: ${productId}`);
+  }
+  // 3段階実行
+  const listingId = await ebayPublishService.createEbayListing(task.id, credentialId);
+  await ebayPublishService.processImagesForListing(listingId);
+  return await ebayPublishService.publishToEbay(listingId, credentialId);
+}
+```
+
+---
+
+### 注意事項
+- 既存の動作を壊さない。credentialId が undefined の場合はデフォルトアカウントが使われる
+- 他のジョブタイプ（sync-orders, fulfill-order等）は今回は変更しない
+- テストファイルは変更しない

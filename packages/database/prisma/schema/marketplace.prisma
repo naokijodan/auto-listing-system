@@ -18,6 +18,10 @@ model MarketplaceCredential {
   refreshTokenExpiresAt DateTime?
 
   isActive  Boolean  @default(true)
+  
+  // リレーション
+  listings Listing[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -177,4 +181,3 @@ enum InventoryMode {
   DROPSHIP
   HYBRID
 }
-

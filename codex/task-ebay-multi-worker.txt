@@ -1,0 +1,281 @@
+## Task: eBayマルチアカウント対応 - Worker側コード変更
+
+### 目的
+EbayApiClient と EbayPublishService を credentialId パラメータ対応にする。
+
+### 変更対象ファイル
+1. `apps/worker/src/lib/ebay-api.ts`
+2. `apps/worker/src/lib/ebay-publish-service.ts`
+
+---
+
+### 1. ebay-api.ts の変更
+
+#### 1a. EbayApiClient のコンストラクタに credentialId を追加
+
+現在:
+```typescript
+export class EbayApiClient {
+  private accessToken: string | null = null;
+  private tokenExpiresAt: Date | null = null;
+
+  constructor() {}
+```
+
+変更後:
+```typescript
+export class EbayApiClient {
+  private accessToken: string | null = null;
+  private tokenExpiresAt: Date | null = null;
+  private credentialId: string | null = null;
+
+  constructor(credentialId?: string) {
+    this.credentialId = credentialId || null;
+  }
+```
+
+#### 1b. getCredentials() を credentialId 対応に変更
+
+現在:
+```typescript
+private async getCredentials() {
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: {
+        marketplace: 'EBAY',
+        isActive: true,
+      },
+    });
+```
+
+変更後:
+```typescript
+private async getCredentials() {
+    const credential = this.credentialId
+      ? await prisma.marketplaceCredential.findUnique({
+          where: { id: this.credentialId },
+        })
+      : await prisma.marketplaceCredential.findFirst({
+          where: {
+            marketplace: 'EBAY',
+            isActive: true,
+          },
+        });
+```
+
+#### 1c. refreshAccessToken() の DB更新を credentialId 対応に
+
+現在（162-174行あたり）:
+```typescript
+await prisma.marketplaceCredential.updateMany({
+  where: {
+    marketplace: 'EBAY',
+    isActive: true,
+  },
+  data: {
+    credentials: {
+      ...credentials,
+      accessToken: data.access_token,
+    },
+    tokenExpiresAt: this.tokenExpiresAt,
+  },
+});
+```
+
+変更後:
+```typescript
+if (this.credentialId) {
+  await prisma.marketplaceCredential.update({
+    where: { id: this.credentialId },
+    data: {
+      credentials: {
+        ...credentials,
+        accessToken: data.access_token,
+      },
+      tokenExpiresAt: this.tokenExpiresAt,
+    },
+  });
+} else {
+  await prisma.marketplaceCredential.updateMany({
+    where: {
+      marketplace: 'EBAY',
+      isActive: true,
+    },
+    data: {
+      credentials: {
+        ...credentials,
+        accessToken: data.access_token,
+      },
+      tokenExpiresAt: this.tokenExpiresAt,
+    },
+  });
+}
+```
+
+#### 1d. シングルトンの維持 + ファクトリ関数追加
+
+現在（ファイル末尾あたり 1252-1253行）:
+```typescript
+// シングルトンインスタンス
+export const ebayApi = new EbayApiClient();
+```
+
+変更後:
+```typescript
+// デフォルトインスタンス（レガシー互換）
+export const ebayApi = new EbayApiClient();
+
+// 特定アカウント用のインスタンスを作成
+export function createEbayApiClient(credentialId: string): EbayApiClient {
+  return new EbayApiClient(credentialId);
+}
+```
+
+---
+
+### 2. ebay-publish-service.ts の変更
+
+#### 2a. EbayPublishService のメソッドに credentialId パラメータ追加
+
+`createEbayListing` メソッド（17行目あたり）:
+
+現在:
+```typescript
+async createEbayListing(enrichmentTaskId: string): Promise<string> {
+```
+
+変更後:
+```typescript
+async createEbayListing(enrichmentTaskId: string, credentialId?: string): Promise<string> {
+```
+
+upsertの中で、credentialId を含める:
+
+現在:
+```typescript
+const listing = await prisma.listing.upsert({
+  where: {
+    productId_marketplace: {
+      productId: task.productId,
+      marketplace: 'EBAY',
+    },
+  },
+  create: {
+    productId: task.productId,
+    marketplace: 'EBAY',
+    status: 'DRAFT',
+    listingPrice: initialPriceUsd,
+    currency: 'USD',
+    marketplaceData: {},
+  },
+```
+
+変更後:
+```typescript
+const listing = await prisma.listing.upsert({
+  where: {
+    productId_marketplace_credentialId: {
+      productId: task.productId,
+      marketplace: 'EBAY',
+      credentialId: credentialId || null,
+    },
+  },
+  create: {
+    productId: task.productId,
+    marketplace: 'EBAY',
+    credentialId: credentialId || null,
+    status: 'DRAFT',
+    listingPrice: initialPriceUsd,
+    currency: 'USD',
+    marketplaceData: {},
+  },
+```
+
+注意: Prismaのupsertで null を使うには where の unique constraint で null をサポートする必要がある。もし Prisma が null を unique where で受け付けない場合は、credentialId が undefined のときは旧来の productId_marketplace を使い、credentialId がある時は findFirst + create/update パターンに変える。
+
+安全なアプローチ:
+```typescript
+let listing;
+if (credentialId) {
+  listing = await prisma.listing.findFirst({
+    where: {
+      productId: task.productId,
+      marketplace: 'EBAY',
+      credentialId,
+    },
+  });
+  if (listing) {
+    listing = await prisma.listing.update({
+      where: { id: listing.id },
+      data: { listingPrice: initialPriceUsd },
+    });
+  } else {
+    listing = await prisma.listing.create({
+      data: {
+        productId: task.productId,
+        marketplace: 'EBAY',
+        credentialId,
+        status: 'DRAFT',
+        listingPrice: initialPriceUsd,
+        currency: 'USD',
+        marketplaceData: {},
+      },
+    });
+  }
+} else {
+  // レガシー: credentialId なし
+  listing = await prisma.listing.upsert({
+    where: {
+      productId_marketplace_credentialId: {
+        productId: task.productId,
+        marketplace: 'EBAY',
+        credentialId: null,
+      },
+    },
+    create: {
+      productId: task.productId,
+      marketplace: 'EBAY',
+      status: 'DRAFT',
+      listingPrice: initialPriceUsd,
+      currency: 'USD',
+      marketplaceData: {},
+    },
+    update: {
+      listingPrice: initialPriceUsd,
+    },
+  });
+}
+```
+
+#### 2b. publishToEbay メソッドに credentialId 対応
+
+現在:
+```typescript
+async publishToEbay(listingId: string): Promise<EbayPublishResult> {
+```
+
+変更後:
+```typescript
+async publishToEbay(listingId: string, credentialId?: string): Promise<EbayPublishResult> {
+```
+
+publishToEbay 内で ebayApi を使っている箇所を、credentialId がある場合は createEbayApiClient(credentialId) を使うように変更:
+
+ファイル冒頭のimportに追加:
+```typescript
+import { ebayApi, mapConditionToEbay, createEbayApiClient } from './ebay-api';
+```
+
+publishToEbay メソッドの冒頭に:
+```typescript
+const apiClient = credentialId ? createEbayApiClient(credentialId) : ebayApi;
+```
+
+そして、publishToEbay 内の `ebayApi.createOrUpdateInventoryItem(...)`, `ebayApi.getCategoryId(...)`, `ebayApi.createOffer(...)`, `ebayApi.publishOffer(...)` を `apiClient.createOrUpdateInventoryItem(...)` 等に置き換える。
+
+---
+
+### 注意事項
+- 既存のシングルトン `ebayApi` は残す（レガシー互換、credentialIdなしのデフォルト動作）
+- `createEbayApiClient` を新規エクスポートする
+- テストファイルは変更しない
+- ebay-publish-service.ts の末尾の `export const ebayPublishService = new EbayPublishService();` はそのまま

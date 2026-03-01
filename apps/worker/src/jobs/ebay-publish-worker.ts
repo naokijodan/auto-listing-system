@@ -16,15 +16,16 @@ const worker = new Worker(QUEUE_NAME, async (job: Job) => {
   switch (job.data.type) {
     case 'publish': {
       const productId: string = job.data.productId;
+      const credentialId: string | undefined = job.data.credentialId;
       // EnrichmentTaskを取得
       const task = await prisma.enrichmentTask.findUnique({ where: { productId } });
       if (!task) {
         throw new Error(`No enrichment task for product: ${productId}`);
       }
       // 3段階実行
-      const listingId = await ebayPublishService.createEbayListing(task.id);
+      const listingId = await ebayPublishService.createEbayListing(task.id, credentialId);
       await ebayPublishService.processImagesForListing(listingId);
-      return await ebayPublishService.publishToEbay(listingId);
+      return await ebayPublishService.publishToEbay(listingId, credentialId);
     }
     case 'sync-orders': {
       return await ebayOrderSyncService.syncOrders();
@@ -42,4 +43,3 @@ const worker = new Worker(QUEUE_NAME, async (job: Job) => {
 });
 
 export { worker as ebayPublishWorker };
-

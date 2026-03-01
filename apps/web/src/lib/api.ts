@@ -386,10 +386,10 @@ export const productApi = {
     );
   },
 
-  bulkPublish: async (ids: string[], marketplace = 'JOOM') => {
+  bulkPublish: async (ids: string[], marketplace = 'JOOM', credentialId?: string) => {
     return postApi<{ success: boolean; data: { createdCount: number } }>(
       '/api/products/bulk/publish',
-      { ids, marketplace }
+      { ids, marketplace, ...(credentialId && { credentialId }) }
     );
   },
 

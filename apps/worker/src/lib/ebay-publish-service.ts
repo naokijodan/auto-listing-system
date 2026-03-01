@@ -1,6 +1,6 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
-import { ebayApi, mapConditionToEbay } from './ebay-api';
+import { ebayApi, mapConditionToEbay, createEbayApiClient } from './ebay-api';
 import { imagePipelineService } from './joom-publish-service';
 
 export interface EbayPublishResult {
@@ -15,7 +15,7 @@ const log = logger.child({ module: 'ebay-publish-service' });
 
 export class EbayPublishService {
   // Step 1: Listing レコード作成（DRAFT状態）
-  async createEbayListing(enrichmentTaskId: string): Promise<string> {
+  async createEbayListing(enrichmentTaskId: string, credentialId?: string): Promise<string> {
     const task = await prisma.enrichmentTask.findUnique({
       where: { id: enrichmentTaskId },
       include: { product: true },
@@ -36,25 +36,55 @@ export class EbayPublishService {
       ? pricing.finalPriceUsd
       : this.calculateEbayPrice(baseCostJpy, task.product.weight || undefined);
 
-    const listing = await prisma.listing.upsert({
-      where: {
-        productId_marketplace: {
+    let listing;
+    if (credentialId) {
+      listing = await prisma.listing.findFirst({
+        where: {
           productId: task.productId,
           marketplace: 'EBAY',
+          credentialId: credentialId,
+        } as any,
+      });
+      if (listing) {
+        listing = await prisma.listing.update({
+          where: { id: listing.id },
+          data: { listingPrice: initialPriceUsd },
+        });
+      } else {
+        listing = await prisma.listing.create({
+          data: {
+            productId: task.productId,
+            marketplace: 'EBAY',
+            credentialId: credentialId,
+            status: 'DRAFT',
+            listingPrice: initialPriceUsd,
+            currency: 'USD',
+            marketplaceData: {},
+          } as any,
+        });
+      }
+    } else {
+      // レガシー: credentialId なし
+      listing = await prisma.listing.upsert({
+        where: {
+          productId_marketplace: {
+            productId: task.productId,
+            marketplace: 'EBAY',
+          },
         },
-      },
-      create: {
-        productId: task.productId,
-        marketplace: 'EBAY',
-        status: 'DRAFT',
-        listingPrice: initialPriceUsd,
-        currency: 'USD',
-        marketplaceData: {},
-      },
-      update: {
-        listingPrice: initialPriceUsd,
-      },
-    });
+        create: {
+          productId: task.productId,
+          marketplace: 'EBAY',
+          status: 'DRAFT',
+          listingPrice: initialPriceUsd,
+          currency: 'USD',
+          marketplaceData: {},
+        },
+        update: {
+          listingPrice: initialPriceUsd,
+        },
+      });
+    }
 
     log.info({ type: 'ebay_listing_created', listingId: listing.id, productId: task.productId });
     return listing.id;
@@ -97,7 +127,7 @@ export class EbayPublishService {
   }
 
   // Step 3: eBayに出品
-  async publishToEbay(listingId: string): Promise<EbayPublishResult> {
+  async publishToEbay(listingId: string, credentialId?: string): Promise<EbayPublishResult> {
     const listing = await prisma.listing.findUnique({
       where: { id: listingId },
       include: { product: true },
@@ -142,12 +172,14 @@ export class EbayPublishService {
     const paymentPolicyId = process.env.EBAY_PAYMENT_POLICY_ID;
     const returnPolicyId = process.env.EBAY_RETURN_POLICY_ID;
 
+    const apiClient = credentialId ? createEbayApiClient(credentialId) : ebayApi;
+
     try {
       await prisma.listing.update({ where: { id: listingId }, data: { status: 'PUBLISHING' } });
 
       // Step 1: Inventory Item
       const sku = `RAKUDA-EBAY-${listing.productId}`;
-      const invRes = await ebayApi.createOrUpdateInventoryItem(sku, {
+      const invRes = await apiClient.createOrUpdateInventoryItem(sku, {
         title,
         description,
         aspects: itemSpecifics,
@@ -160,13 +192,13 @@ export class EbayPublishService {
 
       // カテゴリID取得
       const sourceCategory = attributes?.category || listing.product.category || '';
-      const categoryId = await ebayApi.getCategoryId(sourceCategory, title, description);
+      const categoryId = await apiClient.getCategoryId(sourceCategory, title, description);
       if (!categoryId) {
         throw new Error('Failed to resolve eBay category');
       }
 
       // Step 2: Offer
-      const offerRes = await ebayApi.createOffer(sku, {
+      const offerRes = await apiClient.createOffer(sku, {
         marketplaceId: 'EBAY_US',
         format: 'FIXED_PRICE',
         categoryId,
@@ -185,7 +217,7 @@ export class EbayPublishService {
       const offerId = offerRes.data.offerId;
 
       // Step 3: Publish
-      const pubRes = await ebayApi.publishOffer(offerId);
+      const pubRes = await apiClient.publishOffer(offerId);
       if (!pubRes.success || !pubRes.data?.listingId) {
         throw new Error(pubRes.error?.message || 'Failed to publish offer');
       }
@@ -422,4 +454,3 @@ export class EbayOrderSyncService {
 
 export const ebayPublishService = new EbayPublishService();
 export const ebayOrderSyncService = new EbayOrderSyncService();
-

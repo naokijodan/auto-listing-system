@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo, useRef, useDeferredValue } from 'react';
+import useSWR from 'swr';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { StatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useProducts, useExchangeRate } from '@/lib/hooks';
-import { Product, productApi, postApi } from '@/lib/api';
+import { Product, productApi, postApi, fetcher } from '@/lib/api';
 import { addToast } from '@/components/ui/toast';
 import {
   Search,
@@ -63,6 +64,14 @@ export default function ProductsPage() {
     failed: number;
     errors: string[];
   } | null>(null);
+
+  // eBayアカウント選択
+  const [selectedEbayCredentialId, setSelectedEbayCredentialId] = useState<string>('');
+  const { data: ebayAccountsData } = useSWR<{ accounts: Array<{ id: string; name: string; isActive: boolean }> }>(
+    '/api/ebay/accounts',
+    fetcher
+  );
+  const activeEbayAccounts = ebayAccountsData?.accounts?.filter(a => a.isActive) || [];
 
   // デバウンスされた検索クエリ
   const deferredSearch = useDeferredValue(searchQuery);
@@ -276,6 +285,7 @@ export default function ProductsPage() {
     try {
       const response = await postApi('/api/ebay-listings/listings', {
         productId,
+        ...(selectedEbayCredentialId && { credentialId: selectedEbayCredentialId }),
       }) as { id: string };
 
       addToast({
@@ -299,7 +309,7 @@ export default function ProductsPage() {
     } finally {
       setIsCreatingEbayListing(false);
     }
-  }, [mutate]);
+  }, [mutate, selectedEbayCredentialId]);
 
   // eBay出品作成（一括）
   const [isCreatingEbayListings, setIsCreatingEbayListings] = useState(false);
@@ -822,6 +832,20 @@ export default function ProductsPage() {
                     </a>
                   )}
                 </div>
+
+                {/* eBayアカウント選択 */}
+                {activeEbayAccounts.length > 1 && (
+                  <select
+                    value={selectedEbayCredentialId}
+                    onChange={(e) => setSelectedEbayCredentialId(e.target.value)}
+                    className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                  >
+                    <option value="">デフォルトアカウント</option>
+                    {activeEbayAccounts.map(account => (
+                      <option key={account.id} value={account.id}>{account.name}</option>
+                    ))}
+                  </select>
+                )}
 
                 {/* eBay出品作成 */}
                 <Button

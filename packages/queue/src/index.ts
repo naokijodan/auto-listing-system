@@ -65,6 +65,7 @@ export interface EbayPublishJobData {
   listingId?: string;
   batchId?: string;
   listingIds?: string[];
+  credentialId?: string; // マルチアカウント対応
   options?: {
     dryRun?: boolean;
     concurrency?: number;

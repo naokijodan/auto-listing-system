@@ -355,6 +355,35 @@ function MarketplaceSettings() {
 
   const overview = overviewResponse?.data;
 
+  // eBayアカウント一覧
+  const { data: ebayAccountsData, mutate: mutateAccounts } = useSWR<{ accounts: Array<{
+    id: string;
+    name: string;
+    isActive: boolean;
+    sandbox: boolean;
+    tokenExpiresAt: string | null;
+    isExpired: boolean;
+    needsRefresh: boolean;
+    createdAt: string;
+  }> }>('/api/ebay/accounts', fetcher);
+
+  const [newAccountName, setNewAccountName] = useState('');
+
+  const handleAddEbayAccount = () => {
+    const accountName = newAccountName.trim() || `account-${Date.now()}`;
+    window.location.href = `/api/ebay/auth?accountName=${encodeURIComponent(accountName)}`;
+  };
+
+  const handleDeleteEbayAccount = async (accountId: string) => {
+    try {
+      await fetch(`/api/ebay/accounts/${accountId}`, { method: 'DELETE' });
+      mutateAccounts();
+      addToast({ type: 'success', message: 'アカウントを無効化しました' });
+    } catch {
+      addToast({ type: 'error', message: 'アカウントの無効化に失敗しました' });
+    }
+  };
+
   const handleTestEbayConnection = async () => {
     setTestingEbay(true);
     setEbayTestResult(null);
@@ -490,6 +519,51 @@ function MarketplaceSettings() {
                   <RefreshCw className="h-4 w-4" />
                   更新
                 </Button>
+              </div>
+
+              {/* eBay アカウント管理 */}
+              <div className="border-t pt-4 dark:border-zinc-700">
+                <h4 className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">接続アカウント</h4>
+                {ebayAccountsData?.accounts && ebayAccountsData.accounts.length > 0 ? (
+                  <div className="space-y-2">
+                    {ebayAccountsData.accounts.map(account => (
+                      <div key={account.id} className="flex items-center justify-between rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800">
+                        <div className="flex items-center gap-3">
+                          <span className={cn('h-2 w-2 rounded-full', account.isActive && !account.isExpired ? 'bg-emerald-500' : account.isExpired ? 'bg-amber-500' : 'bg-zinc-400')} />
+                          <div>
+                            <p className="text-sm font-medium text-zinc-900 dark:text-white">{account.name}</p>
+                            <p className="text-xs text-zinc-500">
+                              {account.isExpired ? 'トークン期限切れ' : account.isActive ? '接続済み' : '無効'}
+                              {account.sandbox ? ' (サンドボックス)' : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteEbayAccount(account.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          削除
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-500">アカウントが接続されていません</p>
+                )}
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="アカウント名"
+                    value={newAccountName}
+                    onChange={(e) => setNewAccountName(e.target.value)}
+                    className="rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                  />
+                  <Button variant="outline" size="sm" onClick={handleAddEbayAccount}>
+                    + アカウント追加
+                  </Button>
+                </div>
               </div>
 
               {/* Sync Schedule */}

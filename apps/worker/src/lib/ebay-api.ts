@@ -71,19 +71,26 @@ export interface EbayApiResponse<T> {
 export class EbayApiClient {
   private accessToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
+  private credentialId: string | null = null;
 
-  constructor() {}
+  constructor(credentialId?: string) {
+    this.credentialId = credentialId || null;
+  }
 
   /**
    * 認証情報を取得
    */
   private async getCredentials() {
-    const credential = await prisma.marketplaceCredential.findFirst({
-      where: {
-        marketplace: 'EBAY',
-        isActive: true,
-      },
-    });
+    const credential = this.credentialId
+      ? await prisma.marketplaceCredential.findUnique({
+          where: { id: this.credentialId },
+        })
+      : await prisma.marketplaceCredential.findFirst({
+          where: {
+            marketplace: 'EBAY',
+            isActive: true,
+          },
+        });
 
     if (!credential) {
       throw new Error('eBay credentials not configured');
@@ -159,19 +166,32 @@ export class EbayApiClient {
       this.tokenExpiresAt = new Date(Date.now() + data.expires_in * 1000);
 
       // DBのトークンも更新
-      await prisma.marketplaceCredential.updateMany({
-        where: {
-          marketplace: 'EBAY',
-          isActive: true,
-        },
-        data: {
-          credentials: {
-            ...credentials,
-            accessToken: data.access_token,
+      if (this.credentialId) {
+        await prisma.marketplaceCredential.update({
+          where: { id: this.credentialId },
+          data: {
+            credentials: {
+              ...credentials,
+              accessToken: data.access_token,
+            },
+            tokenExpiresAt: this.tokenExpiresAt,
           },
-          tokenExpiresAt: this.tokenExpiresAt,
-        },
-      });
+        });
+      } else {
+        await prisma.marketplaceCredential.updateMany({
+          where: {
+            marketplace: 'EBAY',
+            isActive: true,
+          },
+          data: {
+            credentials: {
+              ...credentials,
+              accessToken: data.access_token,
+            },
+            tokenExpiresAt: this.tokenExpiresAt,
+          },
+        });
+      }
 
       log.info({
         type: 'ebay_token_refreshed',
@@ -1249,8 +1269,13 @@ export interface EbayOrder {
   }>;
 }
 
-// シングルトンインスタンス
+// デフォルトインスタンス（レガシー互換）
 export const ebayApi = new EbayApiClient();
+
+// 特定アカウント用のインスタンスを作成
+export function createEbayApiClient(credentialId: string): EbayApiClient {
+  return new EbayApiClient(credentialId);
+}
 
 /**
  * eBay APIが設定されているか確認

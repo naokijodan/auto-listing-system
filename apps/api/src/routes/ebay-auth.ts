@@ -38,12 +38,17 @@ router.get('/auth', (req: Request, res: Response) => {
     return;
   }
 
+  // マルチアカウント対応: accountName を state に含める
+  const accountName = (req.query.accountName as string) || 'default';
+  const stateData = JSON.stringify({ accountName });
+  const stateEncoded = Buffer.from(stateData).toString('base64');
+
   const authUrl = new URL(`${getBaseUrl()}/oauth2/authorize`);
   authUrl.searchParams.set('client_id', EBAY_CONFIG.clientId);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('redirect_uri', EBAY_CONFIG.redirectUri);
   authUrl.searchParams.set('scope', EBAY_CONFIG.scope);
-  authUrl.searchParams.set('state', 'ebay_oauth_state');
+  authUrl.searchParams.set('state', stateEncoded);
 
   log.info({ type: 'ebay_auth_start', sandbox: EBAY_CONFIG.sandbox });
   res.redirect(authUrl.toString());
@@ -51,7 +56,7 @@ router.get('/auth', (req: Request, res: Response) => {
 
 // OAuthコールバック
 router.get('/callback', async (req: Request, res: Response, next: NextFunction) => {
-  const { code, error } = req.query;
+  const { code, error, state } = req.query;
 
   if (error) {
     log.error({ type: 'ebay_auth_error', error });
@@ -66,6 +71,17 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
   }
 
   try {
+    // accountName を state から復元
+    let accountName = 'default';
+    if (state && typeof state === 'string') {
+      try {
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf-8')) as { accountName?: string };
+        accountName = stateData.accountName || 'default';
+      } catch {
+        // state がパースできない場合はデフォルト
+      }
+    }
+
     const tokenResponse = await fetch(`${getApiUrl()}/identity/v1/oauth2/token`, {
       method: 'POST',
       headers: {
@@ -99,7 +115,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       where: {
         marketplace_name: {
           marketplace: 'EBAY',
-          name: 'default',
+          name: accountName,
         },
       },
       update: {
@@ -116,7 +132,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
       },
       create: {
         marketplace: 'EBAY',
-        name: 'default',
+        name: accountName,
         credentials: {
           clientId: EBAY_CONFIG.clientId,
           clientSecret: EBAY_CONFIG.clientSecret,
@@ -132,7 +148,7 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 
     log.info({ type: 'ebay_auth_success', expiresAt });
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3012';
-    res.redirect(`${frontendUrl}/settings?ebay=connected`);
+    res.redirect(`${frontendUrl}/settings?ebay=connected&account=${encodeURIComponent(accountName)}`);
   } catch (error) {
     next(error);
   }
@@ -141,9 +157,15 @@ router.get('/callback', async (req: Request, res: Response, next: NextFunction) 
 // トークンリフレッシュ
 router.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const credential = await prisma.marketplaceCredential.findFirst({
-      where: { marketplace: 'EBAY', isActive: true },
-    });
+    const { credentialId } = req.body as { credentialId?: string };
+
+    const credential = credentialId
+      ? await prisma.marketplaceCredential.findUnique({
+          where: { id: credentialId },
+        })
+      : await prisma.marketplaceCredential.findFirst({
+          where: { marketplace: 'EBAY', isActive: true },
+        });
 
     if (!credential) {
       res.status(404).json({ error: 'No eBay credentials found' });
@@ -216,6 +238,49 @@ router.get('/status', async (req: Request, res: Response, next: NextFunction) =>
       isExpired,
       needsRefresh: isExpired,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 全eBayアカウント一覧
+router.get('/accounts', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const credentials = await prisma.marketplaceCredential.findMany({
+      where: { marketplace: 'EBAY' },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const accounts = credentials.map(cred => {
+      const creds = cred.credentials as Record<string, unknown>;
+      const isExpired = cred.tokenExpiresAt ? cred.tokenExpiresAt < new Date() : false;
+      return {
+        id: cred.id,
+        name: cred.name,
+        isActive: cred.isActive,
+        sandbox: (creds?.sandbox as boolean) || false,
+        tokenExpiresAt: cred.tokenExpiresAt,
+        isExpired,
+        needsRefresh: isExpired,
+        createdAt: cred.createdAt,
+      };
+    });
+
+    res.json({ accounts });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// アカウント削除（無効化）
+router.delete('/accounts/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    await prisma.marketplaceCredential.update({
+      where: { id },
+      data: { isActive: false },
+    });
+    res.json({ success: true });
   } catch (error) {
     next(error);
   }
