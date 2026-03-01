@@ -133,6 +133,61 @@ router.post('/products/:id/publish', async (req: Request, res: Response) => {
 });
 
 /**
+ * RAKUDA商品からShopify出品（フルフロー）
+ * POST /publish-product/:productId
+ * enrichmentTask → ShopifyProduct作成 → 画像処理 → Shopify出品
+ */
+router.post('/publish-product/:productId', async (req: Request, res: Response) => {
+  try {
+    const { productId } = req.params;
+
+    // 商品存在確認
+    const product = await prisma.product.findUnique({ where: { id: productId } });
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    // EnrichmentTask確認
+    const task = await prisma.enrichmentTask.findUnique({ where: { productId } });
+    if (!task) {
+      return res.status(400).json({ error: 'EnrichmentTask not found. Run enrichment first.' });
+    }
+    if (task.status !== 'APPROVED' && task.status !== 'PUBLISHED') {
+      return res.status(400).json({ error: `EnrichmentTask not approved: ${task.status}` });
+    }
+
+    // 既存のShopify出品チェック
+    const existingListing = await prisma.listing.findFirst({
+      where: { productId, marketplace: 'SHOPIFY', status: 'ACTIVE' },
+    });
+    if (existingListing) {
+      return res.status(400).json({ error: 'Product already listed on Shopify', listingId: existingListing.id });
+    }
+
+    // Shopify出品ジョブをキューに追加
+    const job = await shopifySyncQueue.add('shopify-publish', {
+      type: 'publish',
+      enrichmentTaskId: task.id,
+    }, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+    });
+
+    log.info({ productId, enrichmentTaskId: task.id, jobId: job.id }, 'Shopify publish-product job queued');
+
+    res.json({
+      message: 'Shopify publishing started',
+      productId,
+      enrichmentTaskId: task.id,
+      jobId: job.id,
+    });
+  } catch (error) {
+    log.error({ error }, 'Failed to trigger Shopify publish-product');
+    res.status(500).json({ error: 'Failed to trigger Shopify publish' });
+  }
+});
+
+/**
  * 在庫同期（ジョブキュー経由）
  * POST /products/:id/sync-inventory
  */
