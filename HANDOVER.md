@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-01 (sourceType統一 + Shopify Webhook処理実装セッション)
+## 最終更新: 2026-03-01 (Instagram/TikTok チャネル識別 + Full Flow E2Eテストセッション)
 
 ---
 
@@ -162,6 +162,43 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - PENDING→PROCESSING→COMPLETED/FAILED/FATALのステータス遷移
 - 指数バックオフリトライ（maxRetries=5）
 
+### Instagram/TikTok Shop チャネル識別実装（2026-03-01セッション⑥）
+- **新規**: `shopify-channel-identifier.ts` - app_idベースのチャネル識別（9チャネル対応）
+  - Shopify app_id → チャネルコード（ONLINE_STORE, INSTAGRAM, TIKTOK等）
+  - source_nameフォールバック（web→ONLINE_STORE等）
+  - ON_HOLD/AUTHORIZEDステータス自動判定
+- **Prisma**: Order.sourceChannel(String?)追加、PaymentStatus.AUTHORIZED/FulfillmentStatus.ON_HOLD追加
+  - マイグレーション: `20260301035518_add_source_channel_and_enums`
+- **更新**: shopify-webhook-processor.ts
+  - orders/create: チャネル識別→sourceChannel保存
+  - Instagram: AUTHORIZED支払いステータス対応
+  - TikTok/Instagram: ON_HOLDフルフィルメント対応
+  - orders/updated: sourceChannelバックフィル
+- **更新**: shopify-publish-service.ts syncOrders() - チャネル識別追加
+- **更新**: shopify.ts API routes - GET /orders?sourceChannel=INSTAGRAM フィルター追加
+- **ドキュメント**: docs/shopify-social-commerce-setup.md（管理画面セットアップガイド）
+- **コミット**: 81ab14c8
+
+### Full Flow E2Eテスト実装（2026-03-01セッション⑥）
+- **Worker統合テスト**:
+  - shopify-publish-flow.test.ts: 商品出品フロー（作成→画像処理→API出品→DB更新）+ 429リトライ + 500エラー + 価格計算
+  - shopify-webhook-flow.test.ts: Webhook処理フロー（注文作成→Sale/InventoryEvent→Product SOLD + チャネル識別 + 重複防止）
+  - inventory-sync-flow.test.ts: 在庫同期（注文→InventoryEvent(SALE) + Product.status=SOLD）
+- **API統合テスト**:
+  - shopify-fullflow.test.ts: パブリッシュジョブ投入 + ステータス確認 + sourceChannelフィルター + チャネル統計
+- **テストインフラ拡充**:
+  - MSWハンドラー: Shopify Admin API 2026-01モック（products.json, orders.json）
+  - Worker/API setup.ts: shopifyProduct/enrichmentTask/webhookEventモック追加
+- **テスト結果**: 新規27件全通過、Worker 1320/1320、API既存リグレッションなし
+- **コミット**: 81ab14c8
+
+### 本番デプロイ ef896c1b（2026-03-01セッション⑤）
+- **Worker**: /tmp/rakuda-build/でgit pull → docker build → systemctl restart完了
+- **API**: Coolify API (`/api/v1/applications/{uuid}/start`) で再デプロイ完了
+- **Web**: 同上
+- 3コンポーネント全てcommit ef896c1bで稼働中
+- Coolify API Token作成方法: personal_access_tokensテーブルにteam_id=0で直接INSERT
+
 ### Worker scheduled job dispatch修正（2026-03-01セッション④）
 - **問題**: webhook-processing、message-sending、inventory-alert-processingの3ジョブがデフォルトプロセッサーにフォールスルー
   - scrape-queue: "Unknown source type: undefined"
@@ -305,20 +342,27 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 #### 4. ~~sourceTypeバグ修正~~ ✅ 完了
 - 全レイヤーで大文字統一、inventory-checker全source対応
 
-#### 5. Shopify Social Commerce Hub拡張
-- Instagram Shop連携（Shopify管理画面→「Facebook & Instagram」チャネル追加）
-- TikTok Shop連携（Shopify管理画面→「TikTok」チャネル追加）
+#### 5. ~~Shopify Social Commerce Hub拡張~~ ✅ コード実装完了
+- チャネル識別コード実装済み（app_idベース、9チャネル対応）
+- ON_HOLD/AUTHORIZEDステータス対応済み
+- **管理画面設定は手動**: docs/shopify-social-commerce-setup.md 参照
+  - Instagram: Shopify管理画面→「Facebook & Instagram」チャネル追加
+  - TikTok: Shopify管理画面→「TikTok」チャネル追加
 
-#### 6. 本番デプロイ（今回の変更）
+#### 6. 本番デプロイ（81ab14c8）
 - Worker Dockerイメージ再ビルド + systemd再起動が必要
-- コミット 8696e1b3 をデプロイ
+- Prismaマイグレーション適用が必要（add_source_channel_and_enums）
+- API/Web: Coolify API経由で再デプロイ
 
-#### 7. フルフローE2Eテスト
-- Chrome拡張→API→Worker→Shopify出品→Webhook受信→注文処理の一気通貫テスト
+#### 7. ~~フルフローE2Eテスト~~ ✅ 実装完了
+- Shopify出品フロー（4テスト）+ Webhook処理フロー（6テスト）+ 在庫同期（2テスト）+ API統合（4テスト）
 
 #### 8. Shopify本番出品テスト（RAKUDA UIから）
 
-#### 5. Etsy OAuth（承認後）
+#### 9. Instagram/TikTok管理画面設定（手動）
+- Shopify管理画面でチャネル追加→商品同期→テスト注文でWebhook受信確認
+
+#### 10. Etsy OAuth（承認後）
 - Pending Personal Approval が下りたらコールバックURLを変更
 - https://api.rakuda.dev/api/etsy/callback でOAuth実行
 - 環境変数は既に設定済み
@@ -329,6 +373,7 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 | コミット | 内容 |
 |---------|------|
+| `81ab14c8` | feat: Instagram/TikTok Shop チャネル識別 + Full Flow E2Eテスト |
 | `8696e1b3` | fix: sourceType大文字統一 + inventory-checker全source対応 + Shopify Webhook処理実装 |
 | `3b908bf4` | docs: HANDOVER.md更新 - Worker修正 + Shopify出品/Webhook + OpenAI修正 |
 | `1a078790` | fix: Shopify Webhook body parsing - express.json()をwebhookパスで除外 |
@@ -379,8 +424,10 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 - [x] sourceType大文字統一（Zod/Chrome拡張/API/Worker/テスト全レイヤー）
 - [x] inventory-checker全source type対応（6種scraper + 3種graceful skip）
 - [x] Shopify Webhook Event Processing実装（6イベント + リトライ + ステータス遷移）
-- [ ] 本番デプロイ（8696e1b3）
+- [x] Instagram/TikTok チャネル識別コード実装（app_idベース、9チャネル対応、27テスト）
+- [x] Full Flow E2Eテスト実装（Shopify出品/Webhook/在庫同期/API統合、16テスト）
+- [x] Prismaマイグレーション（Order.sourceChannel + AUTHORIZED/ON_HOLD enum）
+- [ ] 本番デプロイ（81ab14c8 - チャネル識別+E2Eテスト含む）
+- [ ] Instagram Shop管理画面設定（Shopify「Facebook & Instagram」チャネル追加）
+- [ ] TikTok Shop管理画面設定（Shopify「TikTok」チャネル追加）
 - [ ] Etsy OAuth完了（承認待ち→後回し）
-- [ ] Instagram Shop連携（Shopify管理画面で「Facebook & Instagram」チャネル追加）
-- [ ] TikTok Shop連携（Shopify管理画面で「TikTok」チャネル追加）
-- [ ] フルフローE2Eテスト
