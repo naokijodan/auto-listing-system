@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-01 (Worker修正 + Shopify出品・Webhook + OpenAI修正セッション)
+## 最終更新: 2026-03-01 (sourceType統一 + Shopify Webhook処理実装セッション)
 
 ---
 
@@ -128,6 +128,39 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - **テスト出品成功**: Joom Product ID `69a32981171b160126427ee2`（ACTIVE）
   - 商品: Seiko Presage SARX035, $299.99
   - 注意: shippingCostはUSD単位で指定（JPYだとエラー）
+
+### sourceType大文字統一（2026-03-01セッション⑤）
+- **問題**: Chrome拡張・API・Worker間でsourceTypeの大文字小文字が不整合
+  - Prisma enum: 大文字、Zodスキーマ: 小文字、Chrome拡張: 混在（AMAZON_JP等）
+- **修正**: 全レイヤーで大文字に統一（Prisma enum形式）
+  - SourceTypeSchema（Zod）を大文字に変更
+  - Chrome拡張 detectSiteType() を大文字に変更
+  - AMAZON_JP → AMAZON に統一（4ファイル）
+  - API: SourceTypeSchema.parse()でバリデーション追加、as any削除
+  - Worker: PrismaSourceType型使用、scraperは内部で小文字変換
+  - 全6 scraperのsourceType出力を大文字に統一
+  - テスト全件修正
+- **コミット**: 8696e1b3
+
+### inventory-checker全source type対応（2026-03-01セッション⑤）
+- **問題**: MERCARI/YAHOO_AUCTIONのみ対応、他はクラッシュ
+- **修正**:
+  - YAHOO_FLEA(PayPay), RAKUMA, RAKUTEN, AMAZON を追加（既存scraper呼出）
+  - TAKAYAMA, JOSHIN, OTHER はgraceful skip（楽観的に在庫あり返却）
+  - default caseもcrashせずskip
+
+### Shopify Webhook Event Processing実装（2026-03-01セッション⑤）
+- 新規: `shopify-webhook-processor.ts`（280行）
+- 6イベント対応:
+  - orders/create: Order + Sale作成、InventoryEvent記録、Product SOLD化
+  - orders/updated: Orderステータス更新（なければ新規作成）
+  - orders/cancelled: Order CANCELLED化
+  - products/update: Listing ステータス・価格同期
+  - inventory_levels/update: ログ記録（モニタリング）
+  - app/uninstalled: 全Listing無効化 + 認証情報無効化
+- handleWebhookProcessing()をプレースホルダーから本実装に置換
+- PENDING→PROCESSING→COMPLETED/FAILED/FATALのステータス遷移
+- 指数バックオフリトライ（maxRetries=5）
 
 ### Worker scheduled job dispatch修正（2026-03-01セッション④）
 - **問題**: webhook-processing、message-sending、inventory-alert-processingの3ジョブがデフォルトプロセッサーにフォールスルー
@@ -265,13 +298,25 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 #### 2. ~~Joom本番OAuth実行~~ ✅ 完了
 - Joomテスト出品成功（Product ID: 69a32981171b160126427ee2, $299.99）
 
-#### 3. Shopify Social Commerce Hub拡張
+#### 3. ~~Shopify Webhook処理実装~~ ✅ 完了
+- 6イベント対応（orders/create,updated,cancelled + products/update + inventory_levels/update + app/uninstalled）
+- handleWebhookProcessing()本実装（バッチ処理+リトライ）
+
+#### 4. ~~sourceTypeバグ修正~~ ✅ 完了
+- 全レイヤーで大文字統一、inventory-checker全source対応
+
+#### 5. Shopify Social Commerce Hub拡張
 - Instagram Shop連携（Shopify管理画面→「Facebook & Instagram」チャネル追加）
 - TikTok Shop連携（Shopify管理画面→「TikTok」チャネル追加）
-- Webhook基盤構築（注文通知等）
 
-#### 4. Shopify本番出品テスト
-- RAKUDA UIからShopify出品テスト
+#### 6. 本番デプロイ（今回の変更）
+- Worker Dockerイメージ再ビルド + systemd再起動が必要
+- コミット 8696e1b3 をデプロイ
+
+#### 7. フルフローE2Eテスト
+- Chrome拡張→API→Worker→Shopify出品→Webhook受信→注文処理の一気通貫テスト
+
+#### 8. Shopify本番出品テスト（RAKUDA UIから）
 
 #### 5. Etsy OAuth（承認後）
 - Pending Personal Approval が下りたらコールバックURLを変更
@@ -284,6 +329,10 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 | コミット | 内容 |
 |---------|------|
+| `8696e1b3` | fix: sourceType大文字統一 + inventory-checker全source対応 + Shopify Webhook処理実装 |
+| `3b908bf4` | docs: HANDOVER.md更新 - Worker修正 + Shopify出品/Webhook + OpenAI修正 |
+| `1a078790` | fix: Shopify Webhook body parsing - express.json()をwebhookパスで除外 |
+| `7b23bd7d` | fix: Worker scheduled jobのdispatch漏れを修正 |
 | `05b58053` | fix: eBay OAuthコールバックをフロントエンドURLにリダイレクト |
 | `fad63abe` | docs: HANDOVER.md更新 - Shopify本番接続完了 + 運用整備完了 |
 | `33fd0828` | feat: Shopify本番環境対応 - DB認証チェック修正 + 全チャネルマイグレーション |
@@ -327,6 +376,11 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 - [x] Shopify本番テスト出品成功（Product ID: 9149468541144, ACTIVE）
 - [x] Shopify Webhook基盤構築（6つのWebhook登録 + HMAC検証 + body parsing修正）
 - [x] OpenAI API本番設定修正（APIキー切り詰め問題解消、enrichment動作確認）
+- [x] sourceType大文字統一（Zod/Chrome拡張/API/Worker/テスト全レイヤー）
+- [x] inventory-checker全source type対応（6種scraper + 3種graceful skip）
+- [x] Shopify Webhook Event Processing実装（6イベント + リトライ + ステータス遷移）
+- [ ] 本番デプロイ（8696e1b3）
 - [ ] Etsy OAuth完了（承認待ち→後回し）
 - [ ] Instagram Shop連携（Shopify管理画面で「Facebook & Instagram」チャネル追加）
 - [ ] TikTok Shop連携（Shopify管理画面で「TikTok」チャネル追加）
+- [ ] フルフローE2Eテスト
