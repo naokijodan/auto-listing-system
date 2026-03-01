@@ -29,6 +29,7 @@ COPY . .
 # 環境変数（ビルド時に必要なもの）
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Next.jsをビルド
 WORKDIR /app/apps/web

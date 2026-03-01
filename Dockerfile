@@ -27,6 +27,7 @@ RUN npx prisma generate --schema=packages/database/prisma/schema
 # Next.jsのパブリック環境変数をビルド時に受け取れるようにする
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # -----------------------------------------------------------------------------
