@@ -93,6 +93,7 @@ vi.mock('@rakuda/config', () => ({
 // Schema and CSV utils used by products routes
 vi.mock('@rakuda/schema', () => ({
   ScrapedProductSchema: {},
+  SourceTypeSchema: { parse: vi.fn((val: string) => val) },
   parseScrapedProduct: vi.fn((x: any) => x),
   generateSourceHash: vi.fn(() => 'hash-abc'),
 }));

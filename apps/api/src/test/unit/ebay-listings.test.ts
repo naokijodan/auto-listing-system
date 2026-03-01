@@ -78,6 +78,7 @@ vi.mock('@prisma/client', () => {
 });
 
 vi.mock('@rakuda/queue', () => ({
+  addEbayPublishJob: vi.fn().mockResolvedValue('job-123'),
   addEbayBatchPublishJob: vi.fn().mockResolvedValue('job-123'),
   addEbayPriceSyncJob: vi.fn().mockResolvedValue('job-456'),
   getEbayPublishQueueStats: vi.fn().mockResolvedValue({
