@@ -28,10 +28,12 @@ export class ShopifyPublishService {
     // プレースホルダID（ユニーク確保）
     const placeholderId = `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    // ListingもDRAFTで用意
-    const listing = await prisma.listing.upsert({
-      where: { productId_marketplace_credentialId: { productId: task.productId, marketplace: 'SHOPIFY', credentialId: null as unknown as string } },
-      create: {
+    // ListingもDRAFTで用意（upsert回避: findFirst + create）
+    const existingListing = await prisma.listing.findFirst({
+      where: { productId: task.productId, marketplace: 'SHOPIFY' },
+    });
+    const listing = existingListing ?? (await prisma.listing.create({
+      data: {
         productId: task.productId,
         marketplace: 'SHOPIFY',
         status: 'DRAFT',
@@ -39,8 +41,7 @@ export class ShopifyPublishService {
         currency: 'USD',
         marketplaceData: {},
       },
-      update: {},
-    });
+    }));
 
     const sp = await prisma.shopifyProduct.create({
       data: {
@@ -147,7 +148,7 @@ export class ShopifyPublishService {
 
     try {
       await prisma.listing.update({
-        where: { productId_marketplace_credentialId: { productId: product.id, marketplace: 'SHOPIFY', credentialId: null as unknown as string } },
+        where: { productId_marketplace: { productId: product.id, marketplace: 'SHOPIFY' } } as any,
         data: { status: 'PUBLISHING' },
       });
 
@@ -161,6 +162,27 @@ export class ShopifyPublishService {
 
       const productUrl = handle ? `https://${(await shopifyApi.ensureAccessToken()).shop}/products/${handle}` : undefined;
 
+      // 事前に同期状態の有無を確認（upsert回避）
+      const existingSync = await prisma.marketplaceSyncState.findFirst({
+        where: { marketplace: 'SHOPIFY', productId: product.id },
+      });
+
+      // Update対象のListingを特定（productId + SHOPIFY + credentialId: null）
+      const existingListingForUpdate = await prisma.listing.findFirst({
+        where: { productId: product.id, marketplace: 'SHOPIFY' },
+      });
+      const ensuredListing = existingListingForUpdate ??
+        (await prisma.listing.create({
+          data: {
+            productId: product.id,
+            marketplace: 'SHOPIFY',
+            status: 'DRAFT',
+            listingPrice: 0,
+            currency: 'USD',
+            marketplaceData: {},
+          },
+        }));
+
       await prisma.$transaction([
         prisma.shopifyProduct.update({
           where: { id: sp.id },
@@ -173,7 +195,7 @@ export class ShopifyPublishService {
           },
         }),
         prisma.listing.update({
-          where: { productId_marketplace_credentialId: { productId: product.id, marketplace: 'SHOPIFY', credentialId: null as unknown as string } },
+          where: { id: ensuredListing.id },
           data: {
             marketplaceListingId: productId,
             status: 'ACTIVE',
@@ -189,34 +211,37 @@ export class ShopifyPublishService {
             },
           },
         }),
-        prisma.marketplaceSyncState.upsert({
-          where: { marketplace_productId: { marketplace: 'SHOPIFY', productId: product.id } },
-          create: {
-            marketplace: 'SHOPIFY',
-            productId: product.id,
-            listingId: productId,
-            syncStatus: 'SYNCED',
-            lastSyncAt: new Date(),
-            localStock: 1,
-            remoteStock: 1,
-            localPrice: priceUsd,
-            remotePrice: priceUsd,
-          },
-          update: {
-            listingId: productId,
-            syncStatus: 'SYNCED',
-            lastSyncAt: new Date(),
-            localPrice: priceUsd,
-            remotePrice: priceUsd,
-          },
-        }),
+        existingSync
+          ? prisma.marketplaceSyncState.update({
+              where: { id: existingSync.id },
+              data: {
+                listingId: productId,
+                syncStatus: 'SYNCED',
+                lastSyncAt: new Date(),
+                localPrice: priceUsd,
+                remotePrice: priceUsd,
+              },
+            })
+          : prisma.marketplaceSyncState.create({
+              data: {
+                marketplace: 'SHOPIFY',
+                productId: product.id,
+                listingId: productId,
+                syncStatus: 'SYNCED',
+                lastSyncAt: new Date(),
+                localStock: 1,
+                remoteStock: 1,
+                localPrice: priceUsd,
+                remotePrice: priceUsd,
+              },
+            }),
       ]);
 
       log.info({ type: 'shopify_publish_success', productId, variantId });
       return { success: true, shopifyProductId: productId, shopifyVariantId: variantId || undefined, productUrl };
     } catch (error: any) {
       await prisma.listing.update({
-        where: { productId_marketplace_credentialId: { productId: product.id, marketplace: 'SHOPIFY', credentialId: null as unknown as string } },
+        where: { productId_marketplace: { productId: product.id, marketplace: 'SHOPIFY' } } as any,
         data: { status: 'ERROR', errorMessage: error.message },
       });
       log.error({ type: 'shopify_publish_failed', productId: product.id, error: error.message });
@@ -290,44 +315,47 @@ export class ShopifyOrderSyncService {
             where: { marketplace_marketplaceOrderId: { marketplace: 'SHOPIFY', marketplaceOrderId } },
           });
 
-          const saved = await prisma.order.upsert({
-            where: { marketplace_marketplaceOrderId: { marketplace: 'SHOPIFY', marketplaceOrderId } },
-            create: {
-              marketplace: 'SHOPIFY',
-              marketplaceOrderId,
-              buyerUsername: order.customer?.email || 'unknown',
-              buyerEmail: order.email || order.customer?.email || null,
-              buyerName: `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.trim() || null,
-              shippingAddress: shipTo as any,
-              subtotal,
-              shippingCost: shipping,
-              tax: parseFloat(order.total_tax || '0'),
-              total,
-              currency,
-              status: 'CONFIRMED',
-              paymentStatus: (channelInfo.requiresPaymentCapture
-                ? 'AUTHORIZED'
-                : (order.financial_status === 'paid' ? 'PAID' : 'PENDING')) as any,
-              fulfillmentStatus: (channelInfo.requiresHoldCheck
-                ? 'ON_HOLD'
-                : (order.fulfillment_status === 'fulfilled' ? 'FULFILLED' : 'UNFULFILLED')) as any,
-              sourceChannel: channelInfo.code,
-              rawData: order as any,
-              orderedAt: new Date(order.created_at),
-            },
-            update: {
-              buyerUsername: order.customer?.email || existing?.buyerUsername || 'unknown',
-              shippingAddress: shipTo as any,
-              subtotal,
-              shippingCost: shipping,
-              total,
-              paymentStatus: (channelInfo.requiresPaymentCapture
-                ? 'AUTHORIZED'
-                : (order.financial_status === 'paid' ? 'PAID' : (existing?.paymentStatus || 'PENDING'))) as any,
-              ...(existing?.sourceChannel ? {} : { sourceChannel: channelInfo.code }),
-              rawData: order as any,
-            },
-          });
+          const saved = existing
+            ? await prisma.order.update({
+                where: { marketplace_marketplaceOrderId: { marketplace: 'SHOPIFY', marketplaceOrderId } },
+                data: {
+                  buyerUsername: order.customer?.email || existing?.buyerUsername || 'unknown',
+                  shippingAddress: shipTo as any,
+                  subtotal,
+                  shippingCost: shipping,
+                  total,
+                  paymentStatus: (channelInfo.requiresPaymentCapture
+                    ? 'AUTHORIZED'
+                    : (order.financial_status === 'paid' ? 'PAID' : (existing?.paymentStatus || 'PENDING'))) as any,
+                  ...(existing?.sourceChannel ? {} : { sourceChannel: channelInfo.code }),
+                  rawData: order as any,
+                },
+              })
+            : await prisma.order.create({
+                data: {
+                  marketplace: 'SHOPIFY',
+                  marketplaceOrderId,
+                  buyerUsername: order.customer?.email || 'unknown',
+                  buyerEmail: order.email || order.customer?.email || null,
+                  buyerName: `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.trim() || null,
+                  shippingAddress: shipTo as any,
+                  subtotal,
+                  shippingCost: shipping,
+                  tax: parseFloat(order.total_tax || '0'),
+                  total,
+                  currency,
+                  status: 'CONFIRMED',
+                  paymentStatus: (channelInfo.requiresPaymentCapture
+                    ? 'AUTHORIZED'
+                    : (order.financial_status === 'paid' ? 'PAID' : 'PENDING')) as any,
+                  fulfillmentStatus: (channelInfo.requiresHoldCheck
+                    ? 'ON_HOLD'
+                    : (order.fulfillment_status === 'fulfilled' ? 'FULFILLED' : 'UNFULFILLED')) as any,
+                  sourceChannel: channelInfo.code,
+                  rawData: order as any,
+                  orderedAt: new Date(order.created_at),
+                },
+              });
 
           // 売上明細
           const lineItems = order.line_items || [];

@@ -36,56 +36,25 @@ export class EbayPublishService {
       ? pricing.finalPriceUsd
       : this.calculateEbayPrice(baseCostJpy, task.product.weight || undefined);
 
-    let listing;
-    if (credentialId) {
-      listing = await prisma.listing.findFirst({
-        where: {
+    const listing = await prisma.listing.upsert({
+      where: {
+        productId_marketplace: {
           productId: task.productId,
           marketplace: 'EBAY',
-          credentialId: credentialId,
-        } as any,
-      });
-      if (listing) {
-        listing = await prisma.listing.update({
-          where: { id: listing.id },
-          data: { listingPrice: initialPriceUsd },
-        });
-      } else {
-        listing = await prisma.listing.create({
-          data: {
-            productId: task.productId,
-            marketplace: 'EBAY',
-            credentialId: credentialId,
-            status: 'DRAFT',
-            listingPrice: initialPriceUsd,
-            currency: 'USD',
-            marketplaceData: {},
-          } as any,
-        });
-      }
-    } else {
-      // レガシー: credentialId なし
-      listing = await prisma.listing.upsert({
-        where: {
-          productId_marketplace_credentialId: {
-            productId: task.productId,
-            marketplace: 'EBAY',
-            credentialId: null as unknown as string,
-          },
         },
-        create: {
-          productId: task.productId,
-          marketplace: 'EBAY',
-          status: 'DRAFT',
-          listingPrice: initialPriceUsd,
-          currency: 'USD',
-          marketplaceData: {},
-        },
-        update: {
-          listingPrice: initialPriceUsd,
-        },
-      });
-    }
+      } as any,
+      create: {
+        productId: task.productId,
+        marketplace: 'EBAY',
+        status: 'DRAFT',
+        listingPrice: initialPriceUsd,
+        currency: 'USD',
+        marketplaceData: {},
+      },
+      update: {
+        listingPrice: initialPriceUsd,
+      },
+    });
 
     log.info({ type: 'ebay_listing_created', listingId: listing.id, productId: task.productId });
     return listing.id;

@@ -84,12 +84,11 @@ router.post('/', async (req, res, next) => {
     // 既存チェック
     const existing = await prisma.listing.findUnique({
       where: {
-        productId_marketplace_credentialId: {
+        productId_marketplace: {
           productId: data.productId,
           marketplace: data.marketplace.toUpperCase() as any,
-          credentialId: null as unknown as string,
         },
-      },
+      } as any,
     });
 
     if (existing) {
