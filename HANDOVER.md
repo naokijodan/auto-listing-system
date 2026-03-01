@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-02 (Coolifyデプロイ修正 + NODE_OPTIONS追加セッション)
+## 最終更新: 2026-03-02 (Coolifyデプロイ修正 + npm ci NODE_ENV修正セッション)
 
 ---
 
@@ -63,12 +63,13 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - **rakuda-api**: Coolify管理でデプロイ成功、Traefik経由 + Let's Encrypt SSL
   - URL: https://api.rakuda.dev (Coolify UUID: acg8g884ck4woc480cgcg8kk)
   - ヘルスチェック: /api/health → {"status":"ok","services":{"database":"ok","redis":"ok"}}
-  - 最新コミット: 35ee3a5a (2026-03-02デプロイ)
+  - 最新コミット: e87bd46a (2026-03-02デプロイ)
 - **rakuda-web**: Coolify管理でデプロイ成功（Next.js standalone）
   - URL: https://rakuda.dev (Coolify UUID: zoo8cgswg4ssc84kgcog8cg0)
   - Dockerfile Stage 4 (web target) でビルド
 - **rakuda-worker**: Coolify管理 (UUID: g0s4ws488008g88ww4s4kkog)
   - Docker containerとして稼働、ジョブ処理正常
+  - 最新コミット: e87bd46a (2026-03-02デプロイ)
   - **注意**: 並行ビルド時にexit 127エラー発生（concurrent_builds=1推奨）
 - **Prismaマイグレーション**: 2件適用済み（init + add_oauth_state）
 
@@ -88,6 +89,13 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - **問題3**: 並行ビルド時にexit 127エラー
   - 原因: concurrent_builds=2でbuildx内部が競合
   - 対策: concurrent_builds=1に変更推奨（Coolify UIで設定）
+
+### npm ci NODE_ENV修正（2026-03-02 セッション2）
+- **問題**: Workerが`exited:unhealthy`でダウン。Coolifyが`--build-arg NODE_ENV=production`を渡すため、`npm ci`がdevDependencies（turbo）をスキップ → `turbo: not found`
+- **発見**: Coolifyはis_build_time=Falseでも全env varsを--build-argとして渡す
+- **修正**: `RUN NODE_ENV=development npm ci --legacy-peer-deps`に変更（Dockerfile, apps/web/Dockerfile）
+- **コミット**: e87bd46a
+- **結果**: API/Worker共に最新コミットで正常稼働
 
 ### GitHub Actions 無効化（2026-03-02確認）
 - ユーザーアカウントレベルで`Actions has been disabled for this user`
@@ -398,6 +406,8 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 | コミット | 内容 |
 |---------|------|
+| `e87bd46a` | fix: Dockerfile npm ciにNODE_ENV=development追加（turbo not found対策） |
+| `ff73aeaf` | docs: HANDOVER.md更新 - Coolifyデプロイ修正 + NODE_OPTIONS追加 |
 | `35ee3a5a` | fix: DockerfileにNODE_OPTIONS追加（メモリ不足対策） |
 | `21c4295e` | fix: Prisma compound unique key修正 - products.ts findUnique→findFirst |
 | `0f117b94` | fix: Prisma複合キーのnullable/不正キー名エラーを全修正 |
