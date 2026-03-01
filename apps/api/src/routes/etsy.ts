@@ -9,6 +9,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
 import { QUEUE_NAMES } from '@rakuda/config';
 import type { EtsyListingStatus } from '@prisma/client';
 
@@ -18,13 +19,14 @@ const log = logger.child({ module: 'etsy-listings' });
 // Lazy-init queue to avoid connection issues at import time
 let etsyPublishQueue: Queue | null = null;
 
+const etsyRedis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
+
 function getEtsyPublishQueue(): Queue {
   if (!etsyPublishQueue) {
     etsyPublishQueue = new Queue(QUEUE_NAMES.ETSY_PUBLISH, {
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      },
+      connection: etsyRedis,
     });
   }
   return etsyPublishQueue;

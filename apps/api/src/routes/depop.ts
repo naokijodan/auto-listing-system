@@ -10,6 +10,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
 import type { DepopListingStatus } from '@prisma/client';
 
 const router = Router();
@@ -18,13 +19,14 @@ const log = logger.child({ module: 'depop-routes' });
 // Lazy-init queue
 let depopPublishQueue: Queue | null = null;
 
+const depopRedis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
+
 function getDepopPublishQueue(): Queue {
   if (!depopPublishQueue) {
     depopPublishQueue = new Queue('depop-publish', {
-      connection: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379', 10),
-      },
+      connection: depopRedis,
     });
   }
   return depopPublishQueue;

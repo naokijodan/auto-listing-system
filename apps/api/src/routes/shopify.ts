@@ -10,17 +10,19 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
 import { QUEUE_NAMES } from '@rakuda/config';
 
 const router = Router();
 const log = logger.child({ module: 'shopify-products' });
 
 // BullMQキュー
+const shopifyRedis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
+
 const shopifySyncQueue = new Queue(QUEUE_NAMES.SHOPIFY_SYNC, {
-  connection: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379', 10),
-  },
+  connection: shopifyRedis,
 });
 
 // ========================================
