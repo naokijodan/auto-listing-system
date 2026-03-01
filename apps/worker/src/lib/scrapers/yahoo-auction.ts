@@ -112,7 +112,7 @@ export async function scrapeYahooAuction(url: string): Promise<ScraperResult> {
     const finalPrice = productData.buyNowPrice || productData.price;
 
     const product: ScrapedProduct = {
-      sourceType: 'yahoo_auction',
+      sourceType: 'YAHOO_AUCTION',
       sourceItemId: itemId,
       sourceUrl: url,
       title: productData.title,

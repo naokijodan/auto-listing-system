@@ -64,7 +64,7 @@ describe('Amazon Scraper', () => {
       expect(result.product).toBeDefined();
       expect(result.product?.title).toBe('Test Amazon Product');
       expect(result.product?.price).toBe(4980);
-      expect(result.product?.sourceType).toBe('amazon');
+      expect(result.product?.sourceType).toBe('AMAZON');
       expect(result.product?.sourceItemId).toBe('B08ABCDEFG');
     });
 

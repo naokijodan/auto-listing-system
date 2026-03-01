@@ -146,7 +146,7 @@ describe('productsRouter', () => {
   it('POST /scrape - queues job (202)', async () => {
     const res = await request(app)
       .post('/api/products/scrape')
-      .send({ url: 'https://example.com', source: 'mercari' });
+      .send({ url: 'https://example.com', source: 'MERCARI' });
     expect(res.status).toBe(202);
     expect(res.body.jobId).toBeDefined();
   });
@@ -159,7 +159,7 @@ describe('productsRouter', () => {
   it('POST /scrape-seller - queues job (202)', async () => {
     const res = await request(app)
       .post('/api/products/scrape-seller')
-      .send({ url: 'https://example.com/seller', source: 'mercari' });
+      .send({ url: 'https://example.com/seller', source: 'MERCARI' });
     expect(res.status).toBe(202);
   });
 
@@ -174,7 +174,7 @@ describe('productsRouter', () => {
     const res = await request(app)
       .post('/api/products')
       .send({
-        sourceType: 'mercari',
+        sourceType: 'MERCARI',
         sourceUrl: 'https://example.com/item',
         sourceItemId: 's1',
         title: 'T',
@@ -212,7 +212,7 @@ describe('productsRouter', () => {
   it('POST /import - imports rows (200)', async () => {
     const res = await request(app)
       .post('/api/products/import')
-      .send({ csv: 'title,price\nA,1000', sourceType: 'mercari' });
+      .send({ csv: 'title,price\nA,1000', sourceType: 'MERCARI' });
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
   });
@@ -222,7 +222,7 @@ describe('productsRouter', () => {
     (validateAndParseCsv as any).mockReturnValueOnce({ valid: false, data: [], errors: [{ row: 1, message: 'err' }], warnings: [], stats: { totalRows: 1, validRows: 0, invalidRows: 1, skippedRows: 0 } });
     const res = await request(app)
       .post('/api/products/import')
-      .send({ csv: 'bad', sourceType: 'mercari' });
+      .send({ csv: 'bad', sourceType: 'MERCARI' });
     expect(res.status).toBe(400);
   });
 
@@ -280,4 +280,3 @@ describe('productsRouter', () => {
     expect(res.status).toBe(400);
   });
 });
-

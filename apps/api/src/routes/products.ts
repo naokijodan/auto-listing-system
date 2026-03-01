@@ -8,7 +8,9 @@ import {
   ScrapedProductSchema,
   parseScrapedProduct,
   generateSourceHash,
+  SourceTypeSchema,
 } from '@rakuda/schema';
+import { SourceType as PrismaSourceType } from '@rakuda/database';
 import { AppError } from '../middleware/error-handler';
 import { parseCsv, rowToProduct, productsToCsv, validateAndParseCsv, generateCsvTemplate } from '../utils/csv';
 
@@ -62,7 +64,7 @@ const translateQueue = new Queue(QUEUE_NAMES.TRANSLATE, { connection: redis });
  *         description: 仕入れ元でフィルター
  *         schema:
  *           type: string
- *           enum: [mercari, yahoo_auction, yahoo_flea, rakuma, rakuten, amazon]
+ *           enum: [MERCARI, YAHOO_AUCTION, YAHOO_FLEA, RAKUMA, RAKUTEN, AMAZON]
  *       - name: minPrice
  *         in: query
  *         description: 最低価格
@@ -334,7 +336,7 @@ router.get('/:id', async (req, res, next) => {
  *               source:
  *                 type: string
  *                 description: ソースタイプ
- *                 enum: [mercari, yahoo_auction, yahoo_flea, rakuma, rakuten, amazon]
+ *                 enum: [MERCARI, YAHOO_AUCTION, YAHOO_FLEA, RAKUMA, RAKUTEN, AMAZON]
  *               marketplace:
  *                 type: array
  *                 description: 出品先マーケットプレイス
@@ -394,10 +396,13 @@ router.post('/scrape', async (req, res, next) => {
   try {
     const { url, source, sourceType, marketplace = ['joom'], options = {}, priority = 0 } = req.body;
 
-    const resolvedSource = source || sourceType;
-    if (!url || !resolvedSource) {
+    const resolvedSourceRaw = source || sourceType;
+    if (!url || !resolvedSourceRaw) {
       throw new AppError(400, 'url and source are required', 'INVALID_REQUEST');
     }
+
+    // Normalize and validate source type
+    const resolvedSource = SourceTypeSchema.parse(String(resolvedSourceRaw).toUpperCase());
 
     // ジョブ追加
     const job = await scrapeQueue.add(
@@ -459,6 +464,8 @@ router.post('/scrape-seller', async (req, res, next) => {
     if (!url || !source) {
       throw new AppError(400, 'url and source are required', 'INVALID_REQUEST');
     }
+    // Normalize and validate source type for seller scrape
+    const normalizedSource = SourceTypeSchema.parse(String(source).toUpperCase());
 
     const limit = options.limit || 50;
 
@@ -467,7 +474,7 @@ router.post('/scrape-seller', async (req, res, next) => {
       'scrape-seller',
       {
         url,
-        sourceType: source,
+        sourceType: normalizedSource,
         marketplace: Array.isArray(marketplace) ? marketplace : [marketplace],
         options: {
           processImages: options.processImages ?? true,
@@ -492,7 +499,7 @@ router.post('/scrape-seller', async (req, res, next) => {
       type: 'scrape_seller_job_added',
       jobId: job.id,
       url,
-      source,
+      source: normalizedSource,
       limit,
     });
 
@@ -504,7 +511,7 @@ router.post('/scrape-seller', async (req, res, next) => {
       data: {
         jobId: job.id,
         url,
-        source,
+        source: normalizedSource,
         marketplace,
         limit,
       },
@@ -524,13 +531,13 @@ router.post('/', async (req, res, next) => {
 
     // ソース取得または作成
     let source = await prisma.source.findFirst({
-      where: { type: data.sourceType.toUpperCase() as any },
+      where: { type: data.sourceType as PrismaSourceType },
     });
 
     if (!source) {
       source = await prisma.source.create({
         data: {
-          type: data.sourceType.toUpperCase() as any,
+          type: data.sourceType as PrismaSourceType,
           name: data.sourceType,
         },
       });

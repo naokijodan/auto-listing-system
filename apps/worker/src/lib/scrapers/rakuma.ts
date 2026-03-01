@@ -123,7 +123,7 @@ export async function scrapeRakuma(url: string): Promise<ScraperResult> {
     }
 
     const product: ScrapedProduct = {
-      sourceType: 'rakuma',
+      sourceType: 'RAKUMA',
       sourceItemId: itemId,
       sourceUrl: url,
       title: productData.title,

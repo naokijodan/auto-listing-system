@@ -124,7 +124,7 @@ export async function scrapeRakuten(url: string): Promise<ScraperResult> {
 
     const product: ScrapedProduct = {
       sourceUrl: url,
-      sourceType: 'rakuten',
+      sourceType: 'RAKUTEN',
       sourceItemId: `${shopId}:${itemId}`,
       title: productData.title,
       price: productData.price,

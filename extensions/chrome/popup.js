@@ -33,7 +33,7 @@ const siteInfo = {
   YAHOO_AUCTION: { icon: '🔨', name: 'ヤフオク' },
   YAHOO: { icon: '🔨', name: 'Yahoo' },
   MERCARI: { icon: '🛍️', name: 'メルカリ' },
-  AMAZON_JP: { icon: '📦', name: 'Amazon' },
+  AMAZON: { icon: '📦', name: 'Amazon' },
   UNKNOWN: { icon: '❓', name: '非対応サイト' },
 };
 

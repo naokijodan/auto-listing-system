@@ -60,7 +60,7 @@ describe('Mercari Scraper', () => {
       expect(result.product).toBeDefined();
       expect(result.product?.title).toBe('Test Product');
       expect(result.product?.price).toBe(3000);
-      expect(result.product?.sourceType).toBe('mercari');
+      expect(result.product?.sourceType).toBe('MERCARI');
       expect(result.product?.sourceItemId).toBe('m12345');
     });
 

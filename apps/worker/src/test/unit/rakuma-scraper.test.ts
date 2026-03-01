@@ -61,7 +61,7 @@ describe('Rakuma Scraper', () => {
       expect(result.product).toBeDefined();
       expect(result.product?.title).toBe('Rakuma Test Product');
       expect(result.product?.price).toBe(3500);
-      expect(result.product?.sourceType).toBe('rakuma');
+      expect(result.product?.sourceType).toBe('RAKUMA');
       expect(result.product?.sourceItemId).toBe('123456789');
     });
 

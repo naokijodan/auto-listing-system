@@ -90,7 +90,7 @@ interface Suggestion {
 const sourceLabels: Record<string, string> = {
   YAHOO_AUCTION: 'ヤフオク',
   MERCARI: 'メルカリ',
-  AMAZON_JP: 'Amazon JP',
+  AMAZON: 'Amazon JP',
   RAKUTEN: '楽天',
   CUSTOM: 'カスタム',
 };
@@ -603,7 +603,7 @@ export default function EbayCategoryMappingPage() {
                 <option value="">すべてのソース</option>
                 <option value="YAHOO_AUCTION">ヤフオク</option>
                 <option value="MERCARI">メルカリ</option>
-                <option value="AMAZON_JP">Amazon JP</option>
+                <option value="AMAZON">Amazon JP</option>
                 <option value="RAKUTEN">楽天</option>
                 <option value="CUSTOM">カスタム</option>
               </select>

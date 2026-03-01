@@ -72,22 +72,22 @@ async function registerProduct(productData) {
   }
 }
 
-// サイトタイプを判定（API用の小文字形式）
+// サイトタイプを判定（Prisma enum形式の大文字）
 function detectSiteType(url) {
   if (url.includes('yahoo.co.jp')) {
     if (url.includes('auctions.yahoo.co.jp') || url.includes('page.auctions.yahoo.co.jp')) {
-      return 'yahoo_auction';
+      return 'YAHOO_AUCTION';
     }
-    return 'yahoo_flea';
+    return 'YAHOO_FLEA';
   }
   if (url.includes('mercari.com')) {
-    return 'mercari';
+    return 'MERCARI';
   }
   if (url.includes('amazon.co.jp')) {
-    return 'amazon';
+    return 'AMAZON';
   }
   if (url.includes('rakuma.rakuten.co.jp')) {
-    return 'rakuma';
+    return 'RAKUMA';
   }
   return null;
 }
@@ -98,17 +98,17 @@ function extractItemId(url, siteType) {
     const urlObj = new URL(url);
 
     switch (siteType) {
-      case 'yahoo_auction':
+      case 'YAHOO_AUCTION':
         // https://page.auctions.yahoo.co.jp/jp/auction/x1234567890
         const yahooMatch = url.match(/auction\/([a-zA-Z0-9]+)/);
         return yahooMatch ? yahooMatch[1] : urlObj.pathname.split('/').pop();
 
-      case 'mercari':
+      case 'MERCARI':
         // https://jp.mercari.com/item/m12345678901
         const mercariMatch = url.match(/item\/([a-zA-Z0-9]+)/);
         return mercariMatch ? mercariMatch[1] : urlObj.pathname.split('/').pop();
 
-      case 'amazon':
+      case 'AMAZON':
         // https://www.amazon.co.jp/dp/B08XXXXXX or /gp/product/B08XXXXXX
         const amazonMatch = url.match(/(?:dp|product)\/([A-Z0-9]+)/i);
         return amazonMatch ? amazonMatch[1] : 'unknown';

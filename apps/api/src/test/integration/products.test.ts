@@ -404,7 +404,7 @@ describe('Products API', () => {
 
   describe('POST /api/products', () => {
     const mockScrapedProduct = {
-      sourceType: 'mercari',
+      sourceType: 'MERCARI',
       sourceItemId: 'm12345',
       sourceUrl: 'https://jp.mercari.com/item/m12345',
       title: 'Test Product',

@@ -34,7 +34,7 @@ const SOURCE_CONFIGS: Record<string, {
     },
     rateLimit: 3000,
   },
-  AMAZON_JP: {
+  AMAZON: {
     checkAvailability: async (url) => {
       // Amazon JPの在庫チェック
       return { available: true, price: null };

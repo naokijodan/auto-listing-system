@@ -4,15 +4,15 @@ import { z } from 'zod';
  * ソースタイプ（仕入元）
  */
 export const SourceTypeSchema = z.enum([
-  'mercari',
-  'yahoo_auction',
-  'yahoo_flea',
-  'rakuma',
-  'rakuten',
-  'amazon',
-  'takayama',
-  'joshin',
-  'other',
+  'MERCARI',
+  'YAHOO_AUCTION',
+  'YAHOO_FLEA',
+  'RAKUMA',
+  'RAKUTEN',
+  'AMAZON',
+  'TAKAYAMA',
+  'JOSHIN',
+  'OTHER',
 ]);
 export type SourceType = z.infer<typeof SourceTypeSchema>;
 

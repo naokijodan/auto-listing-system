@@ -190,7 +190,7 @@ export async function scrapeAmazon(url: string): Promise<ScraperResult> {
 
     const product: ScrapedProduct = {
       sourceUrl: url,
-      sourceType: 'amazon',
+      sourceType: 'AMAZON',
       sourceItemId: asin,
       title: productData.title,
       price: productData.price,

@@ -138,7 +138,7 @@ function extractAmazonJP() {
     description: description?.substring(0, 5000),
     seller,
     asin,
-    sourceType: 'AMAZON_JP',
+    sourceType: 'AMAZON',
   };
 }
 

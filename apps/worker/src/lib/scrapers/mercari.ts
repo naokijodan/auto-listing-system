@@ -106,7 +106,7 @@ export async function scrapeMercari(url: string): Promise<ScraperResult> {
     }
 
     const product: ScrapedProduct = {
-      sourceType: 'mercari',
+      sourceType: 'MERCARI',
       sourceItemId: itemId,
       sourceUrl: url,
       title: productData.title,

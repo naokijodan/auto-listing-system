@@ -60,7 +60,7 @@ describe('Yahoo Auction Scraper', () => {
       expect(result.product).toBeDefined();
       expect(result.product?.title).toBe('Vintage Watch');
       expect(result.product?.price).toBe(15000);
-      expect(result.product?.sourceType).toBe('yahoo_auction');
+      expect(result.product?.sourceType).toBe('YAHOO_AUCTION');
       expect(result.product?.sourceItemId).toBe('a123456');
     });
 

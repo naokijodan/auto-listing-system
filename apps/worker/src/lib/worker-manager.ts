@@ -39,6 +39,8 @@ import { runDailyReportJob, runWeeklyReportJob } from './report-generator';
 import { notifyHealthIssues, checkSystemHealth, recordError } from './error-monitor';
 import { notifyExchangeRateUpdated } from './notifications';
 import { processScheduledResumes } from './inventory-alert-service';
+import { prisma } from '@rakuda/database';
+import { processShopifyWebhookEvent } from './shopify-webhook-processor';
 
 const workers: Worker[] = [];
 let deadLetterQueue: Queue | null = null;
@@ -781,13 +783,87 @@ async function handleWebhookProcessing(job: any): Promise<any> {
   log.info({ type: 'webhook_processing_start', batchSize });
 
   try {
-    // Webhookイベント処理のプレースホルダー
-    // Shopify Webhook基盤構築後に実装予定
-    log.info({ type: 'webhook_processing_complete', processed: 0 });
+    // PENDING状態のWebhookイベントを取得（リトライスケジュール考慮）
+    const events = await prisma.webhookEvent.findMany({
+      where: {
+        status: 'PENDING',
+        OR: [
+          { nextRetryAt: null },
+          { nextRetryAt: { lte: new Date() } },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+      take: batchSize,
+    });
+
+    if (events.length === 0) {
+      log.debug({ type: 'no_pending_webhooks' });
+      return { success: true, processed: 0, failed: 0, timestamp: new Date().toISOString() };
+    }
+
+    let processed = 0;
+    let failed = 0;
+
+    for (const event of events) {
+      try {
+        await prisma.webhookEvent.update({
+          where: { id: event.id },
+          data: { status: 'PROCESSING', lastAttemptedAt: new Date() },
+        });
+
+        switch (event.provider) {
+          case 'SHOPIFY':
+            await processShopifyWebhookEvent({
+              id: event.id,
+              provider: event.provider,
+              eventType: event.eventType,
+              payload: event.payload as any,
+              headers: event.headers as any,
+            });
+            break;
+          case 'EBAY':
+            // eBayはAPIレイヤーで処理済み
+            log.debug({ eventId: event.id, provider: event.provider }, 'Skip processing for provider');
+            break;
+          case 'JOOM':
+            // JoomはAPIレイヤーで処理済み
+            log.debug({ eventId: event.id, provider: event.provider }, 'Skip processing for provider');
+            break;
+          default:
+            log.warn({ provider: event.provider, eventId: event.id }, 'Unknown webhook provider');
+        }
+
+        await prisma.webhookEvent.update({
+          where: { id: event.id },
+          data: { status: 'COMPLETED', processedAt: new Date() },
+        });
+        processed++;
+      } catch (error: any) {
+        failed++;
+        const retryCount = (event.retryCount || 0) + 1;
+        const isFatal = retryCount >= (event.maxRetries || 5);
+
+        await prisma.webhookEvent.update({
+          where: { id: event.id },
+          data: {
+            status: isFatal ? 'FATAL' : 'FAILED',
+            errorMessage: error.message,
+            retryCount,
+            nextRetryAt: isFatal ? null : new Date(Date.now() + retryCount * 60000),
+          },
+        });
+
+        log.error({ eventId: event.id, error: error.message, retryCount, isFatal }, 'Webhook event processing failed');
+      }
+    }
+
+    log.info({ type: 'webhook_processing_complete', processed, failed, total: events.length });
 
     return {
       success: true,
-      processed: 0,
+      processed,
+      failed,
+      total: events.length,
       timestamp: new Date().toISOString(),
     };
   } catch (error: any) {

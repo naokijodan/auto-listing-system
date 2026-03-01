@@ -6,6 +6,7 @@ import { QUEUE_NAMES } from '@rakuda/config';
 import { ScrapeJobPayload, ScrapeJobResult, generateSourceHash } from '@rakuda/schema';
 import { scrapeProduct, scrapeSellerProducts, SourceType } from '../lib/scrapers';
 import { alertManager } from '../lib/alert-manager';
+import { SourceType as PrismaSourceType } from '@rakuda/database';
 
 const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
@@ -80,11 +81,15 @@ async function processSingleScrape(
   job: Job<ScrapeJobPayload>,
   log: ReturnType<typeof logger.child>
 ): Promise<ScrapeJobResult> {
-  const { url, sourceType, marketplace = ['joom'], options = {} } = job.data as any;
+  const { url, sourceType } = job.data;
+  const marketplace = (job.data as any).marketplace ?? ['joom'];
+  const options = (job.data as any).options ?? {};
 
   try {
     // スクレイピング実行
-    const result = await scrapeProduct(url, sourceType as SourceType);
+    // Scrapers expect lowercase identifiers
+    const scraperSourceType = (sourceType as string).toLowerCase() as SourceType;
+    const result = await scrapeProduct(url, scraperSourceType);
 
     if (!result.success || !result.product) {
       log.error({ type: 'scrape_failed', error: result.error });
@@ -96,13 +101,13 @@ async function processSingleScrape(
 
     // ソース取得
     let source = await prisma.source.findFirst({
-      where: { type: sourceType.toUpperCase() as any },
+      where: { type: (sourceType as string).toUpperCase() as PrismaSourceType },
     });
 
     if (!source) {
       source = await prisma.source.create({
         data: {
-          type: sourceType.toUpperCase() as any,
+          type: (sourceType as string).toUpperCase() as PrismaSourceType,
           name: sourceType,
         },
       });
@@ -261,7 +266,8 @@ async function processSellerScrape(
   job: Job<ScrapeJobPayload>,
   log: ReturnType<typeof logger.child>
 ): Promise<ScrapeJobResult> {
-  const { url, sourceType, options = {} } = job.data as any;
+  const { url, sourceType } = job.data;
+  const options = (job.data as any).options ?? {};
   const limit = options.limit || 50;
   const batchSize = options.batchSize || BATCH_SIZE;
 
@@ -269,7 +275,8 @@ async function processSellerScrape(
     log.info({ type: 'seller_scrape_start', url, limit, batchSize });
 
     // セラーページから商品一覧をスクレイピング
-    const result = await scrapeSellerProducts(url, sourceType as SourceType, limit);
+    const scraperSourceType = (sourceType as string).toLowerCase() as SourceType;
+    const result = await scrapeSellerProducts(url, scraperSourceType, limit);
 
     if (!result.success || !result.products) {
       log.error({ type: 'seller_scrape_failed', error: result.error });
@@ -408,13 +415,13 @@ async function processSingleProductFromBatch(
 
   // ソース取得
   let source = await prisma.source.findFirst({
-    where: { type: sourceType.toUpperCase() as any },
+    where: { type: (sourceType as string).toUpperCase() as PrismaSourceType },
   });
 
   if (!source) {
     source = await prisma.source.create({
       data: {
-        type: sourceType.toUpperCase() as any,
+        type: (sourceType as string).toUpperCase() as PrismaSourceType,
         name: sourceType,
       },
     });

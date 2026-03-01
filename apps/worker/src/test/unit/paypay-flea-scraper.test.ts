@@ -60,7 +60,7 @@ describe('PayPay Flea Market Scraper', () => {
       expect(result.product).toBeDefined();
       expect(result.product?.title).toBe('PayPay Test Product');
       expect(result.product?.price).toBe(4500);
-      expect(result.product?.sourceType).toBe('yahoo_flea');
+      expect(result.product?.sourceType).toBe('YAHOO_FLEA');
       expect(result.product?.sourceItemId).toBe('abc123xyz');
     });
 

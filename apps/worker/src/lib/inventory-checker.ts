@@ -10,6 +10,10 @@ import {
 } from '@rakuda/config';
 import { scrapeMercari } from './scrapers/mercari';
 import { scrapeYahooAuction } from './scrapers/yahoo-auction';
+import { scrapePayPayFlea } from './scrapers/paypay-flea';
+import { scrapeRakuma } from './scrapers/rakuma';
+import { scrapeRakuten } from './scrapers/rakuten';
+import { scrapeAmazon } from './scrapers/amazon';
 import { notifyOutOfStock, notifyPriceChanged } from './notifications';
 import { alertManager } from './alert-manager';
 import { eventBus } from './event-bus';
@@ -149,16 +153,58 @@ export async function checkSingleProductInventory(
 
   try {
     // ソースタイプに応じたスクレイピング（指数バックオフ付きリトライ）
+    // 未対応はクラッシュさせずスキップ（楽観的に在庫あり）
+    let scrapeFn: ((url: string) => Promise<{ success: boolean; product?: any; error?: string }>) | null = null;
+    switch (product.source.type) {
+      case 'MERCARI':
+        scrapeFn = scrapeMercari;
+        break;
+      case 'YAHOO_AUCTION':
+        scrapeFn = scrapeYahooAuction;
+        break;
+      case 'YAHOO_FLEA':
+        scrapeFn = scrapePayPayFlea;
+        break;
+      case 'RAKUMA':
+        scrapeFn = scrapeRakuma;
+        break;
+      case 'RAKUTEN':
+        scrapeFn = scrapeRakuten;
+        break;
+      case 'AMAZON':
+        scrapeFn = scrapeAmazon;
+        break;
+      case 'TAKAYAMA':
+      case 'JOSHIN':
+      case 'OTHER':
+        log.warn({ sourceType: product.source.type, productId: product.id },
+          'Inventory check not yet implemented for this source type, skipping');
+        return {
+          productId,
+          isAvailable: true,
+          currentPrice: product.price ?? null,
+          priceChanged: false,
+          hashChanged: false,
+          newHash: null,
+          action: 'none',
+        };
+      default:
+        log.warn({ sourceType: product.source.type, productId: product.id },
+          'Unknown source type for inventory check, skipping');
+        return {
+          productId,
+          isAvailable: true,
+          currentPrice: product.price ?? null,
+          priceChanged: false,
+          hashChanged: false,
+          newHash: null,
+          action: 'none',
+        };
+    }
+
     const scrapeResult = await withExponentialBackoff(
       async () => {
-        switch (product.source.type) {
-          case 'MERCARI':
-            return await scrapeMercari(product.sourceUrl);
-          case 'YAHOO_AUCTION':
-            return await scrapeYahooAuction(product.sourceUrl);
-          default:
-            throw new Error(`Unsupported source type: ${product.source.type}`);
-        }
+        return await scrapeFn!(product.sourceUrl);
       },
       settings.maxRetries,
       settings.retryDelayMs

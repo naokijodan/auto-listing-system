@@ -108,7 +108,7 @@ export async function scrapePayPayFlea(url: string): Promise<ScraperResult> {
     }
 
     const product: ScrapedProduct = {
-      sourceType: 'yahoo_flea',
+      sourceType: 'YAHOO_FLEA',
       sourceItemId: itemId,
       sourceUrl: url,
       title: productData.title,
