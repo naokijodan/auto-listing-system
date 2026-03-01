@@ -14,7 +14,7 @@ COPY package*.json ./
 COPY apps/web/package*.json ./apps/web/
 
 # 依存関係をインストール
-RUN npm ci --legacy-peer-deps
+RUN NODE_ENV=development npm ci --legacy-peer-deps
 
 # -----------------------------------------------------------------------------
 # Stage 2: Builder

@@ -18,7 +18,7 @@ RUN apk add --no-cache python3 make g++
 COPY . .
 
 # 依存関係をインストール
-RUN npm ci --legacy-peer-deps
+RUN NODE_ENV=development npm ci --legacy-peer-deps
 
 # Prismaクライアントを生成
 RUN npx prisma generate --schema=packages/database/prisma/schema
