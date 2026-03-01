@@ -171,7 +171,7 @@ export class EtsyPublishService {
       // 4. Listing テーブルにも記録
       const listing = await prisma.listing.upsert({
         where: {
-          productId_marketplace: { productId: etsyListing.productId, marketplace: 'ETSY' },
+          productId_marketplace_credentialId: { productId: etsyListing.productId, marketplace: 'ETSY', credentialId: null as unknown as string },
         },
         create: {
           productId: etsyListing.productId,
@@ -295,4 +295,3 @@ export class EtsyPublishService {
 }
 
 export const etsyPublishService = new EtsyPublishService();
-

@@ -30,7 +30,7 @@ export class ShopifyPublishService {
 
     // ListingもDRAFTで用意
     const listing = await prisma.listing.upsert({
-      where: { productId_marketplace: { productId: task.productId, marketplace: 'SHOPIFY' } },
+      where: { productId_marketplace_credentialId: { productId: task.productId, marketplace: 'SHOPIFY', credentialId: null as unknown as string } },
       create: {
         productId: task.productId,
         marketplace: 'SHOPIFY',
@@ -147,7 +147,7 @@ export class ShopifyPublishService {
 
     try {
       await prisma.listing.update({
-        where: { productId_marketplace: { productId: product.id, marketplace: 'SHOPIFY' } },
+        where: { productId_marketplace_credentialId: { productId: product.id, marketplace: 'SHOPIFY', credentialId: null as unknown as string } },
         data: { status: 'PUBLISHING' },
       });
 
@@ -173,7 +173,7 @@ export class ShopifyPublishService {
           },
         }),
         prisma.listing.update({
-          where: { productId_marketplace: { productId: product.id, marketplace: 'SHOPIFY' } },
+          where: { productId_marketplace_credentialId: { productId: product.id, marketplace: 'SHOPIFY', credentialId: null as unknown as string } },
           data: {
             marketplaceListingId: productId,
             status: 'ACTIVE',
@@ -216,7 +216,7 @@ export class ShopifyPublishService {
       return { success: true, shopifyProductId: productId, shopifyVariantId: variantId || undefined, productUrl };
     } catch (error: any) {
       await prisma.listing.update({
-        where: { productId_marketplace: { productId: product.id, marketplace: 'SHOPIFY' } },
+        where: { productId_marketplace_credentialId: { productId: product.id, marketplace: 'SHOPIFY', credentialId: null as unknown as string } },
         data: { status: 'ERROR', errorMessage: error.message },
       });
       log.error({ type: 'shopify_publish_failed', productId: product.id, error: error.message });

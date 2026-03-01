@@ -67,9 +67,10 @@ export class EbayPublishService {
       // レガシー: credentialId なし
       listing = await prisma.listing.upsert({
         where: {
-          productId_marketplace: {
+          productId_marketplace_credentialId: {
             productId: task.productId,
             marketplace: 'EBAY',
+            credentialId: null as unknown as string,
           },
         },
         create: {
