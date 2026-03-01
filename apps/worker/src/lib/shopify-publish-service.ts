@@ -2,6 +2,7 @@ import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { shopifyApi, calculateShopifyPrice, ShopifyProductData } from './shopify-api';
 import { imagePipelineService } from './joom-publish-service';
+import { identifyShopifyChannel } from './shopify-channel-identifier';
 
 export interface ShopifyPublishResult {
   success: boolean;
@@ -272,6 +273,12 @@ export class ShopifyOrderSyncService {
       for (const order of orders) {
         try {
           const marketplaceOrderId = String(order.id);
+          const channelInfo = identifyShopifyChannel({
+            app_id: order.app_id,
+            source_name: order.source_name,
+            fulfillment_status: order.fulfillment_status,
+            financial_status: order.financial_status,
+          });
           const subtotal = parseFloat(order.subtotal_price || '0');
           const shipping = parseFloat(order.total_shipping_price_set?.shop_money?.amount || '0');
           const total = parseFloat(order.total_price || '0');
@@ -298,8 +305,13 @@ export class ShopifyOrderSyncService {
               total,
               currency,
               status: 'CONFIRMED',
-              paymentStatus: order.financial_status === 'paid' ? 'PAID' : 'PENDING',
-              fulfillmentStatus: order.fulfillment_status === 'fulfilled' ? 'FULFILLED' : 'UNFULFILLED',
+              paymentStatus: (channelInfo.requiresPaymentCapture
+                ? 'AUTHORIZED'
+                : (order.financial_status === 'paid' ? 'PAID' : 'PENDING')) as any,
+              fulfillmentStatus: (channelInfo.requiresHoldCheck
+                ? 'ON_HOLD'
+                : (order.fulfillment_status === 'fulfilled' ? 'FULFILLED' : 'UNFULFILLED')) as any,
+              sourceChannel: channelInfo.code,
               rawData: order as any,
               orderedAt: new Date(order.created_at),
             },
@@ -309,7 +321,10 @@ export class ShopifyOrderSyncService {
               subtotal,
               shippingCost: shipping,
               total,
-              paymentStatus: order.financial_status === 'paid' ? 'PAID' : existing?.paymentStatus || 'PENDING',
+              paymentStatus: (channelInfo.requiresPaymentCapture
+                ? 'AUTHORIZED'
+                : (order.financial_status === 'paid' ? 'PAID' : (existing?.paymentStatus || 'PENDING'))) as any,
+              ...(existing?.sourceChannel ? {} : { sourceChannel: channelInfo.code }),
               rawData: order as any,
             },
           });
@@ -401,4 +416,3 @@ export class ShopifyOrderSyncService {
 
 export const shopifyPublishService = new ShopifyPublishService();
 export const shopifyOrderSyncService = new ShopifyOrderSyncService();
-

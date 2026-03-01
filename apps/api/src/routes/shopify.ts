@@ -188,6 +188,7 @@ router.get('/orders', async (req: Request, res: Response) => {
   try {
     const {
       status,
+      sourceChannel,
       limit = '50',
       offset = '0',
     } = req.query;
@@ -196,6 +197,7 @@ router.get('/orders', async (req: Request, res: Response) => {
       marketplace: 'SHOPIFY',
     };
     if (status) where.status = status as string;
+    if (sourceChannel) where.sourceChannel = sourceChannel as string;
 
     const [orders, total] = await Promise.all([
       prisma.order.findMany({

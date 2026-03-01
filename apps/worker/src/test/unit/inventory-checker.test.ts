@@ -319,7 +319,9 @@ describe('Inventory Checker', () => {
         retryDelayMs: 1,
       });
 
-      expect(result.error).toContain('Unsupported source type');
+      // Unknown source types now gracefully skip (return available=true, no error)
+      expect(result.isAvailable).toBe(true);
+      expect(result.error).toBeUndefined();
     });
 
     it('should update product in database', async () => {

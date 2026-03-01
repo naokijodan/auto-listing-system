@@ -574,6 +574,65 @@ export const handlers = [
       webhook: { id: 900001, topic: webhook?.topic, address: webhook?.address },
     });
   }),
+
+  // ========================================
+  // Shopify Admin API (2026-01, rakuda-store)
+  // ========================================
+  // Create Product (echoes title and sku back, active status)
+  http.post('https://rakuda-store.myshopify.com/admin/api/2026-01/products.json', async ({ request }) => {
+    const body = await request.json() as any;
+    const title = body?.product?.title;
+    const sku = body?.product?.variants?.[0]?.sku;
+    const variantId = 51431097991384;
+    const productId = 9149468541144;
+    return HttpResponse.json({
+      product: {
+        id: productId,
+        title,
+        variants: [{ id: variantId, sku }],
+        handle: 'seiko-presage-sarx035',
+        status: 'active',
+      },
+    });
+  }),
+
+  // List Orders (sample order with RAKUDA-SHOP sku and Instagram/TikTok app ids switchable via query)
+  http.get('https://rakuda-store.myshopify.com/admin/api/2026-01/orders.json', ({ request }) => {
+    const url = new URL(request.url);
+    const appId = url.searchParams.get('app_id');
+    const orderAppId = appId ? Number(appId) : 580111;
+    return HttpResponse.json({
+      orders: [{
+        id: 820982911946154,
+        name: '#1001',
+        app_id: orderAppId,
+        source_name: 'web',
+        financial_status: 'paid',
+        fulfillment_status: null,
+        line_items: [{
+          id: 1,
+          variant_id: 51431097991384,
+          title: 'Seiko Presage SARX035',
+          quantity: 1,
+          sku: 'RAKUDA-SHOP-testproductid123',
+          price: '399.99',
+        }],
+        total_price: '399.99',
+        currency: 'USD',
+        created_at: '2026-03-01T10:00:00Z',
+        shipping_address: {
+          first_name: 'John',
+          last_name: 'Doe',
+          address1: '123 Main St',
+          city: 'New York',
+          province: 'NY',
+          zip: '10001',
+          country: 'US',
+        },
+        customer: { email: 'john@example.com' },
+      }],
+    });
+  }),
 ];
 
 // エラーハンドラー（テスト用）

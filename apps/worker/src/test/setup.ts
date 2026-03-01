@@ -43,7 +43,30 @@ export const mockPrisma = {
     create: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
+    upsert: vi.fn(),
     groupBy: vi.fn(),
+  },
+  shopifyProduct: {
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    count: vi.fn(),
+  },
+  enrichmentTask: {
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+  },
+  webhookEvent: {
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    count: vi.fn(),
   },
   notification: {
     create: vi.fn(),
@@ -54,6 +77,7 @@ export const mockPrisma = {
     count: vi.fn(),
   },
   order: {
+    findUnique: vi.fn(),
     findFirst: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),
@@ -131,6 +155,12 @@ export function setupDefaultMocks() {
   mockPrisma.listing.update.mockResolvedValue({ id: '1' });
   mockPrisma.listing.findUnique.mockResolvedValue(null);
   mockPrisma.listing.create.mockResolvedValue({ id: '1' });
+  mockPrisma.listing.upsert.mockResolvedValue({ id: '1' });
+
+  // ShopifyProduct
+  mockPrisma.shopifyProduct.findUnique.mockResolvedValue(null);
+  mockPrisma.shopifyProduct.create.mockResolvedValue({ id: 'sp-1' });
+  mockPrisma.shopifyProduct.update.mockResolvedValue({ id: 'sp-1' });
 
   // Notification
   mockPrisma.notification.create.mockResolvedValue({ id: '1' });

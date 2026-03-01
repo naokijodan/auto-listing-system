@@ -13,6 +13,16 @@ export const mockPrisma = {
     count: vi.fn(),
     groupBy: vi.fn(),
   },
+  shopifyProduct: {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    delete: vi.fn(),
+    count: vi.fn(),
+  },
   listing: {
     findMany: vi.fn(),
     findUnique: vi.fn(),

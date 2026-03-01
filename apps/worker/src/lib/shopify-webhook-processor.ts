@@ -1,5 +1,6 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { identifyShopifyChannel } from './shopify-channel-identifier';
 
 const log = logger.child({ module: 'shopify-webhook-processor' });
 
@@ -53,6 +54,14 @@ async function handleOrderCreated(eventId: string, payload: any): Promise<void> 
     return;
   }
 
+  // 販売チャネル識別
+  const channelInfo = identifyShopifyChannel({
+    app_id: payload.app_id,
+    source_name: payload.source_name,
+    fulfillment_status: payload.fulfillment_status,
+    financial_status: payload.financial_status,
+  });
+
   // 金額情報
   const subtotal = parseFloat(payload.subtotal_price || '0');
   const shipping = parseFloat(payload.total_shipping_price_set?.shop_money?.amount || '0');
@@ -61,6 +70,14 @@ async function handleOrderCreated(eventId: string, payload: any): Promise<void> 
   const currency = payload.currency || payload.total_price_set?.shop_money?.currency || 'USD';
 
   const shipTo = payload.shipping_address || {};
+
+  const mappedStatus = mapShopifyOrderStatus(payload.financial_status, payload.fulfillment_status, payload.cancelled_at);
+  const mappedPaymentStatus = channelInfo.requiresPaymentCapture
+    ? 'AUTHORIZED'
+    : mapShopifyPaymentStatus(payload.financial_status);
+  const mappedFulfillmentStatus = channelInfo.requiresHoldCheck
+    ? 'ON_HOLD'
+    : mapShopifyFulfillmentStatus(payload.fulfillment_status);
 
   const order = await prisma.order.create({
     data: {
@@ -75,9 +92,10 @@ async function handleOrderCreated(eventId: string, payload: any): Promise<void> 
       tax,
       total,
       currency,
-      status: mapShopifyOrderStatus(payload.financial_status, payload.fulfillment_status, payload.cancelled_at),
-      paymentStatus: mapShopifyPaymentStatus(payload.financial_status),
-      fulfillmentStatus: mapShopifyFulfillmentStatus(payload.fulfillment_status),
+      status: mappedStatus,
+      paymentStatus: mappedPaymentStatus as any,
+      fulfillmentStatus: mappedFulfillmentStatus as any,
+      sourceChannel: channelInfo.code,
       orderedAt: new Date(payload.created_at || Date.now()),
       paidAt: payload.financial_status === 'paid' && payload.processed_at ? new Date(payload.processed_at) : null,
       rawData: payload as any,
@@ -139,7 +157,7 @@ async function handleOrderCreated(eventId: string, payload: any): Promise<void> 
 
   await prisma.webhookEvent.update({ where: { id: eventId }, data: { orderId: order.id } });
 
-  log.info({ orderId: order.id, marketplaceOrderId }, 'Shopify order created');
+  log.info({ orderId: order.id, marketplaceOrderId, channel: channelInfo.name, channelCode: channelInfo.code }, 'Shopify order created');
 }
 
 // 注文更新
@@ -155,12 +173,29 @@ async function handleOrderUpdated(eventId: string, payload: any): Promise<void> 
     return;
   }
 
+  // 販売チャネル識別（更新時にも設定: null→値）
+  const channelInfo = identifyShopifyChannel({
+    app_id: payload.app_id,
+    source_name: payload.source_name,
+    fulfillment_status: payload.fulfillment_status,
+    financial_status: payload.financial_status,
+  });
+
+  const mappedStatus = mapShopifyOrderStatus(payload.financial_status, payload.fulfillment_status, payload.cancelled_at);
+  const mappedPaymentStatus = channelInfo.requiresPaymentCapture
+    ? 'AUTHORIZED'
+    : mapShopifyPaymentStatus(payload.financial_status);
+  const mappedFulfillmentStatus = channelInfo.requiresHoldCheck
+    ? 'ON_HOLD'
+    : mapShopifyFulfillmentStatus(payload.fulfillment_status);
+
   await prisma.order.update({
     where: { id: order.id },
     data: {
-      status: mapShopifyOrderStatus(payload.financial_status, payload.fulfillment_status, payload.cancelled_at),
-      paymentStatus: mapShopifyPaymentStatus(payload.financial_status),
-      fulfillmentStatus: mapShopifyFulfillmentStatus(payload.fulfillment_status),
+      status: mappedStatus,
+      paymentStatus: mappedPaymentStatus as any,
+      fulfillmentStatus: mappedFulfillmentStatus as any,
+      ...(order.sourceChannel ? {} : { sourceChannel: channelInfo.code }),
       rawData: payload as any,
       updatedAt: new Date(),
     },
@@ -245,7 +280,11 @@ async function handleAppUninstalled(_eventId: string, payload: any): Promise<voi
 }
 
 // ステータスマッピング
-function mapShopifyOrderStatus(financialStatus: string, fulfillmentStatus: string | null, cancelledAt?: string | null): 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED' | 'DISPUTE' {
+function mapShopifyOrderStatus(
+  financialStatus: string,
+  fulfillmentStatus: string | null,
+  cancelledAt?: string | null,
+): 'PENDING' | 'CONFIRMED' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED' | 'DISPUTE' {
   if (cancelledAt) return 'CANCELLED';
   if (fulfillmentStatus === 'fulfilled') return 'SHIPPED';
   if (fulfillmentStatus === 'partial' || fulfillmentStatus === 'partialled' || fulfillmentStatus === 'partial_fulfilled') return 'PROCESSING';
@@ -271,10 +310,10 @@ function mapShopifyPaymentStatus(financialStatus: string): 'PENDING' | 'PAID' | 
   }
 }
 
-function mapShopifyFulfillmentStatus(fulfillmentStatus: string | null): 'UNFULFILLED' | 'PARTIALLY_FULFILLED' | 'FULFILLED' | 'RETURNED' {
+function mapShopifyFulfillmentStatus(fulfillmentStatus: string | null): 'UNFULFILLED' | 'ON_HOLD' | 'PARTIALLY_FULFILLED' | 'FULFILLED' | 'RETURNED' {
   const s = (fulfillmentStatus || '').toLowerCase();
+  if (s === 'on_hold') return 'ON_HOLD';
   if (s === 'fulfilled') return 'FULFILLED';
   if (s === 'partial' || s === 'partialled' || s === 'partial_fulfilled') return 'PARTIALLY_FULFILLED';
   return 'UNFULFILLED';
 }
-

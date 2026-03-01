@@ -594,6 +594,9 @@ model Order {
   trackingCarrier String?
   shippedAt       DateTime?
 
+  // 販売チャネル識別（Shopify Hub経由の場合: ONLINE_STORE, INSTAGRAM, TIKTOK等）
+  sourceChannel String?
+
   // 生データ（デバッグ・参照用）
   rawData Json @default("{}")
 
@@ -633,6 +636,7 @@ enum OrderStatus {
 
 enum PaymentStatus {
   PENDING
+  AUTHORIZED
   PAID
   REFUNDED
   FAILED
@@ -640,6 +644,7 @@ enum PaymentStatus {
 
 enum FulfillmentStatus {
   UNFULFILLED
+  ON_HOLD
   PARTIALLY_FULFILLED
   FULFILLED
   RETURNED
@@ -6482,4 +6487,3 @@ enum BulkOperationStatus {
   FAILED
   CANCELLED
 }
-
