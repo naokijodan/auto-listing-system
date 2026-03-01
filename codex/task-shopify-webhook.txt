@@ -1,0 +1,425 @@
+RAKUDAプロジェクト - Shopify Webhook Event Processing実装
+
+## 背景
+Shopify Webhookは受信してDBに保存（PENDING状態）するだけ。実際の処理ロジックが未実装。
+eBay/Joomの実装パターン（apps/api/src/routes/webhooks.ts）を参考にShopify用処理を追加する。
+
+## 現在のアーキテクチャ
+1. 受信: POST /api/shopify/webhook → apps/api/src/routes/shopify-auth.ts (line 210-249)
+   - HMAC検証済み
+   - webhookEventテーブルにPENDINGで保存
+2. Worker: apps/worker/src/lib/worker-manager.ts (line 777-797)
+   - handleWebhookProcessing() がプレースホルダー
+   - PENDINGのwebhookEventをバッチ取得→処理するはずだが中身なし
+3. DB: WebhookEvent model with status enum (PENDING/PROCESSING/COMPLETED/FAILED/FATAL/IGNORED)
+
+## 登録済みWebhookイベント（6種）
+- orders/create
+- orders/updated
+- orders/cancelled
+- products/update
+- inventory_levels/update
+- app/uninstalled
+
+## 修正対象
+
+### 1. apps/worker/src/lib/worker-manager.ts - handleWebhookProcessing() 修正
+line 777-797のプレースホルダーを実装に置き換え:
+
+```typescript
+async function handleWebhookProcessing(batchSize = 20) {
+  const log = logger.child({ handler: 'webhook-processing' });
+
+  // PENDINGのwebhookイベントをバッチ取得
+  const events = await prisma.webhookEvent.findMany({
+    where: {
+      status: 'PENDING',
+      OR: [
+        { nextRetryAt: null },
+        { nextRetryAt: { lte: new Date() } },
+      ],
+    },
+    orderBy: { createdAt: 'asc' },
+    take: batchSize,
+  });
+
+  if (events.length === 0) {
+    log.debug({ type: 'no_pending_webhooks' });
+    return;
+  }
+
+  let processed = 0;
+  let failed = 0;
+
+  for (const event of events) {
+    try {
+      // ステータスをPROCESSINGに更新
+      await prisma.webhookEvent.update({
+        where: { id: event.id },
+        data: { status: 'PROCESSING', lastAttemptedAt: new Date() },
+      });
+
+      // プロバイダー別に処理を分岐
+      switch (event.provider) {
+        case 'SHOPIFY':
+          await processShopifyWebhookEvent(event);
+          break;
+        case 'EBAY':
+          // 既存のeBay処理は webhooks.ts にあるためスキップ
+          break;
+        case 'JOOM':
+          // 既存のJoom処理は webhooks.ts にあるためスキップ
+          break;
+        default:
+          log.warn({ provider: event.provider, eventId: event.id }, 'Unknown webhook provider');
+      }
+
+      // ステータスをCOMPLETEDに更新
+      await prisma.webhookEvent.update({
+        where: { id: event.id },
+        data: { status: 'COMPLETED', processedAt: new Date() },
+      });
+      processed++;
+    } catch (error: any) {
+      failed++;
+      const retryCount = event.retryCount + 1;
+      const isFatal = retryCount >= event.maxRetries;
+
+      await prisma.webhookEvent.update({
+        where: { id: event.id },
+        data: {
+          status: isFatal ? 'FATAL' : 'FAILED',
+          errorMessage: error.message,
+          retryCount,
+          nextRetryAt: isFatal ? null : new Date(Date.now() + retryCount * 60000),
+        },
+      });
+
+      log.error({ eventId: event.id, error: error.message, retryCount, isFatal },
+        'Webhook event processing failed');
+    }
+  }
+
+  log.info({ type: 'webhook_processing_complete', processed, failed, total: events.length });
+}
+```
+
+### 2. apps/worker/src/lib/shopify-webhook-processor.ts (新規作成)
+
+Shopify Webhookイベントの処理ロジック。eBayのwebhooks.tsパターンを参考に。
+
+```typescript
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
+
+const log = logger.child({ module: 'shopify-webhook-processor' });
+
+interface WebhookEvent {
+  id: string;
+  provider: string;
+  eventType: string;
+  payload: any;
+  headers: any;
+}
+
+export async function processShopifyWebhookEvent(event: WebhookEvent): Promise<void> {
+  const { eventType, payload } = event;
+
+  log.info({ eventId: event.id, eventType }, 'Processing Shopify webhook event');
+
+  switch (eventType) {
+    case 'orders/create':
+      await handleOrderCreated(event.id, payload);
+      break;
+    case 'orders/updated':
+      await handleOrderUpdated(event.id, payload);
+      break;
+    case 'orders/cancelled':
+      await handleOrderCancelled(event.id, payload);
+      break;
+    case 'products/update':
+      await handleProductUpdated(event.id, payload);
+      break;
+    case 'inventory_levels/update':
+      await handleInventoryLevelUpdated(event.id, payload);
+      break;
+    case 'app/uninstalled':
+      await handleAppUninstalled(event.id, payload);
+      break;
+    default:
+      log.warn({ eventType, eventId: event.id }, 'Unhandled Shopify webhook event type');
+  }
+}
+
+/**
+ * 注文作成: Shopifyで注文が入った時
+ * - Orderレコード作成
+ * - Saleレコード作成（売上明細）
+ * - 在庫数を減らす
+ * - Discord通知
+ */
+async function handleOrderCreated(eventId: string, payload: any): Promise<void> {
+  const shopifyOrderId = String(payload.id);
+  const orderNumber = payload.order_number || payload.name;
+
+  // 重複チェック
+  const existing = await prisma.order.findFirst({
+    where: { marketplaceOrderId: shopifyOrderId },
+  });
+  if (existing) {
+    log.info({ shopifyOrderId, existingOrderId: existing.id }, 'Order already exists, skipping');
+    return;
+  }
+
+  // line_itemsからRAKUDA商品を特定
+  const lineItems = payload.line_items || [];
+
+  for (const item of lineItems) {
+    const sku = item.sku;
+    if (!sku) continue;
+
+    // SKUからProduct/Listingを検索
+    const listing = await prisma.listing.findFirst({
+      where: {
+        marketplace: 'SHOPIFY',
+        OR: [
+          { marketplaceListingId: String(item.product_id) },
+          { sku },
+        ],
+      },
+      include: { product: true },
+    });
+
+    if (!listing) {
+      log.warn({ sku, productId: item.product_id }, 'No RAKUDA listing found for Shopify line item');
+      continue;
+    }
+
+    // Order作成
+    const order = await prisma.order.create({
+      data: {
+        marketplace: 'SHOPIFY',
+        marketplaceOrderId: shopifyOrderId,
+        listingId: listing.id,
+        productId: listing.productId,
+        status: mapShopifyOrderStatus(payload.financial_status, payload.fulfillment_status),
+        buyerName: payload.customer ? `${payload.customer.first_name} ${payload.customer.last_name}` : 'Unknown',
+        buyerEmail: payload.customer?.email || null,
+        totalAmount: parseFloat(payload.total_price) || 0,
+        currency: payload.currency || 'USD',
+        shippingAddress: payload.shipping_address ? JSON.stringify(payload.shipping_address) : null,
+        rawData: payload,
+      },
+    });
+
+    // Sale（売上明細）作成
+    await prisma.sale.create({
+      data: {
+        orderId: order.id,
+        productId: listing.productId,
+        listingId: listing.id,
+        marketplace: 'SHOPIFY',
+        salePrice: parseFloat(item.price) || 0,
+        quantity: item.quantity || 1,
+        currency: payload.currency || 'USD',
+        platformFee: 0, // Shopifyの手数料は後で設定
+        shippingCost: 0,
+        status: 'COMPLETED',
+      },
+    });
+
+    // webhookEventにorderIdをリンク
+    await prisma.webhookEvent.update({
+      where: { id: eventId },
+      data: { orderId: order.id },
+    });
+
+    log.info({
+      orderId: order.id,
+      shopifyOrderId,
+      productId: listing.productId,
+      sku,
+      amount: payload.total_price,
+    }, 'Shopify order created in RAKUDA');
+  }
+}
+
+/**
+ * 注文更新: ステータス変更（支払い完了、発送完了等）
+ */
+async function handleOrderUpdated(eventId: string, payload: any): Promise<void> {
+  const shopifyOrderId = String(payload.id);
+
+  const order = await prisma.order.findFirst({
+    where: { marketplaceOrderId: shopifyOrderId, marketplace: 'SHOPIFY' },
+  });
+
+  if (!order) {
+    // まだ注文がなければ新規作成として処理
+    await handleOrderCreated(eventId, payload);
+    return;
+  }
+
+  const newStatus = mapShopifyOrderStatus(payload.financial_status, payload.fulfillment_status);
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      status: newStatus,
+      rawData: payload,
+      updatedAt: new Date(),
+    },
+  });
+
+  log.info({ orderId: order.id, shopifyOrderId, newStatus }, 'Shopify order updated');
+}
+
+/**
+ * 注文キャンセル
+ */
+async function handleOrderCancelled(eventId: string, payload: any): Promise<void> {
+  const shopifyOrderId = String(payload.id);
+
+  const order = await prisma.order.findFirst({
+    where: { marketplaceOrderId: shopifyOrderId, marketplace: 'SHOPIFY' },
+  });
+
+  if (!order) {
+    log.warn({ shopifyOrderId }, 'Order not found for cancellation');
+    return;
+  }
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      status: 'CANCELLED',
+      rawData: payload,
+      updatedAt: new Date(),
+    },
+  });
+
+  // Sale も CANCELLED に更新
+  await prisma.sale.updateMany({
+    where: { orderId: order.id },
+    data: { status: 'CANCELLED' },
+  });
+
+  log.info({ orderId: order.id, shopifyOrderId }, 'Shopify order cancelled');
+}
+
+/**
+ * 商品更新: Shopify管理画面で商品情報が変更された時
+ * - Listingのステータス・価格を同期
+ */
+async function handleProductUpdated(eventId: string, payload: any): Promise<void> {
+  const shopifyProductId = String(payload.id);
+
+  const listing = await prisma.listing.findFirst({
+    where: {
+      marketplace: 'SHOPIFY',
+      marketplaceListingId: shopifyProductId,
+    },
+  });
+
+  if (!listing) {
+    log.debug({ shopifyProductId }, 'No RAKUDA listing found for Shopify product update');
+    return;
+  }
+
+  // Shopify側のステータスを反映
+  const shopifyStatus = payload.status; // active, archived, draft
+  const newStatus = shopifyStatus === 'active' ? 'ACTIVE'
+    : shopifyStatus === 'archived' ? 'ENDED'
+    : 'DRAFT';
+
+  // 価格更新（最初のvariant価格を使用）
+  const firstVariant = payload.variants?.[0];
+  const newPrice = firstVariant ? parseFloat(firstVariant.price) : undefined;
+
+  await prisma.listing.update({
+    where: { id: listing.id },
+    data: {
+      status: newStatus,
+      ...(newPrice !== undefined ? { price: newPrice } : {}),
+      updatedAt: new Date(),
+    },
+  });
+
+  log.info({ listingId: listing.id, shopifyProductId, newStatus, newPrice },
+    'Shopify product update synced to listing');
+}
+
+/**
+ * 在庫レベル更新
+ */
+async function handleInventoryLevelUpdated(eventId: string, payload: any): Promise<void> {
+  const inventoryItemId = String(payload.inventory_item_id);
+  const available = payload.available;
+  const locationId = String(payload.location_id);
+
+  log.info({ inventoryItemId, available, locationId },
+    'Shopify inventory level updated (monitoring only)');
+
+  // 現時点ではログ記録のみ
+  // 将来的にはRAKUDA側の在庫数と比較して不整合検知
+}
+
+/**
+ * アプリアンインストール
+ */
+async function handleAppUninstalled(eventId: string, payload: any): Promise<void> {
+  log.warn({ shop: payload.domain || payload.myshopify_domain },
+    'Shopify app uninstalled - all Shopify listings will be deactivated');
+
+  // Shopifyの全リスティングをENDEDに更新
+  const result = await prisma.listing.updateMany({
+    where: { marketplace: 'SHOPIFY', status: 'ACTIVE' },
+    data: { status: 'ENDED', updatedAt: new Date() },
+  });
+
+  // MarketplaceCredentialを無効化
+  await prisma.marketplaceCredential.updateMany({
+    where: { marketplace: 'SHOPIFY' },
+    data: { isActive: false },
+  });
+
+  log.info({ deactivatedListings: result.count }, 'All Shopify listings deactivated');
+}
+
+/**
+ * ShopifyステータスマッピングShopifyのfinancial_status/fulfillment_statusをRAKUDAのOrderStatusに変換
+ */
+function mapShopifyOrderStatus(financialStatus: string, fulfillmentStatus: string | null): string {
+  if (fulfillmentStatus === 'fulfilled') return 'COMPLETED';
+  if (fulfillmentStatus === 'partial') return 'PARTIALLY_SHIPPED';
+
+  switch (financialStatus) {
+    case 'paid': return 'PAID';
+    case 'pending': return 'PENDING_PAYMENT';
+    case 'authorized': return 'PENDING_PAYMENT';
+    case 'partially_paid': return 'PENDING_PAYMENT';
+    case 'refunded': return 'REFUNDED';
+    case 'partially_refunded': return 'PARTIALLY_REFUNDED';
+    case 'voided': return 'CANCELLED';
+    default: return 'PENDING';
+  }
+}
+```
+
+## 重要な注意事項
+
+1. **PrismaモデルのOrder/Sale/Listingの実際のフィールド名を必ず確認すること**
+   - order, sale, listingの各モデルのフィールドをPrismaスキーマ（packages/database/prisma/schema/）で確認
+   - フィールド名が上記と異なる場合は実際のスキーマに合わせる
+   - 特に: marketplace, marketplaceOrderId, marketplaceListingId, status のenum値
+
+2. **eBayの既存実装パターンと合わせること**
+   - apps/api/src/routes/webhooks.ts の processEbayOrder() 等を参考に
+   - Order/Saleの作成パターンを一致させる
+
+3. **worker-manager.tsでprocessShopifyWebhookEventをインポートすること**
+   - import { processShopifyWebhookEvent } from './shopify-webhook-processor';
+
+4. **テスト**
+   - `npm run test:unit` が通ること
+   - 新しいファイルのインポートエラーがないこと

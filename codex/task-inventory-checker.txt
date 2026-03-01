@@ -1,0 +1,49 @@
+RAKUDAプロジェクト sourceTypeバグ修正（inventory-checker）
+
+## 背景
+apps/worker/src/lib/inventory-checker.ts の switch文（line 152-162）が
+MERCARI と YAHOO_AUCTION のみ対応。他のsource typeは "Unsupported source type" エラーになる。
+
+## 修正対象ファイル: apps/worker/src/lib/inventory-checker.ts
+
+### 修正内容
+
+1. switch文（line 152-162付近）を拡張:
+   - 既存: MERCARI → scrapeMercari(), YAHOO_AUCTION → scrapeYahooAuction()
+   - 追加: YAHOO_FLEA, AMAZON, RAKUMA, RAKUTEN, TAKAYAMA, JOSHIN, OTHER
+
+2. 追加するsource typeの処理方針:
+   - 対応するscraper関数が既に存在するか確認（apps/worker/src/lib/scrapers/等を検索）
+   - scraper関数が存在すれば、そのまま呼び出す
+   - scraper関数が存在しない場合は、**ログ出力して gracefully skip** する:
+     ```typescript
+     case 'YAHOO_FLEA':
+     case 'RAKUMA':
+     case 'RAKUTEN':
+     case 'AMAZON':
+     case 'TAKAYAMA':
+     case 'JOSHIN':
+     case 'OTHER':
+       log.warn({ sourceType: product.source.type, productId: product.id },
+         'Inventory check not yet implemented for this source type, skipping');
+       return { available: true, priceChanged: false }; // 楽観的にskip
+     ```
+
+3. default caseも同様にgraceful handling:
+   ```typescript
+   default:
+     log.warn({ sourceType: product.source.type, productId: product.id },
+       'Unknown source type for inventory check, skipping');
+     return { available: true, priceChanged: false };
+   ```
+
+## 重要
+- throw new Error() でクラッシュさせない
+- ログには必ずproduct.idとsource.typeを含める
+- 未対応のsource typeは楽観的に「在庫あり」として返す（false positiveよりcrashの方が問題）
+- loggerのimportが既にあるか確認。なければ追加
+
+## テスト
+修正後、既存のテストが通ることを確認:
+- `npm run test:unit` 実行
+- inventory-checker関連のテストファイルがあれば確認

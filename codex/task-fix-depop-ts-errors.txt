@@ -1,0 +1,35 @@
+## タスク: depop-publish-service.tsのTypeScriptコンパイルエラー修正
+
+### 背景
+GitHub Actions Docker Buildが以下の4つのTSエラーで失敗している。
+CI/CDパイプラインを通すために修正が必要。
+
+### エラー一覧
+1. `src/lib/depop-publish-service.ts(84,47): error TS2345: Argument of type 'DownloadResult' is not assignable to parameter of type 'string'.`
+2. `src/lib/depop-publish-service.ts(92,46): error TS2345: Argument of type 'OptimizationResult' is not assignable to parameter of type 'string'.`
+3. `src/lib/depop-publish-service.ts(93,24): error TS2345: Argument of type 'UploadResult' is not assignable to parameter of type 'string'.`
+4. `src/lib/depop-publish-service.ts(179,54): error TS2339: Property 'translate' does not exist on type 'EnrichmentTaskManager'.`
+
+### 修正方針
+1. `apps/worker/src/lib/image-downloader.ts` の `downloadImages` 関数の返り値の型を確認
+2. `apps/worker/src/lib/image-optimizer.ts` の `optimizeImage` 関数の返り値の型を確認
+3. `apps/worker/src/lib/storage.ts` の `uploadFile` 関数の返り値の型を確認
+4. `apps/worker/src/lib/enrichment-service.ts` の `TranslatorService` のメソッド名を確認
+5. depop-publish-service.ts を修正して型を合わせる
+
+### 対象ファイル
+- `apps/worker/src/lib/depop-publish-service.ts` （修正対象）
+- `apps/worker/src/lib/image-downloader.ts` （参照のみ - 型定義確認）
+- `apps/worker/src/lib/image-optimizer.ts` （参照のみ - 型定義確認）
+- `apps/worker/src/lib/storage.ts` （参照のみ - 型定義確認）
+- `apps/worker/src/lib/enrichment-service.ts` （参照のみ - TranslatorService確認）
+
+### 検証
+```bash
+cd ~/Desktop/rakuda && npx tsc --noEmit -p apps/worker/tsconfig.json
+```
+
+### 注意事項
+- 参照ファイル（image-downloader.ts, image-optimizer.ts, storage.ts）の型は変更しない
+- depop-publish-service.ts のみを修正して型を合わせる
+- 既存の機能ロジックは変更しない

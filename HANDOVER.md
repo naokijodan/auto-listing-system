@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-01 (Instagram/TikTok チャネル識別 + Full Flow E2Eテストセッション)
+## 最終更新: 2026-03-02 (Coolifyデプロイ修正 + NODE_OPTIONS追加セッション)
 
 ---
 
@@ -56,18 +56,43 @@ RAKUDAは越境EC自動化システム。日本のECサイト（ヤフオク・�
 - **VPS**: Vultr Tokyo (vhf-3c-8gb: 3vCPU/8GB RAM/256GB NVMe, $48/mo)
   - IP: 45.32.28.61, Ubuntu 24.04 LTS
 - **Coolify**: v4.0.0-beta.463 (http://45.32.28.61:8000 / https://coolify.rakuda.dev)
+  - API Token: Coolify personal_access_tokensテーブルに保存
+  - concurrent_builds: 2 (並行ビルドは不安定、1推奨)
 - **PostgreSQL 16**: Coolify管理、coolifyネットワーク上
 - **Redis 7.2**: Coolify管理、coolifyネットワーク上
 - **rakuda-api**: Coolify管理でデプロイ成功、Traefik経由 + Let's Encrypt SSL
   - URL: https://api.rakuda.dev (Coolify UUID: acg8g884ck4woc480cgcg8kk)
   - ヘルスチェック: /api/health → {"status":"ok","services":{"database":"ok","redis":"ok"}}
+  - 最新コミット: 35ee3a5a (2026-03-02デプロイ)
 - **rakuda-web**: Coolify管理でデプロイ成功（Next.js standalone）
   - URL: https://rakuda.dev (Coolify UUID: zoo8cgswg4ssc84kgcog8cg0)
   - Dockerfile Stage 4 (web target) でビルド
-- **rakuda-worker**: systemdサービスとして管理
-  - `/etc/systemd/system/rakuda-worker.service`
-  - Docker containerを制御、全スケジューラー正常初期化
+- **rakuda-worker**: Coolify管理 (UUID: g0s4ws488008g88ww4s4kkog)
+  - Docker containerとして稼働、ジョブ処理正常
+  - **注意**: 並行ビルド時にexit 127エラー発生（concurrent_builds=1推奨）
 - **Prismaマイグレーション**: 2件適用済み（init + add_oauth_state）
+
+### Dockerfile NODE_OPTIONS追加（2026-03-02）
+- **問題**: Docker Build時にNext.jsビルドが`cannot allocate memory`で失敗
+- **修正**: builder stageに`ENV NODE_OPTIONS="--max-old-space-size=4096"`追加
+  - `Dockerfile` (ルート)
+  - `apps/web/Dockerfile`
+- **コミット**: 35ee3a5a
+
+### Coolifyデプロイ修正（2026-03-02）
+- **問題1**: デプロイID:40がstuck in_progressで停止
+  - 解決: `POST /api/v1/applications/{uuid}/stop`
+- **問題2**: CoolifyがGHCRにpush失敗（unauthorized）
+  - 原因: API経由デプロイ時にGHCRタグが使用される場合がある
+  - 解決: 再デプロイで自動的にローカルタグに戻った
+- **問題3**: 並行ビルド時にexit 127エラー
+  - 原因: concurrent_builds=2でbuildx内部が競合
+  - 対策: concurrent_builds=1に変更推奨（Coolify UIで設定）
+
+### GitHub Actions 無効化（2026-03-02確認）
+- ユーザーアカウントレベルで`Actions has been disabled for this user`
+- リポジトリ設定は有効だがワークフロー実行不可
+- **要対応**: GitHubアカウント設定でActions再有効化が必要
 
 ### ドメイン・DNS・SSL 完了（2026-03-01セッション）
 - **ドメイン**: rakuda.dev（Cloudflare Registrar、$12.20/年）
@@ -373,6 +398,9 @@ Dockerコンテナは3つ（`rakuda-postgres`、`rakuda-redis`、`rakuda-minio`�
 
 | コミット | 内容 |
 |---------|------|
+| `35ee3a5a` | fix: DockerfileにNODE_OPTIONS追加（メモリ不足対策） |
+| `21c4295e` | fix: Prisma compound unique key修正 - products.ts findUnique→findFirst |
+| `0f117b94` | fix: Prisma複合キーのnullable/不正キー名エラーを全修正 |
 | `81ab14c8` | feat: Instagram/TikTok Shop チャネル識別 + Full Flow E2Eテスト |
 | `8696e1b3` | fix: sourceType大文字統一 + inventory-checker全source対応 + Shopify Webhook処理実装 |
 | `3b908bf4` | docs: HANDOVER.md更新 - Worker修正 + Shopify出品/Webhook + OpenAI修正 |

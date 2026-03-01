@@ -1,0 +1,198 @@
+## Task: Full Flow E2E Integration Tests
+
+### Context
+RAKUDAの一気通貫テストが未実装。API→Worker→マーケットプレイスのフルフローをテストする統合テストを作成する。
+既存テスト基盤: Vitest + Supertest (API), Vitest + MSW (Worker), Playwright (Web E2E)
+
+### Test 1: Product Creation → Shopify Publish Flow
+
+File: `apps/worker/src/test/integration/shopify-publish-flow.test.ts`
+
+```
+テストシナリオ:
+1. Product作成（mockPrisma.product.create）
+2. EnrichmentTask完了（APPROVED）
+3. ShopifyProduct作成（PENDING→ACTIVE）
+4. Shopify API呼び出し検証（MSW mock）
+5. Listing作成（ACTIVE）
+6. MarketplaceSyncState更新（SYNCED）
+
+テストケース:
+- "should create Shopify product from enriched RAKUDA product"
+  - Product（title: "Seiko SARX035", costJpy: 45000）
+  - EnrichmentTask with optimized title, description, images
+  - ShopifyApiClient.createProduct() が正しいpayload で呼ばれること
+  - 結果: ShopifyProduct.status=ACTIVE, Listing.status=ACTIVE
+
+- "should handle Shopify API rate limiting gracefully"
+  - MSW handler が 429 を返す
+  - リトライ後に成功すること
+
+- "should handle Shopify API error and set FAILED status"
+  - MSW handler が 500 を返す
+  - ShopifyProduct.status=ERROR, lastSyncError にメッセージが入ること
+
+- "should calculate correct USD price from JPY cost"
+  - costJpy: 45000 → USD price計算検証
+  - 30%マークアップ + 9.2%手数料込み
+```
+
+### Test 2: Shopify Webhook → Order Processing Flow
+
+File: `apps/worker/src/test/integration/shopify-webhook-flow.test.ts`
+
+```
+テストシナリオ:
+1. Webhook受信シミュレーション（WebhookEvent作成）
+2. processShopifyWebhookEvent() 実行
+3. Order作成検証
+4. Sale作成検証
+5. InventoryEvent作成検証
+6. Product status更新検証
+
+テストケース:
+- "should process orders/create webhook and create Order + Sale records"
+  - WebhookEvent with payload: Shopify order (1 line_item, financial_status: 'paid')
+  - SKU: 'RAKUDA-SHOP-{productId}' → Product紐付け
+  - 結果: Order.status=CONFIRMED, Sale.quantity=1, Product.status=SOLD
+
+- "should process orders/create from Instagram channel"
+  - payload に app_id: 2329312 を含む
+  - 結果: Order.sourceChannel = 'INSTAGRAM'
+
+- "should process orders/create from TikTok channel with ON_HOLD status"
+  - payload に app_id: 4383523, fulfillment_status: 'on_hold'
+  - 結果: Order.sourceChannel = 'TIKTOK', fulfillmentStatus適切にセット
+
+- "should handle orders/cancelled and update Order status"
+  - 既存Order → cancelled webhook
+  - 結果: Order.status = CANCELLED
+
+- "should handle products/update and sync Listing"
+  - ShopifyからのProduct更新webhook
+  - 結果: Listing.listingPrice更新
+
+- "should handle duplicate order webhook idempotently"
+  - 同じmarketplaceOrderIdのOrder既存
+  - 2回目のwebhookでは新規作成しない
+
+- "should retry failed webhook processing"
+  - 1回目失敗 → retryCount=1, status=FAILED
+  - 2回目成功 → status=COMPLETED
+```
+
+### Test 3: API → Worker Job Flow
+
+File: `apps/api/src/test/integration/shopify-fullflow.test.ts`
+
+```
+テストシナリオ:
+1. POST /api/shopify-products/:id/publish → BullMQ job追加
+2. Job queue mock検証
+3. Status endpoint検証
+
+テストケース:
+- "should queue Shopify publish job when publish endpoint is called"
+  - POST /api/shopify-products/{productId}/publish
+  - mockQueue.add() が正しいjobData で呼ばれること
+
+- "should return publish status for queued product"
+  - GET /api/shopify-products/{productId}
+  - ShopifyProduct.status = PENDING
+
+- "should return orders filtered by sourceChannel"
+  - GET /api/shopify-products/orders?sourceChannel=INSTAGRAM
+  - mockPrisma.order.findMany に where: { sourceChannel: 'INSTAGRAM' } が渡ること
+
+- "should return channel statistics in status endpoint"
+  - GET /api/shopify-products/status
+  - channelStats: { ONLINE_STORE: 5, INSTAGRAM: 3, TIKTOK: 1 }
+```
+
+### Test 4: Multi-Marketplace Inventory Sync
+
+File: `apps/worker/src/test/integration/inventory-sync-flow.test.ts`
+
+```
+テストシナリオ:
+1. Shopifyで商品売れる（webhook）
+2. 在庫減少 → InventoryEvent作成
+3. 他マーケットプレイス（eBay, Joom）の在庫更新
+
+テストケース:
+- "should create InventoryEvent when Shopify order is processed"
+  - orders/create webhook処理後
+  - InventoryEvent: eventType=SALE, quantity=-1, newStock=0
+
+- "should mark product as SOLD across all channels"
+  - Product.status = SOLD
+  - 関連するListing（eBay, Joom）もSTATUS更新対象
+```
+
+### Implementation Notes
+
+1. 各テストファイルは既存のsetup.ts（MockPrisma, MockBullMQ）を使う
+2. MSWハンドラーは apps/worker/src/test/mocks/handlers.ts に Shopify API用を追加
+3. テストデータは現実的な値を使う（Seiko時計の実際のデータに近いもの）
+4. 全テストは独立して実行可能にする（beforeEach でモックリセット）
+
+### MSW Shopify Handlers to Add
+
+File: `apps/worker/src/test/mocks/handlers.ts` に追加
+
+```typescript
+// Shopify Admin API mocks
+rest.post('https://rakuda-store.myshopify.com/admin/api/2026-01/products.json', (req, res, ctx) => {
+  return res(ctx.json({
+    product: {
+      id: 9149468541144,
+      title: req.body.product.title,
+      variants: [{ id: 51431097991384, sku: req.body.product.variants[0].sku }],
+      handle: 'seiko-presage-sarx035',
+      status: 'active',
+    }
+  }))
+}),
+
+rest.get('https://rakuda-store.myshopify.com/admin/api/2026-01/orders.json', (req, res, ctx) => {
+  return res(ctx.json({
+    orders: [{
+      id: 820982911946154,
+      name: '#1001',
+      app_id: 580111,
+      source_name: 'web',
+      financial_status: 'paid',
+      fulfillment_status: null,
+      line_items: [{
+        id: 1,
+        variant_id: 51431097991384,
+        title: 'Seiko Presage SARX035',
+        quantity: 1,
+        sku: 'RAKUDA-SHOP-testproductid123',
+        price: '399.99',
+      }],
+      total_price: '399.99',
+      currency: 'USD',
+      created_at: '2026-03-01T10:00:00Z',
+      shipping_address: {
+        first_name: 'John',
+        last_name: 'Doe',
+        address1: '123 Main St',
+        city: 'New York',
+        province: 'NY',
+        zip: '10001',
+        country: 'US',
+      },
+      customer: {
+        email: 'john@example.com',
+      },
+    }]
+  }))
+}),
+```
+
+### 重要
+- テストは vitest で実行: `cd apps/worker && npx vitest run src/test/integration/shopify-*.test.ts`
+- API テストは: `cd apps/api && npx vitest run src/test/integration/shopify-fullflow.test.ts`
+- 既存テストを壊さないこと
+- sourceChannel関連のテストは task-channel-identification.txt の実装に依存する

@@ -1,0 +1,56 @@
+RAKUDAプロジェクト sourceTypeバグ修正（API側 + Zodスキーマ + Chrome拡張）
+
+## 背景
+Chrome拡張からAPI、Workerまで、sourceTypeの大文字小文字が不整合。
+- Prisma enum: 大文字（MERCARI, YAHOO_AUCTION, AMAZON等）
+- Zodスキーマ: 小文字（mercari, yahoo_auction, amazon等）
+- Chrome拡張: 小文字（detectSiteType()の返り値）
+
+## 修正対象ファイル
+
+### 1. packages/schema/src/product.ts
+- SourceTypeSchemaを大文字に変更（Prisma enumと一致させる）:
+  ```
+  z.enum(['MERCARI', 'YAHOO_AUCTION', 'YAHOO_FLEA', 'RAKUMA', 'RAKUTEN', 'AMAZON', 'TAKAYAMA', 'JOSHIN', 'OTHER'])
+  ```
+- SourceTypeSchemaをexportしていなければexportする
+
+### 2. apps/api/src/routes/products.ts
+- POST /api/products/scrape （line ~393-437）:
+  - `resolvedSource`を受け取った直後にtoUpperCase()で正規化
+  - SourceTypeSchemaでバリデーション（不正な値はエラー返却）
+  - キュー投入時のsourceTypeは大文字に統一
+- POST /api/products （line ~520-537）:
+  - `data.sourceType`がZodバリデーション後は大文字になるので、toUpperCase()の手動変換は不要になる
+  - `as any` キャストを削除し、型安全にする
+- GET /api/products （line ~169）:
+  - sourceTypeクエリパラメータのtoUpperCase()は維持（外部入力なので）
+
+### 3. apps/worker/src/processors/scrape.ts
+- sourceTypeの型を明示的にする
+- `as any` キャストを削除
+- sourceType.toUpperCase()の手動変換を削除（API側で正規化済みのため不要）
+- ただし、念のためdefensiveにtoUpperCase()は残してもよい
+
+### 4. extensions/chrome/background.js
+- detectSiteType() (line 76-93) の返り値を大文字に変更:
+  - 'yahoo_auction' → 'YAHOO_AUCTION'
+  - 'yahoo_flea' → 'YAHOO_FLEA'
+  - 'mercari' → 'MERCARI'
+  - 'amazon' → 'AMAZON'
+  - line 141の 'AMAZON_JP' → 'AMAZON'（Prisma enumに合わせる）
+
+### 5. extensions/chrome/popup.js
+- popup.jsのSOURCE_CONFIGは既に大文字キー（YAHOO_AUCTION等）なので変更不要
+- ただしdetectSiteType()の変更で動作確認が必要
+
+## 重要な注意
+- packages/schema/src/product.ts のSourceTypeSchemaを使っている箇所を全てgrepして影響確認すること
+- Zodスキーマ変更により、既存のテストが小文字でsourceTypeを指定している可能性がある→テストも大文字に修正
+- parseScrapedProduct()の呼び出し元も確認
+- Prisma enum SourceTypeの値は: MERCARI, YAHOO_AUCTION, YAHOO_FLEA, RAKUMA, RAKUTEN, AMAZON, TAKAYAMA, JOSHIN, OTHER
+
+## テスト
+修正後、以下を確認:
+- `npm run test:unit` が通ること
+- sourceType関連のテストを grep して全て大文字に統一されていること

@@ -1,0 +1,167 @@
+## Task: Shopify Sales Channel Identification for Instagram/TikTok Orders
+
+### Context
+RAKUDAはShopifyをSocial Commerce Hubとして使い、Instagram Shop/TikTok Shopからの注文もShopify webhookで受信する。
+現在の shopify-webhook-processor.ts は全注文を同一扱いだが、app_id ベースでチャネル識別を追加する必要がある。
+
+### Step 1: Prisma Schema Update
+
+File: `packages/database/prisma/schema/common.prisma`
+
+Order modelに以下を追加（line 598付近、rawDataの前）:
+
+```prisma
+  // 販売チャネル識別（Shopify Hub経由の場合: ONLINE_STORE, INSTAGRAM, TIKTOK等）
+  sourceChannel String?
+```
+
+追加後、マイグレーション実行:
+```bash
+cd /Users/naokijodan/Desktop/rakuda
+npx prisma migrate dev --schema=packages/database/prisma/schema --name add_source_channel_to_order
+npx prisma generate --schema=packages/database/prisma/schema
+```
+
+### Step 2: Create Channel Identification Utility
+
+新規ファイル: `apps/worker/src/lib/shopify-channel-identifier.ts`
+
+```typescript
+/**
+ * Shopify Sales Channel Identifier
+ * app_id ベースで注文の販売チャネルを識別する
+ */
+
+export const SHOPIFY_APP_IDS: Record<number, { name: string; code: string }> = {
+  580111: { name: 'Online Store', code: 'ONLINE_STORE' },
+  129785: { name: 'Point of Sale', code: 'POS' },
+  1354745: { name: 'Draft Orders', code: 'DRAFT_ORDER' },
+  2329312: { name: 'Facebook & Instagram', code: 'INSTAGRAM' },
+  4383523: { name: 'TikTok', code: 'TIKTOK' },
+  1780363: { name: 'Google & YouTube', code: 'GOOGLE_YOUTUBE' },
+  3009811: { name: 'Pinterest', code: 'PINTEREST' },
+  3890849: { name: 'Shop App', code: 'SHOP_APP' },
+  88312: { name: 'Buy Button', code: 'BUY_BUTTON' },
+}
+
+const SOURCE_NAME_MAP: Record<string, string> = {
+  web: 'ONLINE_STORE',
+  pos: 'POS',
+  shopify_draft_order: 'DRAFT_ORDER',
+  iphone: 'SHOPIFY_MOBILE',
+  android: 'SHOPIFY_MOBILE',
+}
+
+export interface ChannelInfo {
+  name: string
+  code: string
+  requiresHoldCheck: boolean
+  requiresPaymentCapture: boolean
+}
+
+export function identifyShopifyChannel(order: {
+  app_id?: number
+  source_name?: string
+  fulfillment_status?: string | null
+  financial_status?: string
+}): ChannelInfo {
+  // Primary: use app_id
+  if (order.app_id) {
+    const channel = SHOPIFY_APP_IDS[order.app_id]
+    if (channel) {
+      return {
+        ...channel,
+        requiresHoldCheck: ['INSTAGRAM', 'TIKTOK'].includes(channel.code) &&
+          order.fulfillment_status === 'on_hold',
+        requiresPaymentCapture: channel.code === 'INSTAGRAM' &&
+          order.financial_status === 'authorized',
+      }
+    }
+  }
+
+  // Secondary: use source_name (protected values)
+  if (order.source_name) {
+    const code = SOURCE_NAME_MAP[order.source_name]
+    if (code) {
+      return {
+        name: code,
+        code,
+        requiresHoldCheck: false,
+        requiresPaymentCapture: false,
+      }
+    }
+  }
+
+  // Fallback: unknown channel
+  return {
+    name: `Unknown (app_id: ${order.app_id}, source: ${order.source_name})`,
+    code: 'UNKNOWN',
+    requiresHoldCheck: false,
+    requiresPaymentCapture: false,
+  }
+}
+```
+
+### Step 3: Update shopify-webhook-processor.ts
+
+File: `apps/worker/src/lib/shopify-webhook-processor.ts`
+
+修正内容:
+
+1. Import追加:
+```typescript
+import { identifyShopifyChannel } from './shopify-channel-identifier'
+```
+
+2. handleOrderCreated 関数を修正:
+- webhook payloadから `app_id`, `source_name`, `fulfillment_status`, `financial_status` を抽出
+- `identifyShopifyChannel()` でチャネル識別
+- Order作成時に `sourceChannel: channelInfo.code` を追加
+- ON_HOLD注文の場合はfulfillmentStatusを 'ON_HOLD' にする（通常のUNFULFILLEDではなく）
+- AUTHORIZED注文の場合はpaymentStatusを 'AUTHORIZED' にする（PENDINGの代わりに）
+- ログにチャネル名を出力
+
+3. handleOrderUpdated 関数を修正:
+- 既存のOrder更新時にもsourceChannelを設定（null→値で更新）
+
+### Step 4: Update shopify-publish-service.ts syncOrders
+
+File: `apps/worker/src/lib/shopify-publish-service.ts`
+
+syncOrders関数でも同様にチャネル識別を追加:
+- Shopify API経由でorder取得時にapp_id, source_nameが含まれる
+- Order upsert時に sourceChannel を設定
+
+### Step 5: Update API routes (optional but useful)
+
+File: `apps/api/src/routes/shopify.ts`
+
+orders取得APIにsourceChannelフィルターを追加:
+- GET /api/shopify-products/orders?sourceChannel=INSTAGRAM
+- whereにsourceChannelを追加
+
+### Step 6: Tests
+
+File: `apps/worker/src/test/unit/shopify-channel-identifier.test.ts`
+
+テスト内容:
+- app_id 580111 → ONLINE_STORE
+- app_id 2329312 → INSTAGRAM, requiresHoldCheck if fulfillment_status=on_hold
+- app_id 4383523 → TIKTOK, requiresHoldCheck if fulfillment_status=on_hold
+- source_name 'web' → ONLINE_STORE (app_id不明時)
+- 不明なapp_id → UNKNOWN
+- app_id優先（source_nameより優先）
+
+File: `apps/worker/src/test/unit/shopify-webhook-processor.test.ts` (既存に追加)
+
+テスト内容:
+- orders/create webhook with app_id=2329312 → Order.sourceChannel = 'INSTAGRAM'
+- orders/create webhook with app_id=4383523 → Order.sourceChannel = 'TIKTOK'
+- orders/create with fulfillment_status='on_hold' → fulfillmentStatusが適切にセット
+- orders/create with financial_status='authorized' → paymentStatusが適切にセット
+
+### 重要な注意事項
+- Prismaの既存enum (FulfillmentStatus) に ON_HOLD がない場合は追加する
+- PaymentStatus に AUTHORIZED がない場合は追加する
+- 既存のテストが壊れないようにする（sourceChannelはoptional/nullableなので影響小）
+- エラーハンドリング: チャネル識別に失敗しても注文処理は続行する（sourceChannel=nullで保存）

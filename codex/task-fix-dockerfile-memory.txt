@@ -1,0 +1,55 @@
+## タスク: Dockerfile NODE_OPTIONS追加（メモリ不足対策）
+
+### 背景
+GitHub ActionsでのDocker Build時にNext.jsビルドが`cannot allocate memory`エラーで失敗している。
+ルートDockerfileとapps/web/Dockerfile の両方にNODE_OPTIONSを追加する。
+
+### エラー
+```
+ERROR: failed to build: failed to solve: ResourceExhausted: process "/bin/sh -c npm run build" did not complete successfully: cannot allocate memory
+```
+
+### 修正対象ファイル
+
+#### 1. ルートDockerfile（./Dockerfile）
+builder stage の `RUN npm run build` の前に NODE_OPTIONS を追加:
+```dockerfile
+# 既存のコード（30行目付近）:
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+RUN npm run build
+
+# ↓ 以下に変更:
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN npm run build
+```
+
+#### 2. apps/web/Dockerfile
+builder stage に NODE_OPTIONS を追加:
+```dockerfile
+# 既存のコード（30-35行目付近）:
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
+# Next.jsをビルド
+WORKDIR /app/apps/web
+RUN npm run build
+
+# ↓ 以下に変更:
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+# Next.jsをビルド
+WORKDIR /app/apps/web
+RUN npm run build
+```
+
+### 検証
+ローカルでの検証は不要（GitHub Actions上でのメモリ問題のため）。
+ファイルが正しく修正されていることを目視確認するだけでOK。
+
+### 注意事項
+- builderステージにのみ追加する（runner ステージには追加しない）
+- 既存のENV行の順序は維持する
+- これ以外のコードは変更しない
