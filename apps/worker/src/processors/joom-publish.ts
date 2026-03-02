@@ -11,11 +11,21 @@ import {
   batchPublishService,
   imagePipelineService,
 } from '../lib/joom-publish-service';
+import { JoomApiClient } from '../lib/joom-api';
 
 const log = logger.child({ module: 'joom-publish-processor' });
 
 // Re-export types for backward compatibility
 export type { JoomPublishJobType, JoomPublishJobData };
+
+// APIクライアントのシングルトン
+let joomClient: JoomApiClient | null = null;
+function getJoomClient(): JoomApiClient {
+  if (!joomClient) {
+    joomClient = new JoomApiClient();
+  }
+  return joomClient;
+}
 
 /**
  * Joom出品ジョブプロセッサー
@@ -51,6 +61,10 @@ export async function processJoomPublishJob(job: Job<JoomPublishJobData>): Promi
 
       case 'sync-status':
         return await processSyncStatus(joomListingId!);
+
+      case 'delete-product' as any:
+        // joomProductId は型定義外のため any キャストで取得
+        return await processDeleteProduct((job.data as any).joomProductId, joomListingId!);
 
       default:
         throw new Error(`Unknown job type: ${type}`);
@@ -150,6 +164,39 @@ async function processPublish(joomListingId: string): Promise<any> {
 }
 
 /**
+ * 商品削除処理（Joom API）
+ * 既にDB上のJoomListingは削除済みの前提のため、DB操作は不要
+ */
+async function processDeleteProduct(joomProductId: string, joomListingId?: string): Promise<any> {
+  const client = getJoomClient();
+  const resp = await client.deleteProduct(joomProductId);
+
+  if (resp.success) {
+    log.info({
+      type: 'delete_product_complete',
+      joomProductId,
+      joomListingId,
+      success: true,
+    });
+  } else {
+    log.error({
+      type: 'delete_product_failed',
+      joomProductId,
+      joomListingId,
+      success: false,
+      error: resp.error?.message,
+    });
+  }
+
+  return {
+    joomProductId,
+    joomListingId,
+    success: resp.success,
+    error: resp.error?.message,
+  };
+}
+
+/**
  * バッチ出品処理
  */
 async function processBatchPublish(batchId: string): Promise<any> {
@@ -208,23 +255,87 @@ async function processSyncStatus(joomListingId: string): Promise<any> {
     return { joomListingId, synced: false, reason: 'No Joom product ID' };
   }
 
-  // TODO: Joom APIから最新状態を取得して同期
-  // const joomProduct = await joomClient.getProduct(listing.joomProductId);
+  try {
+    const client = getJoomClient();
+    const resp = await client.getProduct(listing.joomProductId);
 
-  await prisma.joomListing.update({
-    where: { id: joomListingId },
-    data: { lastSyncedAt: new Date() },
-  });
+    let updateData: any = { lastSyncedAt: new Date() };
+    let resolvedStatus: string | undefined;
+    let notFound = false;
 
-  log.info({
-    type: 'sync_status_complete',
-    joomListingId,
-  });
+    if (resp.success && resp.data) {
+      const data: any = resp.data as any;
 
-  return {
-    joomListingId,
-    synced: true,
-  };
+      // Joom側のステータスに応じて更新
+      const enabled = data?.enabled ?? (typeof data?.status === 'string' ? ['enabled', 'ENABLED', 'active', 'ACTIVE'].includes(data.status) : undefined);
+      const disabled = data?.disabled ?? (typeof data?.status === 'string' ? ['disabled', 'DISABLED', 'paused', 'PAUSED'].includes(data.status) : undefined);
+
+      if (enabled === true) {
+        resolvedStatus = 'ACTIVE';
+      } else if (disabled === true || enabled === false) {
+        resolvedStatus = 'PAUSED';
+      }
+
+      if (resolvedStatus) {
+        updateData.status = resolvedStatus as any;
+      }
+    } else {
+      // 404 Not Found → ENDED
+      const msg = resp.error?.message?.toLowerCase() || '';
+      if (msg.includes('not found') || msg.includes('404')) {
+        notFound = true;
+        updateData.status = 'ENDED';
+      } else {
+        // それ以外のエラーは記録のみ
+        updateData.errorCount = (listing.errorCount || 0) + 1;
+        updateData.lastError = resp.error?.message || 'Unknown error from Joom API';
+      }
+    }
+
+    await prisma.joomListing.update({
+      where: { id: joomListingId },
+      data: updateData,
+    });
+
+    log.info({
+      type: 'sync_status_complete',
+      joomListingId,
+      joomProductId: listing.joomProductId,
+      status: updateData.status,
+      notFound,
+      success: true,
+    });
+
+    return {
+      joomListingId,
+      synced: true,
+      status: updateData.status,
+      notFound,
+    };
+  } catch (error: any) {
+    // エラー時はerrorCount++, lastError, lastSyncedAtを記録
+    await prisma.joomListing.update({
+      where: { id: joomListingId },
+      data: {
+        lastSyncedAt: new Date(),
+        errorCount: (listing.errorCount || 0) + 1,
+        lastError: error.message || String(error),
+      },
+    });
+
+    log.error({
+      type: 'sync_status_error',
+      joomListingId,
+      joomProductId: listing.joomProductId,
+      error: error.message,
+    });
+
+    return {
+      joomListingId,
+      synced: false,
+      error: error.message,
+    };
+  }
 }
 
 /**

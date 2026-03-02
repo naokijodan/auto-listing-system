@@ -18,10 +18,14 @@ import {
   getJoomPublishQueueStats,
   getJobStatus,
   QUEUE_NAMES,
+  initQueueConnection,
 } from '@rakuda/queue';
+import { Queue } from 'bullmq';
 
 const router = Router();
 const prisma = new PrismaClient();
+// BullMQ queue for Joom publish-related jobs
+const joomPublishQueue = new Queue(QUEUE_NAMES.JOOM_PUBLISH, { connection: initQueueConnection() });
 
 // ========================================
 // Joom出品管理
@@ -273,9 +277,17 @@ router.delete('/listings/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Listing not found' });
     }
 
-    // TODO: Joom APIから削除（出品済みの場合）
+    // Joom APIから削除（出品済みの場合）- 非同期でWorkerに委託
     if (listing.joomProductId) {
-      // await joomClient.deleteProduct(listing.joomProductId);
+      try {
+        await joomPublishQueue.add('delete-product', {
+          joomProductId: listing.joomProductId,
+          joomListingId: listing.id,
+        });
+        console.log('Queued Joom product deletion:', listing.joomProductId);
+      } catch (queueErr: any) {
+        console.error('Failed to queue Joom product deletion:', queueErr?.message);
+      }
     }
 
     await prisma.joomListing.delete({
