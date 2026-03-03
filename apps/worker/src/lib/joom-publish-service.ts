@@ -340,6 +340,16 @@ export class JoomPublishService {
           time: '7-14 business days',
         },
         tags: joomCategory ? [joomCategory] : [],
+
+        // 推奨フィールド追加（存在する場合のみ意味を持つ）
+        brand: (task.product as any).brand || attributes?.brand || undefined,
+        categoryId: joomListing.joomCategory || undefined,
+        color: attributes?.color || undefined,
+        size: attributes?.size || undefined,
+        material: attributes?.material || attributes?.caseMaterial || undefined,
+        condition: 'new',
+        searchTags: attributes?.keywords || attributes?.searchTags || [],
+        dangerousKind: 'none',
       };
 
       // Joom APIに出品

@@ -27,6 +27,21 @@ export interface JoomProduct {
   tags?: string[];
   parentSku?: string;
   sku: string;
+
+  // 推奨フィールド（オプショナル）
+  brand?: string;
+  categoryId?: string;       // Joom カテゴリID
+  color?: string;
+  size?: string;
+  material?: string;
+  gtin?: string;             // GTIN/JAN/EAN
+  msrp?: number;             // メーカー希望小売価格
+  condition?: string;        // 'new' | 'refurbished' | 'used'
+  searchTags?: string[];     // 検索タグ（tagsとは別）
+  shippingLength?: number;   // cm
+  shippingWidth?: number;    // cm
+  shippingHeight?: number;   // cm
+  dangerousKind?: string;    // 'none' | 'battery' | 'liquid' 等
 }
 
 export interface JoomApiResponse<T> {
@@ -277,53 +292,55 @@ export class JoomApiClient {
     }
 
     // Joom API v3 のリクエストボディ形式
-    // 注意: priceフィールドは文字列型、画像URLは複数形式で送信
+    // 注意: priceフィールドは文字列型
     const shippingPrice = product.shipping?.price || 0;
     const parentSku = product.parentSku || product.sku;
     const variantSku = `${parentSku}-V1`;  // バリアントSKUは親SKUと異なる必要あり
     const imageUrl = product.mainImage;
 
     const requestBody = {
-      // 必須フィールド
+      // トップレベル（商品情報）
       store_id: storeId,
       name: product.name,
       description: product.description,
       currency: 'USD',
-      // 画像URL: 複数形式で送信（APIが認識するフィールドを確保）
-      orig_main_image_url: imageUrl,
-      origMainImageUrl: imageUrl,
-      mainImage: imageUrl,
-      main_image: imageUrl,
-      extra_images: product.extraImages || [],  // 文字列配列
-      sku: parentSku,
+      main_image_url: imageUrl,
+      extra_image_urls: product.extraImages || [],
       parent_sku: parentSku,
       tags: product.tags || [],
+      // 推奨フィールド（値がある場合のみ送信）
+      ...(product.brand ? { brand: product.brand } : {}),
+      ...(product.categoryId ? { category_id: product.categoryId } : {}),
+      ...(product.color ? { color: product.color } : {}),
+      ...(product.size ? { size: product.size } : {}),
+      ...(product.material ? { material: product.material } : {}),
+      ...(product.gtin ? { gtin: product.gtin } : {}),
+      ...(product.msrp ? { msrp: { amount: String(product.msrp), currency: 'USD' } } : {}),
+      ...(product.condition ? { condition: product.condition } : {}),
+      ...(product.searchTags?.length ? { search_tags: product.searchTags } : {}),
+      // Shipping dimensions（すべて揃っている場合のみ）
+      ...(product.shippingLength && product.shippingWidth && product.shippingHeight ? {
+        shipping_length: product.shippingLength,
+        shipping_width: product.shippingWidth,
+        shipping_height: product.shippingHeight,
+      } : {}),
+      ...(product.dangerousKind ? { dangerous_kind: product.dangerousKind } : {}),
+      // バリアント（1つ）
       variants: [
         {
           sku: variantSku,
           price: String(product.price),
           inventory: product.quantity,
-          shippingPrice: String(shippingPrice),
-          // shippingWeightはkg単位で送信（未指定時は0.15kg）
-          shippingWeight: typeof product.weight === 'number' ? product.weight : 0.15,
-          // バリアントにも画像URL
-          origMainImageUrl: imageUrl,
-          mainImage: imageUrl,
+          shipping_price: String(shippingPrice),
+          // shipping_weightはkg単位で送信（未指定時は0.15kg）
+          shipping_weight: typeof product.weight === 'number' ? product.weight : 0.15,
+          main_image_url: imageUrl,
         },
       ],
     };
 
-    // まず /products/create を試す（v3形式）
-    let response = await this.request<{ id: string }>('POST', '/products/create', requestBody);
-
-    // 404の場合は /products を試す（v2形式）
-    if (!response.success && response.error?.code === 'NETWORK_ERROR' &&
-        response.error?.message?.includes('Not Found')) {
-      log.info({ type: 'joom_api_fallback', from: '/products/create', to: '/products' });
-      response = await this.request<{ id: string }>('POST', '/products', requestBody);
-    }
-
-    return response;
+    // v3 API 固定
+    return this.request<{ id: string }>('POST', '/products/create', requestBody);
   }
 
   /**
@@ -338,7 +355,17 @@ export class JoomApiClient {
       productId,
     });
 
-    return this.request<{ id: string }>('PUT', `/products/${productId}`, updates);
+    // フィールド名をsnake_caseに正規化
+    const body: Record<string, any> = {};
+    if (typeof updates.name !== 'undefined') body.name = updates.name;
+    if (typeof updates.description !== 'undefined') body.description = updates.description;
+    if (typeof updates.currency !== 'undefined') body.currency = updates.currency;
+    if (typeof updates.mainImage !== 'undefined') body.main_image_url = updates.mainImage;
+    if (typeof updates.extraImages !== 'undefined') body.extra_image_urls = updates.extraImages;
+    if (typeof updates.parentSku !== 'undefined') body.parent_sku = updates.parentSku;
+    if (typeof updates.tags !== 'undefined') body.tags = updates.tags;
+
+    return this.request<{ id: string }>('PUT', `/products/${productId}`, body);
   }
 
   /**

@@ -1,0 +1,91 @@
+## タスク: Phase 2-A - Joom API正規化（フィールド名統一 + v3固定）
+
+### 概要
+Joom createProduct()のリクエストボディを正規化する。
+4重送信されているmainImageを1つに、フィールド名をsnake_caseに統一、v3 API固定。
+
+### 対象ファイル
+- apps/worker/src/lib/joom-api.ts
+
+### 修正1: mainImage 4重送信の解消
+
+createProduct()メソッド（266行目付近）のリクエストボディで、mainImageが4つの異なるフィールド名で送信されている:
+- `orig_main_image_url`
+- `origMainImageUrl`
+- `mainImage`
+- `main_image`
+
+**修正**: Joom v3 APIの正式なフィールド名 `main_image_url` のみにする:
+```typescript
+// Before (4重送信):
+orig_main_image_url: product.mainImage,
+origMainImageUrl: product.mainImage,
+mainImage: product.mainImage,
+main_image: product.mainImage,
+
+// After (1つに統一):
+main_image_url: product.mainImage,
+```
+
+### 修正2: フィールド名のsnake_case統一
+
+createProduct()のリクエストボディ内のフィールド名を全てsnake_caseに統一:
+
+| 現在 | 修正後 |
+|------|--------|
+| `origMainImageUrl` | 削除（main_image_urlに統合） |
+| `mainImage` | 削除（main_image_urlに統合） |
+| `extra_images` | `extra_image_urls` |
+| `parent_sku` | `parent_sku` (そのまま) |
+
+variants内も統一:
+| 現在 | 修正後 |
+|------|--------|
+| `shippingPrice` | `shipping_price` |
+| `shippingWeight` | `shipping_weight` |
+| `origMainImageUrl` | `main_image_url` |
+| `mainImage` | 削除 |
+
+### 修正3: v3 API固定（v2 fallback削除）
+
+createProduct()メソッドにv2 fallbackがある場合（別のエンドポイントに再送信するコード）、
+v2 fallback部分を削除してv3のみにする。
+
+APIベースURL `https://api-merchant.joom.com/api/v3` のみを使用。
+
+### 修正4: Product/Variant構造の整理
+
+createProduct()のリクエストボディを以下の構造に整理:
+
+```typescript
+{
+  // トップレベル（商品情報）
+  store_id: storeId,
+  name: product.name,
+  description: product.description,
+  currency: 'USD',
+  main_image_url: product.mainImage,
+  extra_image_urls: product.extraImages || [],
+  parent_sku: parentSku || product.sku,
+  tags: product.tags || [],
+
+  // バリアント（1つ）
+  variants: [
+    {
+      sku: variantSku,
+      price: String(product.price),
+      inventory: product.quantity,
+      shipping_price: String(shippingPrice),
+      shipping_weight: typeof product.weight === 'number' ? product.weight : 0.15,
+      main_image_url: imageUrl,
+    }
+  ]
+}
+```
+
+### 注意事項
+- JoomProduct interfaceの型定義は変更しなくてよい（内部表現はそのまま）
+- createProduct()のリクエストボディ構築部分のみ変更
+- updateProduct()メソッドにも同様のフィールド名不整合があれば修正する
+- テストが壊れないようにする
+- 修正後に `cd ~/Desktop/rakuda && npm test --workspace=apps/worker` で全テストが通ることを確認
