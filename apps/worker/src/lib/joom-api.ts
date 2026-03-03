@@ -24,6 +24,7 @@ export interface JoomProduct {
     price: number;
     time: string;
   };
+  shippingMethod?: 'joom_logistics' | 'offline';
   tags?: string[];
   parentSku?: string;
   sku: string;
@@ -308,6 +309,7 @@ export class JoomApiClient {
       extra_image_urls: product.extraImages || [],
       parent_sku: parentSku,
       tags: product.tags || [],
+      ...(product.shippingMethod ? { shipping_method: product.shippingMethod } : { shipping_method: 'offline' }),
       // 推奨フィールド（値がある場合のみ送信）
       ...(product.brand ? { brand: product.brand } : {}),
       ...(product.categoryId ? { category_id: product.categoryId } : {}),

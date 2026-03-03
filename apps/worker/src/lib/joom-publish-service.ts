@@ -16,6 +16,44 @@ import fs from 'fs/promises';
 
 const log = logger.child({ module: 'joom-publish-service' });
 
+/**
+ * Joom国別送料テーブル（USD）
+ * 重量ベース: base + (weightKg * perKg)
+ */
+const JOOM_SHIPPING_RATES: Record<string, { base: number; perKg: number }> = {
+  // Tier 1: 主要市場（Joom Logistics対応）
+  US: { base: 5.00, perKg: 2.00 },
+  DE: { base: 4.50, perKg: 1.80 },
+  FR: { base: 4.50, perKg: 1.80 },
+  IT: { base: 5.00, perKg: 2.00 },
+  ES: { base: 5.00, perKg: 2.00 },
+  GB: { base: 5.50, perKg: 2.20 },
+  // Tier 2: CIS市場
+  RU: { base: 3.00, perKg: 1.50 },
+  BY: { base: 3.50, perKg: 1.80 },
+  KZ: { base: 4.00, perKg: 2.00 },
+  // Tier 3: その他
+  DEFAULT: { base: 6.00, perKg: 2.50 },
+};
+
+/**
+ * 送料計算
+ */
+function calculateShippingCost(weightKg: number, countryCode: string = 'DEFAULT'): number {
+  const rate = JOOM_SHIPPING_RATES[countryCode] || JOOM_SHIPPING_RATES.DEFAULT;
+  return Math.round((rate.base + weightKg * rate.perKg) * 100) / 100;
+}
+
+/**
+ * 送料方式
+ */
+type JoomShippingMethod = 'joom_logistics' | 'offline';
+
+/**
+ * Joom Logistics対応国
+ */
+const JOOM_LOGISTICS_COUNTRIES = ['US', 'DE', 'FR', 'IT', 'ES', 'GB'];
+
 // ========================================
 // 型定義
 // ========================================
@@ -324,6 +362,8 @@ export class JoomPublishService {
       }
 
       // Joom商品データを構築
+      const weightKg = task.product.weight ? task.product.weight / 1000 : 0.15;
+      const defaultShipping = calculateShippingCost(weightKg);
       const joomProduct: JoomProduct = {
         name: translations.en.title,
         description: translations.en.description,
@@ -333,12 +373,13 @@ export class JoomPublishService {
         currency: 'USD',
         quantity: 1,
         // DBはグラム単位。kgに変換し、未設定時は0.15kgを使用
-        weight: task.product.weight ? task.product.weight / 1000 : 0.15,
+        weight: weightKg,
         sku: `RAKUDA-${task.productId}`,
         shipping: {
-          price: pricing.shippingCost,
+          price: defaultShipping,
           time: '7-14 business days',
         },
+        shippingMethod: 'offline',
         tags: joomCategory ? [joomCategory] : [],
 
         // 推奨フィールド追加（存在する場合のみ意味を持つ）
