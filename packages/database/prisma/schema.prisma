@@ -179,6 +179,10 @@ model Listing {
   pausedByInventory Boolean   @default(false) // 在庫切れによる自動停止中
   resumeAt          DateTime? // 遅延再開予定日時
 
+  // Phase 0-C: Listing統合フィールド
+  publishedAt  DateTime?  // 出品日時
+  lastSyncedAt DateTime?  // 最終同期日時
+
   // タイムスタンプ
   listedAt  DateTime?
   soldAt    DateTime?
@@ -891,6 +895,7 @@ enum OrderStatus {
 
 enum PaymentStatus {
   PENDING
+  AUTHORIZED
   PAID
   REFUNDED
   FAILED
@@ -898,6 +903,7 @@ enum PaymentStatus {
 
 enum FulfillmentStatus {
   UNFULFILLED
+  ON_HOLD
   PARTIALLY_FULFILLED
   FULFILLED
   RETURNED

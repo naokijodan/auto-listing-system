@@ -1,44 +1,72 @@
-## 修正タスク: 為替レート計算バグ修正（残りのファイル）
+Task: Add Phase 3-B management API endpoints to apps/api/src/routes/products.ts
 
-前回 enrichment-service.ts を修正済み。同じバグが以下のファイルにも存在する。
+The Prisma schema already has these fields on Product model:
+- tags: String[] @default([])
+- memo: String? @db.Text
+- purchaseShippingCost: Int?
+- initialPurchasePrice: Int?
 
-### 問題のあるファイル
-`exchangeRate` はDB上「JPY → USD」（例: 0.0064）で保存されている。
-`costJpy / exchangeRate` は逆の結果を返すため `costJpy * exchangeRate` に修正が必要。
+DO NOT touch prisma schema or run prisma commands. Only edit apps/api/src/routes/products.ts.
 
-1. `apps/worker/src/processors/ebay-publish.ts` 680行目付近:
-   ```
-   const costUsd = costJpy / exchangeRate;
-   ```
-   → `costJpy * exchangeRate` に修正
+1. Add tag filter to GET '/' endpoint:
+   - Read `tag` from req.query
+   - If tag is provided, add `where.tags = { has: tag as string }` to the existing where object
 
-2. `apps/worker/src/lib/ai-service.ts` 528行目と1349行目付近:
-   ```
-   const costUsd = costJpy / exchangeRate;
-   ```
-   → 両方とも `costJpy * exchangeRate` に修正
+2. Add PATCH /:id/tags endpoint (before export default router):
+```typescript
+router.patch('/:id/tags', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { tags } = req.body;
+    if (!Array.isArray(tags)) {
+      return res.status(400).json({ error: 'tags must be an array of strings' });
+    }
+    const product = await prisma.product.update({
+      where: { id },
+      data: { tags },
+    });
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+```
 
-3. `apps/worker/src/lib/price-adjuster.ts` 68-71行目付近:
-   ```
-   // sellingPriceUsd = sellingPriceJpy / exchangeRate
-   const sellingPriceUsd = sellingPriceJpy / exchangeRate;
-   ```
-   → コメントと実際のコードの両方を修正:
-   ```
-   // sellingPriceUsd = sellingPriceJpy * exchangeRate
-   const sellingPriceUsd = sellingPriceJpy * exchangeRate;
-   ```
+3. Add PATCH /:id/memo endpoint:
+```typescript
+router.patch('/:id/memo', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { memo } = req.body;
+    const product = await prisma.product.update({
+      where: { id },
+      data: { memo },
+    });
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+```
 
-4. `apps/worker/src/lib/enrichment-service.ts` 445行目:
-   ```
-   return rate?.rate || 150; // デフォルト150円/USD
-   ```
-   → DBが JPY→USD の直接レート（0.0064等）を返すため、デフォルトも同じ形式にする:
-   ```
-   return rate?.rate || 0.0067; // デフォルト1/150（JPY→USD直接レート）
-   ```
+4. Add PATCH /:id/purchase-info endpoint:
+```typescript
+router.patch('/:id/purchase-info', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { purchaseShippingCost, initialPurchasePrice } = req.body;
+    const data: any = {};
+    if (typeof purchaseShippingCost === 'number') data.purchaseShippingCost = purchaseShippingCost;
+    if (typeof initialPurchasePrice === 'number') data.initialPurchasePrice = initialPurchasePrice;
+    const product = await prisma.product.update({
+      where: { id },
+      data,
+    });
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+```
 
-### 注意
-- 各ファイルで `exchangeRate` の取得元を確認し、JPY→USD の直接レートであることを確認してから修正
-- price-calculator.ts は既に正しい（`sourcePrice * exchangeRate` を使用）ので触らない
-- テストの期待値も必要なら修正
+IMPORTANT: Add these 3 PATCH routes BEFORE the `export default router;` line at the end of the file. Also add the tag filter to the existing GET '/' route where clause. Do NOT run any tests or prisma commands.

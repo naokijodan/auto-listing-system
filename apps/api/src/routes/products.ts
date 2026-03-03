@@ -134,6 +134,7 @@ router.get('/', async (req, res, next) => {
       maxPrice,
       sortBy = 'createdAt',
       sortOrder = 'desc',
+      tag,
     } = req.query;
 
     // 検索条件を構築
@@ -169,6 +170,11 @@ router.get('/', async (req, res, next) => {
     // ソースタイプフィルター
     if (sourceType) {
       where.source = { type: (sourceType as string).toUpperCase() };
+    }
+
+    // タグフィルター
+    if (tag) {
+      where.tags = { has: tag as string };
     }
 
     // 価格範囲フィルター
@@ -1267,6 +1273,55 @@ router.post('/restore', async (req, res, next) => {
       message: `${result.count} products restored`,
       data: { restoredCount: result.count },
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Phase 3-B management API endpoints
+router.patch('/:id/tags', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { tags } = req.body;
+    if (!Array.isArray(tags)) {
+      return res.status(400).json({ error: 'tags must be an array of strings' });
+    }
+    const product = await prisma.product.update({
+      where: { id },
+      data: { tags },
+    });
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/:id/memo', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { memo } = req.body;
+    const product = await prisma.product.update({
+      where: { id },
+      data: { memo },
+    });
+    res.json(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.patch('/:id/purchase-info', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { purchaseShippingCost, initialPurchasePrice } = req.body;
+    const data: any = {};
+    if (typeof purchaseShippingCost === 'number') data.purchaseShippingCost = purchaseShippingCost;
+    if (typeof initialPurchasePrice === 'number') data.initialPurchasePrice = initialPurchasePrice;
+    const product = await prisma.product.update({
+      where: { id },
+      data,
+    });
+    res.json(product);
   } catch (error) {
     next(error);
   }
