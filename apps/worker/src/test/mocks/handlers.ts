@@ -461,7 +461,7 @@ export const handlers = [
   // Shopify Admin API
   // ========================================
 
-  // Shopify Create Product
+  // Shopify Create Product (2024-01)
   http.post('https://*/admin/api/2024-01/products.json', async ({ request }) => {
     const body = await request.json() as Record<string, unknown>;
     const product = body.product as Record<string, unknown> | undefined;
@@ -473,14 +473,33 @@ export const handlers = [
     });
   }),
 
-  // Shopify Get Product
+  // Shopify Create Product (2026-01)
+  http.post('https://*/admin/api/2026-01/products.json', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    const product = body.product as Record<string, unknown> | undefined;
+    if (!product?.title) {
+      return HttpResponse.json({ errors: { title: ["can't be blank"] } }, { status: 422 });
+    }
+    return HttpResponse.json({
+      product: { id: 500001, title: product.title, status: 'active', variants: [{ id: 700001 }], handle: 'test-product' },
+    });
+  }),
+
+  // Shopify Get Product (2024-01)
   http.get('https://*/admin/api/2024-01/products/:productId.json', ({ params }) => {
     return HttpResponse.json({
       product: { id: Number(params.productId), title: 'Test Shopify Product', status: 'active' },
     });
   }),
 
-  // Shopify List Products
+  // Shopify Get Product (2026-01)
+  http.get('https://*/admin/api/2026-01/products/:productId.json', ({ params }) => {
+    return HttpResponse.json({
+      product: { id: Number(params.productId), title: 'Test Shopify Product', status: 'active' },
+    });
+  }),
+
+  // Shopify List Products (2024-01)
   http.get('https://*/admin/api/2024-01/products.json', () => {
     return HttpResponse.json({
       products: [
@@ -490,7 +509,17 @@ export const handlers = [
     });
   }),
 
-  // Shopify Update Product
+  // Shopify List Products (2026-01)
+  http.get('https://*/admin/api/2026-01/products.json', () => {
+    return HttpResponse.json({
+      products: [
+        { id: 500001, title: 'Product 1' },
+        { id: 500002, title: 'Product 2' },
+      ],
+    });
+  }),
+
+  // Shopify Update Product (2024-01)
   http.put('https://*/admin/api/2024-01/products/:productId.json', async ({ params, request }) => {
     const body = await request.json() as Record<string, unknown>;
     const product = body.product as Record<string, unknown> | undefined;
@@ -499,13 +528,39 @@ export const handlers = [
     });
   }),
 
-  // Shopify Delete Product
+  // Shopify Update Product (2026-01)
+  http.put('https://*/admin/api/2026-01/products/:productId.json', async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    const product = body.product as Record<string, unknown> | undefined;
+    return HttpResponse.json({
+      product: { id: Number(params.productId), ...product },
+    });
+  }),
+
+  // Shopify Delete Product (2024-01)
   http.delete('https://*/admin/api/2024-01/products/:productId.json', () => {
     return HttpResponse.json({});
   }),
 
-  // Shopify Set Inventory Level
+  // Shopify Delete Product (2026-01)
+  http.delete('https://*/admin/api/2026-01/products/:productId.json', () => {
+    return HttpResponse.json({});
+  }),
+
+  // Shopify Set Inventory Level (2024-01)
   http.post('https://*/admin/api/2024-01/inventory_levels/set.json', async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    return HttpResponse.json({
+      inventory_level: {
+        inventory_item_id: body.inventory_item_id,
+        location_id: body.location_id,
+        available: body.available,
+      },
+    });
+  }),
+
+  // Shopify Set Inventory Level (2026-01)
+  http.post('https://*/admin/api/2026-01/inventory_levels/set.json', async ({ request }) => {
     const body = await request.json() as Record<string, unknown>;
     return HttpResponse.json({
       inventory_level: {

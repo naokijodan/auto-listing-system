@@ -15,6 +15,7 @@ const { prismaMock } = vi.hoisted(() => {
     },
     listing: {
       findUnique: vi.fn().mockResolvedValue(null),
+      findFirst: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: 'l1' }),
     },
     source: {

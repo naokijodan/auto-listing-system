@@ -25,6 +25,7 @@ const { mockGenerateSourceHash, mockParseScrapedProduct } = vi.hoisted(() => ({
 
 vi.mock('@rakuda/schema', () => ({
   ScrapedProductSchema: {},
+  SourceTypeSchema: { parse: vi.fn((val: string) => val) },
   parseScrapedProduct: mockParseScrapedProduct,
   generateSourceHash: mockGenerateSourceHash,
 }));

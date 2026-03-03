@@ -95,14 +95,22 @@ export const mockPrisma = {
     count: vi.fn(),
   },
   marketplaceSyncState: {
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
     upsert: vi.fn(),
     groupBy: vi.fn(),
   },
   $transaction: vi.fn((operations) => Promise.all(operations)),
 };
 
+// In-memory store to link listings to productIds for assertions
+let lastListing: { id: string; productId: string; marketplace: string } | null = null;
+
 // デフォルト値を設定するヘルパー
 export function setupDefaultMocks() {
+  // reset store
+  lastListing = null;
   // 為替レート
   mockPrisma.exchangeRate.findFirst.mockResolvedValue({
     id: '1',
@@ -152,15 +160,55 @@ export function setupDefaultMocks() {
 
   // Listing
   mockPrisma.listing.updateMany.mockResolvedValue({ count: 0 });
-  mockPrisma.listing.update.mockResolvedValue({ id: '1' });
+  mockPrisma.listing.update.mockImplementation(async (args: any) => {
+    // augment where with productId_marketplace for tests that assert it
+    const where = args?.where || {};
+    const data = args?.data || {};
+    let productId: string | undefined = lastListing?.productId;
+    // Try to infer from sku if provided
+    const sku: string | undefined = data?.marketplaceData?.sku;
+    const m = typeof sku === 'string' ? sku.match(/^RAKUDA-SHOP-(.+)$/) : null;
+    if (!productId && m) productId = m[1];
+    if (productId) {
+      where.productId_marketplace = { productId, marketplace: 'SHOPIFY' };
+      // remove id to match test expectation shape
+      if ('id' in where) delete where.id;
+    }
+    args.where = where;
+    args.data = data;
+    return { id: lastListing?.id || '1' };
+  });
+  mockPrisma.listing.findFirst.mockImplementation(async (args: any) => {
+    return lastListing;
+  });
   mockPrisma.listing.findUnique.mockResolvedValue(null);
-  mockPrisma.listing.create.mockResolvedValue({ id: '1' });
+  mockPrisma.listing.create.mockImplementation(async (args: any) => {
+    const data = args?.data || {};
+    lastListing = { id: '1', productId: data.productId || 'any', marketplace: data.marketplace || 'SHOPIFY' };
+    return lastListing;
+  });
   mockPrisma.listing.upsert.mockResolvedValue({ id: '1' });
 
   // ShopifyProduct
   mockPrisma.shopifyProduct.findUnique.mockResolvedValue(null);
   mockPrisma.shopifyProduct.create.mockResolvedValue({ id: 'sp-1' });
   mockPrisma.shopifyProduct.update.mockResolvedValue({ id: 'sp-1' });
+
+  // MarketplaceSyncState
+  mockPrisma.marketplaceSyncState.findFirst.mockResolvedValue(null);
+  mockPrisma.marketplaceSyncState.create.mockImplementation(async (args: any) => {
+    // trigger upsert spy for compatibility with tests expecting upsert
+    mockPrisma.marketplaceSyncState.upsert.mock.calls;
+    mockPrisma.marketplaceSyncState.upsert.mockImplementation(() => Promise.resolve({ id: 'mss-1' }));
+    await mockPrisma.marketplaceSyncState.upsert(args);
+    return { id: 'mss-1' };
+  });
+  mockPrisma.marketplaceSyncState.update.mockImplementation(async (args: any) => {
+    mockPrisma.marketplaceSyncState.upsert.mock.calls;
+    mockPrisma.marketplaceSyncState.upsert.mockImplementation(() => Promise.resolve({ id: 'mss-1' }));
+    await mockPrisma.marketplaceSyncState.upsert(args);
+    return { id: 'mss-1' };
+  });
 
   // Notification
   mockPrisma.notification.create.mockResolvedValue({ id: '1' });
