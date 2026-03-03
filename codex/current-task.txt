@@ -1,82 +1,44 @@
-## タスク: 2ファイルのPrisma compound key修正
+## 修正タスク: 為替レート計算バグ修正（残りのファイル）
 
-### ファイル1: apps/api/src/routes/products.ts (line 1051付近)
+前回 enrichment-service.ts を修正済み。同じバグが以下のファイルにも存在する。
 
-findUnique + 不正な複合キー を findFirst に変更する。
+### 問題のあるファイル
+`exchangeRate` はDB上「JPY → USD」（例: 0.0064）で保存されている。
+`costJpy / exchangeRate` は逆の結果を返すため `costJpy * exchangeRate` に修正が必要。
 
-修正前:
-```typescript
-const existingListing = await prisma.listing.findUnique({
-  where: {
-    productId_marketplace: {
-      productId: product.id,
-      marketplace: marketplace as any,
-    },
-  },
-});
-```
+1. `apps/worker/src/processors/ebay-publish.ts` 680行目付近:
+   ```
+   const costUsd = costJpy / exchangeRate;
+   ```
+   → `costJpy * exchangeRate` に修正
 
-修正後:
-```typescript
-const existingListing = await prisma.listing.findFirst({
-  where: {
-    productId: product.id,
-    marketplace: marketplace as any,
-  },
-});
-```
+2. `apps/worker/src/lib/ai-service.ts` 528行目と1349行目付近:
+   ```
+   const costUsd = costJpy / exchangeRate;
+   ```
+   → 両方とも `costJpy * exchangeRate` に修正
 
-### ファイル2: apps/worker/src/lib/shopify-publish-service.ts
+3. `apps/worker/src/lib/price-adjuster.ts` 68-71行目付近:
+   ```
+   // sellingPriceUsd = sellingPriceJpy / exchangeRate
+   const sellingPriceUsd = sellingPriceJpy / exchangeRate;
+   ```
+   → コメントと実際のコードの両方を修正:
+   ```
+   // sellingPriceUsd = sellingPriceJpy * exchangeRate
+   const sellingPriceUsd = sellingPriceJpy * exchangeRate;
+   ```
 
-2箇所の `productId_marketplace` + `as any` を findFirst + update by id に変更。
+4. `apps/worker/src/lib/enrichment-service.ts` 445行目:
+   ```
+   return rate?.rate || 150; // デフォルト150円/USD
+   ```
+   → DBが JPY→USD の直接レート（0.0064等）を返すため、デフォルトも同じ形式にする:
+   ```
+   return rate?.rate || 0.0067; // デフォルト1/150（JPY→USD直接レート）
+   ```
 
-修正箇所1 (150行目付近):
-修正前:
-```typescript
-await prisma.listing.update({
-  where: { productId_marketplace: { productId: product.id, marketplace: 'SHOPIFY' } } as any,
-  data: { status: 'PUBLISHING' },
-});
-```
-修正後:
-```typescript
-const listingToPublish = await prisma.listing.findFirst({
-  where: { productId: product.id, marketplace: 'SHOPIFY' },
-});
-if (listingToPublish) {
-  await prisma.listing.update({
-    where: { id: listingToPublish.id },
-    data: { status: 'PUBLISHING' },
-  });
-}
-```
-
-修正箇所2 (244行目付近、catchブロック内):
-修正前:
-```typescript
-await prisma.listing.update({
-  where: { productId_marketplace: { productId: product.id, marketplace: 'SHOPIFY' } } as any,
-  data: { status: 'ERROR', errorMessage: error.message },
-});
-```
-修正後:
-```typescript
-const listingToError = await prisma.listing.findFirst({
-  where: { productId: product.id, marketplace: 'SHOPIFY' },
-});
-if (listingToError) {
-  await prisma.listing.update({
-    where: { id: listingToError.id },
-    data: { status: 'ERROR', errorMessage: error.message },
-  });
-}
-```
-
-### 注意事項
-- これ以外のコードは変更しない
-- `as any` ハックは削除する
-
-### 動作確認
-```bash
-cd ~/Desktop/rakuda && npx tsc --noEmit -p apps/worker/tsconfig.json && npx tsc --noEmit -p apps/api/tsconfig.json
-```
+### 注意
+- 各ファイルで `exchangeRate` の取得元を確認し、JPY→USD の直接レートであることを確認してから修正
+- price-calculator.ts は既に正しい（`sourcePrice * exchangeRate` を使用）ので触らない
+- テストの期待値も必要なら修正
