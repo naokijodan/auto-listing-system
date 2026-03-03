@@ -6,7 +6,8 @@ import { Job } from 'bullmq';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import type { EbayPublishJobData, EbayPublishJobType } from '@rakuda/queue';
-import { ebayApi, mapConditionToEbay } from '../lib/ebay-api';
+import { ebayApi, getEbayClient, mapConditionToEbay } from '../lib/ebay-api';
+import { findBestTemplate, applyDescriptionTemplate } from '../lib/template-engine';
 
 const log = logger.child({ module: 'ebay-publish-processor' });
 
@@ -82,6 +83,7 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
 
   const product = listing.product;
   const marketplaceData = (listing.marketplaceData as any) || {};
+  const client = getEbayClient(marketplaceData.credentialId);
 
   // SKU生成（既存があれば使用）
   const sku = marketplaceData.sku || `RAKUDA-${listing.id}`;
@@ -93,7 +95,7 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
   const imageUrls = allImages.slice(0, 12); // eBayは最大12枚
 
   // ロケーション確認/作成
-  await ebayApi.ensureInventoryLocation();
+  await client.ensureInventoryLocation();
 
   // エンリッチメント結果を取得（翻訳済みタイトル・説明・属性）
   const enrichmentTask = await prisma.enrichmentTask.findUnique({
@@ -102,7 +104,8 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
   const translations = (enrichmentTask?.translations as any) || {};
   const enrichedAttrs = (enrichmentTask?.attributes as any) || {};
   const enrichedTitle = translations?.en?.title || product.titleEn || product.title;
-  const enrichedDescription = translations?.en?.description || product.descriptionEn || product.description || '';
+  let enrichedDescription = translations?.en?.description || product.descriptionEn || product.description || '';
+  const productAttributes = (product.attributes as any) || {};
 
   // Item Specifics（aspects）を構築
   // marketplaceData.itemSpecifics > enrichmentデータ > 商品データからの推定
@@ -111,7 +114,7 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
   const categoryId = (marketplaceData as any).categoryId;
   if (categoryId) {
     try {
-      const cached = await ebayApi.fetchAndCacheItemAspects(categoryId);
+      const cached = await client.fetchAndCacheItemAspects(categoryId);
       requiredAspects = cached.aspects.filter(a => a.required);
       log.info({ type: 'fetched_item_aspects', categoryId, totalAspects: cached.aspects.length, requiredCount: requiredAspects.length });
     } catch (error: any) {
@@ -136,7 +139,6 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
     }
 
     // enrichmentデータのattributesからaspects構築（EnrichmentTask → Product.attributes の順でフォールバック）
-    const productAttributes = (product.attributes as any) || {};
     const attrs = { ...productAttributes, ...enrichedAttrs };
     if (attrs.model) aspects['Model'] = [attrs.model];
     if (attrs.movement) aspects['Movement'] = [attrs.movement];
@@ -159,8 +161,40 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
     }
   }
 
+  // テンプレートからの補完（カテゴリに基づくテンプレート自動選択）
+  if (categoryId) {
+    const template = await findBestTemplate(categoryId);
+    if (template) {
+      log.info({ type: 'template_found', templateId: template.templateId, name: template.name });
+
+      // Item Specificsの補完（テンプレートにあるが既存にない項目を追加）
+      const templateSpecifics = template.itemSpecifics || {};
+      for (const [key, values] of Object.entries(templateSpecifics)) {
+        if (!aspects[key] && values.length > 0) {
+          aspects[key] = values as string[];
+        }
+      }
+
+      // Description テンプレートの適用（既存の翻訳が短い場合のみ）
+      if (template.descriptionTemplate && !marketplaceData.description) {
+        const generatedDescription = applyDescriptionTemplate(template.descriptionTemplate, {
+          title: enrichedTitle,
+          description: enrichedDescription,
+          brand: product.brand || undefined,
+          condition: product.condition || undefined,
+          weight: product.weight || undefined,
+          category: (product as any).category || undefined,
+          attributes: { ...productAttributes, ...enrichedAttrs },
+        });
+        if (!enrichedDescription || enrichedDescription.length < 50) {
+          enrichedDescription = generatedDescription;
+        }
+      }
+    }
+  }
+
   // インベントリアイテム作成
-  const result = await ebayApi.createOrUpdateInventoryItem(sku, {
+  const result = await client.createOrUpdateInventoryItem(sku, {
     title: marketplaceData.title || enrichedTitle,
     description: marketplaceData.description || enrichedDescription,
     aspects: Object.keys(aspects).length > 0 ? aspects : undefined,
@@ -229,6 +263,7 @@ async function processCreateOffer(listingId: string): Promise<any> {
   }
 
   const marketplaceData = (listing.marketplaceData as any) || {};
+  const client = getEbayClient(marketplaceData.credentialId);
   const sku = marketplaceData.sku;
 
   if (!sku) {
@@ -243,25 +278,25 @@ async function processCreateOffer(listingId: string): Promise<any> {
 
   // 名前指定がある場合はDBからID解決
   if (!fulfillmentPolicyId && marketplaceData.fulfillmentPolicyName) {
-    fulfillmentPolicyId = (await ebayApi.getPolicyByName('FULFILLMENT', marketplaceData.fulfillmentPolicyName, marketplaceId)) || undefined;
+    fulfillmentPolicyId = (await client.getPolicyByName('FULFILLMENT', marketplaceData.fulfillmentPolicyName, marketplaceId)) || undefined;
   }
   if (!paymentPolicyId && marketplaceData.paymentPolicyName) {
-    paymentPolicyId = (await ebayApi.getPolicyByName('PAYMENT', marketplaceData.paymentPolicyName, marketplaceId)) || undefined;
+    paymentPolicyId = (await client.getPolicyByName('PAYMENT', marketplaceData.paymentPolicyName, marketplaceId)) || undefined;
   }
   if (!returnPolicyId && marketplaceData.returnPolicyName) {
-    returnPolicyId = (await ebayApi.getPolicyByName('RETURN', marketplaceData.returnPolicyName, marketplaceId)) || undefined;
+    returnPolicyId = (await client.getPolicyByName('RETURN', marketplaceData.returnPolicyName, marketplaceId)) || undefined;
   }
 
   if (!fulfillmentPolicyId || !paymentPolicyId || !returnPolicyId) {
     log.info({ type: 'ensuring_default_policies', marketplaceId });
-    const policies = await ebayApi.ensureDefaultPolicies(marketplaceId);
+    const policies = await client.ensureDefaultPolicies(marketplaceId);
     fulfillmentPolicyId = fulfillmentPolicyId || policies.fulfillmentPolicyId;
     paymentPolicyId = paymentPolicyId || policies.paymentPolicyId;
     returnPolicyId = returnPolicyId || policies.returnPolicyId;
   }
 
   // オファー作成
-  const result = await ebayApi.createOffer(sku, {
+  const result = await client.createOffer(sku, {
     marketplaceId,
     format: marketplaceData.format || 'FIXED_PRICE',
     categoryId: marketplaceData.categoryId || '',
@@ -339,6 +374,7 @@ async function processPublishOffer(listingId: string): Promise<any> {
   }
 
   const marketplaceData = (listing.marketplaceData as any) || {};
+  const client = getEbayClient(marketplaceData.credentialId);
   const offerId = marketplaceData.offerId;
 
   if (!offerId) {
@@ -346,7 +382,7 @@ async function processPublishOffer(listingId: string): Promise<any> {
   }
 
   // オファー公開
-  const result = await ebayApi.publishOffer(offerId);
+  const result = await client.publishOffer(offerId);
 
   if (!result.success || !result.data?.listingId) {
     await prisma.listing.update({
@@ -502,6 +538,7 @@ async function processEndListing(listingId: string): Promise<any> {
   }
 
   const marketplaceData = (listing.marketplaceData as any) || {};
+  const client = getEbayClient(marketplaceData.credentialId);
   const offerId = marketplaceData.offerId;
 
   if (!offerId) {
@@ -519,7 +556,7 @@ async function processEndListing(listingId: string): Promise<any> {
   }
 
   // オファー取り下げ
-  const result = await ebayApi.withdrawOffer(offerId);
+  const result = await client.withdrawOffer(offerId);
 
   if (!result.success) {
     // エラーでも強制終了する場合がある
@@ -565,6 +602,7 @@ async function processSyncStatus(listingId: string): Promise<any> {
   }
 
   const marketplaceData = (listing.marketplaceData as any) || {};
+  const client = getEbayClient(marketplaceData.credentialId);
   const offerId = marketplaceData.offerId;
 
   if (!offerId) {
@@ -572,7 +610,7 @@ async function processSyncStatus(listingId: string): Promise<any> {
   }
 
   // オファー情報を取得
-  const result = await ebayApi.getOffer(offerId);
+  const result = await client.getOffer(offerId);
 
   if (!result.success || !result.data) {
     return {
@@ -786,7 +824,8 @@ async function processPriceSync(options: {
 
         if (offerId) {
           try {
-            const updateResult = await ebayApi.updateOfferPrice(offerId, newPrice);
+            const client = getEbayClient(marketplaceData.credentialId);
+            const updateResult = await client.updateOfferPrice(offerId, newPrice);
             syncedToEbay = updateResult.success;
 
             if (!updateResult.success) {

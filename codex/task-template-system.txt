@@ -1,0 +1,187 @@
+## タスク: Phase 3-A - テンプレートシステム強化
+
+### 概要
+既存のListingTemplateとEbayListingTemplateを活用して、
+カテゴリ別出品テンプレートの自動選択と、Description生成テンプレートのエンジンを実装する。
+
+### 対象ファイル
+- apps/worker/src/lib/template-engine.ts（新規作成）
+- apps/worker/src/processors/ebay-publish.ts（テンプレート自動選択の組み込み）
+
+### 実装1: テンプレートエンジン（template-engine.ts）新規作成
+
+`apps/worker/src/lib/template-engine.ts` を新規作成:
+
+```typescript
+/**
+ * Phase 3-A: 出品テンプレートエンジン
+ * カテゴリに基づくテンプレート自動選択と、Description生成
+ */
+import { prisma } from '@rakuda/database';
+import { logger } from '@rakuda/logger';
+
+const log = logger.child({ module: 'template-engine' });
+
+/**
+ * カテゴリに基づいてeBay出品テンプレートを自動選択
+ */
+export async function findBestTemplate(ebayCategoryId: string): Promise<{
+  templateId: string;
+  name: string;
+  itemSpecifics: Record<string, string[]>;
+  descriptionTemplate: string | null;
+  conditionId: string | null;
+  fulfillmentPolicyId: string | null;
+  paymentPolicyId: string | null;
+  returnPolicyId: string | null;
+} | null> {
+  // 1. カテゴリ完全一致のテンプレートを検索
+  const exact = await prisma.ebayListingTemplate.findFirst({
+    where: { ebayCategoryId, isActive: true },
+    orderBy: [{ isDefault: 'desc' }],
+  });
+
+  if (exact) {
+    return {
+      templateId: exact.id,
+      name: exact.name,
+      itemSpecifics: (exact.itemSpecifics as Record<string, string[]>) || {},
+      descriptionTemplate: exact.descriptionTemplate,
+      conditionId: exact.conditionId,
+      fulfillmentPolicyId: exact.fulfillmentPolicyId,
+      paymentPolicyId: exact.paymentPolicyId,
+      returnPolicyId: exact.returnPolicyId,
+    };
+  }
+
+  // 2. デフォルトテンプレートを検索
+  const defaultTemplate = await prisma.ebayListingTemplate.findFirst({
+    where: { isDefault: true, isActive: true },
+  });
+
+  if (defaultTemplate) {
+    return {
+      templateId: defaultTemplate.id,
+      name: defaultTemplate.name,
+      itemSpecifics: (defaultTemplate.itemSpecifics as Record<string, string[]>) || {},
+      descriptionTemplate: defaultTemplate.descriptionTemplate,
+      conditionId: defaultTemplate.conditionId,
+      fulfillmentPolicyId: defaultTemplate.fulfillmentPolicyId,
+      paymentPolicyId: defaultTemplate.paymentPolicyId,
+      returnPolicyId: defaultTemplate.returnPolicyId,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Description生成テンプレートを適用
+ * プレースホルダを商品データで置換する
+ *
+ * 利用可能なプレースホルダ:
+ * {{title}} - 商品タイトル
+ * {{description}} - 商品説明
+ * {{brand}} - ブランド名
+ * {{condition}} - コンディション
+ * {{weight}} - 重量（g）
+ * {{category}} - カテゴリ
+ * {{attributes.XXX}} - 任意の属性値
+ */
+export function applyDescriptionTemplate(
+  template: string,
+  data: {
+    title?: string;
+    description?: string;
+    brand?: string;
+    condition?: string;
+    weight?: number;
+    category?: string;
+    attributes?: Record<string, any>;
+  }
+): string {
+  let result = template;
+
+  // 基本フィールド置換
+  result = result.replace(/\{\{title\}\}/g, data.title || '');
+  result = result.replace(/\{\{description\}\}/g, data.description || '');
+  result = result.replace(/\{\{brand\}\}/g, data.brand || '');
+  result = result.replace(/\{\{condition\}\}/g, data.condition || '');
+  result = result.replace(/\{\{weight\}\}/g, data.weight ? String(data.weight) : '');
+  result = result.replace(/\{\{category\}\}/g, data.category || '');
+
+  // 属性置換 {{attributes.XXX}}
+  if (data.attributes) {
+    result = result.replace(/\{\{attributes\.(\w+)\}\}/g, (_match, key) => {
+      return data.attributes?.[key] != null ? String(data.attributes[key]) : '';
+    });
+  }
+
+  // 未置換のプレースホルダを空文字に
+  result = result.replace(/\{\{[^}]+\}\}/g, '');
+
+  // 連続改行の整理
+  result = result.replace(/\n{3,}/g, '\n\n');
+
+  return result.trim();
+}
+```
+
+### 実装2: ebay-publish.tsにテンプレート自動選択を組み込み
+
+`apps/worker/src/processors/ebay-publish.ts` のprocessCreateInventoryItem()を修正:
+
+importに追加:
+```typescript
+import { findBestTemplate, applyDescriptionTemplate } from '../lib/template-engine';
+```
+
+processCreateInventoryItem()の`aspects`構築後、テンプレートから不足分を補完:
+
+```typescript
+// テンプレートからの補完
+const categoryId = marketplaceData.categoryId;
+if (categoryId) {
+  const template = await findBestTemplate(categoryId);
+  if (template) {
+    log.info({ type: 'template_found', templateId: template.templateId, name: template.name });
+
+    // Item Specificsの補完（テンプレートにあるが既存にない項目を追加）
+    const templateSpecifics = template.itemSpecifics || {};
+    for (const [key, values] of Object.entries(templateSpecifics)) {
+      if (!aspects[key] && values.length > 0) {
+        aspects[key] = values;
+      }
+    }
+
+    // Description テンプレートの適用
+    if (template.descriptionTemplate && !marketplaceData.description) {
+      const generatedDescription = applyDescriptionTemplate(template.descriptionTemplate, {
+        title: enrichedTitle,
+        description: enrichedDescription,
+        brand: product.brand || undefined,
+        condition: product.condition || undefined,
+        weight: product.weight || undefined,
+        category: product.category || undefined,
+        attributes: { ...productAttributes, ...enrichedAttrs },
+      });
+      // enrichedDescriptionをテンプレート生成版に差し替え
+      // ただし、既にenrichedDescriptionがあればそちらを優先
+      if (!enrichedDescription || enrichedDescription.length < 50) {
+        enrichedDescription = generatedDescription;
+      }
+    }
+  }
+}
+```
+
+この箇所は、既存の`aspects`構築ロジック（requiredAspects補完の後、インベントリアイテム作成の前）に挿入する。
+
+enrichedDescriptionがletではなくconstの場合は、letに変更する。
+
+### 注意事項
+- テンプレートが見つからない場合は何もしない（既存の動作を維持）
+- テンプレートのItem Specificsは既存のaspectsを上書きしない（補完のみ）
+- Descriptionテンプレートは既存の翻訳が短い場合のみ適用
+- テストが壊れないようにする
+- 修正後に `cd ~/Desktop/rakuda && npm test --workspace=apps/worker` で全テストが通ることを確認

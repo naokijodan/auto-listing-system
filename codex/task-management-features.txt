@@ -1,0 +1,109 @@
+## タスク: Phase 3-B - 管理機能（タグ・メモ・仕入価格追跡）
+
+### 概要
+Productモデルにタグ管理、メモ機能、仕入時送料・初期仕入価格の追跡を追加する。
+
+### 対象ファイル
+- packages/database/prisma/schema.prisma（Productモデル拡張）
+- apps/api/src/routes/products.ts（API追加）
+
+### 実装1: Prismaスキーマ - Productモデル拡張
+
+`packages/database/prisma/schema.prisma` の Product モデル（46行目付近）に以下を追加:
+
+`sellerName` フィールドの後、`status` フィールドの前に追加:
+
+```prisma
+  // Phase 3-B: 管理機能
+  tags                 String[]  @default([])  // タグ（商品グルーピング用）
+  memo                 String?   @db.Text       // メモ（自由記述）
+  purchaseShippingCost Int?                     // 仕入時送料（円）
+  initialPurchasePrice Int?                     // 初期仕入価格（円）- price変更時の元値保持
+```
+
+Productモデルのindexに追加:
+```prisma
+  @@index([tags])
+```
+
+追加後:
+```bash
+cd ~/Desktop/rakuda && npx prisma generate --schema=packages/database/prisma/schema.prisma
+```
+
+マイグレーション:
+```bash
+cd ~/Desktop/rakuda && npx prisma migrate dev --schema=packages/database/prisma/schema.prisma --name add-product-management-fields --create-only 2>/dev/null || true
+```
+
+### 実装2: API routes/products.ts にエンドポイント追加
+
+`apps/api/src/routes/products.ts` に以下のエンドポイントを追加:
+
+#### PATCH /products/:id/tags
+商品のタグを更新:
+```typescript
+router.patch('/:id/tags', async (req, res) => {
+  const { id } = req.params;
+  const { tags } = req.body; // string[]
+
+  if (!Array.isArray(tags)) {
+    return res.status(400).json({ error: 'tags must be an array of strings' });
+  }
+
+  const product = await prisma.product.update({
+    where: { id },
+    data: { tags },
+  });
+
+  res.json(product);
+});
+```
+
+#### PATCH /products/:id/memo
+商品のメモを更新:
+```typescript
+router.patch('/:id/memo', async (req, res) => {
+  const { id } = req.params;
+  const { memo } = req.body; // string | null
+
+  const product = await prisma.product.update({
+    where: { id },
+    data: { memo },
+  });
+
+  res.json(product);
+});
+```
+
+#### PATCH /products/:id/purchase-info
+仕入情報を更新:
+```typescript
+router.patch('/:id/purchase-info', async (req, res) => {
+  const { id } = req.params;
+  const { purchaseShippingCost, initialPurchasePrice } = req.body;
+
+  const data: any = {};
+  if (typeof purchaseShippingCost === 'number') data.purchaseShippingCost = purchaseShippingCost;
+  if (typeof initialPurchasePrice === 'number') data.initialPurchasePrice = initialPurchasePrice;
+
+  const product = await prisma.product.update({
+    where: { id },
+    data,
+  });
+
+  res.json(product);
+});
+```
+
+#### GET /products?tag=xxx
+既存のGETリストエンドポイントにタグフィルター追加:
+- クエリパラメータ `tag` が指定された場合、`where: { tags: { has: tag } }` でフィルタリング
+
+### 注意事項
+- prisma generateは必ず実行する
+- マイグレーションは --create-only で生成のみ
+- tagsのデフォルトは空配列 []
+- initialPurchasePriceは最初のスクレイピング時にprice（仕入価格）と同じ値を設定する想定だが、ここでは手動設定のみ実装
+- テストが壊れないようにする
+- 修正後に `cd ~/Desktop/rakuda && npm test --workspace=apps/worker && npm test --workspace=apps/api` で全テストが通ることを確認

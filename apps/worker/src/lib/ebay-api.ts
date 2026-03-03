@@ -1606,12 +1606,25 @@ export interface EbayOrder {
   }>;
 }
 
-// デフォルトインスタンス（レガシー互換）
+// デフォルトインスタンス（後方互換性維持）
 export const ebayApi = new EbayApiClient();
 
-// 特定アカウント用のインスタンスを作成
-export function createEbayApiClient(credentialId: string): EbayApiClient {
-  return new EbayApiClient(credentialId);
+// credentialIdベースのインスタンス管理
+const clientCache = new Map<string, EbayApiClient>();
+
+/**
+ * credentialIdに基づいたEbayApiClientインスタンスを取得
+ * キャッシュ済みのインスタンスがあればそれを返す
+ */
+export function getEbayClient(credentialId?: string): EbayApiClient {
+  if (!credentialId) return ebayApi;
+
+  let client = clientCache.get(credentialId);
+  if (!client) {
+    client = new EbayApiClient(credentialId);
+    clientCache.set(credentialId, client);
+  }
+  return client;
 }
 
 /**

@@ -77,6 +77,12 @@ model Product {
   sellerId   String?
   sellerName String?
 
+  // Phase 3-B: 管理機能
+  tags                 String[]  @default([])  // タグ（商品グルーピング用）
+  memo                 String?   @db.Text       // メモ（自由記述）
+  purchaseShippingCost Int?                     // 仕入時送料（円）
+  initialPurchasePrice Int?                     // 初期仕入価格（円）- price変更時の元値保持
+
   // ステータス
   status            ProductStatus @default(PENDING_SCRAPE)
   translationStatus ProcessStatus @default(PENDING)
@@ -112,6 +118,7 @@ model Product {
   @@index([status])
   @@index([sourceHash])
   @@index([createdAt])
+  @@index([tags])
   // Phase 69: パフォーマンス最適化インデックス
   @@index([status, updatedAt])
   @@index([sourceId, status])
