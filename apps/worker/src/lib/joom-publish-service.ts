@@ -332,6 +332,8 @@ export class JoomPublishService {
         price: pricing.finalPriceUsd,
         currency: 'USD',
         quantity: 1,
+        // DBはグラム単位。kgに変換し、未設定時は0.15kgを使用
+        weight: task.product.weight ? task.product.weight / 1000 : 0.15,
         sku: `RAKUDA-${task.productId}`,
         shipping: {
           price: pricing.shippingCost,

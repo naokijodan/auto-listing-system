@@ -18,6 +18,8 @@ export interface JoomProduct {
   price: number;
   currency: string;
   quantity: number;
+  // kg単位（未設定時はデフォルトを使用）
+  weight?: number;
   shipping?: {
     price: number;
     time: string;
@@ -268,6 +270,12 @@ export class JoomApiClient {
       price: product.price,
     });
 
+    // Store ID を環境変数から取得（未設定でもエラーにはしない）
+    const storeId = process.env.JOOM_STORE_ID;
+    if (!storeId) {
+      log.warn({ type: 'joom_store_id_missing', message: 'JOOM_STORE_ID env is not set' });
+    }
+
     // Joom API v3 のリクエストボディ形式
     // 注意: priceフィールドは文字列型、画像URLは複数形式で送信
     const shippingPrice = product.shipping?.price || 0;
@@ -276,8 +284,11 @@ export class JoomApiClient {
     const imageUrl = product.mainImage;
 
     const requestBody = {
+      // 必須フィールド
+      store_id: storeId,
       name: product.name,
       description: product.description,
+      currency: 'USD',
       // 画像URL: 複数形式で送信（APIが認識するフィールドを確保）
       orig_main_image_url: imageUrl,
       origMainImageUrl: imageUrl,
@@ -293,7 +304,8 @@ export class JoomApiClient {
           price: String(product.price),
           inventory: product.quantity,
           shippingPrice: String(shippingPrice),
-          shippingWeight: 200,  // 重量（グラム）- 必須
+          // shippingWeightはkg単位で送信（未指定時は0.15kg）
+          shippingWeight: typeof product.weight === 'number' ? product.weight : 0.15,
           // バリアントにも画像URL
           origMainImageUrl: imageUrl,
           mainImage: imageUrl,
