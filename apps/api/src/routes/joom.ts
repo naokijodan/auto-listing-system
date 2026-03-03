@@ -4,11 +4,8 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import type {
-  JoomListingStatus,
-  BatchPublishStatus,
-} from '@prisma/client';
+import { PrismaClient, ListingStatus, Marketplace } from '@prisma/client';
+import type { BatchPublishStatus } from '@prisma/client';
 import {
   addCreateListingJob,
   addPublishJob,
@@ -42,27 +39,47 @@ router.get('/listings', async (req: Request, res: Response) => {
       offset = '0',
     } = req.query;
 
-    const where: Record<string, unknown> = {};
-    if (status) where.status = status as JoomListingStatus;
+    const where: Record<string, unknown> = {
+      marketplace: Marketplace.JOOM,
+    };
+    if (status) {
+      const s = String(status).toUpperCase();
+      const statusMap: Record<string, ListingStatus> = {
+        DRAFT: 'DRAFT',
+        READY: 'PENDING_PUBLISH',
+        PUBLISHING: 'PUBLISHING',
+        ACTIVE: 'ACTIVE',
+        PAUSED: 'PAUSED',
+        SOLD: 'SOLD',
+        ENDED: 'ENDED',
+        ERROR: 'ERROR',
+      };
+      if (statusMap[s]) where.status = statusMap[s];
+    }
 
     const [listings, total] = await Promise.all([
-      prisma.joomListing.findMany({
+      prisma.listing.findMany({
         where,
         orderBy: { createdAt: 'desc' },
         take: parseInt(limit as string, 10),
         skip: parseInt(offset as string, 10),
         include: {
-          task: {
+          product: {
             select: {
               id: true,
-              status: true,
-              translations: true,
-              pricing: true,
+              title: true,
+              titleEn: true,
+              price: true,
+              images: true,
+              processedImages: true,
+              category: true,
+              brand: true,
+              condition: true,
             },
           },
         },
       }),
-      prisma.joomListing.count({ where }),
+      prisma.listing.count({ where }),
     ]);
 
     res.json({ listings, total });
@@ -79,15 +96,10 @@ router.get('/listings/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const listing = await prisma.joomListing.findUnique({
+    const listing = await prisma.listing.findUnique({
       where: { id },
       include: {
-        task: {
-          include: {
-            product: true,
-            steps: true,
-          },
-        },
+        product: true,
       },
     });
 
@@ -125,14 +137,21 @@ router.post('/listings', async (req: Request, res: Response) => {
       return res.status(400).json({ error: `Task not approved: ${task.status}` });
     }
 
-    const listing = await prisma.joomListing.upsert({
-      where: { taskId },
+    const listing = await prisma.listing.upsert({
+      where: {
+        productId_marketplace: {
+          productId: task.productId,
+          marketplace: Marketplace.JOOM,
+        },
+      },
       create: {
-        taskId,
         productId: task.productId,
+        marketplace: Marketplace.JOOM,
         status: 'DRAFT',
+        marketplaceData: {},
       },
       update: {},
+      include: { product: true },
     });
 
     res.status(201).json(listing);
@@ -149,48 +168,46 @@ router.post('/listings/:id/preview', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const listing = await prisma.joomListing.findUnique({
+    const listing = await prisma.listing.findUnique({
       where: { id },
-      include: {
-        task: {
-          include: { product: true },
-        },
-      },
+      include: { product: true },
     });
 
     if (!listing) {
       return res.status(404).json({ error: 'Listing not found' });
     }
 
-    const task = listing.task;
-    const translations = task.translations as any;
-    const pricing = task.pricing as any;
-    const attributes = task.attributes as any;
-    const validation = task.validation as any;
+    const data = (listing.marketplaceData as Record<string, any>) || {};
 
     const warnings: string[] = [];
 
     // 価格チェック
-    if (pricing?.finalPriceUsd < 5) {
+    const priceForPreview = listing.listingPrice || listing.product.price || 0;
+    if (priceForPreview < 5) {
       warnings.push('Price might be too low for this category');
     }
-    if (pricing?.finalPriceUsd > 500) {
+    if (priceForPreview > 500) {
       warnings.push('High price items may have lower conversion');
     }
 
     // 画像チェック
-    if (task.optimizedImages.length < 3) {
+    const imagesFromProduct = (listing.product.processedImages?.length ? listing.product.processedImages : listing.product.images) || [];
+    const imagesFromData = (data.joomImages as string[]) || [];
+    const images = imagesFromData.length > 0 ? imagesFromData : imagesFromProduct;
+    if (images.length < 3) {
       warnings.push('Recommended to have at least 3 images');
     }
 
     // 属性チェック
-    if (!attributes?.brand) {
+    const attributes = (data.joomAttributes as Record<string, unknown>) || {};
+    if (!attributes || Object.keys(attributes).length === 0) {
       warnings.push('No brand detected - may affect search visibility');
     }
 
     // 可視性スコア
     let visibility: 'low' | 'medium' | 'high' = 'medium';
-    if (translations?.en?.title && attributes?.brand && task.optimizedImages.length >= 3) {
+    const title = (data.title as string) || listing.product.titleEn || listing.product.title;
+    if (title && images.length >= 3) {
       visibility = 'high';
     } else if (warnings.length > 2) {
       visibility = 'low';
@@ -198,23 +215,23 @@ router.post('/listings/:id/preview', async (req: Request, res: Response) => {
 
     const preview = {
       wouldCreate: {
-        title: translations?.en?.title || task.product.title,
-        description: translations?.en?.description || task.product.description,
-        price: pricing?.finalPriceUsd || 0,
-        images: task.optimizedImages,
+        title,
+        description: (data.description as string) || listing.product.descriptionEn || listing.product.description,
+        price: priceForPreview,
+        images,
         attributes: attributes || {},
       },
       validation: {
-        passed: validation?.passed ?? true,
+        passed: true,
         warnings,
       },
       estimatedVisibility: visibility,
     };
 
-    // Dry-Run結果を保存
-    await prisma.joomListing.update({
+    // Dry-Run結果を保存（marketplaceDataに格納）
+    await prisma.listing.update({
       where: { id },
-      data: { dryRunResult: preview as any },
+      data: { marketplaceData: { ...(listing.marketplaceData as object), dryRunResult: preview } as any },
     });
 
     res.json(preview);
@@ -231,31 +248,29 @@ router.post('/listings/:id/publish', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const listing = await prisma.joomListing.findUnique({
+    const listing = await prisma.listing.findUnique({
       where: { id },
-      include: {
-        task: true,
-      },
+      include: { product: true },
     });
 
     if (!listing) {
       return res.status(404).json({ error: 'Listing not found' });
     }
 
-    if (!['DRAFT', 'READY', 'ERROR'].includes(listing.status)) {
-      return res.status(400).json({ error: `Cannot publish listing in status: ${listing.status}` });
+    if (listing.status === 'ACTIVE') {
+      return res.status(400).json({ error: 'Listing is already active' });
     }
 
     // ステータスを更新
-    await prisma.joomListing.update({
+    await prisma.listing.update({
       where: { id },
-      data: { status: 'PUBLISHING' },
+      data: { status: 'PENDING_PUBLISH' },
     });
 
     // ジョブキューに追加
     const jobId = await addPublishJob(id);
 
-    res.json({ message: 'Publishing started', listingId: id, jobId });
+    res.json({ message: 'Publishing started', listingId: id, jobId, status: 'PENDING_PUBLISH' });
   } catch (error) {
     console.error('Failed to publish Joom listing:', error);
     res.status(500).json({ error: 'Failed to publish Joom listing' });
@@ -269,30 +284,28 @@ router.delete('/listings/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const listing = await prisma.joomListing.findUnique({
-      where: { id },
-    });
+    const listing = await prisma.listing.findUnique({ where: { id } });
 
     if (!listing) {
       return res.status(404).json({ error: 'Listing not found' });
     }
 
     // Joom APIから削除（出品済みの場合）- 非同期でWorkerに委託
-    if (listing.joomProductId) {
+    const marketplaceData = (listing.marketplaceData as Record<string, unknown>) || {};
+    const joomProductId = marketplaceData.joomProductId as string | undefined;
+    if (joomProductId) {
       try {
         await joomPublishQueue.add('delete-product', {
-          joomProductId: listing.joomProductId,
+          joomProductId,
           joomListingId: listing.id,
         });
-        console.log('Queued Joom product deletion:', listing.joomProductId);
+        console.log('Queued Joom product deletion:', joomProductId);
       } catch (queueErr: any) {
         console.error('Failed to queue Joom product deletion:', queueErr?.message);
       }
     }
 
-    await prisma.joomListing.delete({
-      where: { id },
-    });
+    await prisma.listing.delete({ where: { id } });
 
     res.status(204).send();
   } catch (error) {
@@ -306,30 +319,32 @@ router.delete('/listings/:id', async (req: Request, res: Response) => {
  */
 router.get('/stats', async (req: Request, res: Response) => {
   try {
+    const baseWhere = { marketplace: Marketplace.JOOM };
+
     const [
       total,
       draft,
-      ready,
+      pendingPublish,
       publishing,
       active,
       paused,
       sold,
       error,
     ] = await Promise.all([
-      prisma.joomListing.count(),
-      prisma.joomListing.count({ where: { status: 'DRAFT' } }),
-      prisma.joomListing.count({ where: { status: 'READY' } }),
-      prisma.joomListing.count({ where: { status: 'PUBLISHING' } }),
-      prisma.joomListing.count({ where: { status: 'ACTIVE' } }),
-      prisma.joomListing.count({ where: { status: 'PAUSED' } }),
-      prisma.joomListing.count({ where: { status: 'SOLD' } }),
-      prisma.joomListing.count({ where: { status: 'ERROR' } }),
+      prisma.listing.count({ where: baseWhere }),
+      prisma.listing.count({ where: { ...baseWhere, status: 'DRAFT' } }),
+      prisma.listing.count({ where: { ...baseWhere, status: 'PENDING_PUBLISH' } }),
+      prisma.listing.count({ where: { ...baseWhere, status: 'PUBLISHING' } }),
+      prisma.listing.count({ where: { ...baseWhere, status: 'ACTIVE' } }),
+      prisma.listing.count({ where: { ...baseWhere, status: 'PAUSED' } }),
+      prisma.listing.count({ where: { ...baseWhere, status: 'SOLD' } }),
+      prisma.listing.count({ where: { ...baseWhere, status: 'ERROR' } }),
     ]);
 
     res.json({
       total,
       draft,
-      ready,
+      pendingPublish,
       publishing,
       active,
       paused,

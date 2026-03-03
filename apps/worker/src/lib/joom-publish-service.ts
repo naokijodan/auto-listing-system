@@ -233,38 +233,47 @@ export class JoomPublishService {
       throw new Error(`Task not approved: ${task.status}`);
     }
 
-    // JoomListing を作成または取得
-    const joomListing = await prisma.joomListing.upsert({
-      where: { taskId },
+    // Listing を作成または取得（JOOM）
+    const pricing = (task.pricing as any) || {};
+    const initialPriceUsd: number = typeof pricing.finalPriceUsd === 'number' ? pricing.finalPriceUsd : 0;
+
+    const listing = await prisma.listing.upsert({
+      where: {
+        productId_marketplace: {
+          productId: task.productId,
+          marketplace: 'JOOM',
+        },
+      } as any,
       create: {
-        taskId,
         productId: task.productId,
+        marketplace: 'JOOM',
         status: 'DRAFT',
+        listingPrice: initialPriceUsd,
+        currency: 'USD',
+        marketplaceData: {},
       },
-      update: {},
+      update: {
+        listingPrice: initialPriceUsd,
+      },
     });
 
-    return joomListing.id;
+    return listing.id;
   }
 
   /**
    * 画像を処理してJoomListingを更新
    */
-  async processImagesForListing(joomListingId: string): Promise<void> {
-    const joomListing = await prisma.joomListing.findUnique({
-      where: { id: joomListingId },
-      include: {
-        task: {
-          include: { product: true },
-        },
-      },
+  async processImagesForListing(listingId: string): Promise<void> {
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId },
+      include: { product: true },
     });
 
-    if (!joomListing) {
-      throw new Error(`JoomListing not found: ${joomListingId}`);
+    if (!listing) {
+      throw new Error(`Listing not found: ${listingId}`);
     }
 
-    const product = joomListing.task.product;
+    const product = listing.product;
 
     // 画像処理
     const imageResult = await this.imagePipeline.processImages(
@@ -272,28 +281,34 @@ export class JoomPublishService {
       product.images
     );
 
-    // タスクとJoomListingを更新
+    // タスクとListingを更新（marketplaceDataに画像を保存）
+    const task = await prisma.enrichmentTask.findUnique({ where: { productId: listing.productId } });
+    const existingData = (listing.marketplaceData as any) || {};
     await prisma.$transaction([
-      prisma.enrichmentTask.update({
-        where: { id: joomListing.taskId },
+      ...(task
+        ? [
+            prisma.enrichmentTask.update({
+              where: { id: task.id },
+              data: {
+                bufferedImages: imageResult.buffered,
+                optimizedImages: imageResult.optimized,
+                imageStatus: 'COMPLETED',
+              },
+            }),
+          ]
+        : []),
+      prisma.listing.update({
+        where: { id: listingId },
         data: {
-          bufferedImages: imageResult.buffered,
-          optimizedImages: imageResult.optimized,
-          imageStatus: 'COMPLETED',
-        },
-      }),
-      prisma.joomListing.update({
-        where: { id: joomListingId },
-        data: {
-          joomImages: imageResult.optimized,
-          status: 'READY',
+          status: 'PENDING_PUBLISH',
+          marketplaceData: { ...(existingData || {}), joomImages: imageResult.optimized },
         },
       }),
     ]);
 
     log.info({
       type: 'images_processed',
-      joomListingId,
+      listingId,
       imageCount: imageResult.optimized.length,
     });
   }
@@ -301,21 +316,24 @@ export class JoomPublishService {
   /**
    * Joomに出品
    */
-  async publishToJoom(joomListingId: string): Promise<JoomPublishResult> {
-    const joomListing = await prisma.joomListing.findUnique({
-      where: { id: joomListingId },
-      include: {
-        task: {
-          include: { product: true },
-        },
-      },
+  async publishToJoom(listingId: string): Promise<JoomPublishResult> {
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId },
+      include: { product: true },
     });
 
-    if (!joomListing) {
-      return { success: false, error: 'JoomListing not found' };
+    if (!listing) {
+      return { success: false, error: 'Listing not found' };
     }
 
-    const task = joomListing.task;
+    if (listing.marketplace !== 'JOOM') {
+      return { success: false, error: 'Listing is not for JOOM' };
+    }
+
+    const task = await prisma.enrichmentTask.findUnique({ where: { productId: listing.productId } });
+    if (!task) {
+      return { success: false, error: 'EnrichmentTask not found for product' };
+    }
     const translations = task.translations as any;
     const pricing = task.pricing as any;
     const attributes = task.attributes as any;
@@ -326,10 +344,7 @@ export class JoomPublishService {
 
     try {
       // ステータスを更新
-      await prisma.joomListing.update({
-        where: { id: joomListingId },
-        data: { status: 'PUBLISHING' },
-      });
+      await prisma.listing.update({ where: { id: listingId }, data: { status: 'PUBLISHING' } });
 
       // Phase 49: カテゴリマッピングを取得
       const productInfo: ProductInfo = {
@@ -364,11 +379,12 @@ export class JoomPublishService {
       // Joom商品データを構築
       const weightKg = task.product.weight ? task.product.weight / 1000 : 0.15;
       const defaultShipping = calculateShippingCost(weightKg);
+      const md = (listing.marketplaceData as any) || {};
       const joomProduct: JoomProduct = {
         name: translations.en.title,
         description: translations.en.description,
-        mainImage: joomListing.joomImages[0] || '',
-        extraImages: joomListing.joomImages.slice(1),
+        mainImage: (md.joomImages || [])[0] || '',
+        extraImages: (md.joomImages || []).slice(1),
         price: pricing.finalPriceUsd,
         currency: 'USD',
         quantity: 1,
@@ -384,7 +400,7 @@ export class JoomPublishService {
 
         // 推奨フィールド追加（存在する場合のみ意味を持つ）
         brand: (task.product as any).brand || attributes?.brand || undefined,
-        categoryId: joomListing.joomCategory || undefined,
+        categoryId: md.joomCategory || undefined,
         color: attributes?.color || undefined,
         size: attributes?.size || undefined,
         material: attributes?.material || attributes?.caseMaterial || undefined,
@@ -401,35 +417,35 @@ export class JoomPublishService {
       }
 
       // 成功時の更新（Phase 49: カテゴリ情報も保存）
+      const existing = await prisma.listing.findUnique({ where: { id: listingId } });
+      const currentData = (existing?.marketplaceData as any) || {};
       await prisma.$transaction([
-        prisma.joomListing.update({
-          where: { id: joomListingId },
+        prisma.listing.update({
+          where: { id: listingId },
           data: {
-            joomProductId: response.data.id,
-            title: translations.en.title,
-            description: translations.en.description,
-            price: pricing.finalPriceUsd,
             status: 'ACTIVE',
             publishedAt: new Date(),
             lastSyncedAt: new Date(),
-            joomCategory: joomCategory || null,
-            joomAttributes: filledAttributes,
+            listingPrice: pricing.finalPriceUsd,
+            currency: 'USD',
+            marketplaceListingId: response.data.id,
+            marketplaceData: {
+              ...currentData,
+              joomProductId: response.data.id,
+              title: translations.en.title,
+              description: translations.en.description,
+              joomCategory: joomCategory || null,
+              joomAttributes: filledAttributes,
+            },
           },
         }),
-        prisma.enrichmentTask.update({
-          where: { id: task.id },
-          data: { status: 'PUBLISHED' },
-        }),
+        prisma.enrichmentTask.update({ where: { id: task.id }, data: { status: 'PUBLISHED' } }),
       ]);
 
       // APIログを記録
       await this.logApiCall('POST', '/products', joomProduct, 200, response.data, true);
 
-      log.info({
-        type: 'publish_success',
-        joomListingId,
-        joomProductId: response.data.id,
-      });
+      log.info({ type: 'publish_success', listingId, joomProductId: response.data.id });
 
       return {
         success: true,
@@ -438,12 +454,15 @@ export class JoomPublishService {
       };
     } catch (error: any) {
       // エラー時の更新
-      await prisma.joomListing.update({
-        where: { id: joomListingId },
+      const existing = await prisma.listing.findUnique({ where: { id: listingId } });
+      const currentData = (existing?.marketplaceData as any) || {};
+      const errorCount = (currentData.errorCount || 0) + 1;
+      await prisma.listing.update({
+        where: { id: listingId },
         data: {
           status: 'ERROR',
-          lastError: error.message,
-          errorCount: { increment: 1 },
+          errorMessage: error.message,
+          marketplaceData: { ...currentData, lastError: error.message, errorCount },
         },
       });
 
@@ -451,7 +470,7 @@ export class JoomPublishService {
 
       log.error({
         type: 'publish_failed',
-        joomListingId,
+        listingId,
         error: error.message,
       });
 
@@ -823,10 +842,7 @@ export class JoomWorkflowOrchestrator {
    */
   async publishApprovedTasks(limit: number = 10): Promise<number> {
     const approvedTasks = await prisma.enrichmentTask.findMany({
-      where: {
-        status: 'APPROVED',
-        joomListing: null, // まだJoomListingがないもの
-      },
+      where: { status: 'APPROVED' },
       take: limit,
     });
 
@@ -834,6 +850,14 @@ export class JoomWorkflowOrchestrator {
 
     for (const task of approvedTasks) {
       try {
+        // Check if no Listing exists for this product with JOOM marketplace
+        const existingListing = await prisma.listing.findFirst({
+          where: { productId: task.productId, marketplace: 'JOOM' },
+        });
+        if (existingListing) {
+          continue;
+        }
+
         const joomListingId = await this.publishService.createJoomListing(task.id);
         await this.publishService.processImagesForListing(joomListingId);
         const result = await this.publishService.publishToJoom(joomListingId);

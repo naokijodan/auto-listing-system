@@ -1,0 +1,41 @@
+Task: Phase 0-C-5 - Migrate apps/api/src/routes/joom.ts from JoomListing to Listing
+
+Replace all prisma.joomListing operations with prisma.listing using marketplace='JOOM'.
+
+Key changes:
+
+1. GET /listings: prisma.joomListing.findMany() -> prisma.listing.findMany({where: {marketplace: 'JOOM', ...otherFilters}})
+   - Status filter: map JoomListingStatus values to ListingStatus
+   - Include product relation instead of task relation
+
+2. GET /listings/:id: prisma.joomListing.findUnique() -> prisma.listing.findUnique()
+   - Include product relation
+
+3. POST /listings: prisma.joomListing.upsert() -> prisma.listing.upsert()
+   - Use where: {productId_marketplace: {productId, marketplace: 'JOOM'}}
+   - Store Joom fields in marketplaceData JSON
+
+4. POST /listings/:id/preview: prisma.joomListing.findUnique() -> prisma.listing.findUnique()
+   - Extract Joom data from marketplaceData
+
+5. POST /listings/:id/publish: prisma.joomListing operations -> prisma.listing operations
+
+6. DELETE /listings/:id: prisma.joomListing.delete() -> prisma.listing.delete()
+
+7. GET /stats: prisma.joomListing.count() -> prisma.listing.count({where: {marketplace: 'JOOM', status: ...}})
+   - Map status values: DRAFT, PENDING_PUBLISH (was READY), PUBLISHING, ACTIVE, PAUSED, SOLD, ERROR
+
+Status mapping from JoomListingStatus to ListingStatus:
+- DRAFT -> DRAFT
+- READY -> PENDING_PUBLISH
+- PUBLISHING -> PUBLISHING
+- ACTIVE -> ACTIVE
+- PAUSED -> PAUSED
+- SOLD -> SOLD
+- ENDED -> ENDED
+- ERROR -> ERROR
+
+For all Joom-specific data (joomProductId, title, description, joomCategory, joomAttributes, joomImages, dryRunResult, etc), read from / write to listing.marketplaceData JSON.
+
+DO NOT modify schema.prisma. Only edit apps/api/src/routes/joom.ts.
+DO NOT run tests.

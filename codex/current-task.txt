@@ -1,72 +1,46 @@
-Task: Add Phase 3-B management API endpoints to apps/api/src/routes/products.ts
+Task: Phase 0-C-4 - Migrate joom-publish-service.ts from JoomListing to Listing
 
-The Prisma schema already has these fields on Product model:
-- tags: String[] @default([])
-- memo: String? @db.Text
-- purchaseShippingCost: Int?
-- initialPurchasePrice: Int?
+File: apps/worker/src/lib/joom-publish-service.ts
 
-DO NOT touch prisma schema or run prisma commands. Only edit apps/api/src/routes/products.ts.
+Replace all prisma.joomListing operations with prisma.listing operations using marketplace='JOOM'.
 
-1. Add tag filter to GET '/' endpoint:
-   - Read `tag` from req.query
-   - If tag is provided, add `where.tags = { has: tag as string }` to the existing where object
+Key changes:
+1. prisma.joomListing.upsert({where: {taskId}}) -> prisma.listing.upsert({where: {productId_marketplace: {productId, marketplace: 'JOOM'}}})
+2. prisma.joomListing.findUnique({where: {id}}) -> prisma.listing.findUnique({where: {id}})
+3. prisma.joomListing.update() -> prisma.listing.update()
+4. prisma.joomListing.delete() -> prisma.listing.delete()
 
-2. Add PATCH /:id/tags endpoint (before export default router):
+Data mapping:
+- JoomListing.title/description/joomProductId/joomVariantId/joomSku/joomCategory/joomAttributes/joomImages/shippingPrice/shippingTime/dryRunResult/errorCount/lastError -> Listing.marketplaceData JSON
+- JoomListing.price -> Listing.listingPrice
+- JoomListing.status -> Listing.status (DRAFT->DRAFT, READY->PENDING_PUBLISH, PUBLISHING->PUBLISHING, ACTIVE->ACTIVE, PAUSED->PAUSED, SOLD->SOLD, ENDED->ENDED, ERROR->ERROR)
+- JoomListing.publishedAt -> Listing.publishedAt
+- JoomListing.lastSyncedAt -> Listing.lastSyncedAt
+- JoomListing.currency -> Listing.currency
+
+For marketplaceData updates, merge with existing:
 ```typescript
-router.patch('/:id/tags', async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { tags } = req.body;
-    if (!Array.isArray(tags)) {
-      return res.status(400).json({ error: 'tags must be an array of strings' });
-    }
-    const product = await prisma.product.update({
-      where: { id },
-      data: { tags },
-    });
-    res.json(product);
-  } catch (error) {
-    next(error);
-  }
+const existing = await prisma.listing.findUnique({where: {id}});
+const currentData = (existing?.marketplaceData as any) || {};
+await prisma.listing.update({
+  where: {id},
+  data: {marketplaceData: {...currentData, ...newData}}
 });
 ```
 
-3. Add PATCH /:id/memo endpoint:
+For queries checking `joomListing: null` on enrichmentTask, change to:
 ```typescript
-router.patch('/:id/memo', async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { memo } = req.body;
-    const product = await prisma.product.update({
-      where: { id },
-      data: { memo },
-    });
-    res.json(product);
-  } catch (error) {
-    next(error);
-  }
+// Check if no Listing exists for this product with JOOM marketplace
+const existingListing = await prisma.listing.findFirst({
+  where: { productId: task.productId, marketplace: 'JOOM' }
 });
+if (existingListing) continue; // skip if already has a Joom listing
 ```
 
-4. Add PATCH /:id/purchase-info endpoint:
-```typescript
-router.patch('/:id/purchase-info', async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { purchaseShippingCost, initialPurchasePrice } = req.body;
-    const data: any = {};
-    if (typeof purchaseShippingCost === 'number') data.purchaseShippingCost = purchaseShippingCost;
-    if (typeof initialPurchasePrice === 'number') data.initialPurchasePrice = initialPurchasePrice;
-    const product = await prisma.product.update({
-      where: { id },
-      data,
-    });
-    res.json(product);
-  } catch (error) {
-    next(error);
-  }
-});
-```
+Also update the helper functions to extract data from marketplaceData:
+- listing.joomProductId -> (listing.marketplaceData as any)?.joomProductId
+- listing.title -> (listing.marketplaceData as any)?.title
+- etc.
 
-IMPORTANT: Add these 3 PATCH routes BEFORE the `export default router;` line at the end of the file. Also add the tag filter to the existing GET '/' route where clause. Do NOT run any tests or prisma commands.
+DO NOT modify schema.prisma. DO NOT run prisma commands. Only edit joom-publish-service.ts.
+After editing, run: cd ~/Desktop/rakuda && npm test --workspace=apps/worker 2>&1 | tail -30

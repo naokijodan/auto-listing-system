@@ -105,20 +105,20 @@ async function processCreateListing(taskId: string): Promise<any> {
 async function processImagesForListing(joomListingId: string): Promise<any> {
   await joomPublishService.processImagesForListing(joomListingId);
 
-  const listing = await prisma.joomListing.findUnique({
+  const listing = await prisma.listing.findUnique({
     where: { id: joomListingId },
   });
 
   log.info({
     type: 'process_images_complete',
     joomListingId,
-    imageCount: listing?.joomImages.length || 0,
+    imageCount: ((listing?.marketplaceData as any)?.joomImages || []).length || 0,
   });
 
   return {
     joomListingId,
     status: listing?.status,
-    imageCount: listing?.joomImages.length || 0,
+    imageCount: ((listing?.marketplaceData as any)?.joomImages || []).length || 0,
   };
 }
 
@@ -138,15 +138,15 @@ async function processPublish(joomListingId: string): Promise<any> {
   // Phase 44: 出品成功時のSlackアラート
   if (result.success && result.joomProductId) {
     try {
-      const listing = await prisma.joomListing.findUnique({
+      const listing = await prisma.listing.findUnique({
         where: { id: joomListingId },
       });
       if (listing) {
         const { alertManager: slackAlertManager } = await import('../lib/slack-alert');
         await slackAlertManager.alertPublishSuccess(
-          listing.title || 'Unknown Product',
+          ((listing.marketplaceData as any)?.title as string) || 'Unknown Product',
           result.joomProductId,
-          listing.price || 0
+          (listing as any).listingPrice || 0
         );
       }
     } catch (alertErr) {
@@ -247,17 +247,20 @@ async function processDryRun(taskId: string): Promise<any> {
  * ステータス同期処理
  */
 async function processSyncStatus(joomListingId: string): Promise<any> {
-  const listing = await prisma.joomListing.findUnique({
+  const listing = await prisma.listing.findUnique({
     where: { id: joomListingId },
   });
 
-  if (!listing || !listing.joomProductId) {
+  const currentData = (listing?.marketplaceData as any) || {};
+  const joomProductId = currentData?.joomProductId as string | undefined;
+
+  if (!listing || !joomProductId) {
     return { joomListingId, synced: false, reason: 'No Joom product ID' };
   }
 
   try {
     const client = getJoomClient();
-    const resp = await client.getProduct(listing.joomProductId);
+    const resp = await client.getProduct(joomProductId);
 
     let updateData: any = { lastSyncedAt: new Date() };
     let resolvedStatus: string | undefined;
@@ -286,13 +289,17 @@ async function processSyncStatus(joomListingId: string): Promise<any> {
         notFound = true;
         updateData.status = 'ENDED';
       } else {
-        // それ以外のエラーは記録のみ
-        updateData.errorCount = (listing.errorCount || 0) + 1;
-        updateData.lastError = resp.error?.message || 'Unknown error from Joom API';
+        // それ以外のエラーは記録のみ（marketplaceDataにマージ）
+        const cur = (listing.marketplaceData as any) || {};
+        updateData.marketplaceData = {
+          ...cur,
+          errorCount: (cur.errorCount || 0) + 1,
+          lastError: resp.error?.message || 'Unknown error from Joom API',
+        };
       }
     }
 
-    await prisma.joomListing.update({
+    await prisma.listing.update({
       where: { id: joomListingId },
       data: updateData,
     });
@@ -300,7 +307,7 @@ async function processSyncStatus(joomListingId: string): Promise<any> {
     log.info({
       type: 'sync_status_complete',
       joomListingId,
-      joomProductId: listing.joomProductId,
+      joomProductId,
       status: updateData.status,
       notFound,
       success: true,
@@ -314,19 +321,23 @@ async function processSyncStatus(joomListingId: string): Promise<any> {
     };
   } catch (error: any) {
     // エラー時はerrorCount++, lastError, lastSyncedAtを記録
-    await prisma.joomListing.update({
+    const cur = (listing?.marketplaceData as any) || {};
+    await prisma.listing.update({
       where: { id: joomListingId },
       data: {
         lastSyncedAt: new Date(),
-        errorCount: (listing.errorCount || 0) + 1,
-        lastError: error.message || String(error),
+        marketplaceData: {
+          ...cur,
+          errorCount: (cur.errorCount || 0) + 1,
+          lastError: error.message || String(error),
+        },
       },
     });
 
     log.error({
       type: 'sync_status_error',
       joomListingId,
-      joomProductId: listing.joomProductId,
+      joomProductId,
       error: error.message,
     });
 
@@ -423,15 +434,24 @@ export async function processAutoJoomPublish(
     limit,
   });
 
-  // 承認済みタスクを取得
+  // 承認済みタスクを取得（Listing未作成フィルタは後段で実施）
   const approvedTasks = await prisma.enrichmentTask.findMany({
     where: {
       status: 'APPROVED',
-      joomListing: null,
     },
     take: limit,
     orderBy: { createdAt: 'asc' },
+    include: { product: true },
   });
+
+  // 既にJOOMのListingがあるタスクを除外
+  const tasksWithoutListing: typeof approvedTasks = [];
+  for (const task of approvedTasks) {
+    const existingListing = await prisma.listing.findFirst({
+      where: { productId: task.productId, marketplace: 'JOOM' as any },
+    });
+    if (!existingListing) tasksWithoutListing.push(task);
+  }
 
   const results: Array<{
     taskId: string;
@@ -440,7 +460,7 @@ export async function processAutoJoomPublish(
     error?: string;
   }> = [];
 
-  for (const task of approvedTasks) {
+  for (const task of tasksWithoutListing) {
     try {
       const joomListingId = await joomPublishService.createJoomListing(task.id);
       await joomPublishService.processImagesForListing(joomListingId);
@@ -467,13 +487,13 @@ export async function processAutoJoomPublish(
   log.info({
     type: 'auto_joom_publish_complete',
     jobId: job.id,
-    total: approvedTasks.length,
+    total: tasksWithoutListing.length,
     success: successCount,
     failed: failedCount,
   });
 
   return {
-    total: approvedTasks.length,
+    total: tasksWithoutListing.length,
     success: successCount,
     failed: failedCount,
     results,
