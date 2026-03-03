@@ -17,13 +17,14 @@ export interface PriceAdjustmentResult {
 
 /**
  * 為替レート取得（DBまたはデフォルト値）
+ * 返却する為替は JPY→USD の直レート（例: 0.0067）
  */
 async function getExchangeRate(from: string, to: string): Promise<number> {
   const rate = await prisma.exchangeRate.findFirst({
     where: { fromCurrency: from, toCurrency: to },
     orderBy: { fetchedAt: 'desc' },
   });
-  return rate?.rate || 150; // デフォルト150円/USD
+  return rate?.rate || 0.0067; // デフォルト1/150（JPY→USD直接レート）
 }
 
 /**
@@ -31,7 +32,7 @@ async function getExchangeRate(from: string, to: string): Promise<number> {
  *
  * @param sellingPriceUsd 販売価格（USD）
  * @param costPriceJpy 仕入価格（円）
- * @param exchangeRate 為替レート（円/USD）
+ * @param exchangeRate 為替レート（JPY→USD）
  * @param feeRate プラットフォーム手数料率（デフォルト15%）
  */
 function calculateProfitRate(
@@ -40,7 +41,8 @@ function calculateProfitRate(
   exchangeRate: number,
   feeRate: number = 0.15
 ): { profitJpy: number; profitRate: number } {
-  const sellingPriceJpy = sellingPriceUsd * exchangeRate;
+  // exchangeRate は JPY→USD 直レートのため、USD→JPY へ換算するには除算
+  const sellingPriceJpy = sellingPriceUsd / exchangeRate;
   const fee = sellingPriceJpy * feeRate;
   const netRevenue = sellingPriceJpy - fee;
   const profitJpy = netRevenue - costPriceJpy;
@@ -53,7 +55,7 @@ function calculateProfitRate(
  * 目標利益率を達成するための販売価格を逆算
  *
  * @param costPriceJpy 仕入価格（円）
- * @param exchangeRate 為替レート（円/USD）
+ * @param exchangeRate 為替レート（JPY→USD）
  * @param targetProfitRate 目標利益率（%）
  * @param feeRate プラットフォーム手数料率
  */
@@ -65,10 +67,10 @@ function calculateOptimalPrice(
 ): number {
   // netRevenue = costPriceJpy * (1 + targetProfitRate/100)
   // sellingPriceJpy * (1 - feeRate) = netRevenue
-  // sellingPriceUsd = sellingPriceJpy / exchangeRate
+  // sellingPriceUsd = sellingPriceJpy * exchangeRate （JPY→USD）
   const targetNetRevenue = costPriceJpy * (1 + targetProfitRate / 100);
   const sellingPriceJpy = targetNetRevenue / (1 - feeRate);
-  const sellingPriceUsd = sellingPriceJpy / exchangeRate;
+  const sellingPriceUsd = sellingPriceJpy * exchangeRate;
   return Math.ceil(sellingPriceUsd * 100) / 100; // 小数点2位で切り上げ
 }
 
@@ -105,7 +107,8 @@ export async function adjustListingPrice(
 
   const costPriceJpy = listing.product.price;
   const currentPriceUsd = listing.listingPrice;
-  const exchangeRate = await getExchangeRate('USD', 'JPY');
+  // JPY→USD の直レートを取得
+  const exchangeRate = await getExchangeRate('JPY', 'USD');
 
   // 現在の利益率を計算
   const current = calculateProfitRate(currentPriceUsd, costPriceJpy, exchangeRate);

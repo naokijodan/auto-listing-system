@@ -675,9 +675,9 @@ async function processPriceSync(options: {
       const product = listing.product;
       if (!product) continue;
 
-      // 新しい価格を計算
+      // 新しい価格を計算（exchangeRate は JPY→USD 直レート）
       const costJpy = product.price;
-      const costUsd = costJpy / exchangeRate;
+      const costUsd = costJpy * exchangeRate;
 
       // 利益率30%を目標として価格計算
       const targetMargin = 0.30;
@@ -813,19 +813,19 @@ async function processPriceSync(options: {
 }
 
 /**
- * 為替レート取得（USD/JPY）
+ * 為替レート取得（JPY→USD）
  */
 async function getExchangeRate(): Promise<number> {
   try {
     const rate = await prisma.exchangeRate.findFirst({
       where: {
-        fromCurrency: 'USD',
-        toCurrency: 'JPY',
+        fromCurrency: 'JPY',
+        toCurrency: 'USD',
       },
       orderBy: { fetchedAt: 'desc' },
     });
-    return rate?.rate || 150; // デフォルト値
+    return rate?.rate || 0.0067; // デフォルト1/150（JPY→USD直接レート）
   } catch {
-    return 150;
+    return 0.0067;
   }
 }

@@ -524,8 +524,9 @@ Please provide a JSON response with the following structure:
    * 初期価格計算
    */
   private static calculateInitialPrice(costJpy: number): number {
-    const exchangeRate = 150;
-    const costUsd = costJpy / exchangeRate;
+    // exchangeRate は JPY→USD の直レート（例: 0.0067）
+    const exchangeRate = 0.0067;
+    const costUsd = costJpy * exchangeRate;
     const margin = 1.3; // 30%マージン
     return Math.round(costUsd * margin * 100) / 100;
   }
@@ -1345,8 +1346,9 @@ export class PriceOptimizationService {
     } | null,
     optimization: PriceOptimization
   ): number {
-    const exchangeRate = 150;
-    const costUsd = costJpy / exchangeRate;
+    // exchangeRate は JPY→USD の直レート（例: 0.0067）
+    const exchangeRate = 0.0067;
+    const costUsd = costJpy * exchangeRate;
     const minMargin = optimization.minMargin ?? 20;
     const minPrice = optimization.minPrice ?? costUsd * (1 + minMargin / 100);
     const maxPrice = optimization.maxPrice ?? costUsd * 3;

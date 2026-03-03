@@ -442,7 +442,7 @@ export class PriceCalculatorService {
       orderBy: { fetchedAt: 'desc' },
     });
 
-    return rate?.rate || 150; // デフォルト150円/USD
+    return rate?.rate || 0.0067; // デフォルト1/150（JPY→USD直接レート）
   }
 
   /**
@@ -455,7 +455,7 @@ export class PriceCalculatorService {
     const cfg = { ...DEFAULT_PRICING_CONFIG, ...config };
     const exchangeRate = await this.getExchangeRate();
 
-    const costUsd = costJpy / exchangeRate;
+    const costUsd = costJpy * exchangeRate;
     const basePrice = costUsd * (1 + cfg.baseProfitRate);
     const withFees = basePrice / (1 - cfg.joomFeeRate - cfg.paymentFeeRate);
     const finalPrice = withFees + cfg.shippingCostUsd;
