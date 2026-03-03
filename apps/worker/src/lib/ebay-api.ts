@@ -78,6 +78,23 @@ export class EbayApiClient {
   }
 
   /**
+   * マーケットプレイスIDからデフォルトのカテゴリツリーIDを取得
+   */
+  static getDefaultCategoryTreeId(marketplaceId: string = 'EBAY_US'): string {
+    const treeIdMap: Record<string, string> = {
+      EBAY_US: '0',
+      EBAY_GB: '3',
+      EBAY_DE: '77',
+      EBAY_AU: '15',
+      EBAY_FR: '71',
+      EBAY_IT: '101',
+      EBAY_ES: '186',
+      EBAY_CA: '2',
+    };
+    return treeIdMap[marketplaceId] || '0';
+  }
+
+  /**
    * 認証情報を取得
    */
   private async getCredentials() {
@@ -517,6 +534,140 @@ export class EbayApiClient {
   }
 
   /**
+   * eBayのビジネスポリシーをDBに同期
+   * Fulfillment/Payment/Returnの3種をまとめて取得・保存
+   */
+  async syncPolicies(marketplaceId: string = 'EBAY_US'): Promise<{
+    fulfillment: number;
+    payment: number;
+    return: number;
+  }> {
+    let fulfillmentCount = 0;
+    let paymentCount = 0;
+    let returnCount = 0;
+
+    // Fulfillment
+    try {
+      const fulfillment = await this.getFulfillmentPolicies(marketplaceId);
+      const policies = (fulfillment.data as any)?.fulfillmentPolicies || [];
+      for (const policy of policies) {
+        await prisma.ebayPolicy.upsert({
+          where: {
+            type_policyId_marketplaceId: {
+              type: 'FULFILLMENT',
+              policyId: policy.fulfillmentPolicyId,
+              marketplaceId,
+            },
+          },
+          update: {
+            name: policy.name,
+            description: policy.description,
+            details: policy as any,
+          },
+          create: {
+            type: 'FULFILLMENT',
+            policyId: policy.fulfillmentPolicyId,
+            name: policy.name,
+            description: policy.description,
+            marketplaceId,
+            details: policy as any,
+          },
+        });
+        fulfillmentCount++;
+      }
+    } catch (e) {
+      log.warn({ type: 'sync_policies_fulfillment_failed', error: (e as Error).message });
+    }
+
+    // Payment
+    try {
+      const payment = await this.getPaymentPolicies(marketplaceId);
+      const policies = (payment.data as any)?.paymentPolicies || [];
+      for (const policy of policies) {
+        await prisma.ebayPolicy.upsert({
+          where: {
+            type_policyId_marketplaceId: {
+              type: 'PAYMENT',
+              policyId: policy.paymentPolicyId,
+              marketplaceId,
+            },
+          },
+          update: {
+            name: policy.name,
+            description: policy.description,
+            details: policy as any,
+          },
+          create: {
+            type: 'PAYMENT',
+            policyId: policy.paymentPolicyId,
+            name: policy.name,
+            description: policy.description,
+            marketplaceId,
+            details: policy as any,
+          },
+        });
+        paymentCount++;
+      }
+    } catch (e) {
+      log.warn({ type: 'sync_policies_payment_failed', error: (e as Error).message });
+    }
+
+    // Return
+    try {
+      const ret = await this.getReturnPolicies(marketplaceId);
+      const policies = (ret.data as any)?.returnPolicies || [];
+      for (const policy of policies) {
+        await prisma.ebayPolicy.upsert({
+          where: {
+            type_policyId_marketplaceId: {
+              type: 'RETURN',
+              policyId: policy.returnPolicyId,
+              marketplaceId,
+            },
+          },
+          update: {
+            name: policy.name,
+            description: policy.description,
+            details: policy as any,
+          },
+          create: {
+            type: 'RETURN',
+            policyId: policy.returnPolicyId,
+            name: policy.name,
+            description: policy.description,
+            marketplaceId,
+            details: policy as any,
+          },
+        });
+        returnCount++;
+      }
+    } catch (e) {
+      log.warn({ type: 'sync_policies_return_failed', error: (e as Error).message });
+    }
+
+    return { fulfillment: fulfillmentCount, payment: paymentCount, return: returnCount };
+  }
+
+  /**
+   * ポリシー名からIDを取得（DB検索）
+   */
+  async getPolicyByName(
+    type: 'FULFILLMENT' | 'PAYMENT' | 'RETURN',
+    name: string,
+    marketplaceId: string = 'EBAY_US'
+  ): Promise<string | null> {
+    const policy = await prisma.ebayPolicy.findFirst({
+      where: {
+        type,
+        marketplaceId,
+        name: { contains: name, mode: 'insensitive' },
+      },
+    });
+
+    return policy?.policyId || null;
+  }
+
+  /**
    * Fulfillmentポリシーを作成
    */
   async createFulfillmentPolicy(
@@ -689,6 +840,13 @@ export class EbayApiClient {
       paymentPolicyId?: string;
       returnPolicyId?: string;
       merchantLocationKey?: string;
+      // Phase 1-C: BestOffer
+      bestOfferEnabled?: boolean;
+      autoAcceptPrice?: number;
+      autoDeclinePrice?: number;
+      // Phase 1-D: GTC + Private Listing
+      listingDuration?: string; // e.g. 'GTC', 'DAYS_30'
+      hideBuyerDetails?: boolean;
     }
   ): Promise<EbayApiResponse<{ offerId: string }>> {
     log.info({
@@ -697,7 +855,8 @@ export class EbayApiClient {
       price: offer.pricingPrice,
     });
 
-    return this.inventoryApiRequest<{ offerId: string }>('POST', '/offer', {
+    // リクエストボディを構築
+    const body: any = {
       sku,
       marketplaceId: offer.marketplaceId || 'EBAY_US',
       format: offer.format || 'FIXED_PRICE',
@@ -711,12 +870,34 @@ export class EbayApiClient {
       availableQuantity: offer.quantity,
       merchantLocationKey: offer.merchantLocationKey || 'RAKUDA_JP',
       listingDescription: offer.listingDescription,
+      // Phase 1-D: GTC（デフォルトGTC）
+      listingDuration: offer.listingDuration || 'GTC',
       listingPolicies: {
         fulfillmentPolicyId: offer.fulfillmentPolicyId,
         paymentPolicyId: offer.paymentPolicyId,
         returnPolicyId: offer.returnPolicyId,
       },
-    });
+    };
+
+    // Phase 1-C: BestOffer
+    if (offer.bestOfferEnabled) {
+      body.listingPolicies.bestOfferTerms = {
+        bestOfferEnabled: true,
+        ...(typeof offer.autoAcceptPrice === 'number'
+          ? { autoAcceptPrice: { value: offer.autoAcceptPrice.toString(), currency: offer.pricingCurrency || 'USD' } }
+          : {}),
+        ...(typeof offer.autoDeclinePrice === 'number'
+          ? { autoDeclinePrice: { value: offer.autoDeclinePrice.toString(), currency: offer.pricingCurrency || 'USD' } }
+          : {}),
+      };
+    }
+
+    // Phase 1-D: Private Listing（trueのときのみ設定）
+    if (offer.hideBuyerDetails) {
+      body.hideBuyerDetails = true;
+    }
+
+    return this.inventoryApiRequest<{ offerId: string }>('POST', '/offer', body);
   }
 
   /**
@@ -922,6 +1103,162 @@ export class EbayApiClient {
         })),
       };
     }
+  }
+
+  /**
+   * カテゴリごとのItem Aspects（Item Specifics）を取得（Taxonomy API）
+   * GET /commerce/taxonomy/v1/category_tree/{categoryTreeId}/get_item_aspects_for_category?category_id={categoryId}
+   */
+  async getItemAspectsForCategory(
+    categoryId: string,
+    categoryTreeId: string = '0'
+  ): Promise<EbayApiResponse<{
+    aspects: Array<{
+      localizedAspectName: string;
+      aspectConstraint: {
+        aspectRequired: boolean;
+        aspectMode: string; // 'FREE_TEXT' | 'SELECTION_ONLY'
+      };
+      aspectValues?: Array<{ localizedValue: string }>;
+    }>;
+  }>> {
+    try {
+      // アクセストークンが未取得なら取得
+      if (!this.accessToken) {
+        await this.ensureAccessToken();
+      }
+      const accessToken = this.accessToken;
+
+      // 本番/サンドボックス判定
+      const TAXONOMY_BASE = IS_PRODUCTION ? 'https://api.ebay.com' : 'https://api.sandbox.ebay.com';
+      const url = `${TAXONOMY_BASE}/commerce/taxonomy/v1/category_tree/${categoryTreeId}/get_item_aspects_for_category?category_id=${encodeURIComponent(categoryId)}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const text = await response.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        // ignore parse error, handle as API error below
+      }
+
+      if (!response.ok) {
+        log.error({ type: 'ebay_taxonomy_aspects_error', status: response.status, error: text });
+        return {
+          success: false,
+          error: {
+            code: (data?.errors && data.errors[0]?.errorId) || String(response.status),
+            message: (data?.errors && data.errors[0]?.message) || 'Failed to fetch item aspects',
+            details: data?.errors,
+          },
+        };
+      }
+
+      const aspects = (data?.aspects as any[]) || [];
+      return {
+        success: true,
+        data: { aspects },
+      };
+    } catch (error: any) {
+      log.error({ type: 'ebay_taxonomy_aspects_exception', error: error.message });
+      return {
+        success: false,
+        error: {
+          code: 'NETWORK_ERROR',
+          message: error.message,
+        },
+      };
+    }
+  }
+
+  /**
+   * Item Aspectsを取得してDBにキャッシュする
+   * 1. DBのEbayCategoryMappingからキャッシュを確認（updatedAt + 24h以内）
+   * 2. キャッシュがあればそれを返す
+   * 3. なければTaxonomy APIから取得してDBに保存
+   */
+  async fetchAndCacheItemAspects(
+    categoryId: string,
+    marketplaceId: string = 'EBAY_US'
+  ): Promise<{
+    aspects: Array<{
+      localizedAspectName: string;
+      required: boolean;
+      mode: string;
+      values: string[];
+    }>;
+  }> {
+    // 1. 既存キャッシュの確認（ebayCategoryIdベースのレコード）
+    const existing = await prisma.ebayCategoryMapping.findFirst({
+      where: { ebayCategoryId: categoryId },
+    });
+
+    if (existing) {
+      const now = Date.now();
+      const updatedAt = existing.updatedAt?.getTime?.() ?? new Date(existing.updatedAt as any).getTime();
+      const isFresh = now - updatedAt < 24 * 60 * 60 * 1000; // 24h
+      const cached = (existing.itemSpecifics as any) || {};
+      const fetchedAtMs = cached?.fetchedAt ? Date.parse(cached.fetchedAt) : 0;
+      const byFetchedAtFresh = fetchedAtMs > 0 && now - fetchedAtMs < 24 * 60 * 60 * 1000;
+
+      if (isFresh || byFetchedAtFresh) {
+        const simplified = Array.isArray(cached?.aspects)
+          ? cached.aspects
+          : [];
+        if (simplified.length > 0) {
+          return { aspects: simplified };
+        }
+      }
+    }
+
+    // 2. Taxonomy APIから取得
+    const treeId = EbayApiClient.getDefaultCategoryTreeId(marketplaceId);
+    const apiRes = await this.getItemAspectsForCategory(categoryId, treeId);
+    if (!apiRes.success || !apiRes.data) {
+      throw new Error(apiRes.error?.message || 'Failed to fetch item aspects');
+    }
+
+    const simplified = (apiRes.data.aspects || []).map((a: any) => ({
+      localizedAspectName: a.localizedAspectName,
+      required: !!a.aspectConstraint?.aspectRequired,
+      mode: a.aspectConstraint?.aspectMode || 'FREE_TEXT',
+      values: Array.isArray(a.aspectValues)
+        ? a.aspectValues.map((v: any) => v.localizedValue).filter(Boolean)
+        : [],
+    }));
+
+    const payload = {
+      aspects: simplified,
+      fetchedAt: new Date().toISOString(),
+    };
+
+    // 3. DBに保存（findFirst→update/create）
+    if (existing) {
+      await prisma.ebayCategoryMapping.update({
+        where: { id: existing.id },
+        data: {
+          itemSpecifics: payload as any,
+        },
+      });
+    } else {
+      await prisma.ebayCategoryMapping.create({
+        data: {
+          ebayCategoryId: categoryId,
+          ebayCategoryName: `Category ${categoryId}`,
+          sourceCategory: `auto:${categoryId}`,
+          itemSpecifics: payload as any,
+        },
+      });
+    }
+
+    return { aspects: simplified };
   }
 
   /**

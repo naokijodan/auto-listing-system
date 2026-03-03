@@ -535,6 +535,25 @@ model EbayCategoryMapping {
 }
 
 // ========================================
+// eBay ビジネスポリシー（Fulfillment/Payment/Return）
+// ========================================
+model EbayPolicy {
+  id            String   @id @default(cuid())
+  type          String   // 'FULFILLMENT' | 'PAYMENT' | 'RETURN'
+  policyId      String   // eBay側のポリシーID
+  name          String   // ポリシー名（表示用）
+  description   String?
+  marketplaceId String   @default("EBAY_US")
+  isDefault     Boolean  @default(false)
+  details       Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([type, policyId, marketplaceId])
+  @@map("ebay_policies")
+}
+
+// ========================================
 // Phase 49: Joom カテゴリマッピング
 // ========================================
 model JoomCategoryMapping {

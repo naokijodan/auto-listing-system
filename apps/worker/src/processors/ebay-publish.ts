@@ -106,6 +106,19 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
 
   // Item Specifics（aspects）を構築
   // marketplaceData.itemSpecifics > enrichmentデータ > 商品データからの推定
+  // Taxonomy APIから必須Item Specificsを取得
+  let requiredAspects: Array<{ localizedAspectName: string; required: boolean; mode: string; values: string[] }> = [];
+  const categoryId = (marketplaceData as any).categoryId;
+  if (categoryId) {
+    try {
+      const cached = await ebayApi.fetchAndCacheItemAspects(categoryId);
+      requiredAspects = cached.aspects.filter(a => a.required);
+      log.info({ type: 'fetched_item_aspects', categoryId, totalAspects: cached.aspects.length, requiredCount: requiredAspects.length });
+    } catch (error: any) {
+      log.warn({ type: 'fetch_item_aspects_failed', categoryId, error: error.message });
+    }
+  }
+
   let aspects: Record<string, string[]> = marketplaceData.itemSpecifics || {};
 
   // aspectsが空の場合、enrichmentと商品データからItem Specificsを推定
@@ -130,6 +143,20 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
     if (attrs.caseMaterial) aspects['Case Material'] = [attrs.caseMaterial];
     if (attrs.caseSize) aspects['Case Size'] = [attrs.caseSize];
     if (attrs.department) aspects['Department'] = [attrs.department];
+  }
+
+  // 必須Item Specificsが未設定の場合、デフォルト値を補完
+  for (const reqAspect of requiredAspects) {
+    if (!aspects[reqAspect.localizedAspectName]) {
+      if (reqAspect.values.length > 0 && reqAspect.mode === 'SELECTION_ONLY') {
+        // SELECTION_ONLYの場合、選択肢から最初の値は使わない（不正確なため）
+        // "N/A" や "Does not apply" で埋める
+        aspects[reqAspect.localizedAspectName] = ['N/A'];
+      } else {
+        aspects[reqAspect.localizedAspectName] = ['N/A'];
+      }
+      log.info({ type: 'filled_missing_aspect', aspect: reqAspect.localizedAspectName, value: 'N/A' });
+    }
   }
 
   // インベントリアイテム作成
@@ -214,6 +241,17 @@ async function processCreateOffer(listingId: string): Promise<any> {
   let paymentPolicyId = marketplaceData.paymentPolicyId;
   let returnPolicyId = marketplaceData.returnPolicyId;
 
+  // 名前指定がある場合はDBからID解決
+  if (!fulfillmentPolicyId && marketplaceData.fulfillmentPolicyName) {
+    fulfillmentPolicyId = (await ebayApi.getPolicyByName('FULFILLMENT', marketplaceData.fulfillmentPolicyName, marketplaceId)) || undefined;
+  }
+  if (!paymentPolicyId && marketplaceData.paymentPolicyName) {
+    paymentPolicyId = (await ebayApi.getPolicyByName('PAYMENT', marketplaceData.paymentPolicyName, marketplaceId)) || undefined;
+  }
+  if (!returnPolicyId && marketplaceData.returnPolicyName) {
+    returnPolicyId = (await ebayApi.getPolicyByName('RETURN', marketplaceData.returnPolicyName, marketplaceId)) || undefined;
+  }
+
   if (!fulfillmentPolicyId || !paymentPolicyId || !returnPolicyId) {
     log.info({ type: 'ensuring_default_policies', marketplaceId });
     const policies = await ebayApi.ensureDefaultPolicies(marketplaceId);
@@ -234,6 +272,13 @@ async function processCreateOffer(listingId: string): Promise<any> {
     fulfillmentPolicyId,
     paymentPolicyId,
     returnPolicyId,
+    // Phase 1-C: BestOffer
+    bestOfferEnabled: marketplaceData.bestOfferEnabled ?? true,
+    // autoAcceptPrice は設定しない（seller manual accept）
+    autoDeclinePrice: marketplaceData.autoDeclinePrice ?? Math.floor(listing.listingPrice * 0.88),
+    // Phase 1-D: GTC + Private
+    listingDuration: marketplaceData.listingDuration || 'GTC',
+    hideBuyerDetails: marketplaceData.hideBuyerDetails ?? false,
   });
 
   if (!result.success || !result.data?.offerId) {
