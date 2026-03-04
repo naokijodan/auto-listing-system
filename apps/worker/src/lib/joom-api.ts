@@ -301,13 +301,13 @@ export class JoomApiClient {
 
     const requestBody = {
       // トップレベル（商品情報）
-      store_id: storeId,
+      ...(storeId ? { store_id: storeId } : {}),
       name: product.name,
       description: product.description,
       currency: 'USD',
       main_image_url: imageUrl,
       extra_image_urls: product.extraImages || [],
-      parent_sku: parentSku,
+      sku: parentSku,
       tags: product.tags || [],
       ...(product.shippingMethod ? { shipping_method: product.shippingMethod } : { shipping_method: 'offline' }),
       // 推奨フィールド（値がある場合のみ送信）
