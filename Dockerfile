@@ -20,6 +20,9 @@ COPY . .
 # 依存関係をインストール
 RUN NODE_ENV=development npm ci --legacy-peer-deps
 
+# キャッシュバスト用（ビルド引数が変わるとここ以降のキャッシュが無効化される）
+ARG CACHE_DATE=unknown
+
 # Prismaクライアントを生成
 RUN npx prisma generate --schema=packages/database/prisma/schema
 
