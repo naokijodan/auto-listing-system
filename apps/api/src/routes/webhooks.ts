@@ -387,6 +387,26 @@ async function processEbayOrder(
           marketplaceItemId: item.legacyItemId,
         },
       });
+
+      // 在庫イベント（販売）+ ステータス更新（Shopifyパターン転用）
+      if (listing?.productId) {
+        await prisma.inventoryEvent.create({
+          data: {
+            productId: listing.productId,
+            eventType: 'SALE',
+            quantity: -(item.quantity || 1),
+            prevStock: 1,
+            newStock: 0,
+            marketplace: 'EBAY',
+            orderId: order.id,
+            reason: 'Order received via eBay webhook',
+          },
+        });
+        await prisma.product.update({
+          where: { id: listing.productId },
+          data: { status: 'SOLD' },
+        });
+      }
     }
 
     // 通知を作成
@@ -922,6 +942,26 @@ async function processJoomOrder(
           marketplaceItemId: item.product_id,
         },
       });
+
+      // 在庫イベント（販売）+ ステータス更新（Shopifyパターン転用）
+      if (listing?.productId) {
+        await prisma.inventoryEvent.create({
+          data: {
+            productId: listing.productId,
+            eventType: 'SALE',
+            quantity: -(item.quantity || 1),
+            prevStock: 1,
+            newStock: 0,
+            marketplace: 'JOOM',
+            orderId: order.id,
+            reason: 'Order received via Joom webhook',
+          },
+        });
+        await prisma.product.update({
+          where: { id: listing.productId },
+          data: { status: 'SOLD' },
+        });
+      }
     }
 
     await prisma.notification.create({

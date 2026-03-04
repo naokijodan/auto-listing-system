@@ -1,0 +1,87 @@
+## Task: eBay/Joom Webhook注文受信時のInventoryEvent + Product.status='SOLD' 追加
+
+### 対象ファイル
+`apps/api/src/routes/webhooks.ts`
+
+### 背景
+Shopifyのwebhook処理（`apps/worker/src/lib/shopify-webhook-processor.ts` 行141-155）では、注文受信時にInventoryEvent.create()とProduct.status='SOLD'を実行している。
+しかし、eBayとJoomのwebhook処理（同ファイル内の`processEbayOrder`と`processJoomOrder`）では、この処理が欠けている。
+
+### Shopifyのパターン（参考実装）
+```typescript
+// 在庫イベント（販売）: 簡易的に在庫1を前提
+if (productId) {
+  await prisma.inventoryEvent.create({
+    data: {
+      productId,
+      eventType: 'SALE',
+      quantity: -(li.quantity || 1),
+      prevStock: 1,
+      newStock: 0,
+      marketplace: 'SHOPIFY',
+      orderId: order.id,
+      reason: 'Order received via Shopify webhook',
+    },
+  });
+  await prisma.product.update({ where: { id: productId }, data: { status: 'SOLD' } });
+}
+```
+
+### 変更内容
+
+#### 1. eBay: processEbayOrder関数内（行366-390のforループ内）
+
+`sale.create` の後（行389の後）に以下を追加:
+```typescript
+      // 在庫イベント（販売）+ ステータス更新（Shopifyパターン転用）
+      if (listing?.productId) {
+        await prisma.inventoryEvent.create({
+          data: {
+            productId: listing.productId,
+            eventType: 'SALE',
+            quantity: -(item.quantity || 1),
+            prevStock: 1,
+            newStock: 0,
+            marketplace: 'EBAY',
+            orderId: order.id,
+            reason: 'Order received via eBay webhook',
+          },
+        });
+        await prisma.product.update({
+          where: { id: listing.productId },
+          data: { status: 'SOLD' },
+        });
+      }
+```
+
+#### 2. Joom: processJoomOrder関数内（行902-924のforループ内）
+
+`sale.create` の後（行924の後）に以下を追加:
+```typescript
+      // 在庫イベント（販売）+ ステータス更新（Shopifyパターン転用）
+      if (listing?.productId) {
+        await prisma.inventoryEvent.create({
+          data: {
+            productId: listing.productId,
+            eventType: 'SALE',
+            quantity: -(item.quantity || 1),
+            prevStock: 1,
+            newStock: 0,
+            marketplace: 'JOOM',
+            orderId: order.id,
+            reason: 'Order received via Joom webhook',
+          },
+        });
+        await prisma.product.update({
+          where: { id: listing.productId },
+          data: { status: 'SOLD' },
+        });
+      }
+```
+
+### 注意事項
+- `listing` 変数は既にforループ内で定義されている（eBay: 行368-374, Joom: 行903-908）
+- `listing?.productId` で null チェックしているため、listing が見つからない場合はスキップされる
+- `prisma` は既にファイル冒頭でインポート済み
+- 既存のコードスタイル（インデント、セミコロン等）に合わせること
+- 新しいimport文は不要

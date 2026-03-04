@@ -380,9 +380,23 @@ export async function processOrderSyncJob(
 
           // 売上明細を作成
           for (const item of items) {
+            // listing検索でproductId取得
+            const listing = await prisma.listing.findFirst({
+              where: {
+                marketplace: dbMarketplace as Marketplace,
+                OR: [
+                  { marketplaceListingId: item.sku },
+                  { productId: item.sku },
+                ],
+              },
+              include: { product: true },
+            });
+
             await prisma.sale.create({
               data: {
                 orderId: createdOrder.id,
+                listingId: listing?.id || null,
+                productId: listing?.productId || null,
                 sku: item.sku,
                 title: item.title,
                 quantity: item.quantity,
@@ -390,6 +404,26 @@ export async function processOrderSyncJob(
                 totalPrice: item.unitPrice * item.quantity,
               },
             });
+
+            // 在庫イベント（販売）+ ステータス更新
+            if (listing?.productId) {
+              await prisma.inventoryEvent.create({
+                data: {
+                  productId: listing.productId,
+                  eventType: 'SALE',
+                  quantity: -(item.quantity || 1),
+                  prevStock: 1,
+                  newStock: 0,
+                  marketplace: dbMarketplace as any,
+                  orderId: createdOrder.id,
+                  reason: `Order synced from ${marketplace === 'joom' ? 'Joom' : 'eBay'}`,
+                },
+              });
+              await prisma.product.update({
+                where: { id: listing.productId },
+                data: { status: 'SOLD' as any },
+              });
+            }
           }
 
           orders.push({
