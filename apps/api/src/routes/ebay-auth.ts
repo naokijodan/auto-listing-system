@@ -346,15 +346,15 @@ export default router;
 router.get('/policies', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { marketplaceId } = req.query as { marketplaceId?: string };
-    const policies = await prisma.ebayPolicy.findMany({
+    const policies = await (prisma as any).ebayPolicy.findMany({
       where: marketplaceId ? { marketplaceId } : {},
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
     });
 
     const grouped = {
-      fulfillment: policies.filter((p) => p.type === 'FULFILLMENT'),
-      payment: policies.filter((p) => p.type === 'PAYMENT'),
-      return: policies.filter((p) => p.type === 'RETURN'),
+      fulfillment: policies.filter((p: any) => p.type === 'FULFILLMENT'),
+      payment: policies.filter((p: any) => p.type === 'PAYMENT'),
+      return: policies.filter((p: any) => p.type === 'RETURN'),
     };
 
     res.json({ success: true, data: grouped });

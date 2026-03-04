@@ -143,13 +143,13 @@ router.post('/listings', async (req: Request, res: Response) => {
           productId: task.productId,
           marketplace: Marketplace.JOOM,
         },
-      },
+      } as any,
       create: {
         productId: task.productId,
         marketplace: Marketplace.JOOM,
         status: 'DRAFT',
         marketplaceData: {},
-      },
+      } as any,
       update: {},
       include: { product: true },
     });

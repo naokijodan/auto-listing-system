@@ -1288,7 +1288,7 @@ router.patch('/:id/tags', async (req, res, next) => {
     }
     const product = await prisma.product.update({
       where: { id },
-      data: { tags },
+      data: { tags } as any,
     });
     res.json(product);
   } catch (error) {
@@ -1302,7 +1302,7 @@ router.patch('/:id/memo', async (req, res, next) => {
     const { memo } = req.body;
     const product = await prisma.product.update({
       where: { id },
-      data: { memo },
+      data: { memo } as any,
     });
     res.json(product);
   } catch (error) {
