@@ -3,7 +3,8 @@
  * Phase 28: PDF/Excel出力、グラフ生成
  */
 
-import { prisma, ReportFormat, ReportStatus, ReportType } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { ReportFormat, ReportStatus, ReportType } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import * as fs from 'fs';
 import * as path from 'path';

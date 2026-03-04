@@ -3,14 +3,14 @@
  * Phase 33: セキュリティ強化
  */
 
+import { prisma } from '@rakuda/database';
 import {
-  prisma,
   SecurityEventType,
   SecurityEventSeverity,
   LoginFailureReason,
   DeviceType,
   TwoFactorMethod,
-} from '@rakuda/database';
+} from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import * as crypto from 'crypto';
 import * as speakeasy from 'speakeasy';

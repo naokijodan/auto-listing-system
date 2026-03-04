@@ -71,12 +71,12 @@ export class InventoryManager {
     const listings = await prisma.listing.findMany({ where: { productId } });
     const errors: string[] = [];
 
-    const grouped = listings.reduce<Record<string, any[]>>((acc, l) => {
+    const grouped = listings.reduce((acc: any, l: any) => {
       const m = l.marketplace as unknown as string;
       acc[m] = acc[m] || [];
       acc[m].push(l);
       return acc;
-    }, {});
+    }, {} as Record<string, any[]>);
 
     const tasks: Array<Promise<void>> = [];
 
@@ -391,11 +391,13 @@ export class InventoryManager {
       prisma.product.count(),
       prisma.listing.groupBy({ by: ['marketplace'], _count: true }),
       prisma.marketplaceSyncState.groupBy({ by: ['marketplace', 'syncStatus'], _count: true }),
-      prisma.inventoryEvent.count({ where: { syncErrors: { not: Prisma.DbNull } } }),
+      prisma.inventoryEvent.count({ where: { syncErrors: { not: Prisma.JsonNull } } }),
     ]);
 
     const statusCounts = await prisma.product.groupBy({ by: ['status'], _count: true });
-    const inStock = statusCounts.filter(s => s.status !== 'SOLD' && s.status !== 'OUT_OF_STOCK' && s.status !== 'DELETED').reduce((n, s) => n + s._count, 0);
+    const inStock = statusCounts
+      .filter((s: any) => s.status !== 'SOLD' && s.status !== 'OUT_OF_STOCK' && s.status !== 'DELETED')
+      .reduce((n: any, s: any) => n + s._count, 0);
     const outOfStock = totalProducts - inStock;
 
     const byMarketplace: Record<string, { listed: number; synced: number; errors: number }> = {};
@@ -418,4 +420,3 @@ export class InventoryManager {
 }
 
 export const inventoryManager = new InventoryManager();
-

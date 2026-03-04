@@ -331,7 +331,7 @@ async function processSyncStatus(joomListingId: string): Promise<any> {
           errorCount: (cur.errorCount || 0) + 1,
           lastError: error.message || String(error),
         },
-      },
+      } as any,
     });
 
     log.error({

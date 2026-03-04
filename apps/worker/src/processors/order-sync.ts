@@ -1,5 +1,6 @@
 import { Job } from 'bullmq';
-import { prisma, Marketplace, OrderStatus, PaymentStatus, FulfillmentStatus } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { Marketplace, OrderStatus, PaymentStatus, FulfillmentStatus } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import { JoomApiClient } from '../lib/joom-api';
 import { EbayApiClient, EbayOrder } from '../lib/ebay-api';

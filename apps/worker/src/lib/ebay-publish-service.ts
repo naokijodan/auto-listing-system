@@ -1,6 +1,6 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
-import { ebayApi, mapConditionToEbay, createEbayApiClient } from './ebay-api';
+import { ebayApi, mapConditionToEbay, getEbayClient } from './ebay-api';
 import { imagePipelineService } from './joom-publish-service';
 
 export interface EbayPublishResult {
@@ -142,7 +142,7 @@ export class EbayPublishService {
     const paymentPolicyId = process.env.EBAY_PAYMENT_POLICY_ID;
     const returnPolicyId = process.env.EBAY_RETURN_POLICY_ID;
 
-    const apiClient = credentialId ? createEbayApiClient(credentialId) : ebayApi;
+    const apiClient = credentialId ? getEbayClient(credentialId) : ebayApi;
 
     try {
       await prisma.listing.update({ where: { id: listingId }, data: { status: 'PUBLISHING' } });

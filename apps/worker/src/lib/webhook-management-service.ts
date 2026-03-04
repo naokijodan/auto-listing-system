@@ -1,4 +1,5 @@
-import { prisma, WebhookDeliveryStatus, WebhookEventType, WebhookAuthType } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { WebhookDeliveryStatus, WebhookEventType, WebhookAuthType } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import * as crypto from 'crypto';
 

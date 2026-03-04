@@ -1,4 +1,5 @@
-import { prisma, UserStatus, PermissionAction } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { UserStatus, PermissionAction } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';

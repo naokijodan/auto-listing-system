@@ -3,7 +3,8 @@
  * Phase 27: Slack/Discord/LINE/Email連携の実装
  */
 
-import { prisma, NotificationChannelType, NotificationSeverity } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { NotificationChannelType, NotificationSeverity } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 
 const log = logger.child({ module: 'notification-channel-service' });

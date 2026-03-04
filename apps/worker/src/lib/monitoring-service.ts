@@ -3,8 +3,8 @@
  * Phase 32: メトリクス収集・しきい値アラート
  */
 
+import { prisma } from '@rakuda/database';
 import {
-  prisma,
   MetricCategory,
   MetricType,
   MetricAlertCondition,
@@ -13,7 +13,7 @@ import {
   MetricAlertStatus,
   MetricAlertAction,
   HealthStatus,
-} from '@rakuda/database';
+} from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import * as os from 'os';
 

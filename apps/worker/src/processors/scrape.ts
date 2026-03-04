@@ -6,7 +6,7 @@ import { QUEUE_NAMES } from '@rakuda/config';
 import { ScrapeJobPayload, ScrapeJobResult, generateSourceHash } from '@rakuda/schema';
 import { scrapeProduct, scrapeSellerProducts, SourceType } from '../lib/scrapers';
 import { alertManager } from '../lib/alert-manager';
-import { SourceType as PrismaSourceType } from '@rakuda/database';
+import { SourceType as PrismaSourceType } from '@prisma/client';
 
 const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,

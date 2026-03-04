@@ -132,7 +132,7 @@ class UnifiedAnalyticsService {
 
     // 平均利益率
     const avgMarginPercent = listings.length > 0
-      ? listings.reduce((sum, l) => {
+      ? listings.reduce((sum: any, l: any) => {
           const cost = l.product?.price || 0;
           const margin = l.listingPrice > 0 ? ((l.listingPrice - cost) / l.listingPrice) * 100 : 0;
           return sum + margin;
@@ -140,17 +140,17 @@ class UnifiedAnalyticsService {
       : 0;
 
     // 価格変更統計
-    const priceIncreases = priceChangeLogs.filter(l => l.newPrice > l.oldPrice).length;
-    const priceDecreases = priceChangeLogs.filter(l => l.newPrice < l.oldPrice).length;
+    const priceIncreases = priceChangeLogs.filter((l: any) => l.newPrice > l.oldPrice).length;
+    const priceDecreases = priceChangeLogs.filter((l: any) => l.newPrice < l.oldPrice).length;
     const avgPriceChange = priceChangeLogs.length > 0
-      ? priceChangeLogs.reduce((sum, l) => sum + ((l.newPrice - l.oldPrice) / l.oldPrice) * 100, 0) / priceChangeLogs.length
+      ? priceChangeLogs.reduce((sum: any, l: any) => sum + ((l.newPrice - l.oldPrice) / l.oldPrice) * 100, 0) / priceChangeLogs.length
       : 0;
 
     // 競合価格優位性
     let priceAdvantageCount = 0;
     for (const tracker of competitorTrackers) {
       if (tracker.listingId && tracker.lastPrice) {
-        const listing = listings.find(l => l.id === tracker.listingId);
+        const listing = listings.find((l: any) => l.id === tracker.listingId);
         if (listing && listing.listingPrice < tracker.lastPrice) {
           priceAdvantageCount++;
         }
@@ -163,14 +163,14 @@ class UnifiedAnalyticsService {
     // 競合価格変動
     const avgCompetitorPriceChange = competitorPriceLogs.length > 0
       ? competitorPriceLogs
-          .filter(l => l.priceChangePercent !== null)
-          .reduce((sum, l) => sum + (l.priceChangePercent || 0), 0) / competitorPriceLogs.length
+          .filter((l: any) => l.priceChangePercent !== null)
+          .reduce((sum: any, l: any) => sum + (l.priceChangePercent || 0), 0) / competitorPriceLogs.length
       : 0;
 
     // 在庫状況（簡易）
     const staleThreshold = new Date();
     staleThreshold.setDate(staleThreshold.getDate() - 30);
-    const staleItems = listings.filter(l => l.createdAt < staleThreshold).length;
+    const staleItems = listings.filter((l: any) => l.createdAt < staleThreshold).length;
 
     return {
       period: { from, to: now, days },
@@ -195,9 +195,9 @@ class UnifiedAnalyticsService {
         priceAdvantage: Math.round(priceAdvantage * 100) / 100,
       },
       inventory: {
-        inStock: listings.filter(l => l.status === 'ACTIVE').length,
+        inStock: listings.filter((l: any) => l.status === 'ACTIVE').length,
         lowStock: 0, // TODO: 在庫レベル実装後
-        outOfStock: listings.filter(l => l.status === 'SOLD' || l.status === 'ENDED').length,
+        outOfStock: listings.filter((l: any) => l.status === 'SOLD' || l.status === 'ENDED').length,
         staleItems,
       },
     };
@@ -223,11 +223,11 @@ class UnifiedAnalyticsService {
     ]);
 
     // 日別に集計
-    const priceChangesByDay = this.groupByDay(priceChanges, 'createdAt', (items) => ({
-      value: items.reduce((sum, i) => sum + ((i.newPrice - i.oldPrice) / i.oldPrice) * 100, 0) / items.length,
+    const priceChangesByDay = this.groupByDay(priceChanges, 'createdAt', (items: any) => ({
+      value: items.reduce((sum: any, i: any) => sum + ((i.newPrice - i.oldPrice) / i.oldPrice) * 100, 0) / items.length,
     }));
 
-    const recommendationsByDay = this.groupByDay(recommendations, 'createdAt', (items) => ({
+    const recommendationsByDay = this.groupByDay(recommendations, 'createdAt', (items: any) => ({
       value: items.length,
     }));
 
@@ -258,17 +258,17 @@ class UnifiedAnalyticsService {
       }),
     ]);
 
-    const priceGapByDay = this.groupByDay(priceLogs, 'recordedAt', (items) => ({
+    const priceGapByDay = this.groupByDay(priceLogs, 'recordedAt', (items: any) => ({
       value: items
-        .filter(i => i.priceChangePercent !== null)
-        .reduce((sum, i) => sum + (i.priceChangePercent || 0), 0) / items.length || 0,
+        .filter((i: any) => i.priceChangePercent !== null)
+        .reduce((sum: any, i: any) => sum + (i.priceChangePercent || 0), 0) / items.length || 0,
     }));
 
-    const alertsByDay = this.groupByDay(alerts, 'createdAt', (items) => ({
+    const alertsByDay = this.groupByDay(alerts, 'createdAt', (items: any) => ({
       value: items.length,
     }));
 
-    const checksByDay = this.groupByDay(priceLogs, 'recordedAt', (items) => ({
+    const checksByDay = this.groupByDay(priceLogs, 'recordedAt', (items: any) => ({
       value: items.length,
     }));
 
@@ -296,12 +296,12 @@ class UnifiedAnalyticsService {
       orderBy: { createdAt: 'asc' },
     });
 
-    const salesByDay = this.groupByDay(orders, 'createdAt', (items) => ({
+    const salesByDay = this.groupByDay(orders, 'createdAt', (items: any) => ({
       value: items.length,
     }));
 
-    const revenueByDay = this.groupByDay(orders, 'createdAt', (items) => ({
-      value: items.reduce((sum, o) => sum + o.total, 0),
+    const revenueByDay = this.groupByDay(orders, 'createdAt', (items: any) => ({
+      value: items.reduce((sum: any, o: any) => sum + o.total, 0),
     }));
 
     // マーケットプレイス別集計
@@ -316,8 +316,8 @@ class UnifiedAnalyticsService {
     }
 
     const topCategories = Array.from(categoryStats.entries())
-      .map(([category, stats]) => ({ category, ...stats }))
-      .sort((a, b) => b.revenue - a.revenue)
+      .map(([category, stats]: any) => ({ category, ...stats }))
+      .sort((a: any, b: any) => b.revenue - a.revenue)
       .slice(0, 10);
 
     // SKU別集計（Saleから）
@@ -336,7 +336,7 @@ class UnifiedAnalyticsService {
     }
 
     const topProducts = Array.from(productStats.values())
-      .sort((a, b) => b.revenue - a.revenue)
+      .sort((a: any, b: any) => b.revenue - a.revenue)
       .slice(0, 10);
 
     return {
@@ -375,7 +375,7 @@ class UnifiedAnalyticsService {
 
     // 平均注文額
     const avgOrderValue = orders.length > 0
-      ? orders.reduce((sum, o) => sum + o.total, 0) / orders.length
+      ? orders.reduce((sum: any, o: any) => sum + o.total, 0) / orders.length
       : 0;
 
     // 出品成功率（公開された出品 / 作成された出品）

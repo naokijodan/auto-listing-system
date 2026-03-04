@@ -3,14 +3,14 @@
  * Phase 29: 並列実行・進捗追跡・キャンセル機能
  */
 
+import { prisma } from '@rakuda/database';
 import {
-  prisma,
   BatchJobType,
   BatchExecutionStatus,
   BatchStepStatus,
   BatchProgressType,
   BatchEventType,
-} from '@rakuda/database';
+} from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import { Queue, Job } from 'bullmq';
 import IORedis from 'ioredis';

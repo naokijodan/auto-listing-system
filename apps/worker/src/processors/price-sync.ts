@@ -1,5 +1,6 @@
 import { Job } from 'bullmq';
-import { prisma, Marketplace } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import { calculatePrice } from '../lib/price-calculator';
 import { JoomApiClient } from '../lib/joom-api';

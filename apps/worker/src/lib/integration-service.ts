@@ -3,8 +3,8 @@
  * Phase 34: 外部連携強化
  */
 
+import { prisma } from '@rakuda/database';
 import {
-  prisma,
   IntegrationType,
   IntegrationAuthType,
   IntegrationSyncType,
@@ -15,7 +15,7 @@ import {
   AccountingExportType,
   AccountingFormat,
   AccountingExportStatus,
-} from '@rakuda/database';
+} from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import * as crypto from 'crypto';
 

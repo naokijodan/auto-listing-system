@@ -3,12 +3,8 @@
  * Phase 30: i18n基盤の構築
  */
 
-import {
-  prisma,
-  TranslationStatus,
-  TranslationSource,
-  TextDirection,
-} from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { TranslationStatus, TranslationSource, TextDirection } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import * as crypto from 'crypto';
 

@@ -1,4 +1,5 @@
-import { prisma, Marketplace } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';

@@ -348,9 +348,9 @@ export class JoomPublishService {
 
       // Phase 49: カテゴリマッピングを取得
       const productInfo: ProductInfo = {
-        title: task.product.title,
+        title: (task as any).product.title,
         titleEn: translations.en.title,
-        description: task.product.description,
+        description: (task as any).product.description,
         descriptionEn: translations.en.description,
         category: attributes?.category,
         brand: attributes?.brand,
@@ -377,7 +377,7 @@ export class JoomPublishService {
       }
 
       // Joom商品データを構築
-      const weightKg = task.product.weight ? task.product.weight / 1000 : 0.15;
+      const weightKg = (task as any).product.weight ? (task as any).product.weight / 1000 : 0.15;
       const defaultShipping = calculateShippingCost(weightKg);
       const md = (listing.marketplaceData as any) || {};
       const joomProduct: JoomProduct = {
@@ -399,7 +399,7 @@ export class JoomPublishService {
         tags: joomCategory ? [joomCategory] : [],
 
         // 推奨フィールド追加（存在する場合のみ意味を持つ）
-        brand: (task.product as any).brand || attributes?.brand || undefined,
+        brand: ((task as any).product as any).brand || attributes?.brand || undefined,
         categoryId: md.joomCategory || undefined,
         color: attributes?.color || undefined,
         size: attributes?.size || undefined,
@@ -437,7 +437,7 @@ export class JoomPublishService {
               joomCategory: joomCategory || null,
               joomAttributes: filledAttributes,
             },
-          },
+          } as any,
         }),
         prisma.enrichmentTask.update({ where: { id: task.id }, data: { status: 'PUBLISHED' } }),
       ]);

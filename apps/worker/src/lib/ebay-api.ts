@@ -551,7 +551,7 @@ export class EbayApiClient {
       const fulfillment = await this.getFulfillmentPolicies(marketplaceId);
       const policies = (fulfillment.data as any)?.fulfillmentPolicies || [];
       for (const policy of policies) {
-        await prisma.ebayPolicy.upsert({
+        await (prisma as any).ebayPolicy.upsert({
           where: {
             type_policyId_marketplaceId: {
               type: 'FULFILLMENT',
@@ -584,7 +584,7 @@ export class EbayApiClient {
       const payment = await this.getPaymentPolicies(marketplaceId);
       const policies = (payment.data as any)?.paymentPolicies || [];
       for (const policy of policies) {
-        await prisma.ebayPolicy.upsert({
+        await (prisma as any).ebayPolicy.upsert({
           where: {
             type_policyId_marketplaceId: {
               type: 'PAYMENT',
@@ -617,7 +617,7 @@ export class EbayApiClient {
       const ret = await this.getReturnPolicies(marketplaceId);
       const policies = (ret.data as any)?.returnPolicies || [];
       for (const policy of policies) {
-        await prisma.ebayPolicy.upsert({
+        await (prisma as any).ebayPolicy.upsert({
           where: {
             type_policyId_marketplaceId: {
               type: 'RETURN',
@@ -656,7 +656,7 @@ export class EbayApiClient {
     name: string,
     marketplaceId: string = 'EBAY_US'
   ): Promise<string | null> {
-    const policy = await prisma.ebayPolicy.findFirst({
+    const policy = await (prisma as any).ebayPolicy.findFirst({
       where: {
         type,
         marketplaceId,
@@ -1058,7 +1058,7 @@ export class EbayApiClient {
 
         return {
           success: true,
-          data: dbMappings.map(m => ({
+          data: dbMappings.map((m: any) => ({
             categoryId: m.ebayCategoryId,
             categoryName: m.ebayCategoryName || m.sourceCategory,
             categoryPath: m.ebayCategoryName,
@@ -1096,7 +1096,7 @@ export class EbayApiClient {
 
       return {
         success: true,
-        data: dbMappings.map(m => ({
+        data: dbMappings.map((m: any) => ({
           categoryId: m.ebayCategoryId,
           categoryName: m.ebayCategoryName || m.sourceCategory,
           categoryPath: m.ebayCategoryName,

@@ -1,4 +1,5 @@
-import { prisma, WidgetType, KpiType, KpiPeriodType } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { WidgetType, KpiType, KpiPeriodType } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 
 const log = logger.child({ module: 'dashboard-service' });

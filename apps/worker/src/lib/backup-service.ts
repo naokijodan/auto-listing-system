@@ -1,4 +1,5 @@
-import { prisma, BackupType, BackupStatus, RestoreStatus, ConflictStrategy } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { BackupType, BackupStatus, RestoreStatus, ConflictStrategy } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import * as crypto from 'crypto';
 import * as fs from 'fs/promises';

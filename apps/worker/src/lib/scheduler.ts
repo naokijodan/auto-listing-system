@@ -7,7 +7,8 @@ import {
   processBatchGroups,
   BatchProgressInfo,
 } from '@rakuda/config';
-import { prisma, Marketplace } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { Marketplace } from '@prisma/client';
 import { checkSingleProductInventory, InventoryCheckResult } from './inventory-checker';
 
 const log = logger.child({ module: 'scheduler' });

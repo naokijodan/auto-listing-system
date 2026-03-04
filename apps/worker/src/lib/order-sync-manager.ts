@@ -269,15 +269,14 @@ export class OrderSyncManager {
     ]);
 
     const revenue = Number(revenueAgg._sum.total || 0);
-    const byMarketplace = byMarketplaceAgg.reduce((acc, m) => {
+    const byMarketplace = byMarketplaceAgg.reduce((acc: any, m: any) => {
       acc[m.marketplace as any] = { count: m._count, revenue: Number(m._sum.total || 0) };
       return acc;
     }, {} as Record<string, { count: number; revenue: number }>);
 
-    const byDay = (byDayAgg || []).map(r => ({ date: r.date, count: Number(r.count), revenue: Number(r.revenue) }));
+    const byDay = (byDayAgg || []).map((r: any) => ({ date: r.date, count: Number(r.count), revenue: Number(r.revenue) }));
     return { total, revenue, byMarketplace, byDay };
   }
 }
 
 export const orderSyncManager = new OrderSyncManager();
-

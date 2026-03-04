@@ -1,4 +1,5 @@
-import { prisma, ExportType, ExportFormat, ExportJobStatus } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { ExportType, ExportFormat, ExportJobStatus } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import * as fs from 'fs';
 import * as path from 'path';

@@ -1,4 +1,5 @@
-import { prisma, RateLimitIdentifierType, UsagePeriodType } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { RateLimitIdentifierType, UsagePeriodType } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import * as crypto from 'crypto';
 
@@ -306,11 +307,11 @@ export async function getApiUsageStats(options: {
     successCount: success,
     errorCount: errors,
     avgResponseTime: avgResponse._avg.responseTime || 0,
-    topEndpoints: topEndpoints.map(e => ({
+    topEndpoints: topEndpoints.map((e: any) => ({
       endpoint: e.endpoint,
       count: e._count,
     })),
-    errorBreakdown: errorBreakdown.map(e => ({
+    errorBreakdown: errorBreakdown.map((e: any) => ({
       statusCode: e.statusCode,
       count: e._count,
     })),
@@ -325,7 +326,7 @@ export async function calculateUsageSummary(
   periodStart: Date,
   apiKeyId?: string
 ): Promise<void> {
-  let periodEnd: Date;
+  let periodEnd: Date = new Date();
 
   switch (periodType) {
     case 'HOURLY':
@@ -392,7 +393,7 @@ export async function calculateUsageSummary(
       maxResponseTime: stats._max.responseTime,
       totalRequestSize: stats._sum.requestSize ? BigInt(stats._sum.requestSize) : null,
       totalResponseSize: stats._sum.responseSize ? BigInt(stats._sum.responseSize) : null,
-      topEndpoints: topEndpoints.map(e => ({
+      topEndpoints: topEndpoints.map((e: any) => ({
         endpoint: e.endpoint,
         count: e._count,
       })) as any,
@@ -410,7 +411,7 @@ export async function calculateUsageSummary(
       maxResponseTime: stats._max.responseTime,
       totalRequestSize: stats._sum.requestSize ? BigInt(stats._sum.requestSize) : null,
       totalResponseSize: stats._sum.responseSize ? BigInt(stats._sum.responseSize) : null,
-      topEndpoints: topEndpoints.map(e => ({
+      topEndpoints: topEndpoints.map((e: any) => ({
         endpoint: e.endpoint,
         count: e._count,
       })) as any,

@@ -3,7 +3,8 @@
  * Phase 31: パフォーマンス最適化
  */
 
-import { prisma, CacheType } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { CacheType } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import IORedis from 'ioredis';
 import * as crypto from 'crypto';

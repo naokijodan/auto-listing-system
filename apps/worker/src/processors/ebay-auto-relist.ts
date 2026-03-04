@@ -3,7 +3,8 @@
  */
 
 import { Job } from 'bullmq';
-import { prisma, Marketplace } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 
 const log = logger.child({ processor: 'ebay-auto-relist' });

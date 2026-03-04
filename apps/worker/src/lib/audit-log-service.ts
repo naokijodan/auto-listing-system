@@ -1,4 +1,5 @@
-import { prisma, Prisma, ActorType, AuditEntityType, AuditAction, AuditSeverity } from '@rakuda/database';
+import { prisma, Prisma } from '@rakuda/database';
+import { ActorType, AuditEntityType, AuditAction, AuditSeverity } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 
 const log = logger.child({ module: 'audit-log-service' });

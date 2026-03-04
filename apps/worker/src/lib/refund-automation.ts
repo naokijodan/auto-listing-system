@@ -1,4 +1,5 @@
-import { prisma, OrderStatus } from '@rakuda/database';
+import { prisma } from '@rakuda/database';
+import { OrderStatus } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 
 const log = logger.child({ module: 'refund-automation' });
