@@ -127,6 +127,13 @@ router.post('/listings', async (req: Request, res: Response) => {
 
     const task = await prisma.enrichmentTask.findUnique({
       where: { id: taskId },
+      // Ensure pricing is included along with required fields
+      select: {
+        id: true,
+        productId: true,
+        status: true,
+        pricing: true,
+      },
     });
 
     if (!task) {
@@ -135,6 +142,13 @@ router.post('/listings', async (req: Request, res: Response) => {
 
     if (task.status !== 'APPROVED') {
       return res.status(400).json({ error: `Task not approved: ${task.status}` });
+    }
+
+    // Determine initial listing price from task.pricing.finalPriceUsd
+    const pricing = (task.pricing as any) || {};
+    const initialPriceUsd: number = typeof pricing.finalPriceUsd === 'number' ? pricing.finalPriceUsd : 0;
+    if (typeof pricing.finalPriceUsd !== 'number') {
+      console.warn(`Joom listingPrice missing for task ${taskId}; defaulting to 0`);
     }
 
     const listing = await prisma.listing.upsert({
@@ -148,6 +162,8 @@ router.post('/listings', async (req: Request, res: Response) => {
         productId: task.productId,
         marketplace: Marketplace.JOOM,
         status: 'DRAFT',
+        listingPrice: initialPriceUsd,
+        currency: 'USD',
         marketplaceData: {},
       } as any,
       update: {},
