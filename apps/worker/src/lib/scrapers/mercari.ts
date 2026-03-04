@@ -2,6 +2,7 @@ import { logger } from '@rakuda/logger';
 import { ScrapedProduct } from '@rakuda/schema';
 import { createPage, randomDelay } from '../puppeteer';
 import { ScraperResult } from './index';
+import { detectCaptchaOrBlock } from './captcha-detector';
 
 /**
  * メルカリ商品ページをスクレイピング
@@ -24,6 +25,15 @@ export async function scrapeMercari(url: string): Promise<ScraperResult> {
     await randomDelay(1000, 3000);
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     await randomDelay(500, 1500);
+
+    // CAPTCHA/Block detection
+    const detection = await detectCaptchaOrBlock(page as any, 'mercari');
+    if (detection.captcha) {
+      return { success: false, error: detection.reason, captchaDetected: true };
+    }
+    if (detection.blocked) {
+      return { success: false, error: detection.reason, blocked: true };
+    }
 
     // ページコンテンツを取得
     const productData = await page.evaluate(() => {
@@ -161,6 +171,15 @@ export async function scrapeMercariSeller(url: string, limit: number = 50): Prom
     await randomDelay(1000, 3000);
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     await randomDelay(1000, 2000);
+
+    // CAPTCHA/Block detection
+    const detection = await detectCaptchaOrBlock(page as any, 'mercari');
+    if (detection.captcha) {
+      return { success: false, error: detection.reason, captchaDetected: true };
+    }
+    if (detection.blocked) {
+      return { success: false, error: detection.reason, blocked: true };
+    }
 
     // 商品リンクを収集
     const productUrls = await page.evaluate((maxItems: number) => {

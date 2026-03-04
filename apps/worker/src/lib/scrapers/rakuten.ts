@@ -2,6 +2,7 @@ import { logger } from '@rakuda/logger';
 import { ScrapedProduct } from '@rakuda/schema';
 import { createPage, randomDelay } from '../puppeteer';
 import { ScraperResult } from './index';
+import { detectCaptchaOrBlock } from './captcha-detector';
 
 /**
  * 楽天商品ページをスクレイピング
@@ -26,6 +27,15 @@ export async function scrapeRakuten(url: string): Promise<ScraperResult> {
     await randomDelay(1000, 3000);
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     await randomDelay(500, 1500);
+
+    // CAPTCHA/Block detection
+    const detection = await detectCaptchaOrBlock(page as any, 'rakuten');
+    if (detection.captcha) {
+      return { success: false, error: detection.reason, captchaDetected: true };
+    }
+    if (detection.blocked) {
+      return { success: false, error: detection.reason, blocked: true };
+    }
 
     // ページコンテンツを取得
     const productData = await page.evaluate(() => {
@@ -174,6 +184,15 @@ export async function scrapeRakutenShop(
     await randomDelay(1000, 3000);
     await page.goto(shopUrl, { waitUntil: 'networkidle2', timeout: 30000 });
     await randomDelay(500, 1500);
+
+    // CAPTCHA/Block detection
+    const detection = await detectCaptchaOrBlock(page as any, 'rakuten');
+    if (detection.captcha) {
+      return { success: false, error: detection.reason, captchaDetected: true };
+    }
+    if (detection.blocked) {
+      return { success: false, error: detection.reason, blocked: true };
+    }
 
     // 商品リンクを取得
     const productLinks = await page.evaluate(() => {

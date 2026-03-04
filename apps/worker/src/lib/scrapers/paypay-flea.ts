@@ -2,6 +2,7 @@ import { logger } from '@rakuda/logger';
 import { ScrapedProduct } from '@rakuda/schema';
 import { createPage, randomDelay } from '../puppeteer';
 import { ScraperResult } from './index';
+import { detectCaptchaOrBlock } from './captcha-detector';
 
 /**
  * PayPayフリマ商品ページをスクレイピング
@@ -24,6 +25,15 @@ export async function scrapePayPayFlea(url: string): Promise<ScraperResult> {
     await randomDelay(1000, 3000);
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     await randomDelay(500, 1500);
+
+    // CAPTCHA/Block detection
+    const detection = await detectCaptchaOrBlock(page as any, 'yahoo_flea');
+    if (detection.captcha) {
+      return { success: false, error: detection.reason, captchaDetected: true };
+    }
+    if (detection.blocked) {
+      return { success: false, error: detection.reason, blocked: true };
+    }
 
     // ページコンテンツを取得
     const productData = await page.evaluate(() => {
@@ -156,6 +166,15 @@ export async function scrapePayPayFleaSeller(url: string, limit: number = 50): P
     await randomDelay(1000, 3000);
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
     await randomDelay(1000, 2000);
+
+    // CAPTCHA/Block detection
+    const detection = await detectCaptchaOrBlock(page as any, 'yahoo_flea');
+    if (detection.captcha) {
+      return { success: false, error: detection.reason, captchaDetected: true };
+    }
+    if (detection.blocked) {
+      return { success: false, error: detection.reason, blocked: true };
+    }
 
     // スクロールして商品を読み込み
     let previousHeight = 0;

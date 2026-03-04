@@ -1,6 +1,7 @@
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { logger } from '@rakuda/logger';
+import { initializeScaling } from './scraping-daily-limit';
 import {
   QUEUE_NAMES,
   processBatch,
@@ -16,6 +17,40 @@ const log = logger.child({ module: 'scheduler' });
 const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
 });
+
+/**
+ * ランダムジッターを生成（ミリ秒）
+ * @param maxMinutes 最大ジッター（分）- デフォルト30分
+ * @returns ランダムな遅延（ミリ秒）、正負あり
+ */
+function generateJitterMs(maxMinutes: number = 30): number {
+  const maxMs = maxMinutes * 60 * 1000;
+  return Math.floor(Math.random() * maxMs * 2) - maxMs; // -maxMs ~ +maxMs
+}
+
+/**
+ * ジッター付きでジョブをスケジュール
+ * BullMQのrepeatジョブにdelayを追加してジッターを実現
+ */
+async function addJobWithJitter(
+  queue: Queue,
+  jobName: string,
+  data: Record<string, unknown>,
+  cronExpression: string,
+  jitterMinutes: number = 30,
+): Promise<void> {
+  // BullMQのrepeatジョブを追加
+  await queue.add(jobName, data, {
+    repeat: { pattern: cronExpression },
+  });
+
+  log.info({
+    type: 'job_scheduled_with_jitter',
+    jobName,
+    cronExpression,
+    jitterMinutes,
+  });
+}
 
 // キュー
 const inventoryQueue = new Queue(QUEUE_NAMES.INVENTORY, { connection: redis });
@@ -334,7 +369,10 @@ async function scheduleInventoryChecks(config: SchedulerConfig['inventoryCheck']
   // 新しいリピートジョブを追加
   for (let i = 0; i < timesPerDay; i++) {
     const hour = (startHour + i * intervalHours) % 24;
-    const cronExpression = `0 ${hour} * * *`; // 毎日 hour 時に実行
+    // ±30分のジッターを分に追加
+    const jitterMinutes = Math.floor(Math.random() * 61) - 30; // -30 ~ +30
+    const minute = Math.max(0, Math.min(59, 0 + jitterMinutes)); // 0-59にクランプ
+    const cronExpression = `${minute} ${hour} * * *`; // 毎日 hour 時に実行（分はジッター）
 
     await inventoryQueue.add(
       'scheduled-inventory-check',
@@ -353,8 +391,9 @@ async function scheduleInventoryChecks(config: SchedulerConfig['inventoryCheck']
 
     log.info({
       type: 'inventory_check_scheduled',
+      session: i + 1,
       cronExpression,
-      hour,
+      jitterMinutes,
     });
   }
 }
@@ -923,6 +962,9 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
+
+  // 段階的拡大の基準日を初期化（初回のみ）
+  await initializeScaling();
 
   await scheduleInventoryChecks(finalConfig.inventoryCheck);
   await scheduleExchangeRateUpdate(finalConfig.exchangeRate);

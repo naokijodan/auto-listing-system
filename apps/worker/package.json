@@ -32,6 +32,8 @@
     "nodemailer": "^8.0.0",
     "openai": "^6.17.0",
     "puppeteer": "^24.36.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "qrcode": "^1.5.4",
     "sharp": "^0.34.5",
     "speakeasy": "^2.0.0"

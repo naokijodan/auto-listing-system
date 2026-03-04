@@ -7,6 +7,8 @@ import { ScrapeJobPayload, ScrapeJobResult, generateSourceHash } from '@rakuda/s
 import { scrapeProduct, scrapeSellerProducts, SourceType } from '../lib/scrapers';
 import { alertManager } from '../lib/alert-manager';
 import { SourceType as PrismaSourceType } from '@prisma/client';
+import { canScrape, incrementDailyCount } from '../lib/scraping-daily-limit';
+import { isCircuitOpen, recordScrapeSuccess, recordScrapeError, recordScrapeCaptcha, recordScrapeBan } from '../lib/scraping-circuit-breaker';
 
 const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
@@ -132,15 +134,44 @@ async function processSingleScrape(
   const options = (job.data as any).options ?? {};
 
   try {
+    // Circuit Breaker チェック（スクレイピング実行前）
+    const preCircuit = await isCircuitOpen((sourceType as string).toLowerCase());
+    if (preCircuit.open) {
+      log.warn({ type: 'circuit_open', sourceType, reason: preCircuit.reason });
+      throw new Error(`Scraping halted for ${sourceType}: ${preCircuit.reason}`);
+    }
+
+    // Daily Limit チェック
+    const dailyStatus = await canScrape();
+    if (!dailyStatus.allowed) {
+      log.warn({
+        type: 'daily_limit_reached',
+        currentCount: dailyStatus.currentCount,
+        dailyLimit: dailyStatus.dailyLimit,
+        phase: dailyStatus.phase,
+      });
+      throw new Error(`Daily scraping limit reached (${dailyStatus.currentCount}/${dailyStatus.dailyLimit})`);
+    }
+
     // スクレイピング実行
     // Scrapers expect lowercase identifiers
     const scraperSourceType = (sourceType as string).toLowerCase() as SourceType;
     const result = await scrapeProduct(url, scraperSourceType);
 
+    // Circuit Breaker: 結果記録
+    if (result.captchaDetected) {
+      await recordScrapeCaptcha((sourceType as string).toLowerCase());
+    }
+    if (result.blocked) {
+      await recordScrapeBan((sourceType as string).toLowerCase());
+    }
+
     if (!result.success || !result.product) {
       log.error({ type: 'scrape_failed', error: result.error });
       throw new Error(result.error || 'Scraping failed');
     }
+
+    await recordScrapeSuccess((sourceType as string).toLowerCase());
 
     const scrapedProduct = result.product;
     const sourceHash = generateSourceHash(scrapedProduct);
@@ -175,6 +206,8 @@ async function processSingleScrape(
       // ハッシュ比較
       if (existing.sourceHash === sourceHash) {
         log.info({ type: 'product_unchanged', productId: existing.id });
+        // 成功扱いとしてカウント（変更なしでもアクセスは発生）
+        await incrementDailyCount();
         return {
           success: true,
           message: 'Product already exists (no changes)',
@@ -269,6 +302,9 @@ async function processSingleScrape(
       log.info({ type: 'translate_job_queued', productId: product.id });
     }
 
+    // 成功したので日次カウントを1増加
+    await incrementDailyCount();
+
     return {
       success: true,
       message: 'Product scraped successfully',
@@ -277,6 +313,10 @@ async function processSingleScrape(
     };
   } catch (error: any) {
     log.error({ type: 'scrape_error', error: error.message });
+    // Circuit Breaker: エラー記録
+    try {
+      await recordScrapeError((sourceType as string).toLowerCase(), error.message);
+    } catch {}
 
     // エラーログ記録
     await prisma.jobLog.create({
@@ -318,16 +358,46 @@ async function processSellerScrape(
   const batchSize = options.batchSize || BATCH_SIZE;
 
   try {
+    // Daily Limit チェック
+    const dailyStatus = await canScrape();
+    if (!dailyStatus.allowed) {
+      log.warn({
+        type: 'daily_limit_reached',
+        currentCount: dailyStatus.currentCount,
+        dailyLimit: dailyStatus.dailyLimit,
+        phase: dailyStatus.phase,
+      });
+      throw new Error(`Daily scraping limit reached (${dailyStatus.currentCount}/${dailyStatus.dailyLimit})`);
+    }
+
     log.info({ type: 'seller_scrape_start', url, limit, batchSize });
 
     // セラーページから商品一覧をスクレイピング
     const scraperSourceType = (sourceType as string).toLowerCase() as SourceType;
+
+    // Circuit Breaker チェック（実行前）
+    const preCircuit = await isCircuitOpen((sourceType as string).toLowerCase());
+    if (preCircuit.open) {
+      log.warn({ type: 'circuit_open', sourceType, reason: preCircuit.reason });
+      throw new Error(`Scraping halted for ${sourceType}: ${preCircuit.reason}`);
+    }
+
     const result = await scrapeSellerProducts(url, scraperSourceType, limit);
+
+    // Circuit Breaker: 結果記録
+    if (result.captchaDetected) {
+      await recordScrapeCaptcha((sourceType as string).toLowerCase());
+    }
+    if (result.blocked) {
+      await recordScrapeBan((sourceType as string).toLowerCase());
+    }
 
     if (!result.success || !result.products) {
       log.error({ type: 'seller_scrape_failed', error: result.error });
       throw new Error(result.error || 'Seller scraping failed');
     }
+
+    await recordScrapeSuccess((sourceType as string).toLowerCase());
 
     const products = result.products;
     log.info({ type: 'seller_products_found', count: products.length });
@@ -412,6 +482,9 @@ async function processSellerScrape(
       },
     });
 
+    // 商品単位のカウントを加算（作成+更新分）
+    await incrementDailyCount(progress.created + progress.updated);
+
     return {
       success: true,
       message: `Seller scrape completed: ${progress.created} created, ${progress.updated} updated, ${progress.skipped} skipped, ${progress.failed} failed`,
@@ -420,6 +493,10 @@ async function processSellerScrape(
     };
   } catch (error: any) {
     log.error({ type: 'seller_scrape_error', error: error.message });
+    // Circuit Breaker: エラー記録
+    try {
+      await recordScrapeError((sourceType as string).toLowerCase(), error.message);
+    } catch {}
 
     await prisma.jobLog.create({
       data: {

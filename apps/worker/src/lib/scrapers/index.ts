@@ -13,6 +13,8 @@ export interface ScraperResult {
   product?: ScrapedProduct;
   products?: ScrapedProduct[];
   error?: string;
+  captchaDetected?: boolean;
+  blocked?: boolean;
 }
 
 /**

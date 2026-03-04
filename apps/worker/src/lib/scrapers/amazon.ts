@@ -2,6 +2,7 @@ import { logger } from '@rakuda/logger';
 import { ScrapedProduct } from '@rakuda/schema';
 import { createPage, randomDelay } from '../puppeteer';
 import { ScraperResult } from './index';
+import { detectCaptchaOrBlock } from './captcha-detector';
 
 /**
  * Amazon商品ページをスクレイピング
@@ -34,16 +35,13 @@ export async function scrapeAmazon(url: string): Promise<ScraperResult> {
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
     await randomDelay(1000, 2000);
 
-    // CAPTCHAチェック
-    const hasCaptcha = await page.evaluate(() => {
-      return document.body.innerHTML.includes('captcha') ||
-             document.body.innerHTML.includes('認証') ||
-             document.querySelector('#captchacharacters') !== null;
-    });
-
-    if (hasCaptcha) {
-      log.warn({ type: 'captcha_detected' });
-      return { success: false, error: 'Amazon CAPTCHA detected - manual intervention required' };
+    // CAPTCHA/Block detection
+    const detection = await detectCaptchaOrBlock(page as any, 'amazon');
+    if (detection.captcha) {
+      return { success: false, error: detection.reason, captchaDetected: true };
+    }
+    if (detection.blocked) {
+      return { success: false, error: detection.reason, blocked: true };
     }
 
     // ページコンテンツを取得
