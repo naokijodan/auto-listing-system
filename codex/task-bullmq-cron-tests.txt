@@ -1,0 +1,101 @@
+## タスク: BullMQ Cron Jobs テスト追加（eBay Taxonomy同期 + Policy同期）
+
+### 目的
+eBay Taxonomy定期更新（毎週日曜3時）とeBayポリシー同期（毎日4時）のBullMQ cronジョブに対する単体テストを追加する。
+
+### 作成するファイル
+`apps/worker/src/test/unit/ebay-cron-jobs.test.ts`
+
+### テスト対象
+
+#### 1. scheduler.ts のスケジューリング関数
+- ファイル: `apps/worker/src/lib/scheduler.ts`
+- `scheduleEbayTaxonomySync()` (行583-617)
+  - enabled=false の時、ジョブが登録されないこと
+  - enabled=true の時、scrapeQueueにcronジョブが追加されること
+  - 既存のリピートジョブが先に削除されること
+  - ジョブデータに type, marketplaceIds, scheduledAt が含まれること
+  - repeat.pattern にcronExpressionが設定されること
+  - jobId が 'ebay-taxonomy-sync-scheduled' であること
+
+- `scheduleEbayPolicySync()` (行622-656)
+  - enabled=false の時、ジョブが登録されないこと
+  - enabled=true の時、scrapeQueueにcronジョブが追加されること
+  - 既存のリピートジョブが先に削除されること
+  - ジョブデータに type, marketplaceIds, scheduledAt が含まれること
+  - repeat.pattern にcronExpressionが設定されること
+  - jobId が 'ebay-policy-sync-scheduled' であること
+
+#### 2. scrape.ts のジョブプロセッサー
+- ファイル: `apps/worker/src/processors/scrape.ts`
+- processScrapeJob() でebay-taxonomy-syncジョブの処理 (行71-101)
+  - job.name === 'ebay-taxonomy-sync' の時、EbayApiClientが生成されること
+  - EbayCategoryMappingのアクティブなマッピングが取得されること
+  - 各マッピングに対してfetchAndCacheItemAspectsが呼ばれること
+  - categoryIds指定時にフィルタリングされること
+  - エラー時にwarnログが出力され、処理が継続すること
+  - 成功時に { success: true } が返ること
+
+- processScrapeJob() でebay-policy-syncジョブの処理 (行104-114)
+  - job.name === 'ebay-policy-sync' の時、EbayApiClientが生成されること
+  - 各marketplaceIdに対してsyncPoliciesが呼ばれること
+  - 成功時に { success: true } が返ること
+
+### テストパターン（既存テストを参考に）
+
+既存テストの例: `apps/worker/src/test/unit/ebay-api.test.ts`
+- vitest使用 (describe, it, expect, vi, beforeEach, afterEach)
+- vi.hoisted() でモックを定義
+- vi.mock() で @rakuda/logger, @rakuda/database をモック
+- mockPrisma で Prismaクライアントをモック
+- mockFetch でHTTPリクエストをモック
+
+```typescript
+// モックのパターン例
+const { mockPrisma, mockFetch } = vi.hoisted(() => {
+  return {
+    mockPrisma: {
+      ebayCategoryMapping: {
+        findMany: vi.fn(),
+      },
+    },
+    mockFetch: vi.fn(),
+  };
+});
+
+vi.mock('@rakuda/logger', () => ({
+  logger: {
+    child: vi.fn().mockReturnValue({
+      info: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+    }),
+  },
+}));
+
+vi.mock('@rakuda/database', () => ({
+  prisma: mockPrisma,
+}));
+```
+
+### scheduler.ts のモック方法
+scheduler.ts内の関数は直接exportされていないので、scrapeQueueをモックしてテストする必要がある。
+scrapeQueueはBullMQのQueueインスタンスなので:
+
+```typescript
+vi.mock('bullmq', () => ({
+  Queue: vi.fn().mockImplementation(() => ({
+    add: vi.fn().mockResolvedValue({}),
+    getRepeatableJobs: vi.fn().mockResolvedValue([]),
+    removeRepeatableByKey: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+```
+
+### 注意事項
+- テストは vitest で実行: `npx vitest run apps/worker/src/test/unit/ebay-cron-jobs.test.ts`
+- import文はモック定義の後に配置
+- 既存テスト `ebay-api.test.ts` のモックパターンに従う
+- scrape.ts の processScrapeJob をテストする場合、dynamic importされるEbayApiClientもモックが必要
+- テスト実行後に全テストが通ることを確認: `cd apps/worker && npx vitest run`
