@@ -59,13 +59,59 @@ export async function getJobProgress(jobId: string): Promise<{
 export async function processScrapeJob(
   job: Job<ScrapeJobPayload>
 ): Promise<ScrapeJobResult> {
-  const { url, sourceType, isBulkScrape, sellerId } = job.data;
+  const { url, sourceType, isBulkScrape, sellerId } = job.data as any;
   const log = logger.child({ jobId: job.id, processor: 'scrape' });
 
   log.info({ type: 'scrape_start', url, sourceType });
 
   // ジョブ名でセラー一括か単品か判定
   const isSellerScrape = job.name === 'scrape-seller';
+
+  // ebay-taxonomy-sync ジョブ
+  if (job.name === 'ebay-taxonomy-sync' || (job.data as any)?.type === 'ebay-taxonomy-sync') {
+    const { EbayApiClient } = await import('../lib/ebay-api');
+    const client = new EbayApiClient();
+    const marketplaceIds: string[] = (job.data as any).marketplaceIds || ['EBAY_US'];
+    const categoryIds: string[] | undefined = (job.data as any).categoryIds;
+
+    for (const marketplaceId of marketplaceIds) {
+      // アクティブなEbayCategoryMappingを取得
+      const mappings = categoryIds && categoryIds.length > 0
+        ? await prisma.ebayCategoryMapping.findMany({
+            where: { isActive: true, ebayCategoryId: { in: categoryIds } },
+            select: { ebayCategoryId: true },
+          })
+        : await prisma.ebayCategoryMapping.findMany({
+            where: { isActive: true },
+            select: { ebayCategoryId: true },
+          });
+
+      let updated = 0;
+      for (const mapping of mappings) {
+        try {
+          await client.fetchAndCacheItemAspects(mapping.ebayCategoryId, marketplaceId);
+          updated++;
+        } catch (err: any) {
+          log.warn({ type: 'taxonomy_sync_category_error', categoryId: mapping.ebayCategoryId, error: err.message });
+        }
+      }
+      log.info({ type: 'ebay_taxonomy_sync_completed', marketplaceId, updated, total: mappings.length });
+    }
+    return { success: true } as any;
+  }
+
+  // ebay-policy-sync ジョブ
+  if (job.name === 'ebay-policy-sync' || (job.data as any)?.type === 'ebay-policy-sync') {
+    const { EbayApiClient } = await import('../lib/ebay-api');
+    const client = new EbayApiClient();
+    const marketplaceIds: string[] = (job.data as any).marketplaceIds || ['EBAY_US'];
+
+    for (const marketplaceId of marketplaceIds) {
+      const result = await client.syncPolicies(marketplaceId);
+      log.info({ type: 'ebay_policy_sync_completed', marketplaceId, result });
+    }
+    return { success: true } as any;
+  }
 
   if (isSellerScrape) {
     return processSellerScrape(job, log as any);

@@ -167,6 +167,18 @@ export interface SchedulerConfig {
     cronExpression: string;   // 実行間隔（デフォルト: 毎日9時）
     limit: number;            // 1回の実行で処理する最大数
   };
+  // eBay Taxonomy同期
+  ebayTaxonomySync?: {
+    enabled: boolean;
+    cronExpression: string;
+    marketplaceIds: string[];  // ['EBAY_US', 'EBAY_GB', 'EBAY_DE'] etc.
+  };
+  // eBay Policy同期
+  ebayPolicySync?: {
+    enabled: boolean;
+    cronExpression: string;
+    marketplaceIds: string[];
+  };
 }
 
 const DEFAULT_CONFIG: SchedulerConfig = {
@@ -285,6 +297,16 @@ const DEFAULT_CONFIG: SchedulerConfig = {
     enabled: true,
     cronExpression: '0 9 * * 1-5',     // 平日9時にeBay自動再出品
     limit: 50,                          // 1回の実行で最大50件
+  },
+  ebayTaxonomySync: {
+    enabled: true,
+    cronExpression: '0 3 * * 0',  // 毎週日曜3時
+    marketplaceIds: ['EBAY_US'],
+  },
+  ebayPolicySync: {
+    enabled: true,
+    cronExpression: '0 4 * * *',  // 毎日4時
+    marketplaceIds: ['EBAY_US'],
   },
 };
 
@@ -556,6 +578,84 @@ async function scheduleHealthCheck(config: SchedulerConfig['healthCheck']) {
 }
 
 /**
+ * eBay Taxonomy同期ジョブをスケジュール
+ */
+async function scheduleEbayTaxonomySync(config: NonNullable<SchedulerConfig['ebayTaxonomySync']>) {
+  if (!config?.enabled) {
+    log.info({ type: 'ebay_taxonomy_sync_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await scrapeQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'ebay-taxonomy-sync') {
+      await scrapeQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  await scrapeQueue.add(
+    'ebay-taxonomy-sync',
+    {
+      type: 'ebay-taxonomy-sync',
+      marketplaceIds: config.marketplaceIds,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'ebay-taxonomy-sync-scheduled',
+    }
+  );
+
+  log.info({
+    type: 'ebay_taxonomy_sync_scheduled',
+    cronExpression: config.cronExpression,
+    marketplaceIds: config.marketplaceIds,
+  });
+}
+
+/**
+ * eBay Policy同期ジョブをスケジュール
+ */
+async function scheduleEbayPolicySync(config: NonNullable<SchedulerConfig['ebayPolicySync']>) {
+  if (!config?.enabled) {
+    log.info({ type: 'ebay_policy_sync_disabled' });
+    return;
+  }
+
+  // 既存のリピートジョブを削除
+  const repeatableJobs = await scrapeQueue.getRepeatableJobs();
+  for (const job of repeatableJobs) {
+    if (job.name === 'ebay-policy-sync') {
+      await scrapeQueue.removeRepeatableByKey(job.key);
+    }
+  }
+
+  await scrapeQueue.add(
+    'ebay-policy-sync',
+    {
+      type: 'ebay-policy-sync',
+      marketplaceIds: config.marketplaceIds,
+      scheduledAt: new Date().toISOString(),
+    },
+    {
+      repeat: {
+        pattern: config.cronExpression,
+      },
+      jobId: 'ebay-policy-sync-scheduled',
+    }
+  );
+
+  log.info({
+    type: 'ebay_policy_sync_scheduled',
+    cronExpression: config.cronExpression,
+    marketplaceIds: config.marketplaceIds,
+  });
+}
+
+/**
  * 価格最適化ジョブをスケジュール（Phase 28）
  */
 async function schedulePricingOptimization(config: SchedulerConfig['pricingOptimization']) {
@@ -817,6 +917,8 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
     salesSummaryCalculation: { ...DEFAULT_CONFIG.salesSummaryCalculation, ...config.salesSummaryCalculation },
     shipmentDeadlineCheck: { ...DEFAULT_CONFIG.shipmentDeadlineCheck, ...config.shipmentDeadlineCheck },
     ebayAutoRelist: { ...DEFAULT_CONFIG.ebayAutoRelist, ...config.ebayAutoRelist },
+    ebayTaxonomySync: { ...(DEFAULT_CONFIG.ebayTaxonomySync as any), ...(config.ebayTaxonomySync as any) },
+    ebayPolicySync: { ...(DEFAULT_CONFIG.ebayPolicySync as any), ...(config.ebayPolicySync as any) },
   };
 
   log.info({ type: 'scheduler_initializing', config: finalConfig });
@@ -843,6 +945,8 @@ export async function initializeScheduler(config: Partial<SchedulerConfig> = {})
   await scheduleSalesSummaryCalculation(finalConfig.salesSummaryCalculation);
   await scheduleShipmentDeadlineCheck(finalConfig.shipmentDeadlineCheck);
   await scheduleEbayAutoRelist(finalConfig.ebayAutoRelist);
+  if (finalConfig.ebayTaxonomySync?.enabled) await scheduleEbayTaxonomySync(finalConfig.ebayTaxonomySync!);
+  if (finalConfig.ebayPolicySync?.enabled) await scheduleEbayPolicySync(finalConfig.ebayPolicySync!);
 
   log.info({ type: 'scheduler_initialized' });
 }
@@ -3063,6 +3167,48 @@ export async function triggerInventoryAlertProcessing(): Promise<string> {
   });
 
   return job.id || '';
+}
+
+/**
+ * 手動でeBay Taxonomy同期をトリガー
+ */
+export async function triggerEbayTaxonomySync(options?: {
+  marketplaceIds?: string[];
+  categoryIds?: string[];
+}): Promise<string> {
+  const job = await scrapeQueue.add(
+    'ebay-taxonomy-sync',
+    {
+      type: 'ebay-taxonomy-sync',
+      marketplaceIds: options?.marketplaceIds || ['EBAY_US'],
+      categoryIds: options?.categoryIds,
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    { priority: 3 }
+  );
+  log.info({ type: 'manual_ebay_taxonomy_sync_triggered', jobId: job.id });
+  return job.id!;
+}
+
+/**
+ * 手動でeBay Policy同期をトリガー
+ */
+export async function triggerEbayPolicySync(options?: {
+  marketplaceIds?: string[];
+}): Promise<string> {
+  const job = await scrapeQueue.add(
+    'ebay-policy-sync',
+    {
+      type: 'ebay-policy-sync',
+      marketplaceIds: options?.marketplaceIds || ['EBAY_US'],
+      triggeredAt: new Date().toISOString(),
+      manual: true,
+    },
+    { priority: 3 }
+  );
+  log.info({ type: 'manual_ebay_policy_sync_triggered', jobId: job.id });
+  return job.id!;
 }
 
 /**

@@ -56,7 +56,6 @@ model EnrichmentTask {
 
   // リレーション
   steps       EnrichmentStep[]
-  joomListing JoomListing?
 
   @@unique([productId])
   @@index([status, priority])
@@ -204,4 +203,3 @@ enum KeywordMatchType {
   STARTS_WITH // 前方一致
   REGEX // 正規表現
 }
-

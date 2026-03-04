@@ -47,62 +47,7 @@ model JoomCategoryMapping {
 // Phase 40: Joom出品ワークフロー
 // ========================================
 
-// Joom出品情報
-model JoomListing {
-  id String @id @default(cuid())
-
-  // エンリッチメントタスク
-  taskId String         @unique
-  task   EnrichmentTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  // 商品参照
-  productId String
-  listingId String? // RAKUDAのListingモデルID
-
-  // Joom固有データ
-  joomProductId String? // Joom側の商品ID
-  joomVariantId String? // バリエーションID
-  joomSku       String?
-
-  // 出品データ（Joom APIに送信するデータ）
-  title       String?
-  description String? @db.Text
-  price       Float?
-  currency    String  @default("USD")
-  quantity    Int     @default(1)
-
-  // 送料設定
-  shippingPrice Float?
-  shippingTime  String? // "7-14 days"等
-
-  // カテゴリ・属性
-  joomCategory   String?
-  joomAttributes Json    @default("{}") // Joom固有の属性
-
-  // 画像（Joomにアップロード済み）
-  joomImages String[] // Joom CDN URL
-
-  // ステータス
-  status       JoomListingStatus @default(DRAFT)
-  publishedAt  DateTime?
-  lastSyncedAt DateTime?
-
-  // エラー
-  lastError  String? @db.Text
-  errorCount Int     @default(0)
-
-  // Dry-Run結果
-  dryRunResult Json? // プレビュー結果
-
-  // タイムスタンプ
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([joomProductId])
-  @@index([status])
-  @@index([productId])
-  @@map("joom_listings")
-}
+// Joom出品情報（モデルはListingへ統合済み）
 
 
 // Joom出品バッチ（一括出品用）
@@ -185,14 +130,4 @@ model JoomApiLog {
   @@map("joom_api_logs")
 }
 
-enum JoomListingStatus {
-  DRAFT // 下書き
-  READY // 出品準備完了
-  PUBLISHING // 出品処理中
-  ACTIVE // 出品中
-  PAUSED // 一時停止
-  SOLD // 売却済み
-  ENDED // 終了
-  ERROR // エラー
-}
 

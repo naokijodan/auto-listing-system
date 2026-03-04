@@ -214,6 +214,11 @@ router.post('/listings', async (req: Request, res: Response) => {
       fulfillmentPolicyId,
       paymentPolicyId,
       returnPolicyId,
+      // 新規フィールド（BestOffer/GTC）
+      duration,
+      bestOfferEnabled,
+      autoAcceptPrice,
+      minimumBestOfferPrice,
     } = req.body;
 
     if (!productId) {
@@ -254,6 +259,10 @@ router.post('/listings', async (req: Request, res: Response) => {
       fulfillmentPolicyId,
       paymentPolicyId,
       returnPolicyId,
+      ...(duration !== undefined && { duration }),
+      ...(bestOfferEnabled !== undefined && { bestOfferEnabled }),
+      ...(autoAcceptPrice !== undefined && { autoAcceptPrice }),
+      ...(minimumBestOfferPrice !== undefined && { minimumBestOfferPrice }),
       inventoryItemId: null,
       offerId: null,
     };
@@ -306,6 +315,11 @@ router.put('/listings/:id', async (req: Request, res: Response) => {
       fulfillmentPolicyId,
       paymentPolicyId,
       returnPolicyId,
+      // 新規フィールド（BestOffer/GTC）
+      duration,
+      bestOfferEnabled,
+      autoAcceptPrice,
+      minimumBestOfferPrice,
     } = req.body;
 
     const existing = await prisma.listing.findFirst({
@@ -328,6 +342,10 @@ router.put('/listings/:id', async (req: Request, res: Response) => {
       ...(fulfillmentPolicyId !== undefined && { fulfillmentPolicyId }),
       ...(paymentPolicyId !== undefined && { paymentPolicyId }),
       ...(returnPolicyId !== undefined && { returnPolicyId }),
+      ...(duration !== undefined && { duration }),
+      ...(bestOfferEnabled !== undefined && { bestOfferEnabled }),
+      ...(autoAcceptPrice !== undefined && { autoAcceptPrice }),
+      ...(minimumBestOfferPrice !== undefined && { minimumBestOfferPrice }),
     };
 
     const listing = await prisma.listing.update({

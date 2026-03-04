@@ -6,6 +6,7 @@ import useSWR from 'swr';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -100,6 +101,17 @@ export default function EbayTemplatesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [formData, setFormData] = useState(defaultFormData);
+  // UI-only states for Best Offer & Duration (not persisted in template)
+  const [bestOfferEnabled, setBestOfferEnabled] = useState(false);
+  const [autoAcceptPrice, setAutoAcceptPrice] = useState<number | ''>('');
+  const [minimumBestOfferPrice, setMinimumBestOfferPrice] = useState<number | ''>('');
+  const [duration, setDuration] = useState<string>('GTC');
+
+  // eBayビジネスポリシー（DB）
+  const { data: policiesData, error: policiesError, isLoading: isPoliciesLoading } = useSWR<{ success: boolean; data: { fulfillment: any[]; payment: any[]; return: any[] } }>(
+    '/api/ebay/policies?marketplaceId=EBAY_US',
+    fetcher
+  );
 
   const { data, error, isLoading, mutate } = useSWR<TemplatesResponse>(
     '/api/ebay-templates',
@@ -521,45 +533,7 @@ export default function EbayTemplatesPage() {
               </div>
             </div>
 
-            {/* Policies */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="fulfillmentPolicyId">配送ポリシーID</Label>
-                <Input
-                  id="fulfillmentPolicyId"
-                  value={formData.fulfillmentPolicyId}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      fulfillmentPolicyId: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="paymentPolicyId">支払いポリシーID</Label>
-                <Input
-                  id="paymentPolicyId"
-                  value={formData.paymentPolicyId}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      paymentPolicyId: e.target.value,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="returnPolicyId">返品ポリシーID</Label>
-                <Input
-                  id="returnPolicyId"
-                  value={formData.returnPolicyId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, returnPolicyId: e.target.value })
-                  }
-                />
-              </div>
-            </div>
+            {/* Policies - replaced with DB-backed Selects below */}
 
             {/* Pricing */}
             <div className="grid grid-cols-2 gap-4">
@@ -592,6 +566,115 @@ export default function EbayTemplatesPage() {
                   placeholder="1.0"
                 />
               </div>
+            </div>
+
+            {/* eBayポリシー選択 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fulfillmentPolicyId">配送ポリシー</Label>
+                {policiesError && (
+                  <p className="text-sm text-red-600">ポリシーの読み込みに失敗しました</p>
+                )}
+                <Select
+                  value={formData.fulfillmentPolicyId}
+                  onValueChange={(value) => setFormData({ ...formData, fulfillmentPolicyId: value })}
+                  disabled={isPoliciesLoading}
+                >
+                  <SelectTrigger id="fulfillmentPolicyId">
+                    <SelectValue placeholder={isPoliciesLoading ? '読み込み中...' : '配送ポリシーを選択'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(policiesData?.data?.fulfillment || []).map((p: any) => (
+                      <SelectItem key={p.policyId} value={p.policyId}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paymentPolicyId">支払いポリシー</Label>
+                <Select
+                  value={formData.paymentPolicyId}
+                  onValueChange={(value) => setFormData({ ...formData, paymentPolicyId: value })}
+                  disabled={isPoliciesLoading}
+                >
+                  <SelectTrigger id="paymentPolicyId">
+                    <SelectValue placeholder={isPoliciesLoading ? '読み込み中...' : '支払いポリシーを選択'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(policiesData?.data?.payment || []).map((p: any) => (
+                      <SelectItem key={p.policyId} value={p.policyId}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="returnPolicyId">返品ポリシー</Label>
+                <Select
+                  value={formData.returnPolicyId}
+                  onValueChange={(value) => setFormData({ ...formData, returnPolicyId: value })}
+                  disabled={isPoliciesLoading}
+                >
+                  <SelectTrigger id="returnPolicyId">
+                    <SelectValue placeholder={isPoliciesLoading ? '読み込み中...' : '返品ポリシーを選択'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(policiesData?.data?.return || []).map((p: any) => (
+                      <SelectItem key={p.policyId} value={p.policyId}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Best Offer 設定 */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Best Offer設定</h3>
+              <div className="flex items-center gap-2">
+                <Switch id="bestOfferEnabled" checked={bestOfferEnabled} onCheckedChange={setBestOfferEnabled} />
+                <label htmlFor="bestOfferEnabled">Best Offerを有効にする</label>
+              </div>
+              {bestOfferEnabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:ml-8">
+                  <div>
+                    <label className="text-sm text-gray-600">自動承認価格 (USD)</label>
+                    <Input
+                      type="number"
+                      value={autoAcceptPrice}
+                      onChange={(e) => setAutoAcceptPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      placeholder="自動承認の最低価格"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600">最低受付価格 (USD)</label>
+                    <Input
+                      type="number"
+                      value={minimumBestOfferPrice}
+                      onChange={(e) => setMinimumBestOfferPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      placeholder="これ以下は自動拒否"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 出品期間（GTC）設定 */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">出品期間</Label>
+              <Select value={duration} onValueChange={setDuration}>
+                <SelectTrigger>
+                  <SelectValue placeholder="出品期間を選択" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GTC">Good 'Til Cancelled (推奨)</SelectItem>
+                  <SelectItem value="Days_30">30日間</SelectItem>
+                  <SelectItem value="Days_10">10日間</SelectItem>
+                  <SelectItem value="Days_7">7日間</SelectItem>
+                  <SelectItem value="Days_5">5日間</SelectItem>
+                  <SelectItem value="Days_3">3日間</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Item Specifics */}

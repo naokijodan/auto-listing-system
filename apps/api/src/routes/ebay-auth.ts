@@ -1,6 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
+import { QUEUE_NAMES } from '@rakuda/config';
 
 const router = Router();
 const log = logger.child({ module: 'ebay-auth' });
@@ -30,6 +33,10 @@ function getApiUrl(): string {
     ? 'https://api.sandbox.ebay.com'
     : 'https://api.ebay.com';
 }
+
+// BullMQ: scrapeQueue（手動トリガー用）
+const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', { maxRetriesPerRequest: null });
+const scrapeQueue = new Queue(QUEUE_NAMES.SCRAPE, { connection: redis });
 
 // OAuth認証開始
 router.get('/auth', (req: Request, res: Response) => {
@@ -286,4 +293,72 @@ router.delete('/accounts/:id', async (req: Request, res: Response, next: NextFun
   }
 });
 
+// POST /api/ebay/taxonomy/sync - 手動Taxonomy同期
+router.post('/taxonomy/sync', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { marketplaceIds, categoryIds } = req.body as { marketplaceIds?: string[]; categoryIds?: string[] };
+    const job = await scrapeQueue.add(
+      'ebay-taxonomy-sync',
+      {
+        type: 'ebay-taxonomy-sync',
+        marketplaceIds: marketplaceIds || ['EBAY_US'],
+        categoryIds,
+        triggeredAt: new Date().toISOString(),
+        manual: true,
+      },
+      { priority: 3 }
+    );
+    log.info({ type: 'manual_ebay_taxonomy_sync_triggered', jobId: job.id });
+    res.json({ success: true, jobId: job.id });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/ebay/policies/sync - 手動Policy同期
+router.post('/policies/sync', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { marketplaceIds } = req.body as { marketplaceIds?: string[] };
+    const job = await scrapeQueue.add(
+      'ebay-policy-sync',
+      {
+        type: 'ebay-policy-sync',
+        marketplaceIds: marketplaceIds || ['EBAY_US'],
+        triggeredAt: new Date().toISOString(),
+        manual: true,
+      },
+      { priority: 3 }
+    );
+    log.info({ type: 'manual_ebay_policy_sync_triggered', jobId: job.id });
+    res.json({ success: true, jobId: job.id });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
+
+// =============================
+// eBayポリシー取得（DB）
+// =============================
+
+// GET /api/ebay/policies - DB保存済みポリシー一覧取得
+router.get('/policies', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { marketplaceId } = req.query as { marketplaceId?: string };
+    const policies = await prisma.ebayPolicy.findMany({
+      where: marketplaceId ? { marketplaceId } : {},
+      orderBy: [{ type: 'asc' }, { name: 'asc' }],
+    });
+
+    const grouped = {
+      fulfillment: policies.filter((p) => p.type === 'FULFILLMENT'),
+      payment: policies.filter((p) => p.type === 'PAYMENT'),
+      return: policies.filter((p) => p.type === 'RETURN'),
+    };
+
+    res.json({ success: true, data: grouped });
+  } catch (error) {
+    next(error);
+  }
+});

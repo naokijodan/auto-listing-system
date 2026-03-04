@@ -1,7 +1,7 @@
 // Prisma Schema - Etsy Domain Models
 
 
-// Etsy出品データ（JoomListingと同様の専用テーブル）
+// Etsy出品データ（専用テーブル）
 model EtsyListing {
   id        String  @id @default(cuid())
   productId String
@@ -50,4 +50,3 @@ enum EtsyListingStatus {
   ERROR
   DELETED
 }
-
