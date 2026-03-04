@@ -369,7 +369,7 @@ export class JoomPublishService {
           filledAttributes = await fillRequiredAttributes(productInfo, categoryMapping);
           log.info({
             type: 'category_mapped',
-            joomListingId,
+            joomListingId: listing.id,
             categoryId: mappingData.joomCategoryId,
             categoryPath: mappingData.joomCategoryPath,
           });
