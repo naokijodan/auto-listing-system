@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { api, fetcher, Listing, postApi } from '@/lib/api';
+import { api, fetcher, Listing, postApi, deleteApi } from '@/lib/api';
 import { addToast } from '@/components/ui/toast';
 import {
   Store,
@@ -164,6 +164,8 @@ export default function JoomPage() {
   const [showOrderSyncStatus, setShowOrderSyncStatus] = useState(false);
   const [isInventorySyncing, setIsInventorySyncing] = useState(false);
   const [showInventorySyncStatus, setShowInventorySyncStatus] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch Joom listings
   const { data, error, isLoading, mutate } = useSWR<{ success: boolean; data: Listing[]; pagination: { total: number } }>(
@@ -397,6 +399,20 @@ export default function JoomPage() {
       setIsInventorySyncing(false);
     }
   }, [mutateInventorySyncStatus]);
+
+  const handleDelete = useCallback(async (listingId: string) => {
+    setIsDeleting(true);
+    try {
+      await deleteApi(`/api/joom/listings/${listingId}`);
+      addToast({ type: 'success', message: '削除リクエストを送信しました' });
+      mutate();
+    } catch (error) {
+      addToast({ type: 'error', message: '削除に失敗しました' });
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
+  }, [mutate]);
 
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
@@ -956,23 +972,60 @@ export default function JoomPage() {
                       : '-'}
                   </span>
                 </div>
-                <div className="w-20">
+                <div className="w-20 flex items-center gap-2">
                   {listing.listingUrl && (
                     <a
                       href={listing.listingUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center text-sm text-amber-600 hover:text-amber-700 dark:text-amber-400"
+                      title="Joomで見る"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   )}
+                  <button
+                    onClick={() => setDeleteTarget(listing.id)}
+                    className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30"
+                    title="削除"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => !isDeleting && setDeleteTarget(null)} />
+          <div className="relative z-10 w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-4 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="mb-3 flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              <h3 className="text-sm font-medium text-zinc-900 dark:text-white">この出品をJoomから削除しますか？</h3>
+            </div>
+            <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">削除は非同期で処理されます。取り消しはできません。</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={isDeleting}
+                className="h-8 rounded-md border border-zinc-200 px-3 text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={() => deleteTarget && handleDelete(deleteTarget)}
+                disabled={isDeleting}
+                className="inline-flex h-8 items-center gap-2 rounded-md bg-red-600 px-3 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                削除する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,76 @@
+## タスク: Joomカテゴリマッピング管理UI構築
+
+### 目的
+apps/web/src/app/joom/categories/ に新しいページを作成し、Joomカテゴリマッピングの管理UIを構築する。
+
+### 前提
+- APIは完成済み: apps/api/src/routes/joom-categories.ts
+- UIライブラリ: shadcn/ui（Card, Button, Badge等）
+- データフェッチ: SWR + fetcher（apps/web/src/lib/api.ts）
+- APIヘルパー: postApi, putApi, deleteApi（同ファイル）
+- API_BASE: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+- アイコン: lucide-react
+- スタイル: Tailwind CSS
+
+### APIエンドポイント（全て /api/joom-categories/ プレフィックス）
+1. GET / → カテゴリ一覧（19カテゴリ）
+2. GET /mappings?verified=true&aiSuggested=true&limit=50&offset=0 → マッピング一覧
+3. POST /suggest → AI提案（body: { title, description, category?, brand? }）
+4. POST /mappings → マッピング作成
+5. PUT /mappings/:id → マッピング更新
+6. POST /mappings/:id/verify → マッピング承認（body: { verifiedBy: "admin" }）
+7. DELETE /mappings/:id → マッピング無効化
+8. GET /:categoryId/attributes → カテゴリ別必須属性
+9. GET /stats → 統計情報
+
+### 作成ファイル
+`apps/web/src/app/joom/categories/page.tsx` （1ファイルのみ）
+
+### UI要件
+
+#### ヘッダーセクション
+- タイトル: 「Joomカテゴリマッピング」
+- 統計カード（GET /stats）:
+  - 総マッピング数、承認済み、AI提案、承認率
+- フィルター: 全て | 承認済み | 未承認 | AI提案のみ
+
+#### マッピング一覧テーブル
+- 列: ソースキーワード、ブランド、Joomカテゴリ（パス表示）、信頼度、使用回数、承認状態、操作
+- 信頼度: プログレスバーで表示（0.85以上=緑、0.7-0.85=黄、0.7未満=赤）
+- 承認状態: Badge（承認済み=緑、未承認=灰色）
+- 操作ボタン: 承認、編集、削除
+
+#### AI提案テストセクション（下部）
+- 商品名、説明、カテゴリ、ブランドの入力フォーム
+- 「AI提案を取得」ボタン → POST /suggest
+- 結果表示: 推奨カテゴリ、信頼度、理由
+
+#### 手動マッピング作成モーダル/セクション
+- ソースキーワード（複数入力可）
+- ブランド（任意）
+- Joomカテゴリ選択（ドロップダウン、GET / から取得）
+- 優先度（数値）
+
+### コードパターン（既存ページに合わせる）
+```tsx
+'use client';
+import useSWR from 'swr';
+import { fetcher, postApi, putApi, deleteApi } from '@/lib/api';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+// ... lucide-react icons
+
+export default function JoomCategoriesPage() {
+  const { data: stats } = useSWR('/api/joom-categories/stats', fetcher);
+  const { data: mappings, mutate } = useSWR('/api/joom-categories/mappings', fetcher);
+  // ...
+}
+```
+
+### 注意事項
+- Next.js App Router（'use client' 必須）
+- TypeScript strict mode
+- 800行以下に収める
+- Tailwind CSSのみ使用（インラインstyle禁止）
+- 既存のjoom/page.tsxのスタイルに合わせる（ダークモード対応含む）
+- 日本語UIラベル使用
