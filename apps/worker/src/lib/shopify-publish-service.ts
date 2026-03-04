@@ -337,7 +337,6 @@ export class ShopifyOrderSyncService {
                   paymentStatus: (channelInfo.requiresPaymentCapture
                     ? 'AUTHORIZED'
                     : (order.financial_status === 'paid' ? 'PAID' : (existing?.paymentStatus || 'PENDING'))) as any,
-                  ...(existing?.sourceChannel ? {} : { sourceChannel: channelInfo.code }),
                   rawData: order as any,
                 },
               })
@@ -361,7 +360,6 @@ export class ShopifyOrderSyncService {
                   fulfillmentStatus: (channelInfo.requiresHoldCheck
                     ? 'ON_HOLD'
                     : (order.fulfillment_status === 'fulfilled' ? 'FULFILLED' : 'UNFULFILLED')) as any,
-                  sourceChannel: channelInfo.code,
                   rawData: order as any,
                   orderedAt: new Date(order.created_at),
                 },
