@@ -88,8 +88,7 @@ router.get('/tasks/:id', async (req: Request, res: Response) => {
         steps: {
           orderBy: { stepOrder: 'asc' },
         },
-        joomListing: true,
-      } as any,
+      },
     });
 
     if (!task) {
