@@ -279,41 +279,66 @@ export class JoomPublishService {
 
     const product = listing.product;
 
-    // 画像処理
-    const imageResult = await this.imagePipeline.processImages(
-      product.id,
-      product.images
-    );
+    // 画像処理（失敗時はフォールバックで続行）
+    let buffered: string[] = [];
+    let optimized: string[] = [];
+    let hadError = false;
+    try {
+      const imageResult = await this.imagePipeline.processImages(
+        product.id,
+        product.images
+      );
+      buffered = imageResult.buffered;
+      optimized = imageResult.optimized;
+    } catch (err: any) {
+      hadError = true;
+      log.warn({ type: 'image_pipeline_failed', listingId, productId: product.id, error: err?.message });
+    }
+
+    // フォールバック: 最適化結果が0件なら元のURLを使用
+    const finalImages = optimized.length > 0 ? optimized : (product.images || []);
 
     // タスクとListingを更新（marketplaceDataに画像を保存）
     const task = await prisma.enrichmentTask.findUnique({ where: { productId: listing.productId } });
     const existingData = (listing.marketplaceData as any) || {};
-    await prisma.$transaction([
-      ...(task
-        ? [
-            prisma.enrichmentTask.update({
-              where: { id: task.id },
-              data: {
-                bufferedImages: imageResult.buffered,
-                optimizedImages: imageResult.optimized,
-                imageStatus: 'COMPLETED',
-              },
-            }),
-          ]
-        : []),
-      prisma.listing.update({
+
+    if (hadError) {
+      // エラーでもフォールバック画像で続行
+      await prisma.listing.update({
         where: { id: listingId },
         data: {
           status: 'PENDING_PUBLISH',
-          marketplaceData: { ...(existingData || {}), joomImages: imageResult.optimized },
+          marketplaceData: { ...(existingData || {}), joomImages: finalImages },
         },
-      }),
-    ]);
+      });
+    } else {
+      await prisma.$transaction([
+        ...(task
+          ? [
+              prisma.enrichmentTask.update({
+                where: { id: task.id },
+                data: {
+                  bufferedImages: buffered,
+                  optimizedImages: optimized,
+                  imageStatus: 'COMPLETED',
+                },
+              }),
+            ]
+          : []),
+        prisma.listing.update({
+          where: { id: listingId },
+          data: {
+            status: 'PENDING_PUBLISH',
+            marketplaceData: { ...(existingData || {}), joomImages: finalImages },
+          },
+        }),
+      ]);
+    }
 
     log.info({
       type: 'images_processed',
       listingId,
-      imageCount: imageResult.optimized.length,
+      imageCount: finalImages.length,
     });
   }
 
@@ -384,11 +409,15 @@ export class JoomPublishService {
       const weightKg = listing.product.weight ? listing.product.weight / 1000 : 0.15;
       const defaultShipping = calculateShippingCost(weightKg);
       const md = (listing.marketplaceData as any) || {};
+      // joomImages が空の場合、元の商品画像URLを直接使用
+      const imageUrls: string[] = (md.joomImages && md.joomImages.length > 0)
+        ? md.joomImages
+        : (listing.product.images || []);
       const joomProduct: JoomProduct = {
         name: translations.en.title,
         description: translations.en.description,
-        mainImage: (md.joomImages || [])[0] || '',
-        extraImages: (md.joomImages || []).slice(1),
+        mainImage: imageUrls[0] || '',
+        extraImages: imageUrls.slice(1),
         price: pricing.finalPriceUsd,
         currency: 'USD',
         quantity: 1,
@@ -412,6 +441,11 @@ export class JoomPublishService {
         searchTags: attributes?.keywords || attributes?.searchTags || [],
         dangerousKind: 'none',
       };
+
+      // mainImage が空の場合はエラー
+      if (!joomProduct.mainImage) {
+        throw new Error('No image available for listing. Product has no images.');
+      }
 
       // Joom APIに出品
       const response = await this.joomClient.createProduct(joomProduct);
