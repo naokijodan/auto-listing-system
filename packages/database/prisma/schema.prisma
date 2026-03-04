@@ -159,6 +159,9 @@ model Listing {
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
+  credentialId String?
+  credential   MarketplaceCredential? @relation(fields: [credentialId], references: [id])
+
   marketplace          Marketplace
   marketplaceListingId String? // eBay/Joom の出品ID
 
@@ -195,7 +198,7 @@ model Listing {
   scheduledListings ScheduledListing[]
   optimizations     ListingOptimization[]
 
-  @@unique([productId, marketplace])
+  @@unique([productId, marketplace, credentialId])
   @@index([marketplace, status])
   @@index([marketplaceListingId])
   @@index([pausedByInventory, resumeAt])
@@ -663,6 +666,9 @@ model MarketplaceCredential {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // 逆リレーション: この認証情報に紐づく出品
+  listings Listing[]
 
   @@unique([marketplace, name])
   @@index([marketplace, isActive])

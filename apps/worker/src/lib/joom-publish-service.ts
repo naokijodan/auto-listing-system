@@ -239,9 +239,10 @@ export class JoomPublishService {
 
     const listing = await prisma.listing.upsert({
       where: {
-        productId_marketplace: {
+        productId_marketplace_credentialId: {
           productId: task.productId,
           marketplace: 'JOOM',
+          credentialId: null,
         },
       } as any,
       create: {

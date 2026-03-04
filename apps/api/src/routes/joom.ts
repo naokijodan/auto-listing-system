@@ -153,9 +153,10 @@ router.post('/listings', async (req: Request, res: Response) => {
 
     const listing = await prisma.listing.upsert({
       where: {
-        productId_marketplace: {
+        productId_marketplace_credentialId: {
           productId: task.productId,
           marketplace: Marketplace.JOOM,
+          credentialId: null,
         },
       } as any,
       create: {
