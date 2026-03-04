@@ -352,9 +352,9 @@ export class JoomPublishService {
 
       // Phase 49: カテゴリマッピングを取得
       const productInfo: ProductInfo = {
-        title: (task as any).product.title,
+        title: listing.product.title,
         titleEn: translations.en.title,
-        description: (task as any).product.description,
+        description: listing.product.description || '',
         descriptionEn: translations.en.description,
         category: attributes?.category,
         brand: attributes?.brand,
@@ -381,7 +381,7 @@ export class JoomPublishService {
       }
 
       // Joom商品データを構築
-      const weightKg = (task as any).product.weight ? (task as any).product.weight / 1000 : 0.15;
+      const weightKg = listing.product.weight ? listing.product.weight / 1000 : 0.15;
       const defaultShipping = calculateShippingCost(weightKg);
       const md = (listing.marketplaceData as any) || {};
       const joomProduct: JoomProduct = {
@@ -403,7 +403,7 @@ export class JoomPublishService {
         tags: joomCategory ? [joomCategory] : [],
 
         // 推奨フィールド追加（存在する場合のみ意味を持つ）
-        brand: ((task as any).product as any).brand || attributes?.brand || undefined,
+        brand: (listing.product as any).brand || attributes?.brand || undefined,
         categoryId: md.joomCategory || undefined,
         color: attributes?.color || undefined,
         size: attributes?.size || undefined,
