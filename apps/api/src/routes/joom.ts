@@ -151,25 +151,28 @@ router.post('/listings', async (req: Request, res: Response) => {
       console.warn(`Joom listingPrice missing for task ${taskId}; defaulting to 0`);
     }
 
-    const listing = await prisma.listing.upsert({
+    const existingListing = await prisma.listing.findFirst({
       where: {
-        productId_marketplace_credentialId: {
-          productId: task.productId,
-          marketplace: Marketplace.JOOM,
-          credentialId: null,
-        },
-      } as any,
-      create: {
         productId: task.productId,
         marketplace: Marketplace.JOOM,
-        status: 'DRAFT',
-        listingPrice: initialPriceUsd,
-        currency: 'USD',
-        marketplaceData: {},
-      } as any,
-      update: {},
+        credentialId: null,
+      },
       include: { product: true },
     });
+
+    const listing = existingListing
+      ? existingListing
+      : await prisma.listing.create({
+          data: {
+            productId: task.productId,
+            marketplace: Marketplace.JOOM as any,
+            status: 'DRAFT',
+            listingPrice: initialPriceUsd,
+            currency: 'USD',
+            marketplaceData: {},
+          },
+          include: { product: true },
+        });
 
     res.status(201).json(listing);
   } catch (error) {

@@ -237,26 +237,29 @@ export class JoomPublishService {
     const pricing = (task.pricing as any) || {};
     const initialPriceUsd: number = typeof pricing.finalPriceUsd === 'number' ? pricing.finalPriceUsd : 0;
 
-    const listing = await prisma.listing.upsert({
+    const existingListing = await prisma.listing.findFirst({
       where: {
-        productId_marketplace_credentialId: {
-          productId: task.productId,
-          marketplace: 'JOOM',
-          credentialId: null,
-        },
-      } as any,
-      create: {
         productId: task.productId,
         marketplace: 'JOOM',
-        status: 'DRAFT',
-        listingPrice: initialPriceUsd,
-        currency: 'USD',
-        marketplaceData: {},
-      },
-      update: {
-        listingPrice: initialPriceUsd,
+        credentialId: null,
       },
     });
+
+    const listing = existingListing
+      ? await prisma.listing.update({
+          where: { id: existingListing.id },
+          data: { listingPrice: initialPriceUsd },
+        })
+      : await prisma.listing.create({
+          data: {
+            productId: task.productId,
+            marketplace: 'JOOM',
+            status: 'DRAFT',
+            listingPrice: initialPriceUsd,
+            currency: 'USD',
+            marketplaceData: {},
+          },
+        });
 
     return listing.id;
   }
