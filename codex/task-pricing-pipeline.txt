@@ -1,0 +1,287 @@
+## タスク: 価格計算パイプライン基盤 + JoomPricingStrategy + SettingsResolver
+
+プロジェクト: ~/Desktop/rakuda/ (TypeScript monorepo, Turborepo)
+配置場所: apps/worker/src/lib/pricing/ に新規ディレクトリ作成
+
+### 重要な前提
+- 既存の apps/worker/src/lib/price-calculator.ts は変更しない（後方互換性維持）
+- 為替レートは JPY→USD 直レート（例: 0.0067）で掛け算する。V3シートの JPY/USD（例: 150）で割る方式とは異なる
+- import は `@rakuda/database`, `@rakuda/logger`, `@rakuda/config` から行う
+- Immutability: 全てのオブジェクトは新規作成、mutation禁止
+
+### ファイル構成（全て新規作成）
+
+```
+apps/worker/src/lib/pricing/
+├── types.ts                   # インターフェース定義
+├── pipeline.ts                # PricingPipeline オーケストレーター
+├── normalizer.ts              # Phase A: 共通前処理
+├── post-processor.ts          # Phase C: 共通後処理
+├── settings-resolver.ts       # 3層設定リゾルバ
+├── strategies/
+│   ├── base-strategy.ts       # 抽象基底クラス
+│   ├── joom-strategy.ts       # Joom価格戦略
+│   └── index.ts               # Strategy Factory
+└── index.ts                   # Public API (re-export)
+```
+
+### 1. types.ts - インターフェース定義
+
+```typescript
+import { Marketplace } from '@rakuda/database';
+
+// 計算モード
+export type PricingMode = 'SIMPLE' | 'DETAILED';
+export type ProfitMode = 'RATE' | 'AMOUNT';
+
+// 入力
+export interface PriceCalculationInput {
+  sourcePrice: number;        // 仕入価格（円）
+  weight?: number;            // 重量（g）
+  dimensions?: { l: number; w: number; h: number }; // 梱包サイズ(cm)
+  category?: string;          // 商品カテゴリ
+  marketplace: Marketplace;   // 出品先
+  shippingMethod?: string;    // 配送方法（指定時）
+  pricingMode: PricingMode;   // 計算モード
+  profitMode: ProfitMode;     // 利益率 or 利益額
+  profitAmount?: number;      // 利益額（円）- profitMode=AMOUNT時のみ
+  productId?: string;         // 商品ID（個別上書き確認用）
+}
+
+// 計算結果
+export interface PriceCalculationResult {
+  dduPrice: number;           // DDU価格（USD）
+  ddpPrice: number;           // DDP価格（USD）= DDU + 関税
+  finalPrice: number;         // 採用価格
+
+  breakdown: PriceBreakdown;
+  metadata: CalculationMetadata;
+  appliedSettings: AppliedSettings;
+}
+
+// 内訳
+export interface PriceBreakdown {
+  sourcePrice: number;        // 仕入価格（円）
+  sourcePriceUsd: number;     // 仕入価格（USD）
+  shippingCostJpy: number;    // 送料（円）
+  shippingCostUsd: number;    // 送料（USD）
+  platformFee: number;        // プラットフォーム手数料（USD）
+  paymentFee: number;         // 決済手数料（USD）
+  adCost: number;             // 広告費（USD）
+  profit: number;             // 利益額（USD）
+  profitRate: number;         // 実際の利益率（%）
+  // eBay固有（Joomでは全て0）
+  estimatedDuty: number;      // 想定関税（USD）
+  vatAmount: number;          // VAT額（USD）
+  dutyProcessingFee: number;  // 関税処理手数料（USD）
+  mpf: number;                // MPF（USD）
+  customsClearanceFee: number; // 通関手数料（USD）
+}
+
+// メタデータ
+export interface CalculationMetadata {
+  calculatedAt: Date;
+  exchangeRate: number;       // 使用した為替レート（JPY→USD）
+  exchangeRateSource: string;
+  settingsVersion: string;
+  pricingMode: PricingMode;
+  profitMode: ProfitMode;
+  shippingMethod: string;
+  marketplace: string;
+  category?: string;
+}
+
+// 適用した設定値
+export interface AppliedSettings {
+  platformFeeRate: number;
+  paymentFeeRate: number;
+  adRate: number;
+  profitRate: number;
+  profitAmount: number;
+  dutyRate: number;
+  vatRate: number;
+  dutyProcessingFeeRate: number;
+  mpfAmount: number;
+  customsClearanceFeeJpy: number;
+  exchangeBufferRate: number;
+}
+
+// 正規化された入力（Normalizer出力）
+export interface NormalizedInput {
+  sourcePriceUsd: number;     // 仕入価格（USD）
+  shippingCostJpy: number;    // 送料（円）
+  shippingCostUsd: number;    // 送料（USD）
+  exchangeRate: number;       // JPY→USD
+  exchangeRateSource: string;
+  shippingMethod: string;     // 選択された配送方法
+  original: PriceCalculationInput; // 元の入力
+}
+
+// 設定解決結果
+export interface ResolvedSettings {
+  platformFeeRate: number;
+  paymentFeeRate: number;
+  adRate: number;
+  profitRate: number;         // 利益率（RATE mode）
+  profitAmount: number;       // 利益額・円（AMOUNT mode）
+  dutyRate: number;           // 関税率
+  adjustedDutyRate: number;   // 調整後関税率
+  vatRate: number;
+  dutyProcessingFeeRate: number;
+  mpfAmount: number;          // MPF（USD）
+  customsClearanceFeeJpy: number; // CE通関手数料（円）
+  euShippingDiffJpy: number;  // EU送料差額（円）
+  exchangeBufferRate: number;
+  version: string;
+}
+```
+
+### 2. normalizer.ts - 共通前処理
+
+```typescript
+// 為替レート取得: prisma.exchangeRate から最新を取得
+// フォールバック: EXCHANGE_RATE_DEFAULTS.JPY_TO_USD (0.0067)
+// 送料計算: 重量ベースの簡易計算（将来はshipping_rate_tableから取得）
+// 仕入価格 JPY→USD変換: sourcePrice * exchangeRate
+
+export async function normalize(input: PriceCalculationInput): Promise<NormalizedInput>
+```
+
+実装のポイント:
+- prisma.exchangeRate.findFirst({ where: { fromCurrency: 'JPY', toCurrency: 'USD' }, orderBy: { fetchedAt: 'desc' } })
+- rate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD
+- 送料: Joom = SHIPPING_DEFAULTS.JOOM.baseCost + (weight * SHIPPING_DEFAULTS.JOOM.perGramCost)
+  eBay = SHIPPING_DEFAULTS.EBAY.defaultCost（暫定。Phase 2でshipping_rate_table対応）
+- sourcePriceUsd = sourcePrice * exchangeRate
+
+### 3. strategies/base-strategy.ts
+
+```typescript
+export abstract class BasePricingStrategy {
+  abstract readonly marketplace: Marketplace;
+  abstract calculate(
+    normalizedInput: NormalizedInput,
+    settings: ResolvedSettings
+  ): PriceCalculationResult;
+}
+```
+
+### 4. strategies/joom-strategy.ts - Joom価格計算
+
+計算式（計画書より）:
+```
+出品価格(USD) = (仕入値円 × 為替レート + 送料USD) / (1 - 手数料率 - 決済手数料率 - 利益率)
+```
+
+利益率モード:
+  DDU = (sourcePriceUsd + shippingCostUsd) / (1 - platformFeeRate - paymentFeeRate - adRate - profitRate)
+
+利益額モード:
+  DDU = (sourcePriceUsd + shippingCostUsd + profitAmountUsd) / (1 - platformFeeRate - paymentFeeRate - adRate)
+  ※ profitAmountUsd = profitAmount * exchangeRate
+
+Joomは関税計算なし → ddpPrice = dduPrice（同値）
+
+breakdownの各項目:
+- platformFee = dduPrice * platformFeeRate
+- paymentFee = dduPrice * paymentFeeRate
+- adCost = dduPrice * adRate
+- profit（利益率モード）= dduPrice * profitRate
+- profit（利益額モード）= profitAmount * exchangeRate
+- estimatedDuty, vatAmount, dutyProcessingFee, mpf, customsClearanceFee = 全て0
+
+### 5. strategies/index.ts - Strategy Factory
+
+```typescript
+export function createStrategy(marketplace: Marketplace): BasePricingStrategy
+// JOOM → JoomPricingStrategy
+// EBAY → throw new Error('EbayPricingStrategy not yet implemented') // Phase 2
+// その他 → throw
+```
+
+### 6. settings-resolver.ts - 3層設定リゾルバ
+
+解決優先順位:
+1. ProductPriceOverride（商品個別）- productId がある場合のみ
+2. priceSetting（marketplace × category）- categoryがある場合
+3. priceSetting（marketplace × isDefault=true）
+4. PRICE_DEFAULTS定数（ハードコードフォールバック）
+
+```typescript
+export async function resolveSettings(
+  marketplace: Marketplace,
+  category?: string,
+  productId?: string
+): Promise<ResolvedSettings>
+```
+
+実装:
+- prisma.priceSetting.findFirst() で DB設定を取得（既存テーブル活用）
+- フォールバック: PRICE_DEFAULTS.JOOM or PRICE_DEFAULTS.EBAY
+- adjustedDutyRate = dutyRate / (1 - platformFeeRate - adRate)
+  ただし Joom は dutyRate=0 なので adjustedDutyRate=0
+- version: ISO8601形式の文字列（settings取得時のタイムスタンプ）
+- Joom用デフォルト: platformFeeRate=0.15, paymentFeeRate=0.03, profitRate=0.30, adRate=0
+  dutyRate=0, vatRate=0, dutyProcessingFeeRate=0, mpfAmount=0, customsClearanceFeeJpy=0,
+  euShippingDiffJpy=0, exchangeBufferRate=0.02
+
+### 7. post-processor.ts
+
+```typescript
+export function postProcess(result: PriceCalculationResult): PriceCalculationResult
+```
+
+- 端数処理: finalPrice を 2桁に丸め（Math.ceil(x * 100) / 100）
+- $.99処理: 将来追加（今はスキップ）
+- 最低利益率バリデーション: profitRate < 5% → ログ警告
+- 価格上限チェック: JOOM → 900000円相当超えたら警告
+
+### 8. pipeline.ts - オーケストレーター
+
+```typescript
+export class PricingPipeline {
+  async calculate(input: PriceCalculationInput): Promise<PriceCalculationResult> {
+    // 1. 設定解決
+    const settings = await resolveSettings(input.marketplace, input.category, input.productId);
+    // 2. 正規化（Phase A）
+    const normalized = await normalize(input);
+    // 3. 戦略実行（Phase B）
+    const strategy = createStrategy(input.marketplace);
+    const result = strategy.calculate(normalized, settings);
+    // 4. 後処理（Phase C）
+    return postProcess(result);
+  }
+}
+```
+
+### 9. index.ts - Public API
+
+```typescript
+export { PricingPipeline } from './pipeline';
+export type { PriceCalculationInput, PriceCalculationResult, ... } from './types';
+export { resolveSettings } from './settings-resolver';
+```
+
+### テストのポイント（テストファイルも作成: __tests__/pricing/ ）
+
+Joomの計算例:
+- sourcePrice: 5000円, weight: 200g
+- exchangeRate: 0.0067 (JPY→USD)
+- platformFeeRate: 0.15, paymentFeeRate: 0.03, profitRate: 0.30
+- sourcePriceUsd = 5000 * 0.0067 = 33.50
+- shippingCostUsd = 5 + (200 * 0.01) = 7.00
+- totalCost = 33.50 + 7.00 = 40.50
+- dduPrice = 40.50 / (1 - 0.15 - 0.03 - 0.30) = 40.50 / 0.52 = 77.88 (cents丸め: 77.89)
+- ddpPrice = 77.89 (Joomは関税なし)
+- platformFee = 77.89 * 0.15 = 11.68
+- paymentFee = 77.89 * 0.03 = 2.34
+- profit = 77.89 * 0.30 = 23.37
+
+テスト作成先:
+- apps/worker/src/lib/pricing/__tests__/joom-strategy.test.ts
+- apps/worker/src/lib/pricing/__tests__/pipeline.test.ts
+- apps/worker/src/lib/pricing/__tests__/normalizer.test.ts
+- apps/worker/src/lib/pricing/__tests__/settings-resolver.test.ts
+
+テストでは prisma をモック（vi.mock('@rakuda/database')）。
+Vitest使用。

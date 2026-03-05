@@ -1,0 +1,195 @@
+## タスク: pricing_settings 関連テーブルの Prisma マイグレーション作成
+
+プロジェクト: ~/Desktop/rakuda/
+スキーマファイル: packages/database/prisma/schema.prisma
+
+### 重要な注意
+- schema.prisma は約10,000行の巨大ファイル。末尾に追加する
+- 既存のモデル・enumを変更しない
+- ALTER TYPE ADD VALUE を含むマイグレーションはトランザクション制約に注意
+- マイグレーションは `npx prisma migrate dev --name add_pricing_settings --schema=packages/database/prisma/schema.prisma` で作成
+
+### 追加するモデル（4つ）
+
+#### 1. PricingSetting（設定マスタ）
+
+```prisma
+model PricingSetting {
+  id          String      @id @default(cuid())
+
+  marketplace Marketplace
+  category    String?     // カテゴリ（null = マーケットプレイス全体のデフォルト）
+  isDefault   Boolean     @default(false) // true = マーケットプレイスのデフォルト設定
+
+  // 手数料
+  platformFeeRate   Float   // プラットフォーム手数料率（例: 0.15）
+  paymentFeeRate    Float   // 決済手数料率（例: 0.03）
+  adRate            Float   @default(0) // 広告費率
+
+  // 利益
+  profitMode        String  @default("RATE") // "RATE" or "AMOUNT"
+  profitRate        Float   @default(0.30) // 利益率（RATE mode）
+  profitAmount      Float?  // 利益額・円（AMOUNT mode）
+
+  // 関税・税（eBay用、Joomは全て0）
+  dutyRate               Float @default(0) // 関税率
+  vatRate                Float @default(0) // VAT率
+  dutyProcessingFeeRate  Float @default(0) // 関税処理手数料率
+  mpfAmount              Float @default(0) // MPF（USD）
+  customsClearanceFeeJpy Float @default(0) // CE通関手数料（円）
+  euShippingDiffJpy      Float @default(0) // EU送料差額（円）
+
+  // 為替
+  exchangeBufferRate Float @default(0.02) // 為替バッファ率
+
+  // バージョニング
+  validFrom DateTime @default(now()) // この設定が有効になる日時
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([marketplace, category, validFrom])
+  @@index([marketplace, isDefault])
+  @@index([marketplace, category])
+  @@map("pricing_settings_v2")
+}
+```
+
+注意: 既存の priceSetting モデル（テーブル名: price_settings）が存在する。
+新テーブルは pricing_settings_v2 にマッピングして衝突を回避。
+
+#### 2. ShippingRateEntry（送料テーブル）
+
+```prisma
+model ShippingRateEntry {
+  id             String  @id @default(cuid())
+
+  shippingMethod String  // CF, CD, CE, EP, EL, EMS
+  weightMin      Int     // 最小重量（g）
+  weightMax      Int     // 最大重量（g）
+  costJpy        Float   // 送料（円）
+  costUsd        Float?  // 送料（USD）- 参考値
+
+  isActive       Boolean @default(true)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([shippingMethod, weightMin, weightMax])
+  @@index([shippingMethod, isActive])
+  @@map("shipping_rate_entries")
+}
+```
+
+#### 3. ProductPriceOverride（商品個別上書き）
+
+```prisma
+model ProductPriceOverride {
+  id             String      @id @default(cuid())
+
+  productId      String
+  marketplace    Marketplace
+
+  fixedPrice     Float?      // 固定価格（USD）
+  customProfitRate Float?    // カスタム利益率
+  customProfitAmount Float?  // カスタム利益額（円）
+
+  overrideReason String?     // 上書き理由
+  isActive       Boolean     @default(true)
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@unique([productId, marketplace])
+  @@index([productId])
+  @@index([marketplace, isActive])
+  @@map("product_price_overrides")
+}
+```
+
+#### 4. PriceCalculationSnapshot（計算スナップショット）
+
+```prisma
+model PriceCalculationSnapshot {
+  id           String      @id @default(cuid())
+
+  listingId    String?
+  productId    String
+  marketplace  Marketplace
+
+  inputJson    Json        // PriceCalculationInput
+  resultJson   Json        // PriceCalculationResult
+  settingsJson Json        // ResolvedSettings
+
+  finalPrice   Float       // インデックス用
+  profitRate   Float?      // インデックス用
+
+  calculatedAt DateTime    @default(now())
+
+  @@index([listingId])
+  @@index([productId, marketplace])
+  @@index([calculatedAt])
+  @@map("price_calculation_snapshots")
+}
+```
+
+### 実行手順
+
+1. schema.prisma の末尾（最後のモデル定義の後）にモデルを追加
+2. `npx prisma format --schema=packages/database/prisma/schema.prisma` でフォーマット
+3. `npx prisma migrate dev --name add_pricing_settings_v2 --schema=packages/database/prisma/schema.prisma` でマイグレーション作成
+4. `npx prisma generate --schema=packages/database/prisma/schema.prisma` でクライアント生成
+
+### シードデータ（マイグレーション後に実行するSQL）
+
+Joomのデフォルト設定を1件挿入:
+```sql
+INSERT INTO pricing_settings_v2 (id, marketplace, category, "isDefault", "platformFeeRate", "paymentFeeRate", "adRate", "profitMode", "profitRate", "dutyRate", "vatRate", "dutyProcessingFeeRate", "mpfAmount", "customsClearanceFeeJpy", "euShippingDiffJpy", "exchangeBufferRate", "validFrom", "createdAt", "updatedAt")
+VALUES (
+  'cldefault_joom',
+  'JOOM',
+  NULL,
+  true,
+  0.15,
+  0.03,
+  0,
+  'RATE',
+  0.30,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  0.02,
+  NOW(),
+  NOW(),
+  NOW()
+);
+```
+
+eBayのデフォルト設定も1件:
+```sql
+INSERT INTO pricing_settings_v2 (id, marketplace, category, "isDefault", "platformFeeRate", "paymentFeeRate", "adRate", "profitMode", "profitRate", "dutyRate", "vatRate", "dutyProcessingFeeRate", "mpfAmount", "customsClearanceFeeJpy", "euShippingDiffJpy", "exchangeBufferRate", "validFrom", "createdAt", "updatedAt")
+VALUES (
+  'cldefault_ebay',
+  'EBAY',
+  NULL,
+  true,
+  0.13,
+  0.03,
+  0.04,
+  'RATE',
+  0.30,
+  0.15,
+  0.20,
+  0.20,
+  0,
+  3000,
+  0,
+  0.02,
+  NOW(),
+  NOW(),
+  NOW()
+);
+```

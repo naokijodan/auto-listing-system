@@ -78,10 +78,10 @@ model Product {
   sellerName String?
 
   // Phase 3-B: 管理機能
-  tags                 String[]  @default([])  // タグ（商品グルーピング用）
-  memo                 String?   @db.Text       // メモ（自由記述）
-  purchaseShippingCost Int?                     // 仕入時送料（円）
-  initialPurchasePrice Int?                     // 初期仕入価格（円）- price変更時の元値保持
+  tags                 String[] @default([]) // タグ（商品グルーピング用）
+  memo                 String?  @db.Text // メモ（自由記述）
+  purchaseShippingCost Int? // 仕入時送料（円）
+  initialPurchasePrice Int? // 初期仕入価格（円）- price変更時の元値保持
 
   // ステータス
   status            ProductStatus @default(PENDING_SCRAPE)
@@ -183,8 +183,8 @@ model Listing {
   resumeAt          DateTime? // 遅延再開予定日時
 
   // Phase 0-C: Listing統合フィールド
-  publishedAt  DateTime?  // 出品日時
-  lastSyncedAt DateTime?  // 最終同期日時
+  publishedAt  DateTime? // 出品日時
+  lastSyncedAt DateTime? // 最終同期日時
 
   // タイムスタンプ
   listedAt  DateTime?
@@ -553,9 +553,9 @@ model EbayCategoryMapping {
 // ========================================
 model EbayPolicy {
   id            String   @id @default(cuid())
-  type          String   // 'FULFILLMENT' | 'PAYMENT' | 'RETURN'
-  policyId      String   // eBay側のポリシーID
-  name          String   // ポリシー名（表示用）
+  type          String // 'FULFILLMENT' | 'PAYMENT' | 'RETURN'
+  policyId      String // eBay側のポリシーID
+  name          String // ポリシー名（表示用）
   description   String?
   marketplaceId String   @default("EBAY_US")
   isDefault     Boolean  @default(false)
@@ -6290,7 +6290,7 @@ model EnrichmentTask {
   updatedAt DateTime @updatedAt
 
   // リレーション
-  steps       EnrichmentStep[]
+  steps EnrichmentStep[]
 
   @@unique([productId])
   @@index([status, priority])
@@ -6520,7 +6520,6 @@ enum KeywordMatchType {
   STARTS_WITH // 前方一致
   REGEX // 正規表現
 }
-
 
 enum BatchPublishStatus {
   PENDING // 待機中
@@ -10783,4 +10782,115 @@ enum InventoryMode {
   STOCKED
   DROPSHIP
   HYBRID
+}
+
+// ========================================
+// pricing_settings 関連テーブル（v2）
+// ========================================
+
+// 設定マスタ（v2）
+model PricingSetting {
+  id String @id @default(cuid())
+
+  marketplace Marketplace
+  category    String? // カテゴリ（null = マーケットプレイス全体のデフォルト）
+  isDefault   Boolean     @default(false) // true = マーケットプレイスのデフォルト設定
+
+  // 手数料
+  platformFeeRate Float // プラットフォーム手数料率（例: 0.15）
+  paymentFeeRate  Float // 決済手数料率（例: 0.03）
+  adRate          Float @default(0) // 広告費率
+
+  // 利益
+  profitMode   String @default("RATE") // "RATE" or "AMOUNT"
+  profitRate   Float  @default(0.30) // 利益率（RATE mode）
+  profitAmount Float? // 利益額・円（AMOUNT mode）
+
+  // 関税・税（eBay用、Joomは全て0）
+  dutyRate               Float @default(0) // 関税率
+  vatRate                Float @default(0) // VAT率
+  dutyProcessingFeeRate  Float @default(0) // 関税処理手数料率
+  mpfAmount              Float @default(0) // MPF（USD）
+  customsClearanceFeeJpy Float @default(0) // CE通関手数料（円）
+  euShippingDiffJpy      Float @default(0) // EU送料差額（円）
+
+  // 為替
+  exchangeBufferRate Float @default(0.02) // 為替バッファ率
+
+  // バージョニング
+  validFrom DateTime @default(now()) // この設定が有効になる日時
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([marketplace, category, validFrom])
+  @@index([marketplace, isDefault])
+  @@index([marketplace, category])
+  @@map("pricing_settings_v2")
+}
+
+// 送料テーブル
+model ShippingRateEntry {
+  id String @id @default(cuid())
+
+  shippingMethod String // CF, CD, CE, EP, EL, EMS
+  weightMin      Int // 最小重量（g）
+  weightMax      Int // 最大重量（g）
+  costJpy        Float // 送料（円）
+  costUsd        Float? // 送料（USD）- 参考値
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shippingMethod, weightMin, weightMax])
+  @@index([shippingMethod, isActive])
+  @@map("shipping_rate_entries")
+}
+
+// 商品個別上書き
+model ProductPriceOverride {
+  id String @id @default(cuid())
+
+  productId   String
+  marketplace Marketplace
+
+  fixedPrice         Float? // 固定価格（USD）
+  customProfitRate   Float? // カスタム利益率
+  customProfitAmount Float? // カスタム利益額（円）
+
+  overrideReason String? // 上書き理由
+  isActive       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, marketplace])
+  @@index([productId])
+  @@index([marketplace, isActive])
+  @@map("product_price_overrides")
+}
+
+// 計算スナップショット
+model PriceCalculationSnapshot {
+  id String @id @default(cuid())
+
+  listingId   String?
+  productId   String
+  marketplace Marketplace
+
+  inputJson    Json // PriceCalculationInput
+  resultJson   Json // PriceCalculationResult
+  settingsJson Json // ResolvedSettings
+
+  finalPrice Float // インデックス用
+  profitRate Float? // インデックス用
+
+  calculatedAt DateTime @default(now())
+
+  @@index([listingId])
+  @@index([productId, marketplace])
+  @@index([calculatedAt])
+  @@map("price_calculation_snapshots")
 }
