@@ -14,23 +14,24 @@ WORKDIR /app
 # 必要なツールをインストール
 RUN apk add --no-cache python3 make g++
 
+# キャッシュバスト用（COPY前に配置してソースコードレイヤーも無効化）
+ARG CACHE_DATE=2026-03-05-v4
+
 # ソースコードをコピー
 COPY . .
 
 # 依存関係をインストール
 RUN NODE_ENV=development npm ci --legacy-peer-deps
 
-# キャッシュバスト用（ビルド引数が変わるとここ以降のキャッシュが無効化される）
-ARG CACHE_DATE=2026-03-05-v3
-
 # Prismaクライアントを生成
 RUN npx prisma generate --schema=packages/database/prisma/schema
 
-# TypeScriptをビルド
+# TypeScriptをビルド（turboキャッシュも無効化）
 # Next.jsのパブリック環境変数をビルド時に受け取れるようにする
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV TURBO_FORCE=1
 RUN npm run build
 
 # -----------------------------------------------------------------------------
