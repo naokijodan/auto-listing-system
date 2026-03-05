@@ -21,7 +21,7 @@ COPY . .
 RUN NODE_ENV=development npm ci --legacy-peer-deps
 
 # キャッシュバスト用（ビルド引数が変わるとここ以降のキャッシュが無効化される）
-ARG CACHE_DATE=2026-03-05-v2
+ARG CACHE_DATE=2026-03-05-v3
 
 # Prismaクライアントを生成
 RUN npx prisma generate --schema=packages/database/prisma/schema
