@@ -31,8 +31,7 @@ RUN npx prisma generate --schema=packages/database/prisma/schema
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-ENV TURBO_FORCE=1
-RUN npm run build
+RUN npx turbo run build --force
 
 # -----------------------------------------------------------------------------
 # Stage 2: API Runner
