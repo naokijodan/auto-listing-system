@@ -93,7 +93,7 @@ export default function ProductsPage() {
 
   // Fetch exchange rate from API
   const { data: rateData } = useExchangeRate();
-  const exchangeRate = rateData?.currentRate?.usdToJpy ?? 150; // Fallback to 150
+  const exchangeRate = rateData?.currentRate?.jpyToUsd ?? 0.0067; // JPY→USD fallback
 
   // Virtual scroll setup
   const virtualizer = useVirtualizer({
@@ -667,7 +667,7 @@ export default function ProductsPage() {
                       {viewMode === 'price' && (() => {
                         const costJpy = product.price;
                         const priceUsd = listingPrice || 0;
-                        const costUsd = costJpy / exchangeRate;
+                        const costUsd = costJpy * exchangeRate;
                         const profit = priceUsd - costUsd;
                         const profitRate = priceUsd > 0 ? (profit / priceUsd) * 100 : 0;
 

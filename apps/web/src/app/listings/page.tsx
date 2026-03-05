@@ -73,7 +73,7 @@ export default function ListingsPage() {
 
   // Fetch exchange rate from API
   const { data: rateData } = useExchangeRate();
-  const exchangeRate = rateData?.currentRate?.usdToJpy ?? 150; // Fallback to 150
+  const exchangeRate = rateData?.currentRate?.jpyToUsd ?? 0.0067; // JPY→USD fallback
 
   // Set initial focus when listings load
   useEffect(() => {
@@ -476,7 +476,7 @@ export default function ListingsPage() {
                       {viewMode === 'price' && (() => {
                         const costJpy = listing.product?.price || 0;
                         const priceUsd = listing.listingPrice;
-                        const costUsd = costJpy / exchangeRate;
+                        const costUsd = costJpy * exchangeRate;
                         const profit = priceUsd - costUsd - (listing.shippingCost || 0);
                         const profitRate = priceUsd > 0 ? (profit / priceUsd) * 100 : 0;
 

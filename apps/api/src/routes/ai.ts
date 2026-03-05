@@ -911,8 +911,9 @@ router.post('/price-optimizations/:id/optimize', async (req: Request, res: Respo
         : null;
 
       // 最適価格計算
-      const exchangeRate = 150;
-      const costUsd = product.price / exchangeRate;
+      // exchangeRate は JPY→USD の直レート（例: 0.0067）
+      const exchangeRate = 0.0067;
+      const costUsd = product.price * exchangeRate;
       const minMargin = optimization.minMargin ?? 20;
       const minPrice = optimization.minPrice ?? costUsd * (1 + minMargin / 100);
       const maxPrice = optimization.maxPrice ?? costUsd * 3;

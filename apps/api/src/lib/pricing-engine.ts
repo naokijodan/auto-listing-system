@@ -56,7 +56,7 @@ const DEFAULT_CONFIG = {
   maxMargin: 50, // 最大利益率 50%
   targetMargin: 25, // 目標利益率 25%
   competitorOffset: -3, // 競合より3%安く
-  exchangeRate: 150, // JPY/USD
+  exchangeRate: 0.0067, // JPY→USD（1円=0.0067ドル）
   platformFeeRate: 0.15, // プラットフォーム手数料 15%
   shippingCostUsd: 5, // 送料 $5
 };
@@ -79,7 +79,8 @@ export function calculateSellingPrice(
     profit: number;
   };
 } {
-  const costUsd = costPriceJpy / exchangeRate;
+  // exchangeRate は JPY→USD の直レート（例: 0.0067）
+  const costUsd = costPriceJpy * exchangeRate;
   const shippingCost = DEFAULT_CONFIG.shippingCostUsd;
   const totalCost = costUsd + shippingCost;
 
@@ -113,7 +114,8 @@ export function calculateMargin(
   costPriceJpy: number,
   exchangeRate: number = DEFAULT_CONFIG.exchangeRate
 ): number {
-  const costUsd = costPriceJpy / exchangeRate;
+  // exchangeRate は JPY→USD の直レート（例: 0.0067）
+  const costUsd = costPriceJpy * exchangeRate;
   const shippingCost = DEFAULT_CONFIG.shippingCostUsd;
   const platformFee = sellingPriceUsd * DEFAULT_CONFIG.platformFeeRate;
   const profit = sellingPriceUsd - costUsd - shippingCost - platformFee;
@@ -191,9 +193,8 @@ export async function generatePriceRecommendation(
     where: { fromCurrency: 'JPY', toCurrency: 'USD' },
     orderBy: { fetchedAt: 'desc' },
   });
-  const exchangeRate = exchangeRateRecord?.rate
-    ? 1 / exchangeRateRecord.rate
-    : DEFAULT_CONFIG.exchangeRate;
+  // DBのレートは JPY→USD の直レート
+  const exchangeRate = exchangeRateRecord?.rate ?? DEFAULT_CONFIG.exchangeRate;
 
   // 競合価格分析
   const competitorAnalysis = await analyzeCompetitorPrices(product.id);
@@ -439,9 +440,8 @@ export async function getPricingStats(): Promise<{
     where: { fromCurrency: 'JPY', toCurrency: 'USD' },
     orderBy: { fetchedAt: 'desc' },
   });
-  const exchangeRate = exchangeRateRecord?.rate
-    ? 1 / exchangeRateRecord.rate
-    : DEFAULT_CONFIG.exchangeRate;
+  // DBのレートは JPY→USD の直レート
+  const exchangeRate = exchangeRateRecord?.rate ?? DEFAULT_CONFIG.exchangeRate;
 
   let totalMargin = 0;
   let lowMarginCount = 0;

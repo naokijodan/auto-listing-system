@@ -440,14 +440,15 @@ router.post('/simulate', async (req, res, next) => {
       where: { fromCurrency: 'JPY', toCurrency: 'USD' },
       orderBy: { fetchedAt: 'desc' },
     });
-    const exchangeRate = exchangeRateRecord?.rate ? 1 / exchangeRateRecord.rate : 150;
+    // DBのレートは JPY→USD の直レート
+    const exchangeRate = exchangeRateRecord?.rate ?? 0.0067;
 
     const currentMargin = calculateMargin(listing.listingPrice, listing.product.price, exchangeRate);
     const newMargin = calculateMargin(newPrice, listing.product.price, exchangeRate);
 
     const platformFeeRate = 0.15;
     const shippingCost = 5;
-    const costUsd = listing.product.price / exchangeRate;
+    const costUsd = listing.product.price * exchangeRate;
 
     const currentProfit = listing.listingPrice - costUsd - shippingCost - (listing.listingPrice * platformFeeRate);
     const newProfit = newPrice - costUsd - shippingCost - (newPrice * platformFeeRate);
