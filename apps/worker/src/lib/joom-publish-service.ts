@@ -479,15 +479,17 @@ export class JoomPublishService {
               where: { id: listingId },
               data: {
                 status: 'ACTIVE',
-                publishedAt: new Date(),
-                lastSyncedAt: new Date(),
+                listedAt: new Date(),
+                updatedAt: new Date(),
+                errorMessage: null,
+                pausedByInventory: false,
                 marketplaceListingId: existingProductId,
                 marketplaceData: {
                   ...currentData,
                   joomProductId: existingProductId,
                   externalUrl: `https://www.joom.com/en/products/${existingProductId}`,
                 },
-              } as any,
+              },
             });
 
             return {
@@ -515,8 +517,10 @@ export class JoomPublishService {
           where: { id: listingId },
           data: {
             status: 'ACTIVE',
-            publishedAt: new Date(),
-            lastSyncedAt: new Date(),
+            listedAt: new Date(),
+            updatedAt: new Date(),
+            errorMessage: null,
+            pausedByInventory: false,
             listingPrice: finalPrice,
             currency: 'USD',
             marketplaceListingId: createdId,
@@ -528,7 +532,7 @@ export class JoomPublishService {
               joomCategory: joomCategory || null,
               joomAttributes: filledAttributes,
             },
-          } as any,
+          },
         }),
         prisma.enrichmentTask.update({ where: { id: task.id }, data: { status: 'PUBLISHED' } }),
       ]);

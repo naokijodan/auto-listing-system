@@ -262,7 +262,7 @@ async function processSyncStatus(joomListingId: string): Promise<any> {
     const client = getJoomClient();
     const resp = await client.getProduct(joomProductId);
 
-    let updateData: any = { lastSyncedAt: new Date() };
+    let updateData: any = { updatedAt: new Date() };
     let resolvedStatus: string | undefined;
     let notFound = false;
 
@@ -320,18 +320,18 @@ async function processSyncStatus(joomListingId: string): Promise<any> {
       notFound,
     };
   } catch (error: any) {
-    // エラー時はerrorCount++, lastError, lastSyncedAtを記録
+    // エラー時はerrorCount++, lastError, updatedAtを記録
     const cur = (listing?.marketplaceData as any) || {};
     await prisma.listing.update({
       where: { id: joomListingId },
       data: {
-        lastSyncedAt: new Date(),
+        updatedAt: new Date(),
         marketplaceData: {
           ...cur,
           errorCount: (cur.errorCount || 0) + 1,
           lastError: error.message || String(error),
         },
-      } as any,
+      },
     });
 
     log.error({
