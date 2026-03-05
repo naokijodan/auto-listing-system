@@ -1,6 +1,6 @@
 # RAKUDA 既知の問題と再発防止策
 
-最終更新: 2026-03-04
+最終更新: 2026-03-05
 
 ## 使い方
 新しいセッション開始時に必ずこのファイルを確認すること。
@@ -41,12 +41,18 @@
 - **症状**: `cannot allocate memory` / `JavaScript heap out of memory`
 - **防止策**: Dockerfile に `ENV NODE_OPTIONS="--max-old-space-size=4096"` を必ず設定
 
-### 3-2: npm ci が devDependencies をスキップ
+### 3-2: Turboキャッシュで古いコードが残存
+- **症状**: `prisma.joomListing.upsert()` がソースコードに存在しないのにランタイムエラー
+- **原因**: `TURBO_FORCE=1` 環境変数はturboに無視される（CLIフラグのみ有効）→ 古いビルド成果物がキャッシュから使われた
+- **防止策**: Dockerfileでは `RUN npx turbo run build --force`（`--force` CLIフラグ）を使用
+- **解決済み**: commit 1af9233b
+
+### 3-3: npm ci が devDependencies をスキップ
 - **症状**: `turbo: not found (exit 127)`
 - **原因**: Coolify が NODE_ENV=production を --build-arg として渡す
 - **防止策**: Dockerfile で `RUN NODE_ENV=development npm ci --legacy-peer-deps`
 
-### 3-3: Coolify デプロイ stuck in_progress
+### 3-4: Coolify デプロイ stuck in_progress
 - **復旧手順**: `POST /api/v1/applications/{uuid}/stop` で明示停止
 - **防止策**: concurrent_builds=1 を推奨
 
