@@ -8,7 +8,7 @@ import { JoomApiClient, JoomProduct } from './joom-api';
 import { downloadImages, isValidImageUrl } from './image-downloader';
 import { optimizeImage, optimizeImagesParallel } from './image-optimizer';
 import { uploadFile } from './storage';
-import { enrichmentTaskManager } from './enrichment-service';
+import { enrichmentTaskManager, PriceCalculatorService } from './enrichment-service';
 import { getCategoryMapping, fillRequiredAttributes, type ProductInfo } from './category-mapper';
 import path from 'path';
 import os from 'os';
@@ -234,9 +234,16 @@ export class JoomPublishService {
       throw new Error(`Task not approved: ${task.status}`);
     }
 
-    // Listing を作成または取得（JOOM）
-    const pricing = (task.pricing as any) || {};
-    const initialPriceUsd: number = typeof pricing.finalPriceUsd === 'number' ? pricing.finalPriceUsd : 0;
+    // 毎回 PriceCalculatorService で再計算（為替レートの最新値を使用）
+    const priceCalculator = new PriceCalculatorService();
+    const freshPricing = await priceCalculator.calculatePrice(task.product.price);
+    const initialPriceUsd: number = freshPricing.finalPriceUsd;
+
+    // enrichment task の pricing も最新値で更新
+    await prisma.enrichmentTask.update({
+      where: { id: taskId },
+      data: { pricing: freshPricing as any },
+    });
 
     const existingListing = await prisma.listing.findFirst({
       where: {

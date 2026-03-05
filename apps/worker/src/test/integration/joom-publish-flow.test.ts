@@ -22,6 +22,31 @@ vi.mock('../../lib/enrichment-service', () => ({
     createTask: vi.fn().mockResolvedValue('task-mock'),
     executeTask: vi.fn().mockResolvedValue(void 0),
   },
+  // PriceCalculatorService をスタブ（為替レートの最新値を使う振る舞いを簡易化）
+  PriceCalculatorService: class {
+    async calculatePrice(costJpy: number) {
+      // デフォルトのモック為替レート(0.0067)と簡易ロジックで安定値を返す
+      const exchangeRate = 0.0067;
+      const costUsd = costJpy * exchangeRate;
+      const baseProfitRate = 0.3;
+      const joomFeeRate = 0.15;
+      const paymentFeeRate = 0.029;
+      const shippingCostUsd = 5.0;
+      const basePrice = costUsd * (1 + baseProfitRate);
+      const withFees = basePrice / (1 - joomFeeRate - paymentFeeRate);
+      const finalPriceUsd = Math.ceil((withFees + shippingCostUsd) * 100) / 100;
+      return {
+        costJpy,
+        costUsd: Math.round(costUsd * 100) / 100,
+        exchangeRate,
+        profitRate: baseProfitRate,
+        platformFee: Math.round(finalPriceUsd * joomFeeRate * 100) / 100,
+        paymentFee: Math.round(finalPriceUsd * paymentFeeRate * 100) / 100,
+        shippingCost: shippingCostUsd,
+        finalPriceUsd,
+      };
+    }
+  },
 }));
 
 describe('Joom出品フロー統合テスト（Listing統合後）', () => {
