@@ -62,6 +62,7 @@ export interface JoomPublishResult {
   success: boolean;
   joomProductId?: string;
   joomListingUrl?: string;
+  isExisting?: boolean;
   error?: string;
 }
 
@@ -367,8 +368,9 @@ export class JoomPublishService {
     const pricing = task.pricing as any;
     const attributes = task.attributes as any;
 
-    if (!translations?.en || !pricing) {
-      return { success: false, error: 'Missing translations or pricing' };
+    // 翻訳は必須。価格は下でListing/Taskの両方から決定する
+    if (!translations?.en) {
+      return { success: false, error: 'Missing translations' };
     }
 
     try {
@@ -413,12 +415,21 @@ export class JoomPublishService {
       const imageUrls: string[] = (md.joomImages && md.joomImages.length > 0)
         ? md.joomImages
         : (listing.product.images || []);
+      // Listing.listingPrice を優先し、0以下の場合のみ enrichment の価格にフォールバック
+      const listingPrice = typeof listing.listingPrice === 'number' ? listing.listingPrice : 0;
+      const enrichmentPrice = typeof pricing?.finalPriceUsd === 'number' ? pricing.finalPriceUsd : 0;
+      const finalPrice = listingPrice > 0 ? listingPrice : enrichmentPrice;
+
+      if (!finalPrice || finalPrice <= 0) {
+        throw new Error('Invalid price: must be greater than 0');
+      }
+
       const joomProduct: JoomProduct = {
         name: translations.en.title,
         description: translations.en.description,
         mainImage: imageUrls[0] || '',
         extraImages: imageUrls.slice(1),
-        price: pricing.finalPriceUsd,
+        price: finalPrice,
         currency: 'USD',
         quantity: 1,
         // DBはグラム単位。kgに変換し、未設定時は0.15kgを使用
@@ -450,11 +461,53 @@ export class JoomPublishService {
       // Joom APIに出品
       const response = await this.joomClient.createProduct(joomProduct);
 
-      if (!response.success || !response.data) {
+      if (!response.success) {
+        // product_already_exists の場合はグレースフルに処理
+        const errMsg = response.error?.message || '';
+        if (
+          response.error?.code === 'PRODUCT_ALREADY_EXISTS' ||
+          errMsg.toLowerCase().includes('already_exists')
+        ) {
+          const existingIdMatch = errMsg.match(/productID=([a-f0-9]+)/);
+          const existingProductId = existingIdMatch?.[1];
+
+          if (existingProductId) {
+            // Listingを既存商品IDでACTIVEに更新
+            const existing = await prisma.listing.findUnique({ where: { id: listingId } });
+            const currentData = (existing?.marketplaceData as any) || {};
+            await prisma.listing.update({
+              where: { id: listingId },
+              data: {
+                status: 'ACTIVE',
+                publishedAt: new Date(),
+                lastSyncedAt: new Date(),
+                marketplaceListingId: existingProductId,
+                marketplaceData: {
+                  ...currentData,
+                  joomProductId: existingProductId,
+                  externalUrl: `https://www.joom.com/en/products/${existingProductId}`,
+                },
+              } as any,
+            });
+
+            return {
+              success: true,
+              joomProductId: existingProductId,
+              joomListingUrl: `https://www.joom.com/en/products/${existingProductId}`,
+              isExisting: true,
+            };
+          }
+        }
+
+        // その他のエラーは通常通りスロー
         throw new Error(response.error?.message || 'Joom API error');
       }
 
       // 成功時の更新（Phase 49: カテゴリ情報も保存）
+      const createdId = response.data?.id;
+      if (!createdId) {
+        throw new Error('Joom API did not return product ID');
+      }
       const existing = await prisma.listing.findUnique({ where: { id: listingId } });
       const currentData = (existing?.marketplaceData as any) || {};
       await prisma.$transaction([
@@ -464,12 +517,12 @@ export class JoomPublishService {
             status: 'ACTIVE',
             publishedAt: new Date(),
             lastSyncedAt: new Date(),
-            listingPrice: pricing.finalPriceUsd,
+            listingPrice: finalPrice,
             currency: 'USD',
-            marketplaceListingId: response.data.id,
+            marketplaceListingId: createdId,
             marketplaceData: {
               ...currentData,
-              joomProductId: response.data.id,
+              joomProductId: createdId,
               title: translations.en.title,
               description: translations.en.description,
               joomCategory: joomCategory || null,
@@ -481,14 +534,14 @@ export class JoomPublishService {
       ]);
 
       // APIログを記録
-      await this.logApiCall('POST', '/products', joomProduct, 200, response.data, true);
+      await this.logApiCall('POST', '/products', joomProduct, 200, { id: createdId }, true);
 
-      log.info({ type: 'publish_success', listingId, joomProductId: response.data.id });
+      log.info({ type: 'publish_success', listingId, joomProductId: createdId });
 
       return {
         success: true,
-        joomProductId: response.data.id,
-        joomListingUrl: `https://www.joom.com/product/${response.data.id}`,
+        joomProductId: createdId,
+        joomListingUrl: `https://www.joom.com/product/${createdId}`,
       };
     } catch (error: any) {
       // エラー時の更新

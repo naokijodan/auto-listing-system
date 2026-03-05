@@ -220,12 +220,22 @@ export class JoomApiClient {
             error: data,
           });
 
+          // エラーコードの正規化（特に product_already_exists を検出）
+          const rawCode = typeof data.code === 'string' ? data.code.toLowerCase() : String(data.code || '').toLowerCase();
+          const rawMessage = typeof data.message === 'string' ? data.message.toLowerCase() : String(data.message || '').toLowerCase();
+          const isAlreadyExists = rawCode.includes('already_exists') || rawMessage.includes('already_exists') || rawMessage.includes('already exists');
+
           return {
             success: false,
-            error: {
-              code: data.code || 'UNKNOWN',
-              message: data.message || 'Unknown error',
-            },
+            error: isAlreadyExists
+              ? {
+                  code: 'PRODUCT_ALREADY_EXISTS',
+                  message: data.message || 'Product already exists',
+                }
+              : {
+                  code: data.code || 'UNKNOWN',
+                  message: data.message || 'Unknown error',
+                },
           } as JoomApiResponse<T>;
         }
 
