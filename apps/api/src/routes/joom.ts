@@ -298,6 +298,62 @@ router.post('/listings/:id/publish', async (req: Request, res: Response) => {
 });
 
 /**
+ * Joom出品の再有効化（PAUSED → ACTIVE）
+ */
+router.post('/listings/:id/enable', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const listing = await prisma.listing.findUnique({ where: { id } });
+    if (!listing) return res.status(404).json({ error: 'Listing not found' });
+    if (listing.marketplace !== Marketplace.JOOM) return res.status(400).json({ error: 'Not a Joom listing' });
+    if (listing.status !== 'PAUSED') return res.status(400).json({ error: 'Listing is not paused' });
+
+    const marketplaceData = (listing.marketplaceData as Record<string, unknown>) || {};
+    const joomProductId = (marketplaceData.joomProductId || (listing as any).marketplaceListingId) as string;
+    if (!joomProductId) return res.status(400).json({ error: 'No Joom product ID found' });
+
+    // Queue enable job
+    await joomPublishQueue.add('enable-product', {
+      listingId: id,
+      joomProductId,
+    });
+
+    res.json({ message: 'Enable job queued', listingId: id, joomProductId });
+  } catch (error) {
+    console.error('Failed to enable Joom listing:', error);
+    res.status(500).json({ error: 'Failed to enable Joom listing' });
+  }
+});
+
+/**
+ * Joom出品の一時停止（ACTIVE → PAUSED）
+ */
+router.post('/listings/:id/disable', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const listing = await prisma.listing.findUnique({ where: { id } });
+    if (!listing) return res.status(404).json({ error: 'Listing not found' });
+    if (listing.marketplace !== Marketplace.JOOM) return res.status(400).json({ error: 'Not a Joom listing' });
+    if (listing.status !== 'ACTIVE') return res.status(400).json({ error: 'Listing is not active' });
+
+    const marketplaceData = (listing.marketplaceData as Record<string, unknown>) || {};
+    const joomProductId = (marketplaceData.joomProductId || (listing as any).marketplaceListingId) as string;
+    if (!joomProductId) return res.status(400).json({ error: 'No Joom product ID found' });
+
+    // Queue disable job
+    await joomPublishQueue.add('disable-product', {
+      listingId: id,
+      joomProductId,
+    });
+
+    res.json({ message: 'Disable job queued', listingId: id, joomProductId });
+  } catch (error) {
+    console.error('Failed to disable Joom listing:', error);
+    res.status(500).json({ error: 'Failed to disable Joom listing' });
+  }
+});
+
+/**
  * 出品キャンセル/削除
  */
 router.delete('/listings/:id', async (req: Request, res: Response) => {

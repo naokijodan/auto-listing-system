@@ -30,6 +30,8 @@ export interface RiskCategory {
   status: ValidationStatus;
   flagName: string;
   description: string;
+  // 追加: 除外キーワード（これらが含まれる場合は一致を無視）
+  excludeKeywords?: string[];
 }
 
 /**
@@ -116,6 +118,7 @@ const REVIEW_REQUIRED_ITEMS: RiskCategory[] = [
   },
   {
     keywords: ['電池式', '乾電池', '単三', '単四', 'アルカリ電池'],
+    excludeKeywords: ['ソーラー', 'solar', 'クォーツ', 'quartz', 'エコドライブ', 'eco-drive', 'キネティック', 'kinetic', '光発電'],
     status: 'review_required',
     flagName: 'battery_operated',
     description: '電池使用製品は電池の種類確認が必要',
@@ -187,6 +190,14 @@ export function validateContent(
   // 要確認チェック（まだrejectedでない場合）
   if (status !== 'rejected') {
     for (const item of REVIEW_REQUIRED_ITEMS) {
+      // 除外キーワードが含まれる場合はこのカテゴリのチェックをスキップ
+      const hasExclusion = (item.excludeKeywords || []).some((ex) =>
+        combinedText.includes(ex.toLowerCase())
+      );
+      if (hasExclusion) {
+        continue;
+      }
+
       for (const keyword of item.keywords) {
         if (combinedText.includes(keyword.toLowerCase())) {
           if (!flags.includes(item.flagName)) {

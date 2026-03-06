@@ -23,6 +23,15 @@ describe('content-validator', () => {
         expect(result.riskScore).toBe(100);
       });
 
+      it('should reject items with リチウムイオンバッテリー', () => {
+        const result = validateContent(
+          'リチウムイオンバッテリー 内蔵',
+          '安全基準適合'
+        );
+        expect(result.status).toBe('rejected');
+        expect(result.flags).toContain('lithium_battery');
+      });
+
       it('should reject aerosol products', () => {
         const result = validateContent(
           '殺虫剤 スプレー',
@@ -107,6 +116,15 @@ describe('content-validator', () => {
         expect(result.flags).toContain('battery_operated');
       });
 
+      it('should require review for dry battery toys', () => {
+        const result = validateContent(
+          'おもちゃ',
+          '乾電池で動く'
+        );
+        expect(result.status).toBe('review_required');
+        expect(result.flags).toContain('battery_operated');
+      });
+
       it('should require review for food items', () => {
         const result = validateContent(
           'お菓子 詰め合わせ',
@@ -127,6 +145,23 @@ describe('content-validator', () => {
     });
 
     describe('approved items', () => {
+      it('should NOT flag solar watches as battery operated', () => {
+        const result = validateContent(
+          'ソーラー電池 時計',
+          '光発電 ソーラー充電'
+        );
+        expect(result.flags).not.toContain('battery_operated');
+        expect(result.status).toBe('approved');
+      });
+
+      it('should NOT flag quartz watches as battery operated', () => {
+        const result = validateContent(
+          'クォーツ 電池式 時計',
+          'quartz movement'
+        );
+        expect(result.flags).not.toContain('battery_operated');
+        expect(result.status).toBe('approved');
+      });
       it('should approve normal watch listing', () => {
         const result = validateContent(
           'SEIKO 5 自動巻き腕時計',

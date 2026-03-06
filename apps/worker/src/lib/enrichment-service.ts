@@ -309,7 +309,8 @@ export class ContentValidatorService {
 
     // ハードコードされた禁制品キーワード（キャッシュがない場合用）
     const hardcodedKeywords: Record<string, string[]> = {
-      battery: ['リチウム', 'lithium', 'バッテリー', 'battery', '電池', 'li-ion', 'lipo'],
+      // Battery: restrict to dangerous battery chemistries/types
+      battery: ['リチウム', 'lithium', 'リチウムイオン', 'li-ion', 'lipo'],
       hazardous: ['スプレー', 'spray', '可燃', 'flammable', '引火', 'アルコール', 'alcohol'],
       cites: ['象牙', 'ivory', 'べっ甲', 'tortoiseshell', '毛皮', 'fur', 'ワニ', 'crocodile'],
       weapon: ['ナイフ', 'knife', '刀', 'sword', '銃', 'gun', 'エアガン', 'airsoft'],

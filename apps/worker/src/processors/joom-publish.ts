@@ -66,6 +66,12 @@ export async function processJoomPublishJob(job: Job<JoomPublishJobData>): Promi
         // joomProductId は型定義外のため any キャストで取得
         return await processDeleteProduct((job.data as any).joomProductId, joomListingId!);
 
+      case 'enable-product' as any:
+        return await processEnableProduct((job.data as any).listingId!, (job.data as any).joomProductId!);
+
+      case 'disable-product' as any:
+        return await processDisableProduct((job.data as any).listingId!, (job.data as any).joomProductId!);
+
       default:
         throw new Error(`Unknown job type: ${type}`);
     }
@@ -194,6 +200,48 @@ async function processDeleteProduct(joomProductId: string, joomListingId?: strin
     success: resp.success,
     error: resp.error?.message,
   };
+}
+
+/**
+ * 商品を有効化（PAUSED → ACTIVE）
+ */
+async function processEnableProduct(listingId: string, joomProductId: string): Promise<void> {
+  const client = getJoomClient();
+  const result = await client.enableProduct(joomProductId);
+
+  if (result.success) {
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: {
+        status: 'ACTIVE',
+        listedAt: new Date(),
+        errorMessage: null,
+      },
+    });
+    log.info({ type: 'joom_enable_success', listingId, joomProductId });
+  } else {
+    log.error({ type: 'joom_enable_failed', listingId, joomProductId, error: result.error });
+    throw new Error(`Failed to enable product: ${result.error?.message}`);
+  }
+}
+
+/**
+ * 商品を無効化（ACTIVE → PAUSED）
+ */
+async function processDisableProduct(listingId: string, joomProductId: string): Promise<void> {
+  const client = getJoomClient();
+  const result = await client.disableProduct(joomProductId);
+
+  if (result.success) {
+    await prisma.listing.update({
+      where: { id: listingId },
+      data: { status: 'PAUSED' },
+    });
+    log.info({ type: 'joom_disable_success', listingId, joomProductId });
+  } else {
+    log.error({ type: 'joom_disable_failed', listingId, joomProductId, error: result.error });
+    throw new Error(`Failed to disable product: ${result.error?.message}`);
+  }
 }
 
 /**
