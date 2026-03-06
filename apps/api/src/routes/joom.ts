@@ -722,6 +722,26 @@ router.get('/queue/stats', async (req: Request, res: Response) => {
 });
 
 /**
+ * 失敗したジョブ一覧（デバッグ用）
+ */
+router.get('/queue/failed', async (req: Request, res: Response) => {
+  try {
+    const jobs = await joomPublishQueue.getFailed(0, 10);
+    const result = jobs.map(j => ({
+      id: j.id,
+      name: j.name,
+      data: j.data,
+      failedReason: j.failedReason,
+      timestamp: j.timestamp,
+    }));
+    res.json(result);
+  } catch (error) {
+    console.error('Failed to get failed jobs:', error);
+    res.status(500).json({ error: 'Failed to get failed jobs' });
+  }
+});
+
+/**
  * ジョブステータス
  */
 router.get('/queue/jobs/:jobId', async (req: Request, res: Response) => {
