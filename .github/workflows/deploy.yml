@@ -1,7 +1,7 @@
 # =============================================================================
-# RAKUDA Deploy
+# RAKUDA Deploy (Coolify API)
 # =============================================================================
-# Deploys the application to production server via SSH
+# Deploys the application to production via Coolify API
 # Triggered manually or after successful Docker build
 # =============================================================================
 
@@ -10,14 +10,16 @@ name: Deploy
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: "Deployment environment"
+      services:
+        description: "Services to deploy"
         required: true
-        default: "production"
+        default: "all"
         type: choice
         options:
-          - production
-          - staging
+          - all
+          - api
+          - worker
+          - web
 
   workflow_run:
     workflows: ["Docker Build"]
@@ -26,124 +28,67 @@ on:
     branches: [main]
 
 env:
-  DEPLOY_PATH: /opt/rakuda
+  COOLIFY_API_URL: ${{ secrets.COOLIFY_API_URL }}
+  COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+  COOLIFY_API_UUID: ${{ secrets.COOLIFY_API_UUID }}
+  COOLIFY_WORKER_UUID: ${{ secrets.COOLIFY_WORKER_UUID }}
+  COOLIFY_WEB_UUID: ${{ secrets.COOLIFY_WEB_UUID }}
 
 jobs:
   deploy:
-    name: Deploy to ${{ github.event.inputs.environment || 'production' }}
+    name: Deploy via Coolify
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
-    environment: ${{ github.event.inputs.environment || 'production' }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Add host to known_hosts
+      - name: Deploy API
+        if: ${{ github.event.inputs.services == 'all' || github.event.inputs.services == 'api' || github.event_name == 'workflow_run' }}
         run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+          echo "Deploying rakuda-api..."
+          RESPONSE=$(curl -sf -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            "$COOLIFY_API_URL/api/v1/deploy?uuid=$COOLIFY_API_UUID&force=true")
+          echo "$RESPONSE" | jq .
+          echo "API deployment queued."
 
-      - name: Deploy to server
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      - name: Deploy Worker
+        if: ${{ github.event.inputs.services == 'all' || github.event.inputs.services == 'worker' || github.event_name == 'workflow_run' }}
         run: |
-          ssh $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
-            set -e
+          echo "Deploying rakuda-worker..."
+          RESPONSE=$(curl -sf -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            "$COOLIFY_API_URL/api/v1/deploy?uuid=$COOLIFY_WORKER_UUID&force=true")
+          echo "$RESPONSE" | jq .
+          echo "Worker deployment queued."
 
-            echo "=== RAKUDA Deployment Started ==="
-            cd ${{ env.DEPLOY_PATH }}
+      - name: Deploy Web
+        if: ${{ github.event.inputs.services == 'all' || github.event.inputs.services == 'web' || github.event_name == 'workflow_run' }}
+        run: |
+          echo "Deploying rakuda-web..."
+          RESPONSE=$(curl -sf -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            "$COOLIFY_API_URL/api/v1/deploy?uuid=$COOLIFY_WEB_UUID&force=true")
+          echo "$RESPONSE" | jq .
+          echo "Web deployment queued."
 
-            # Pull latest images
-            echo "Pulling latest images..."
-            docker compose -f docker-compose.prod.yml pull
+      - name: Wait for deployments
+        run: |
+          echo "Waiting 60s for deployments to complete..."
+          sleep 60
 
-            # Run database migrations
-            echo "Running database migrations..."
-            docker compose -f docker-compose.prod.yml run --rm api \
-              npx prisma migrate deploy --schema=packages/database/prisma/schema
-
-            # Restart services with zero downtime
-            echo "Restarting services..."
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
-
-            # Wait for health checks
-            echo "Waiting for health checks..."
-            sleep 10
-
-            # Verify deployment
-            echo "Verifying deployment..."
-            curl -sf http://localhost:3000/api/health || exit 1
-
-            # Cleanup old images
-            echo "Cleaning up old images..."
-            docker image prune -af --filter "until=24h"
-
-            echo "=== Deployment Complete ==="
-          ENDSSH
+      - name: Verify API health
+        run: |
+          echo "Checking API health..."
+          HTTP_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" https://api.rakuda.dev/api/health || echo "000")
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "API health check passed."
+          else
+            echo "::warning::API health check returned $HTTP_STATUS (may still be deploying)"
+          fi
 
       - name: Notify success
         if: success()
-        run: |
-          echo "Deployment successful to ${{ github.event.inputs.environment || 'production' }}"
+        run: echo "Coolify deployment triggered successfully."
 
       - name: Notify failure
         if: failure()
         run: |
-          echo "Deployment failed!"
+          echo "::error::Deployment failed! Check Coolify dashboard at $COOLIFY_API_URL"
           exit 1
-
-  # ---------------------------------------------------------------------------
-  # Rollback Job (Manual trigger only)
-  # ---------------------------------------------------------------------------
-  rollback:
-    name: Rollback
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' && failure() }}
-    needs: deploy
-    environment: ${{ github.event.inputs.environment || 'production' }}
-
-    steps:
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Add host to known_hosts
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Rollback to previous version
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-        run: |
-          ssh $DEPLOY_USER@$DEPLOY_HOST << 'ENDSSH'
-            set -e
-
-            echo "=== RAKUDA Rollback Started ==="
-            cd ${{ env.DEPLOY_PATH }}
-
-            # Get previous image tags from backup
-            if [ -f .previous-deploy ]; then
-              source .previous-deploy
-
-              echo "Rolling back to previous version..."
-              docker compose -f docker-compose.prod.yml down
-
-              # Restore previous image tags
-              docker compose -f docker-compose.prod.yml up -d
-
-              echo "=== Rollback Complete ==="
-            else
-              echo "No previous deployment found. Manual intervention required."
-              exit 1
-            fi
-          ENDSSH
