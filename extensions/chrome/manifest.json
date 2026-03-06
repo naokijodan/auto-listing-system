@@ -12,7 +12,7 @@
   ],
   "host_permissions": [
     "http://localhost:3000/*",
-    "https://*.rakuda.app/*",
+    "https://*.rakuda.dev/*",
     "*://*.yahoo.co.jp/*",
     "*://*.mercari.com/*",
     "*://*.amazon.co.jp/*"

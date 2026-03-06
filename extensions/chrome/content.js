@@ -37,27 +37,52 @@ function extractProductInfo() {
 
 // ヤフオクから抽出
 function extractYahooAuction() {
-  const title = document.querySelector('.ProductTitle__text')?.textContent?.trim() ||
-                document.querySelector('h1.Product__title')?.textContent?.trim() ||
-                document.querySelector('h1')?.textContent?.trim();
+  // タイトル: h1が唯一の安定セレクタ
+  const title = document.querySelector('h1')?.textContent?.trim();
 
-  const priceText = document.querySelector('.Price__value')?.textContent?.trim() ||
-                    document.querySelector('[data-testid="price"]')?.textContent?.trim() ||
-                    document.querySelector('.Price')?.textContent?.trim();
+  // 価格: dl > dd > span 構造で、「円」を含むspan
+  let price = null;
+  const priceSpans = document.querySelectorAll('dl dd span');
+  for (const span of priceSpans) {
+    const text = span.textContent?.trim() || '';
+    if (/^\d{1,3}(,\d{3})*円$/.test(text)) {
+      price = parseInt(text.replace(/[^0-9]/g, ''), 10);
+      break;
+    }
+  }
 
-  const price = priceText ? parseInt(priceText.replace(/[^0-9]/g, ''), 10) : null;
+  // 画像: auctions.c.yimg.jp の画像
+  const image = document.querySelector('img[src*="auctions.c.yimg"]')?.src;
 
-  const image = document.querySelector('.ProductImage__image img')?.src ||
-                document.querySelector('.ProductImage img')?.src ||
-                document.querySelector('.Product__imageMain img')?.src;
+  // 説明: "商品説明" h2の次のセクション内のテキスト
+  let description = null;
+  const h2s = document.querySelectorAll('h2');
+  for (const h2 of h2s) {
+    if (h2.textContent?.trim() === '商品説明') {
+      const section = h2.nextElementSibling || h2.parentElement?.nextElementSibling;
+      if (section) {
+        description = section.textContent?.trim();
+      }
+      break;
+    }
+  }
 
-  const description = document.querySelector('.ProductExplanation__commentBody')?.textContent?.trim() ||
-                      document.querySelector('.ProductDetail__description')?.textContent?.trim();
+  // 出品者: /seller/ リンク
+  const sellerLink = document.querySelector('a[href*="/seller/"]');
+  const seller = sellerLink?.textContent?.trim();
 
-  const seller = document.querySelector('.Seller__name a')?.textContent?.trim() ||
-                 document.querySelector('.Seller__nickname')?.textContent?.trim();
-
-  const condition = document.querySelector('.ProductDetail__condition')?.textContent?.trim();
+  // 状態: "商品の状態" dt の次の dd
+  let condition = null;
+  const dts = document.querySelectorAll('dt');
+  for (const dt of dts) {
+    if (dt.textContent?.trim() === '商品の状態') {
+      const dd = dt.nextElementSibling;
+      if (dd?.tagName === 'DD') {
+        condition = dd.textContent?.trim();
+      }
+      break;
+    }
+  }
 
   return {
     title,
@@ -89,7 +114,8 @@ function extractMercari() {
   const description = document.querySelector('[data-testid="description"]')?.textContent?.trim() ||
                       document.querySelector('.item-description')?.textContent?.trim();
 
-  const seller = document.querySelector('[data-testid="seller-name"]')?.textContent?.trim();
+  const seller = document.querySelector('[data-testid="seller-name"]')?.textContent?.trim() ||
+                 document.querySelector('a[href*="/user/profile"]')?.textContent?.trim();
 
   const condition = document.querySelector('[data-testid="商品の状態"]')?.textContent?.trim();
 

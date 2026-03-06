@@ -8,7 +8,8 @@ import { JoomApiClient, JoomProduct } from './joom-api';
 import { downloadImages, isValidImageUrl } from './image-downloader';
 import { optimizeImage, optimizeImagesParallel } from './image-optimizer';
 import { uploadFile } from './storage';
-import { enrichmentTaskManager, PriceCalculatorService } from './enrichment-service';
+import { enrichmentTaskManager } from './enrichment-service';
+import { PricingPipeline } from './pricing';
 import { getCategoryMapping, fillRequiredAttributes, type ProductInfo } from './category-mapper';
 import path from 'path';
 import os from 'os';
@@ -234,10 +235,17 @@ export class JoomPublishService {
       throw new Error(`Task not approved: ${task.status}`);
     }
 
-    // 毎回 PriceCalculatorService で再計算（為替レートの最新値を使用）
-    const priceCalculator = new PriceCalculatorService();
-    const freshPricing = await priceCalculator.calculatePrice(task.product.price);
-    const initialPriceUsd: number = freshPricing.finalPriceUsd;
+    // 毎回 PricingPipeline で再計算（為替レートの最新値を使用）
+    const pipeline = new PricingPipeline();
+    const freshPricing = await pipeline.calculate({
+      sourcePrice: task.product.price,
+      weight: task.product?.weight || 200,
+      category: task.product?.category || undefined,
+      marketplace: 'JOOM' as any,
+      pricingMode: 'DETAILED',
+      profitMode: 'RATE',
+    });
+    const initialPriceUsd: number = freshPricing.finalPrice;
 
     // enrichment task の pricing も最新値で更新
     await prisma.enrichmentTask.update({
@@ -424,7 +432,7 @@ export class JoomPublishService {
         : (listing.product.images || []);
       // Listing.listingPrice を優先し、0以下の場合のみ enrichment の価格にフォールバック
       const listingPrice = typeof listing.listingPrice === 'number' ? listing.listingPrice : 0;
-      const enrichmentPrice = typeof pricing?.finalPriceUsd === 'number' ? pricing.finalPriceUsd : 0;
+      const enrichmentPrice = typeof pricing?.finalPrice === 'number' ? pricing.finalPrice : 0;
       const finalPrice = listingPrice > 0 ? listingPrice : enrichmentPrice;
 
       if (!finalPrice || finalPrice <= 0) {
@@ -601,10 +609,10 @@ export class JoomPublishService {
     const warnings: string[] = [];
 
     // 価格チェック
-    if (pricing?.finalPriceUsd < 5) {
+    if (pricing?.finalPrice < 5) {
       warnings.push('Price might be too low for this category');
     }
-    if (pricing?.finalPriceUsd > 500) {
+    if (pricing?.finalPrice > 500) {
       warnings.push('High price items may have lower conversion');
     }
 
@@ -633,7 +641,7 @@ export class JoomPublishService {
       wouldCreate: {
         title: translations?.en?.title || task.product.title,
         description: translations?.en?.description || task.product.description,
-        price: pricing?.finalPriceUsd || 0,
+        price: pricing?.finalPrice || 0,
         images: task.optimizedImages,
         attributes: attributes || {},
       },

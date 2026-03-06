@@ -447,7 +447,7 @@ export class JoomApiClient {
     });
 
     return this.request<void>('PUT', `/products/${productId}/variants/${sku}/price`, {
-      price,
+      price: String(price),
     });
   }
 
