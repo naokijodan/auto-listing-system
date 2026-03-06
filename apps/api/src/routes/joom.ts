@@ -734,6 +734,7 @@ router.get('/queue/failed', async (req: Request, res: Response) => {
       name: j.name,
       data: j.data,
       failedReason: j.failedReason,
+      stacktrace: j.stacktrace,
       timestamp: j.timestamp,
     }));
     res.json(result);
