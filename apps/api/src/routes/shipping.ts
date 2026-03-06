@@ -275,7 +275,7 @@ router.get('/methods', async (req: Request, res: Response, next: NextFunction) =
         method: shippingMethod,
         label: getMethodLabel(shippingMethod),
         costJpy: entry?.costJpy ?? null,
-        costUsd: entry?.costUsd ?? null,
+        costUsd: entry ? entry.costJpy * 0.0067 : null, // approximate JPY→USD
         available: entry !== null || weight === 0,
       });
     }
