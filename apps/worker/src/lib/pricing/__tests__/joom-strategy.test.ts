@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { vi, describe, it, expect } from 'vitest';
 
 vi.mock('@rakuda/database', () => ({
   Marketplace: { JOOM: 'JOOM' },
@@ -51,4 +51,3 @@ describe('JoomPricingStrategy', () => {
     expect(res.breakdown.profitRate).toBeCloseTo(0.3, 2);
   });
 });
-

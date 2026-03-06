@@ -9,7 +9,7 @@ import type {
 import { BasePricingStrategy } from './base-strategy';
 
 export class JoomPricingStrategy extends BasePricingStrategy {
-  readonly marketplace = Marketplace.JOOM as const;
+  readonly marketplace = 'JOOM' as const;
 
   calculate(normalized: NormalizedInput, settings: ResolvedSettings): PriceCalculationResult {
     const { sourcePriceUsd, shippingCostUsd, exchangeRate } = normalized;

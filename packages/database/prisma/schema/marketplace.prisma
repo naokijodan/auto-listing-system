@@ -181,3 +181,43 @@ enum InventoryMode {
   DROPSHIP
   HYBRID
 }
+
+
+// ========================================
+// 送料レートエントリ
+// ========================================
+model ShippingRateEntry {
+  id             String  @id @default(cuid())
+  shippingMethod String
+  weightMin      Float
+  weightMax      Float
+  costJpy        Float
+  isActive       Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shippingMethod, isActive])
+  @@map("shipping_rate_entries")
+}
+
+
+// ========================================
+// 商品個別価格上書き
+// ========================================
+model ProductPriceOverride {
+  id                 String      @id @default(cuid())
+  productId          String
+  marketplace        Marketplace
+  customProfitRate   Float?
+  customProfitAmount Float?
+  isActive           Boolean     @default(true)
+
+  product Product @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId, marketplace, isActive])
+  @@map("product_price_overrides")
+}

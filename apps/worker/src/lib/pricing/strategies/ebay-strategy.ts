@@ -9,7 +9,7 @@ import type {
 import { BasePricingStrategy } from './base-strategy';
 
 export class EbayPricingStrategy extends BasePricingStrategy {
-  readonly marketplace = Marketplace.EBAY as const;
+  readonly marketplace = 'EBAY' as const;
 
   calculate(normalized: NormalizedInput, settings: ResolvedSettings): PriceCalculationResult {
     const { sourcePriceUsd, shippingCostUsd, exchangeRate } = normalized;
