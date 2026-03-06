@@ -15,7 +15,7 @@ WORKDIR /app
 RUN apk add --no-cache python3 make g++
 
 # キャッシュバスト用（COPY前に配置してソースコードレイヤーも無効化）
-ARG CACHE_DATE=2026-03-05-v4
+ARG CACHE_DATE=2026-03-06-v1
 
 # ソースコードをコピー
 COPY . .
