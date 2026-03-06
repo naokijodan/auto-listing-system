@@ -1,240 +1,41 @@
-## Phase 4B: 旧 calculatePrice → 新 PricingPipeline への移行
+## タスク: Chrome拡張機能メルカリセレクタ修正
 
-### 作業ディレクトリ
+### Working directory
 ~/Desktop/rakuda/
 
-### 対象ファイル
-1. `apps/worker/src/processors/publish.ts` - 修正
-2. `apps/worker/src/processors/price-sync.ts` - 修正
-3. `apps/worker/src/lib/price-sync.ts` - 修正
+### 問題
+Playwright検証でメルカリの一部セレクタが変更されていることが判明:
+- `[data-testid="seller-name"]` → 存在しない。正しくは `[data-testid="seller-link"]`
+- `[data-testid="category"]` → 存在しない。正しくは `[data-testid="item-detail-category"]`
 
-### 概要
-旧 `price-calculator.ts` の `calculatePrice()` を使っている3ファイルを、新 `PricingPipeline` に移行する。
+### 修正箇所
 
-### 新パイプラインの使い方
-```typescript
-import { PricingPipeline } from '../lib/pricing';  // または './pricing'
-import { Marketplace } from '@rakuda/database';
+#### 1. extensions/chrome/background.js の extractProductInfo 関数（メルカリ部分）
+- 305行目付近の `if (url.includes('mercari.com'))` ブロック内
 
-const pipeline = new PricingPipeline();
-const result = await pipeline.calculate({
-  sourcePrice: product.price,      // 仕入価格（円）
-  weight: product.weight || 200,   // 重量（g）
-  marketplace: Marketplace.JOOM,   // or Marketplace.EBAY
-  category: product.category,
-  pricingMode: 'DETAILED',         // 新規追加（必須）
-  profitMode: 'RATE',              // 新規追加（必須）
-});
+変更1: sellerName のセレクタ（322行目付近）
+```
+// 変更前:
+const sellerName = document.querySelector('[data-testid="seller-name"]')?.textContent?.trim();
 
-// 出力マッピング:
-// 旧 priceResult.listingPrice → 新 result.finalPrice
-// 旧 priceResult.shippingCost → 新 result.breakdown.shippingCostUsd
+// 変更後:
+const sellerName = document.querySelector('[data-testid="seller-link"]')?.textContent?.trim();
 ```
 
-### ファイル1: `apps/worker/src/processors/publish.ts`
+変更2: category のセレクタ（325行目付近）
+```
+// 変更前:
+const category = document.querySelector('[data-testid="category"]')?.textContent?.trim();
 
-#### import 変更
-変更前:
-```typescript
-import { calculatePrice } from '../lib/price-calculator';
-```
-変更後:
-```typescript
-import { PricingPipeline } from '../lib/pricing';
-```
-注意: `Marketplace` は既に `@rakuda/database` か `@prisma/client` から import されているか確認。なければ追加。
-
-#### Joom 出品（約行281-286）
-変更前:
-```typescript
-const priceResult = await calculatePrice({
-  sourcePrice: product.price,
-  weight: product.weight || 200,
-  category: product.category,
-  marketplace: 'joom',
-});
-```
-変更後:
-```typescript
-const pipeline = new PricingPipeline();
-const priceResult = await pipeline.calculate({
-  sourcePrice: product.price,
-  weight: product.weight || 200,
-  category: product.category,
-  marketplace: Marketplace.JOOM,
-  pricingMode: 'DETAILED',
-  profitMode: 'RATE',
-});
+// 変更後:
+const category = document.querySelector('[data-testid="item-detail-category"]')?.textContent?.trim();
 ```
 
-#### eBay 出品（約行553-559）
-変更前:
-```typescript
-const priceResult = await calculatePrice({
-  sourcePrice: product.price,
-  weight: product.weight || 200,
-  category: product.category,
-  marketplace: 'ebay',
-  region: 'US',
-});
-```
-変更後:
-```typescript
-const pipeline = new PricingPipeline();
-const priceResult = await pipeline.calculate({
-  sourcePrice: product.price,
-  weight: product.weight || 200,
-  category: product.category,
-  marketplace: Marketplace.EBAY,
-  pricingMode: 'DETAILED',
-  profitMode: 'RATE',
-});
-```
+#### 2. extensions/chrome/popup.js のメルカリ部分にも同様のセレクタがあれば修正
+- popup.js 内のメルカリセクションで seller-name や category のセレクタがあれば同様に修正
 
-#### 全ての `priceResult.listingPrice` を `priceResult.finalPrice` に変更
-対象行（全てのファイル共通のルール）:
-- `priceResult.listingPrice` → `priceResult.finalPrice`
-- `priceResult.shippingCost` → `priceResult.breakdown.shippingCostUsd`
-
-publish.ts での具体的な置換:
-- 行315: `price: priceResult.listingPrice` → `price: priceResult.finalPrice`
-- 行324: `price: priceResult.listingPrice` → `price: priceResult.finalPrice`
-- 行331: `price: priceResult.shippingCost` → `price: priceResult.breakdown.shippingCostUsd`
-- 行373: `price: priceResult.listingPrice` → `price: priceResult.finalPrice`
-- 行565: `listingPrice: priceResult.listingPrice` → `listingPrice: priceResult.finalPrice`
-- 行566: `shippingCost: priceResult.shippingCost` → `shippingCost: priceResult.breakdown.shippingCostUsd`
-- 行641: `pricingPrice: priceResult.listingPrice` → `pricingPrice: priceResult.finalPrice`
-- 行686: `price: priceResult.listingPrice` → `price: priceResult.finalPrice`
-
-### ファイル2: `apps/worker/src/processors/price-sync.ts`
-
-#### import 変更
-変更前:
-```typescript
-import { calculatePrice } from '../lib/price-calculator';
-```
-変更後:
-```typescript
-import { PricingPipeline } from '../lib/pricing';
-```
-注意: `Marketplace` は既に `@prisma/client` から import されている（行3）。
-
-#### 1箇所目（約行140-145）
-変更前:
-```typescript
-const priceResult = await calculatePrice({
-  sourcePrice: product.price,
-  weight: product.weight || 200,
-  category: product.category || undefined,
-  marketplace: listing.marketplace.toLowerCase() as 'joom' | 'ebay',
-});
-```
-変更後:
-```typescript
-const pipeline = new PricingPipeline();
-const priceResult = await pipeline.calculate({
-  sourcePrice: product.price,
-  weight: product.weight || 200,
-  category: product.category || undefined,
-  marketplace: listing.marketplace as Marketplace,
-  pricingMode: 'DETAILED',
-  profitMode: 'RATE',
-});
-```
-注意: `listing.marketplace` は既に Marketplace enum 型（大文字: 'JOOM', 'EBAY'）なので `.toLowerCase()` は不要。`as Marketplace` でキャストする。
-
-#### 2箇所目（約行397-402）
-同じパターンで変更:
-変更前:
-```typescript
-const priceResult = await calculatePrice({
-  sourcePrice: listing.product.price,
-  weight: listing.product.weight || 200,
-  category: listing.product.category || undefined,
-  marketplace: listing.marketplace.toLowerCase() as 'joom' | 'ebay',
-});
-```
-変更後:
-```typescript
-const pipeline = new PricingPipeline();
-const priceResult = await pipeline.calculate({
-  sourcePrice: listing.product.price,
-  weight: listing.product.weight || 200,
-  category: listing.product.category || undefined,
-  marketplace: listing.marketplace as Marketplace,
-  pricingMode: 'DETAILED',
-  profitMode: 'RATE',
-});
-```
-
-#### プロパティ置換
-- 行148: `priceResult.listingPrice` → `priceResult.finalPrice`
-- 行162: `priceResult.shippingCost` → `priceResult.breakdown.shippingCostUsd`
-- 行405: `priceResult.listingPrice` → `priceResult.finalPrice`
-- 行415: `priceResult.shippingCost` → `priceResult.breakdown.shippingCostUsd`
-
-### ファイル3: `apps/worker/src/lib/price-sync.ts`
-
-#### import 変更
-変更前:
-```typescript
-import { calculatePrice, PriceCalculationInput } from './price-calculator';
-```
-変更後:
-```typescript
-import { PricingPipeline } from './pricing';
-import { Marketplace } from '@rakuda/database';
-```
-注意: `PriceCalculationInput` は使わなくなるので削除してよい。
-
-#### 呼び出し変更（約行52-66）
-変更前:
-```typescript
-const marketplace = listing.marketplace.toLowerCase() as 'joom' | 'ebay';
-
-const input: PriceCalculationInput = {
-  sourcePrice: listing.product.price,
-  weight: listing.product.weight || 200,
-  category: listing.product.category || undefined,
-  marketplace,
-  region: 'US',
-};
-
-const calculation = await calculatePrice(input);
-const newPrice = calculation.listingPrice;
-```
-変更後:
-```typescript
-const pipeline = new PricingPipeline();
-const calculation = await pipeline.calculate({
-  sourcePrice: listing.product.price,
-  weight: listing.product.weight || 200,
-  category: listing.product.category || undefined,
-  marketplace: listing.marketplace as Marketplace,
-  pricingMode: 'DETAILED',
-  profitMode: 'RATE',
-});
-const newPrice = calculation.finalPrice;
-```
-
-#### プロパティ置換
-- 行66: `calculation.listingPrice` → `calculation.finalPrice`
-- 行94: `calculation.shippingCost` → `calculation.breakdown.shippingCostUsd`
-
-### Marketplace import について
-- `apps/worker/src/processors/price-sync.ts` は既に `import { Marketplace } from '@prisma/client';` がある（行3）。しかし、RAKUDA のルールでは `@rakuda/database` からインポートするのが正しい。`@prisma/client` のままでもコンパイルは通るが、もし `@rakuda/database` に統一したい場合は変更する。ただし、既存コードの import を壊さないように注意。今回は既存の import はそのまま残す。
-- `apps/worker/src/processors/publish.ts` で Marketplace が import されていなければ追加: `import { Marketplace } from '@rakuda/database';`
-- `apps/worker/src/lib/price-sync.ts` に `import { Marketplace } from '@rakuda/database';` を追加
-
-### テスト実行
-```bash
-cd ~/Desktop/rakuda
-npx vitest run apps/worker/src/lib/pricing/__tests__/
-```
-
-### 禁止事項
-- `price-calculator.ts` は変更しない（後方互換性のために残す）
-- pricing/ 配下のファイル（normalizer, strategy, pipeline, settings-resolver等）は変更しない
-- テストファイルは変更しない
-- 既存のビジネスロジック（価格変動チェック、API更新等）は変更しない
-- import 以外の既存コードの構造は変更しない
+### 注意事項
+- ヤフオクとAmazon JPのセレクタは変更しない
+- content.js は変更しない
+- ファイルの他の部分は一切変更しない
+- 既存のコード構造・スタイルに合わせる
