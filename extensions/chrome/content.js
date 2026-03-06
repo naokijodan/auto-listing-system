@@ -114,7 +114,7 @@ function extractMercari() {
   const description = document.querySelector('[data-testid="description"]')?.textContent?.trim() ||
                       document.querySelector('.item-description')?.textContent?.trim();
 
-  const seller = document.querySelector('[data-testid="seller-name"]')?.textContent?.trim() ||
+  const seller = document.querySelector('[data-testid="seller-link"]')?.textContent?.trim() ||
                  document.querySelector('a[href*="/user/profile"]')?.textContent?.trim();
 
   const condition = document.querySelector('[data-testid="商品の状態"]')?.textContent?.trim();
