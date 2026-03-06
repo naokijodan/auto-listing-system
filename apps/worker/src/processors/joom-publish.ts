@@ -404,6 +404,7 @@ export async function processFullJoomWorkflow(
   job: Job<{ taskId: string; skipImages?: boolean }>
 ): Promise<any> {
   const { taskId, skipImages = false } = job.data;
+  log.info({ type: 'build_version', version: '2026-03-06-v2', jobId: job.id });
 
   log.info({
     type: 'full_joom_workflow_start',
