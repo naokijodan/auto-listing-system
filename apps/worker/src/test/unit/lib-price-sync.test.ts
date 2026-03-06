@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Hoist mock functions
-const { mockListingFindUnique, mockListingFindMany, mockListingUpdate, mockCalculatePrice, mockJoomUpdatePrice, mockEbayUpdatePrice } = vi.hoisted(() => ({
+const { mockListingFindUnique, mockListingFindMany, mockListingUpdate, mockJoomUpdatePrice, mockEbayUpdatePrice } = vi.hoisted(() => ({
   mockListingFindUnique: vi.fn(),
   mockListingFindMany: vi.fn(),
   mockListingUpdate: vi.fn(),
-  mockCalculatePrice: vi.fn(),
   mockJoomUpdatePrice: vi.fn(),
   mockEbayUpdatePrice: vi.fn(),
 }));
@@ -20,8 +19,10 @@ vi.mock('@rakuda/database', () => ({
   },
 }));
 
-vi.mock('../../lib/price-calculator', () => ({
-  calculatePrice: mockCalculatePrice,
+vi.mock('../../lib/pricing', () => ({
+  PricingPipeline: vi.fn().mockImplementation(() => ({
+    calculate: vi.fn(),
+  })),
 }));
 
 vi.mock('../../lib/joom-api', () => ({
@@ -54,10 +55,15 @@ vi.mock('@rakuda/logger', () => ({
 }));
 
 import { syncListingPrice, syncAllPrices } from '../../lib/price-sync';
+import { PricingPipeline } from '../../lib/pricing';
+
+let mockCalculate: ReturnType<typeof vi.fn>;
 
 describe('Price Sync (lib)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCalculate = vi.fn();
+    (PricingPipeline as any).mockImplementation(() => ({ calculate: mockCalculate }));
     mockListingUpdate.mockResolvedValue({});
     mockJoomUpdatePrice.mockResolvedValue({});
     mockEbayUpdatePrice.mockResolvedValue({});
@@ -88,9 +94,10 @@ describe('Price Sync (lib)', () => {
         },
       });
 
-      mockCalculatePrice.mockResolvedValueOnce({
-        listingPrice: 120, // 20% increase
-        shippingCost: 10,
+      mockCalculate.mockResolvedValueOnce({
+        finalPrice: 120, // 20% increase
+        breakdown: { shippingCostUsd: 10 },
+        metadata: { exchangeRate: 150 },
       });
 
       const result = await syncListingPrice('listing-1');
@@ -112,9 +119,10 @@ describe('Price Sync (lib)', () => {
         },
       });
 
-      mockCalculatePrice.mockResolvedValueOnce({
-        listingPrice: 100.5, // 0.5% change
-        shippingCost: 10,
+      mockCalculate.mockResolvedValueOnce({
+        finalPrice: 100.5, // 0.5% change
+        breakdown: { shippingCostUsd: 10 },
+        metadata: { exchangeRate: 150 },
       });
 
       const result = await syncListingPrice('listing-1');
@@ -137,9 +145,10 @@ describe('Price Sync (lib)', () => {
         },
       });
 
-      mockCalculatePrice.mockResolvedValueOnce({
-        listingPrice: 150,
-        shippingCost: 10,
+      mockCalculate.mockResolvedValueOnce({
+        finalPrice: 150,
+        breakdown: { shippingCostUsd: 10 },
+        metadata: { exchangeRate: 150 },
       });
 
       const result = await syncListingPrice('listing-1');
@@ -162,9 +171,10 @@ describe('Price Sync (lib)', () => {
         },
       });
 
-      mockCalculatePrice.mockResolvedValueOnce({
-        listingPrice: 150,
-        shippingCost: 10,
+      mockCalculate.mockResolvedValueOnce({
+        finalPrice: 150,
+        breakdown: { shippingCostUsd: 10 },
+        metadata: { exchangeRate: 150 },
       });
 
       const result = await syncListingPrice('listing-1');
@@ -187,9 +197,10 @@ describe('Price Sync (lib)', () => {
         },
       });
 
-      mockCalculatePrice.mockResolvedValueOnce({
-        listingPrice: 150,
-        shippingCost: 10,
+      mockCalculate.mockResolvedValueOnce({
+        finalPrice: 150,
+        breakdown: { shippingCostUsd: 10 },
+        metadata: { exchangeRate: 150 },
       });
 
       mockJoomUpdatePrice.mockRejectedValueOnce(new Error('API error'));
@@ -224,9 +235,10 @@ describe('Price Sync (lib)', () => {
           product: { price: 20000, weight: 300 },
         });
 
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 100,
-        shippingCost: 10,
+      mockCalculate.mockResolvedValue({
+        finalPrice: 100,
+        breakdown: { shippingCostUsd: 10 },
+        metadata: { exchangeRate: 150 },
       });
 
       const result = await syncAllPrices({ batchSize: 10 });
@@ -264,9 +276,10 @@ describe('Price Sync (lib)', () => {
           product: { price: 20000, weight: 300 },
         });
 
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 200,
-        shippingCost: 10,
+      mockCalculate.mockResolvedValue({
+        finalPrice: 200,
+        breakdown: { shippingCostUsd: 10 },
+        metadata: { exchangeRate: 150 },
       });
 
       const result = await syncAllPrices();

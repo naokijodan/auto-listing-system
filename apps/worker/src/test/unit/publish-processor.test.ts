@@ -8,7 +8,6 @@ const {
   mockIsJoomConfigured,
   mockIsEbayConfigured,
   mockMapConditionToEbay,
-  mockCalculatePrice,
   mockAlertManager,
   mockEventBus,
 } = vi.hoisted(() => {
@@ -39,7 +38,6 @@ const {
     mockIsJoomConfigured: vi.fn(),
     mockIsEbayConfigured: vi.fn(),
     mockMapConditionToEbay: vi.fn().mockReturnValue('NEW'),
-    mockCalculatePrice: vi.fn(),
     mockAlertManager: {
       processEvent: vi.fn(),
     },
@@ -62,6 +60,7 @@ vi.mock('@rakuda/logger', () => ({
 
 vi.mock('@rakuda/database', () => ({
   prisma: mockPrismaLocal,
+  Marketplace: { JOOM: 'JOOM', EBAY: 'EBAY' },
 }));
 
 vi.mock('@rakuda/config', () => ({
@@ -82,8 +81,10 @@ vi.mock('../../lib/ebay-api', () => ({
   mapConditionToEbay: mockMapConditionToEbay,
 }));
 
-vi.mock('../../lib/price-calculator', () => ({
-  calculatePrice: mockCalculatePrice,
+vi.mock('../../lib/pricing', () => ({
+  PricingPipeline: vi.fn().mockImplementation(() => ({
+    calculate: vi.fn(),
+  })),
 }));
 
 vi.mock('../../lib/alert-manager', () => ({
@@ -101,6 +102,9 @@ vi.mock('../../lib/api-utils', () => ({
 }));
 
 import { processPublishJob } from '../../processors/publish';
+import { PricingPipeline } from '../../lib/pricing';
+
+let mockCalculate: ReturnType<typeof vi.fn>;
 
 describe('Publish Processor', () => {
   const mockProduct = {
@@ -136,15 +140,16 @@ describe('Publish Processor', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCalculate = vi.fn();
+    (PricingPipeline as any).mockImplementation(() => ({ calculate: mockCalculate }));
     mockPrismaLocal.listing.findUnique.mockResolvedValue(mockListing);
     mockPrismaLocal.listing.update.mockResolvedValue({ id: 'listing-1' });
     mockPrismaLocal.product.update.mockResolvedValue({ id: 'product-1' });
     mockPrismaLocal.jobLog.create.mockResolvedValue({ id: 'log-1' });
-    mockCalculatePrice.mockResolvedValue({
-      listingPrice: 100,
-      shippingCost: 15,
-      profit: 25,
-      profitMargin: 0.25,
+    mockCalculate.mockResolvedValue({
+      finalPrice: 100,
+      breakdown: { shippingCostUsd: 15 },
+      metadata: { exchangeRate: 150 },
     });
     mockAlertManager.processEvent.mockResolvedValue(undefined);
     mockEventBus.publishListingUpdate.mockResolvedValue(undefined);

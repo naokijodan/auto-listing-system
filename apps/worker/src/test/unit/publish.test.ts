@@ -8,7 +8,6 @@ const {
   mockIsJoomConfigured,
   mockIsEbayConfigured,
   mockMapConditionToEbay,
-  mockCalculatePrice,
   mockAlertManager,
   mockEventBus,
   mockProcessBatch,
@@ -40,7 +39,6 @@ const {
     mockIsJoomConfigured: vi.fn(),
     mockIsEbayConfigured: vi.fn(),
     mockMapConditionToEbay: vi.fn(),
-    mockCalculatePrice: vi.fn(),
     mockAlertManager: {
       processEvent: vi.fn(),
     },
@@ -64,6 +62,7 @@ vi.mock('@rakuda/logger', () => ({
 
 vi.mock('@rakuda/database', () => ({
   prisma: mockPrisma,
+  Marketplace: { JOOM: 'JOOM', EBAY: 'EBAY' },
 }));
 
 vi.mock('@rakuda/config', () => ({
@@ -84,8 +83,10 @@ vi.mock('../../lib/ebay-api', () => ({
   mapConditionToEbay: mockMapConditionToEbay,
 }));
 
-vi.mock('../../lib/price-calculator', () => ({
-  calculatePrice: mockCalculatePrice,
+vi.mock('../../lib/pricing', () => ({
+  PricingPipeline: vi.fn().mockImplementation(() => ({
+    calculate: vi.fn(),
+  })),
 }));
 
 vi.mock('../../lib/alert-manager', () => ({
@@ -111,6 +112,9 @@ import {
   processHighValuePublish,
   getPendingListingStats,
 } from '../../processors/publish';
+import { PricingPipeline } from '../../lib/pricing';
+
+let mockCalculate: ReturnType<typeof vi.fn>;
 
 describe('Publish Processor', () => {
   const mockProduct = {
@@ -136,6 +140,8 @@ describe('Publish Processor', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCalculate = vi.fn();
+    (PricingPipeline as any).mockImplementation(() => ({ calculate: mockCalculate }));
     mockPrisma.listing.findUnique.mockResolvedValue(mockListing);
     mockPrisma.listing.findMany.mockResolvedValue([]);
     mockPrisma.listing.update.mockResolvedValue({});
@@ -143,9 +149,10 @@ describe('Publish Processor', () => {
     mockPrisma.jobLog.create.mockResolvedValue({});
     mockIsJoomConfigured.mockResolvedValue(true);
     mockIsEbayConfigured.mockResolvedValue(true);
-    mockCalculatePrice.mockResolvedValue({
-      listingPrice: 29.99,
-      shippingCost: 5.99,
+    mockCalculate.mockResolvedValue({
+      finalPrice: 29.99,
+      breakdown: { shippingCostUsd: 5.99 },
+      metadata: { exchangeRate: 150 },
     });
     mockJoomApi.createProduct.mockResolvedValue({
       success: true,

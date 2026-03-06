@@ -2,6 +2,148 @@ import { PrismaClient, SourceType, Marketplace } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// ShippingRateEntry seeder (日本郵便 2024年国際郵便料金表)
+async function seedShippingRates() {
+  const rates: Array<{ shippingMethod: string; weightMin: number; weightMax: number; costJpy: number }>= [
+    // EP (eパケット)
+    { shippingMethod: 'EP', weightMin: 0, weightMax: 50, costJpy: 460 },
+    { shippingMethod: 'EP', weightMin: 51, weightMax: 100, costJpy: 510 },
+    { shippingMethod: 'EP', weightMin: 101, weightMax: 150, costJpy: 560 },
+    { shippingMethod: 'EP', weightMin: 151, weightMax: 200, costJpy: 610 },
+    { shippingMethod: 'EP', weightMin: 201, weightMax: 250, costJpy: 660 },
+    { shippingMethod: 'EP', weightMin: 251, weightMax: 300, costJpy: 710 },
+    { shippingMethod: 'EP', weightMin: 301, weightMax: 400, costJpy: 810 },
+    { shippingMethod: 'EP', weightMin: 401, weightMax: 500, costJpy: 910 },
+    { shippingMethod: 'EP', weightMin: 501, weightMax: 600, costJpy: 1010 },
+    { shippingMethod: 'EP', weightMin: 601, weightMax: 700, costJpy: 1110 },
+    { shippingMethod: 'EP', weightMin: 701, weightMax: 800, costJpy: 1210 },
+    { shippingMethod: 'EP', weightMin: 801, weightMax: 900, costJpy: 1310 },
+    { shippingMethod: 'EP', weightMin: 901, weightMax: 1000, costJpy: 1410 },
+    { shippingMethod: 'EP', weightMin: 1001, weightMax: 1250, costJpy: 1560 },
+    { shippingMethod: 'EP', weightMin: 1251, weightMax: 1500, costJpy: 1710 },
+    { shippingMethod: 'EP', weightMin: 1501, weightMax: 1750, costJpy: 1860 },
+    { shippingMethod: 'EP', weightMin: 1751, weightMax: 2000, costJpy: 2010 },
+
+    // EL (eパケットライト)
+    { shippingMethod: 'EL', weightMin: 0, weightMax: 50, costJpy: 380 },
+    { shippingMethod: 'EL', weightMin: 51, weightMax: 100, costJpy: 415 },
+    { shippingMethod: 'EL', weightMin: 101, weightMax: 150, costJpy: 450 },
+    { shippingMethod: 'EL', weightMin: 151, weightMax: 200, costJpy: 485 },
+    { shippingMethod: 'EL', weightMin: 201, weightMax: 250, costJpy: 520 },
+    { shippingMethod: 'EL', weightMin: 251, weightMax: 300, costJpy: 555 },
+    { shippingMethod: 'EL', weightMin: 301, weightMax: 400, costJpy: 625 },
+    { shippingMethod: 'EL', weightMin: 401, weightMax: 500, costJpy: 695 },
+    { shippingMethod: 'EL', weightMin: 501, weightMax: 600, costJpy: 765 },
+    { shippingMethod: 'EL', weightMin: 601, weightMax: 700, costJpy: 835 },
+    { shippingMethod: 'EL', weightMin: 701, weightMax: 800, costJpy: 905 },
+    { shippingMethod: 'EL', weightMin: 801, weightMax: 900, costJpy: 975 },
+    { shippingMethod: 'EL', weightMin: 901, weightMax: 1000, costJpy: 1045 },
+    { shippingMethod: 'EL', weightMin: 1001, weightMax: 1250, costJpy: 1150 },
+    { shippingMethod: 'EL', weightMin: 1251, weightMax: 1500, costJpy: 1255 },
+    { shippingMethod: 'EL', weightMin: 1501, weightMax: 1750, costJpy: 1360 },
+    { shippingMethod: 'EL', weightMin: 1751, weightMax: 2000, costJpy: 1465 },
+
+    // EMS (Zone 2)
+    { shippingMethod: 'EMS', weightMin: 0, weightMax: 500, costJpy: 3150 },
+    { shippingMethod: 'EMS', weightMin: 501, weightMax: 600, costJpy: 3400 },
+    { shippingMethod: 'EMS', weightMin: 601, weightMax: 700, costJpy: 3650 },
+    { shippingMethod: 'EMS', weightMin: 701, weightMax: 800, costJpy: 3900 },
+    { shippingMethod: 'EMS', weightMin: 801, weightMax: 900, costJpy: 4150 },
+    { shippingMethod: 'EMS', weightMin: 901, weightMax: 1000, costJpy: 4400 },
+    { shippingMethod: 'EMS', weightMin: 1001, weightMax: 1250, costJpy: 4900 },
+    { shippingMethod: 'EMS', weightMin: 1251, weightMax: 1500, costJpy: 5400 },
+    { shippingMethod: 'EMS', weightMin: 1501, weightMax: 1750, costJpy: 5900 },
+    { shippingMethod: 'EMS', weightMin: 1751, weightMax: 2000, costJpy: 6400 },
+    { shippingMethod: 'EMS', weightMin: 2001, weightMax: 2500, costJpy: 7400 },
+    { shippingMethod: 'EMS', weightMin: 2501, weightMax: 3000, costJpy: 8400 },
+
+    // CF (小形包装物 書留)
+    { shippingMethod: 'CF', weightMin: 0, weightMax: 50, costJpy: 580 },
+    { shippingMethod: 'CF', weightMin: 51, weightMax: 100, costJpy: 630 },
+    { shippingMethod: 'CF', weightMin: 101, weightMax: 150, costJpy: 680 },
+    { shippingMethod: 'CF', weightMin: 151, weightMax: 200, costJpy: 730 },
+    { shippingMethod: 'CF', weightMin: 201, weightMax: 250, costJpy: 780 },
+    { shippingMethod: 'CF', weightMin: 251, weightMax: 300, costJpy: 830 },
+    { shippingMethod: 'CF', weightMin: 301, weightMax: 400, costJpy: 930 },
+    { shippingMethod: 'CF', weightMin: 401, weightMax: 500, costJpy: 1030 },
+    { shippingMethod: 'CF', weightMin: 501, weightMax: 600, costJpy: 1130 },
+    { shippingMethod: 'CF', weightMin: 601, weightMax: 700, costJpy: 1230 },
+    { shippingMethod: 'CF', weightMin: 701, weightMax: 800, costJpy: 1330 },
+    { shippingMethod: 'CF', weightMin: 801, weightMax: 900, costJpy: 1430 },
+    { shippingMethod: 'CF', weightMin: 901, weightMax: 1000, costJpy: 1530 },
+    { shippingMethod: 'CF', weightMin: 1001, weightMax: 1250, costJpy: 1780 },
+    { shippingMethod: 'CF', weightMin: 1251, weightMax: 1500, costJpy: 2030 },
+    { shippingMethod: 'CF', weightMin: 1501, weightMax: 1750, costJpy: 2280 },
+    { shippingMethod: 'CF', weightMin: 1751, weightMax: 2000, costJpy: 2530 },
+
+    // CD (小形包装物 書留なし)
+    { shippingMethod: 'CD', weightMin: 0, weightMax: 50, costJpy: 190 },
+    { shippingMethod: 'CD', weightMin: 51, weightMax: 100, costJpy: 240 },
+    { shippingMethod: 'CD', weightMin: 101, weightMax: 150, costJpy: 290 },
+    { shippingMethod: 'CD', weightMin: 151, weightMax: 200, costJpy: 340 },
+    { shippingMethod: 'CD', weightMin: 201, weightMax: 250, costJpy: 390 },
+    { shippingMethod: 'CD', weightMin: 251, weightMax: 300, costJpy: 440 },
+    { shippingMethod: 'CD', weightMin: 301, weightMax: 400, costJpy: 540 },
+    { shippingMethod: 'CD', weightMin: 401, weightMax: 500, costJpy: 640 },
+    { shippingMethod: 'CD', weightMin: 501, weightMax: 600, costJpy: 740 },
+    { shippingMethod: 'CD', weightMin: 601, weightMax: 700, costJpy: 840 },
+    { shippingMethod: 'CD', weightMin: 701, weightMax: 800, costJpy: 940 },
+    { shippingMethod: 'CD', weightMin: 801, weightMax: 900, costJpy: 1040 },
+    { shippingMethod: 'CD', weightMin: 901, weightMax: 1000, costJpy: 1140 },
+    { shippingMethod: 'CD', weightMin: 1001, weightMax: 1250, costJpy: 1390 },
+    { shippingMethod: 'CD', weightMin: 1251, weightMax: 1500, costJpy: 1640 },
+    { shippingMethod: 'CD', weightMin: 1501, weightMax: 1750, costJpy: 1890 },
+    { shippingMethod: 'CD', weightMin: 1751, weightMax: 2000, costJpy: 2140 },
+
+    // CE (小形包装物 特定記録)
+    { shippingMethod: 'CE', weightMin: 0, weightMax: 50, costJpy: 350 },
+    { shippingMethod: 'CE', weightMin: 51, weightMax: 100, costJpy: 400 },
+    { shippingMethod: 'CE', weightMin: 101, weightMax: 150, costJpy: 450 },
+    { shippingMethod: 'CE', weightMin: 151, weightMax: 200, costJpy: 500 },
+    { shippingMethod: 'CE', weightMin: 201, weightMax: 250, costJpy: 550 },
+    { shippingMethod: 'CE', weightMin: 251, weightMax: 300, costJpy: 600 },
+    { shippingMethod: 'CE', weightMin: 301, weightMax: 400, costJpy: 700 },
+    { shippingMethod: 'CE', weightMin: 401, weightMax: 500, costJpy: 800 },
+    { shippingMethod: 'CE', weightMin: 501, weightMax: 600, costJpy: 900 },
+    { shippingMethod: 'CE', weightMin: 601, weightMax: 700, costJpy: 1000 },
+    { shippingMethod: 'CE', weightMin: 701, weightMax: 800, costJpy: 1100 },
+    { shippingMethod: 'CE', weightMin: 801, weightMax: 900, costJpy: 1200 },
+    { shippingMethod: 'CE', weightMin: 901, weightMax: 1000, costJpy: 1300 },
+    { shippingMethod: 'CE', weightMin: 1001, weightMax: 1250, costJpy: 1550 },
+    { shippingMethod: 'CE', weightMin: 1251, weightMax: 1500, costJpy: 1800 },
+    { shippingMethod: 'CE', weightMin: 1501, weightMax: 1750, costJpy: 2050 },
+    { shippingMethod: 'CE', weightMin: 1751, weightMax: 2000, costJpy: 2300 },
+  ];
+
+  const results = await Promise.all(
+    rates.map((r) =>
+      prisma.shippingRateEntry.upsert({
+        where: {
+          shippingMethod_weightMin_weightMax: {
+            shippingMethod: r.shippingMethod,
+            weightMin: r.weightMin,
+            weightMax: r.weightMax,
+          },
+        },
+        update: {
+          costJpy: r.costJpy,
+          isActive: true,
+        },
+        create: {
+          shippingMethod: r.shippingMethod,
+          weightMin: r.weightMin,
+          weightMax: r.weightMax,
+          costJpy: r.costJpy,
+          costUsd: null,
+          isActive: true,
+        },
+      })
+    )
+  );
+
+  console.log(`✅ Seeded ${results.length} shipping rate entries`);
+}
+
 async function main() {
   console.log('🌱 Seeding database...');
 
@@ -379,6 +521,9 @@ Description:
   ]);
 
   console.log(`✅ Created ${syncSettings.length} marketplace sync settings`);
+
+  // 送料レート投入（ShippingRateEntry）
+  await seedShippingRates();
 
   console.log('🎉 Seeding completed!');
 }

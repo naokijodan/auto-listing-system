@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockPrisma } from '../setup';
 
 // Mock dependencies
-vi.mock('../../lib/price-calculator', () => ({
-  calculatePrice: vi.fn(),
+vi.mock('../../lib/pricing', () => ({
+  PricingPipeline: vi.fn().mockImplementation(() => ({
+    calculate: vi.fn(),
+  })),
 }));
 
 vi.mock('../../lib/joom-api', () => ({
@@ -19,12 +21,12 @@ vi.mock('../../lib/ebay-api', () => ({
 }));
 
 import { processPriceSyncJob, recalculateListingPrice } from '../../processors/price-sync';
-import { calculatePrice } from '../../lib/price-calculator';
+import { PricingPipeline } from '../../lib/pricing';
 import { JoomApiClient } from '../../lib/joom-api';
 import { EbayApiClient } from '../../lib/ebay-api';
 
 describe('Price Sync Processor', () => {
-  const mockCalculatePrice = vi.mocked(calculatePrice);
+  let mockCalculate: ReturnType<typeof vi.fn>;
   const mockJoomClient = { updatePrice: vi.fn() };
   const mockEbayClient = { updatePrice: vi.fn() };
 
@@ -63,6 +65,8 @@ describe('Price Sync Processor', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCalculate = vi.fn();
+    (PricingPipeline as any).mockImplementation(() => ({ calculate: mockCalculate }));
     (JoomApiClient as any).mockImplementation(() => mockJoomClient);
     (EbayApiClient as any).mockImplementation(() => mockEbayClient);
     mockPrisma.listing.findMany.mockResolvedValue([mockListing]);
@@ -75,17 +79,12 @@ describe('Price Sync Processor', () => {
 
   describe('processPriceSyncJob', () => {
     it('should update price when change exceeds threshold', async () => {
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 55.00, // 10% increase
-        shippingCost: 5.00,
+      mockCalculate.mockResolvedValue({
+        finalPrice: 55.0, // 10% increase
         breakdown: {
-          exchangeRate: 0.0067,
-          costUsd: 67.00,
-          platformFee: 7.15,
-          paymentFee: 1.65,
-          shippingCost: 5.00,
-          profit: 16.50,
+          shippingCostUsd: 5.0,
         },
+        metadata: { exchangeRate: 0.0067 },
       });
 
       const result = await processPriceSyncJob(baseJob);
@@ -97,10 +96,10 @@ describe('Price Sync Processor', () => {
     });
 
     it('should skip when price change is below threshold', async () => {
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 50.50, // Only 1% increase, below 2% threshold
-        shippingCost: 5.00,
-        breakdown: { exchangeRate: 0.0067 },
+      mockCalculate.mockResolvedValue({
+        finalPrice: 50.5, // Only 1% increase, below 2% threshold
+        breakdown: { shippingCostUsd: 5.0 },
+        metadata: { exchangeRate: 0.0067 },
       });
 
       const result = await processPriceSyncJob(baseJob);
@@ -113,10 +112,10 @@ describe('Price Sync Processor', () => {
     });
 
     it('should force update when forceUpdate is true', async () => {
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 50.10, // Only 0.2% increase
-        shippingCost: 5.00,
-        breakdown: { exchangeRate: 0.0067 },
+      mockCalculate.mockResolvedValue({
+        finalPrice: 50.1, // Only 0.2% increase
+        breakdown: { shippingCostUsd: 5.0 },
+        metadata: { exchangeRate: 0.0067 },
       });
 
       const forceJob = {
@@ -131,10 +130,10 @@ describe('Price Sync Processor', () => {
     });
 
     it('should sync price to Joom marketplace when enabled', async () => {
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 60.00,
-        shippingCost: 5.00,
-        breakdown: { exchangeRate: 0.0067 },
+      mockCalculate.mockResolvedValue({
+        finalPrice: 60.0,
+        breakdown: { shippingCostUsd: 5.0 },
+        metadata: { exchangeRate: 0.0067 },
       });
 
       mockJoomClient.updatePrice.mockResolvedValue({ success: true });
@@ -163,10 +162,10 @@ describe('Price Sync Processor', () => {
       };
       mockPrisma.listing.findMany.mockResolvedValue([ebayListing]);
 
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 60.00,
-        shippingCost: 5.00,
-        breakdown: { exchangeRate: 0.0067 },
+      mockCalculate.mockResolvedValue({
+        finalPrice: 60.0,
+        breakdown: { shippingCostUsd: 5.0 },
+        metadata: { exchangeRate: 0.0067 },
       });
 
       mockEbayClient.updatePrice.mockResolvedValue({ success: true });
@@ -188,10 +187,10 @@ describe('Price Sync Processor', () => {
     });
 
     it('should handle marketplace sync failure gracefully', async () => {
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 60.00,
-        shippingCost: 5.00,
-        breakdown: { exchangeRate: 0.0067 },
+      mockCalculate.mockResolvedValue({
+        finalPrice: 60.0,
+        breakdown: { shippingCostUsd: 5.0 },
+        metadata: { exchangeRate: 0.0067 },
       });
 
       mockJoomClient.updatePrice.mockResolvedValue({
@@ -230,16 +229,16 @@ describe('Price Sync Processor', () => {
         { ...mockListing, id: 'listing-2', listingPrice: 100.00 },
       ]);
 
-      mockCalculatePrice
+      mockCalculate
         .mockResolvedValueOnce({
-          listingPrice: 55.00, // 10% increase
-          shippingCost: 5.00,
-          breakdown: { exchangeRate: 0.0067 },
+          finalPrice: 55.0, // 10% increase
+          breakdown: { shippingCostUsd: 5.0 },
+          metadata: { exchangeRate: 0.0067 },
         })
         .mockResolvedValueOnce({
-          listingPrice: 120.00, // 20% increase
-          shippingCost: 5.00,
-          breakdown: { exchangeRate: 0.0067 },
+          finalPrice: 120.0, // 20% increase
+          breakdown: { shippingCostUsd: 5.0 },
+          metadata: { exchangeRate: 0.0067 },
         });
 
       const result = await processPriceSyncJob(baseJob);
@@ -262,10 +261,10 @@ describe('Price Sync Processor', () => {
     });
 
     it('should create price change log', async () => {
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 60.00,
-        shippingCost: 5.00,
-        breakdown: { exchangeRate: 0.0067 },
+      mockCalculate.mockResolvedValue({
+        finalPrice: 60.0,
+        breakdown: { shippingCostUsd: 5.0 },
+        metadata: { exchangeRate: 0.0067 },
       });
 
       await processPriceSyncJob(baseJob);
@@ -283,10 +282,10 @@ describe('Price Sync Processor', () => {
     });
 
     it('should create job log on completion', async () => {
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 60.00,
-        shippingCost: 5.00,
-        breakdown: { exchangeRate: 0.0067 },
+      mockCalculate.mockResolvedValue({
+        finalPrice: 60.0,
+        breakdown: { shippingCostUsd: 5.0 },
+        metadata: { exchangeRate: 0.0067 },
       });
 
       await processPriceSyncJob(baseJob);
@@ -305,10 +304,10 @@ describe('Price Sync Processor', () => {
 
   describe('recalculateListingPrice', () => {
     it('should recalculate single listing price', async () => {
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 65.00,
-        shippingCost: 5.00,
-        breakdown: { exchangeRate: 0.0067 },
+      mockCalculate.mockResolvedValue({
+        finalPrice: 65.0,
+        breakdown: { shippingCostUsd: 5.0 },
+        metadata: { exchangeRate: 0.0067 },
       });
 
       const result = await recalculateListingPrice('listing-1');
@@ -339,10 +338,10 @@ describe('Price Sync Processor', () => {
     });
 
     it('should create price change log with manual source', async () => {
-      mockCalculatePrice.mockResolvedValue({
-        listingPrice: 65.00,
-        shippingCost: 5.00,
-        breakdown: { exchangeRate: 0.0067 },
+      mockCalculate.mockResolvedValue({
+        finalPrice: 65.0,
+        breakdown: { shippingCostUsd: 5.0 },
+        metadata: { exchangeRate: 0.0067 },
       });
 
       await recalculateListingPrice('listing-1');

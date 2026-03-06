@@ -820,7 +820,7 @@ router.post('/publish', async (req: Request, res: Response, next: NextFunction) 
             productId: product.id,
             marketplace: marketplaceEnum,
             status: 'PENDING_PUBLISH',
-            listingPrice: 0, // 出品時にprice-calculatorで計算
+            listingPrice: 0, // 出品時に新しいpricingパイプラインで計算
             shippingCost: 0,
             currency: 'USD',
             marketplaceData: {
