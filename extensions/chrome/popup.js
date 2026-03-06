@@ -175,13 +175,19 @@ function extractProductInfo() {
 
   // ヤフオク
   if (url.includes('yahoo.co.jp')) {
-    const title = document.querySelector('.ProductTitle__text')?.textContent?.trim() ||
-                  document.querySelector('h1')?.textContent?.trim();
-    const priceText = document.querySelector('.Price__value')?.textContent?.trim() ||
-                      document.querySelector('[data-testid="price"]')?.textContent?.trim();
-    const price = priceText ? parseInt(priceText.replace(/[^0-9]/g, ''), 10) : null;
-    const image = document.querySelector('.ProductImage__image img')?.src ||
-                  document.querySelector('.ProductImage img')?.src;
+    const title = document.querySelector('h1')?.textContent?.trim();
+
+    let price = null;
+    const priceSpans = document.querySelectorAll('dl dd span');
+    for (const span of priceSpans) {
+      const text = span.textContent?.trim() || '';
+      if (/^\d{1,3}(,\d{3})*円$/.test(text)) {
+        price = parseInt(text.replace(/[^0-9]/g, ''), 10);
+        break;
+      }
+    }
+
+    const image = document.querySelector('img[src*="auctions.c.yimg"]')?.src;
 
     return { title, price, priceCurrency: 'JPY', imageUrl: image };
   }

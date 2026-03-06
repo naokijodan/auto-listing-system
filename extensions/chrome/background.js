@@ -235,40 +235,66 @@ function extractProductInfo() {
 
   // ヤフオク
   if (url.includes('yahoo.co.jp')) {
-    const title = document.querySelector('.ProductTitle__text')?.textContent?.trim() ||
-                  document.querySelector('h1')?.textContent?.trim();
+    const title = document.querySelector('h1')?.textContent?.trim();
 
-    const priceText = document.querySelector('.Price__value')?.textContent?.trim() ||
-                      document.querySelector('[data-testid="price"]')?.textContent?.trim();
-    const price = priceText ? parseInt(priceText.replace(/[^0-9]/g, ''), 10) : null;
-
-    // 複数画像を取得
-    const imageElements = document.querySelectorAll('.ProductImage__images img, .ProductImage__thumbnail img');
-    const images = Array.from(imageElements)
-      .map(img => img.src || img.dataset?.src)
-      .filter(src => src && !src.includes('spacer'))
-      .slice(0, 10);
-
-    // 単一画像フォールバック
-    if (images.length === 0) {
-      const singleImage = document.querySelector('.ProductImage__image img')?.src ||
-                          document.querySelector('.ProductImage img')?.src;
-      if (singleImage) images.push(singleImage);
+    // 価格: dl > dd > span 構造で「X,XXX円」パターンにマッチ
+    let price = null;
+    const priceSpans = document.querySelectorAll('dl dd span');
+    for (const span of priceSpans) {
+      const text = span.textContent?.trim() || '';
+      if (/^\d{1,3}(,\d{3})*円$/.test(text)) {
+        price = parseInt(text.replace(/[^0-9]/g, ''), 10);
+        break;
+      }
     }
 
-    const description = document.querySelector('.ProductExplanation__body')?.textContent?.trim() ||
-                        document.querySelector('.ProductDetail__description')?.textContent?.trim() || '';
+    // 複数画像: auctions.c.yimg.jp を含むimg、重複除去
+    const imageSet = new Set();
+    const imgElements = document.querySelectorAll('img[src*="auctions.c.yimg"]');
+    for (const img of imgElements) {
+      const src = img.src;
+      if (src && !imageSet.has(src)) {
+        imageSet.add(src);
+      }
+    }
+    const images = Array.from(imageSet).slice(0, 10);
 
-    const sellerName = document.querySelector('.Seller__name a')?.textContent?.trim();
-    const sellerId = document.querySelector('.Seller__name a')?.href?.match(/\/seller\/([^/]+)/)?.[1];
+    // 説明: "商品説明" h2の次のセクション
+    let description = '';
+    const h2s = document.querySelectorAll('h2');
+    for (const h2 of h2s) {
+      if (h2.textContent?.trim() === '商品説明') {
+        const section = h2.nextElementSibling || h2.parentElement?.nextElementSibling;
+        if (section) {
+          description = section.textContent?.trim() || '';
+        }
+        break;
+      }
+    }
 
-    const condition = document.querySelector('.ProductDetail__condition')?.textContent?.trim();
+    // 出品者
+    const sellerLink = document.querySelector('a[href*="/seller/"]');
+    const sellerName = sellerLink?.textContent?.trim();
+    const sellerId = sellerLink?.href?.match(/\/seller\/([^/?]+)/)?.[1];
+
+    // 商品の状態
+    let condition = null;
+    const dts = document.querySelectorAll('dt');
+    for (const dt of dts) {
+      if (dt.textContent?.trim() === '商品の状態') {
+        const dd = dt.nextElementSibling;
+        if (dd?.tagName === 'DD') {
+          condition = dd.textContent?.trim();
+        }
+        break;
+      }
+    }
 
     return {
       title,
       price,
       images,
-      description,
+      description: description.substring(0, 5000),
       sellerName,
       sellerId,
       condition,
