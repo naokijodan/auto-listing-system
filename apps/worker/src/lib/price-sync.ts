@@ -1,6 +1,7 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
-import { calculatePrice, PriceCalculationInput } from './price-calculator';
+import { PricingPipeline } from './pricing';
+import { Marketplace } from '@rakuda/database';
 import { getLatestExchangeRate } from './exchange-rate';
 import { joomApi, isJoomConfigured } from './joom-api';
 import { ebayApi, isEbayConfigured } from './ebay-api';
@@ -53,17 +54,17 @@ export async function syncListingPrice(listingId: string): Promise<PriceSyncResu
     // マーケットプレイスを小文字に変換
     const marketplace = listing.marketplace.toLowerCase() as 'joom' | 'ebay';
 
-    // 価格再計算
-    const input: PriceCalculationInput = {
-      sourcePrice: listing.product.price,
-      weight: listing.product.weight || 200,
-      category: listing.product.category || undefined,
-      marketplace,
-      region: 'US',
-    };
-
-    const calculation = await calculatePrice(input);
-    const newPrice = calculation.listingPrice;
+  // 価格再計算
+  const pipeline = new PricingPipeline();
+  const calculation = await pipeline.calculate({
+    sourcePrice: listing.product.price,
+    weight: listing.product.weight || 200,
+    category: listing.product.category || undefined,
+    marketplace: listing.marketplace as Marketplace,
+    pricingMode: 'DETAILED',
+    profitMode: 'RATE',
+  });
+  const newPrice = calculation.finalPrice;
 
     // 価格変動があるかチェック（1%以上の変動）
     const priceChanged = Math.abs(newPrice - oldPrice) / oldPrice > 0.01;
@@ -91,7 +92,7 @@ export async function syncListingPrice(listingId: string): Promise<PriceSyncResu
       where: { id: listingId },
       data: {
         listingPrice: newPrice,
-        shippingCost: calculation.shippingCost,
+        shippingCost: calculation.breakdown.shippingCostUsd,
         updatedAt: new Date(),
       },
     });

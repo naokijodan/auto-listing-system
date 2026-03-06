@@ -1,302 +1,240 @@
-## Phase 3: normalizer.ts に ShippingRateEntry テーブル連携を追加
+## Phase 4B: 旧 calculatePrice → 新 PricingPipeline への移行
 
 ### 作業ディレクトリ
 ~/Desktop/rakuda/
 
 ### 対象ファイル
-1. `apps/worker/src/lib/pricing/normalizer.ts` - 修正
-2. `apps/worker/src/lib/pricing/__tests__/normalizer.test.ts` - テスト追加
+1. `apps/worker/src/processors/publish.ts` - 修正
+2. `apps/worker/src/processors/price-sync.ts` - 修正
+3. `apps/worker/src/lib/price-sync.ts` - 修正
 
-### 要件
+### 概要
+旧 `price-calculator.ts` の `calculatePrice()` を使っている3ファイルを、新 `PricingPipeline` に移行する。
 
-#### normalizer.ts の修正
-
-現在の normalizer.ts は SHIPPING_DEFAULTS（ハードコード定数）のみで送料を計算している。
-これを ShippingRateEntry テーブルから送料を取得するように拡張する。
-
-**ShippingRateEntry テーブル構造（Prismaモデル）:**
-```
-model ShippingRateEntry {
-  id             String   @id @default(cuid())
-  shippingMethod String   // CF, CD, CE, EP, EL, EMS
-  weightMin      Int      // 最小重量（g）
-  weightMax      Int      // 最大重量（g）
-  costJpy        Float    // 送料（円）
-  costUsd        Float?   // 送料（USD）- 参考値
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  @@unique([shippingMethod, weightMin, weightMax])
-  @@index([shippingMethod, isActive])
-  @@map("shipping_rate_entries")
-}
-```
-
-**修正ロジック:**
-
-1. `shippingMethod` が input に指定されている AND weight > 0 の場合:
-   - `prisma.shippingRateEntry.findFirst()` で検索
-   - 条件: `shippingMethod` が一致 AND `weightMin <= weight` AND `weightMax >= weight` AND `isActive: true`
-   - 見つかったら `costJpy` を使い、`exchangeRate` で USD に変換して `shippingCostUsd = costJpy * exchangeRate` とする
-   - `shippingCostJpy` は `costJpy` をそのまま使う
-
-2. ShippingRateEntry が見つからない場合 OR shippingMethod が未指定/weight が 0 の場合:
-   - 現在の SHIPPING_DEFAULTS ロジックにフォールバック（変更なし）
-
-**重要な注意事項:**
-- 既存のインターフェイス（NormalizedInput）は変更不要（shippingCostJpy, shippingCostUsd, shippingMethod は既に定義済み）
-- import に `prisma` は既にある
-- フォールバックロジックは既存コードをそのまま維持
-
-### 現在の normalizer.ts の全文
-
+### 新パイプラインの使い方
 ```typescript
-import { prisma, Marketplace } from '@rakuda/database';
-import { EXCHANGE_RATE_DEFAULTS, SHIPPING_DEFAULTS } from '@rakuda/config';
-import type { NormalizedInput, PriceCalculationInput } from './types';
+import { PricingPipeline } from '../lib/pricing';  // または './pricing'
+import { Marketplace } from '@rakuda/database';
 
-export async function normalize(input: PriceCalculationInput): Promise<NormalizedInput> {
-  const rate = await prisma.exchangeRate.findFirst({
-    where: { fromCurrency: 'JPY', toCurrency: 'USD' },
-    orderBy: { fetchedAt: 'desc' },
-  });
+const pipeline = new PricingPipeline();
+const result = await pipeline.calculate({
+  sourcePrice: product.price,      // 仕入価格（円）
+  weight: product.weight || 200,   // 重量（g）
+  marketplace: Marketplace.JOOM,   // or Marketplace.EBAY
+  category: product.category,
+  pricingMode: 'DETAILED',         // 新規追加（必須）
+  profitMode: 'RATE',              // 新規追加（必須）
+});
 
-  const exchangeRate = rate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
-  const exchangeRateSource = rate ? 'DB:exchange_rates' : 'DEFAULT:EXCHANGE_RATE_DEFAULTS';
-
-  const weight = input.weight ?? 0;
-
-  let shippingCostUsd = 0;
-  let shippingMethod = input.shippingMethod || '';
-  if (input.marketplace === Marketplace.JOOM) {
-    const { baseCost, perGramCost } = SHIPPING_DEFAULTS.JOOM;
-    shippingCostUsd = baseCost + weight * perGramCost;
-    shippingMethod = shippingMethod || 'JOOM_STANDARD';
-  } else if (input.marketplace === Marketplace.EBAY) {
-    shippingCostUsd = SHIPPING_DEFAULTS.EBAY.defaultCost;
-    shippingMethod = shippingMethod || 'EBAY_DEFAULT';
-  } else {
-    shippingCostUsd = 0;
-    shippingMethod = shippingMethod || 'STANDARD';
-  }
-
-  const sourcePriceUsd = input.sourcePrice * exchangeRate;
-  const shippingCostJpy = shippingCostUsd / exchangeRate;
-
-  return {
-    sourcePriceUsd,
-    shippingCostJpy,
-    shippingCostUsd,
-    exchangeRate,
-    exchangeRateSource,
-    shippingMethod,
-    original: { ...input },
-  };
-}
+// 出力マッピング:
+// 旧 priceResult.listingPrice → 新 result.finalPrice
+// 旧 priceResult.shippingCost → 新 result.breakdown.shippingCostUsd
 ```
 
-### 期待する修正後の normalizer.ts
+### ファイル1: `apps/worker/src/processors/publish.ts`
 
+#### import 変更
+変更前:
 ```typescript
-import { prisma, Marketplace } from '@rakuda/database';
-import { EXCHANGE_RATE_DEFAULTS, SHIPPING_DEFAULTS } from '@rakuda/config';
-import type { NormalizedInput, PriceCalculationInput } from './types';
-
-export async function normalize(input: PriceCalculationInput): Promise<NormalizedInput> {
-  const rate = await prisma.exchangeRate.findFirst({
-    where: { fromCurrency: 'JPY', toCurrency: 'USD' },
-    orderBy: { fetchedAt: 'desc' },
-  });
-
-  const exchangeRate = rate?.rate || EXCHANGE_RATE_DEFAULTS.JPY_TO_USD;
-  const exchangeRateSource = rate ? 'DB:exchange_rates' : 'DEFAULT:EXCHANGE_RATE_DEFAULTS';
-
-  const weight = input.weight ?? 0;
-
-  // ShippingRateEntry からの送料取得を試みる
-  let shippingCostJpy = 0;
-  let shippingCostUsd = 0;
-  let shippingMethod = input.shippingMethod || '';
-  let shippingResolved = false;
-
-  if (shippingMethod && weight > 0) {
-    const entry = await prisma.shippingRateEntry.findFirst({
-      where: {
-        shippingMethod,
-        weightMin: { lte: weight },
-        weightMax: { gte: weight },
-        isActive: true,
-      },
-    });
-    if (entry) {
-      shippingCostJpy = entry.costJpy;
-      shippingCostUsd = entry.costJpy * exchangeRate;
-      shippingResolved = true;
-    }
-  }
-
-  // フォールバック: ShippingRateEntry が見つからない場合
-  if (!shippingResolved) {
-    if (input.marketplace === Marketplace.JOOM) {
-      const { baseCost, perGramCost } = SHIPPING_DEFAULTS.JOOM;
-      shippingCostUsd = baseCost + weight * perGramCost;
-      shippingMethod = shippingMethod || 'JOOM_STANDARD';
-      shippingCostJpy = shippingCostUsd / exchangeRate;
-    } else if (input.marketplace === Marketplace.EBAY) {
-      shippingCostUsd = SHIPPING_DEFAULTS.EBAY.defaultCost;
-      shippingMethod = shippingMethod || 'EBAY_DEFAULT';
-      shippingCostJpy = shippingCostUsd / exchangeRate;
-    } else {
-      shippingCostUsd = 0;
-      shippingMethod = shippingMethod || 'STANDARD';
-      shippingCostJpy = 0;
-    }
-  }
-
-  const sourcePriceUsd = input.sourcePrice * exchangeRate;
-
-  return {
-    sourcePriceUsd,
-    shippingCostJpy,
-    shippingCostUsd,
-    exchangeRate,
-    exchangeRateSource,
-    shippingMethod,
-    original: { ...input },
-  };
-}
+import { calculatePrice } from '../lib/price-calculator';
 ```
-
-### normalizer.test.ts のテスト追加
-
-#### 現在のテストのモック構造（参考）
-既存テストでは以下のようにモックしている:
+変更後:
 ```typescript
-vi.mock('@rakuda/database', () => ({
-  prisma: {
-    exchangeRate: {
-      findFirst: vi.fn().mockResolvedValue({ rate: 0.0067 }),
-    },
-  },
-  Marketplace: { JOOM: 'JOOM', EBAY: 'EBAY' },
-}));
+import { PricingPipeline } from '../lib/pricing';
 ```
+注意: `Marketplace` は既に `@rakuda/database` か `@prisma/client` から import されているか確認。なければ追加。
 
-これに `shippingRateEntry` のモックを追加する:
+#### Joom 出品（約行281-286）
+変更前:
 ```typescript
-vi.mock('@rakuda/database', () => ({
-  prisma: {
-    exchangeRate: {
-      findFirst: vi.fn().mockResolvedValue({ rate: 0.0067 }),
-    },
-    shippingRateEntry: {
-      findFirst: vi.fn().mockResolvedValue(null),
-    },
-  },
-  Marketplace: { JOOM: 'JOOM', EBAY: 'EBAY' },
-}));
+const priceResult = await calculatePrice({
+  sourcePrice: product.price,
+  weight: product.weight || 200,
+  category: product.category,
+  marketplace: 'joom',
+});
 ```
-
-#### 追加テストケース
-
-**テスト1: ShippingRateEntry から送料を取得**
+変更後:
 ```typescript
-it('uses ShippingRateEntry when shippingMethod and weight are provided', async () => {
-  const { prisma } = await import('@rakuda/database');
-  vi.mocked(prisma.shippingRateEntry.findFirst).mockResolvedValueOnce({
-    id: 'test-1',
-    shippingMethod: 'CF',
-    weightMin: 0,
-    weightMax: 500,
-    costJpy: 1200,
-    costUsd: null,
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
-
-  const result = await normalize({
-    sourcePrice: 5000,
-    weight: 300,
-    marketplace: 'EBAY' as any,
-    shippingMethod: 'CF',
-    pricingMode: 'SIMPLE',
-    profitMode: 'RATE',
-  });
-
-  expect(result.shippingCostJpy).toBe(1200);
-  expect(result.shippingCostUsd).toBeCloseTo(1200 * 0.0067, 4);
-  expect(result.shippingMethod).toBe('CF');
+const pipeline = new PricingPipeline();
+const priceResult = await pipeline.calculate({
+  sourcePrice: product.price,
+  weight: product.weight || 200,
+  category: product.category,
+  marketplace: Marketplace.JOOM,
+  pricingMode: 'DETAILED',
+  profitMode: 'RATE',
 });
 ```
 
-**テスト2: ShippingRateEntry が見つからない場合はフォールバック**
+#### eBay 出品（約行553-559）
+変更前:
 ```typescript
-it('falls back to SHIPPING_DEFAULTS when no ShippingRateEntry found', async () => {
-  const { prisma } = await import('@rakuda/database');
-  vi.mocked(prisma.shippingRateEntry.findFirst).mockResolvedValueOnce(null);
-
-  const result = await normalize({
-    sourcePrice: 5000,
-    weight: 300,
-    marketplace: 'EBAY' as any,
-    shippingMethod: 'UNKNOWN_METHOD',
-    pricingMode: 'SIMPLE',
-    profitMode: 'RATE',
-  });
-
-  // EBAY default: 12 USD
-  expect(result.shippingCostUsd).toBe(12);
+const priceResult = await calculatePrice({
+  sourcePrice: product.price,
+  weight: product.weight || 200,
+  category: product.category,
+  marketplace: 'ebay',
+  region: 'US',
+});
+```
+変更後:
+```typescript
+const pipeline = new PricingPipeline();
+const priceResult = await pipeline.calculate({
+  sourcePrice: product.price,
+  weight: product.weight || 200,
+  category: product.category,
+  marketplace: Marketplace.EBAY,
+  pricingMode: 'DETAILED',
+  profitMode: 'RATE',
 });
 ```
 
-**テスト3: weight が 0 の場合はフォールバック（DB検索しない）**
-```typescript
-it('falls back when weight is 0', async () => {
-  const result = await normalize({
-    sourcePrice: 5000,
-    weight: 0,
-    marketplace: 'JOOM' as any,
-    shippingMethod: 'CF',
-    pricingMode: 'SIMPLE',
-    profitMode: 'RATE',
-  });
+#### 全ての `priceResult.listingPrice` を `priceResult.finalPrice` に変更
+対象行（全てのファイル共通のルール）:
+- `priceResult.listingPrice` → `priceResult.finalPrice`
+- `priceResult.shippingCost` → `priceResult.breakdown.shippingCostUsd`
 
-  // Joom fallback: baseCost(5) + 0 * perGramCost(0.01) = 5
-  expect(result.shippingCostUsd).toBe(5);
+publish.ts での具体的な置換:
+- 行315: `price: priceResult.listingPrice` → `price: priceResult.finalPrice`
+- 行324: `price: priceResult.listingPrice` → `price: priceResult.finalPrice`
+- 行331: `price: priceResult.shippingCost` → `price: priceResult.breakdown.shippingCostUsd`
+- 行373: `price: priceResult.listingPrice` → `price: priceResult.finalPrice`
+- 行565: `listingPrice: priceResult.listingPrice` → `listingPrice: priceResult.finalPrice`
+- 行566: `shippingCost: priceResult.shippingCost` → `shippingCost: priceResult.breakdown.shippingCostUsd`
+- 行641: `pricingPrice: priceResult.listingPrice` → `pricingPrice: priceResult.finalPrice`
+- 行686: `price: priceResult.listingPrice` → `price: priceResult.finalPrice`
+
+### ファイル2: `apps/worker/src/processors/price-sync.ts`
+
+#### import 変更
+変更前:
+```typescript
+import { calculatePrice } from '../lib/price-calculator';
+```
+変更後:
+```typescript
+import { PricingPipeline } from '../lib/pricing';
+```
+注意: `Marketplace` は既に `@prisma/client` から import されている（行3）。
+
+#### 1箇所目（約行140-145）
+変更前:
+```typescript
+const priceResult = await calculatePrice({
+  sourcePrice: product.price,
+  weight: product.weight || 200,
+  category: product.category || undefined,
+  marketplace: listing.marketplace.toLowerCase() as 'joom' | 'ebay',
+});
+```
+変更後:
+```typescript
+const pipeline = new PricingPipeline();
+const priceResult = await pipeline.calculate({
+  sourcePrice: product.price,
+  weight: product.weight || 200,
+  category: product.category || undefined,
+  marketplace: listing.marketplace as Marketplace,
+  pricingMode: 'DETAILED',
+  profitMode: 'RATE',
+});
+```
+注意: `listing.marketplace` は既に Marketplace enum 型（大文字: 'JOOM', 'EBAY'）なので `.toLowerCase()` は不要。`as Marketplace` でキャストする。
+
+#### 2箇所目（約行397-402）
+同じパターンで変更:
+変更前:
+```typescript
+const priceResult = await calculatePrice({
+  sourcePrice: listing.product.price,
+  weight: listing.product.weight || 200,
+  category: listing.product.category || undefined,
+  marketplace: listing.marketplace.toLowerCase() as 'joom' | 'ebay',
+});
+```
+変更後:
+```typescript
+const pipeline = new PricingPipeline();
+const priceResult = await pipeline.calculate({
+  sourcePrice: listing.product.price,
+  weight: listing.product.weight || 200,
+  category: listing.product.category || undefined,
+  marketplace: listing.marketplace as Marketplace,
+  pricingMode: 'DETAILED',
+  profitMode: 'RATE',
 });
 ```
 
-**テスト4: shippingMethod 未指定の場合はフォールバック**
-```typescript
-it('falls back when shippingMethod is not specified', async () => {
-  const result = await normalize({
-    sourcePrice: 5000,
-    weight: 300,
-    marketplace: 'JOOM' as any,
-    pricingMode: 'SIMPLE',
-    profitMode: 'RATE',
-  });
+#### プロパティ置換
+- 行148: `priceResult.listingPrice` → `priceResult.finalPrice`
+- 行162: `priceResult.shippingCost` → `priceResult.breakdown.shippingCostUsd`
+- 行405: `priceResult.listingPrice` → `priceResult.finalPrice`
+- 行415: `priceResult.shippingCost` → `priceResult.breakdown.shippingCostUsd`
 
-  // Joom fallback: baseCost(5) + 300 * perGramCost(0.01) = 8
-  expect(result.shippingCostUsd).toBe(8);
-  expect(result.shippingMethod).toBe('JOOM_STANDARD');
+### ファイル3: `apps/worker/src/lib/price-sync.ts`
+
+#### import 変更
+変更前:
+```typescript
+import { calculatePrice, PriceCalculationInput } from './price-calculator';
+```
+変更後:
+```typescript
+import { PricingPipeline } from './pricing';
+import { Marketplace } from '@rakuda/database';
+```
+注意: `PriceCalculationInput` は使わなくなるので削除してよい。
+
+#### 呼び出し変更（約行52-66）
+変更前:
+```typescript
+const marketplace = listing.marketplace.toLowerCase() as 'joom' | 'ebay';
+
+const input: PriceCalculationInput = {
+  sourcePrice: listing.product.price,
+  weight: listing.product.weight || 200,
+  category: listing.product.category || undefined,
+  marketplace,
+  region: 'US',
+};
+
+const calculation = await calculatePrice(input);
+const newPrice = calculation.listingPrice;
+```
+変更後:
+```typescript
+const pipeline = new PricingPipeline();
+const calculation = await pipeline.calculate({
+  sourcePrice: listing.product.price,
+  weight: listing.product.weight || 200,
+  category: listing.product.category || undefined,
+  marketplace: listing.marketplace as Marketplace,
+  pricingMode: 'DETAILED',
+  profitMode: 'RATE',
 });
+const newPrice = calculation.finalPrice;
 ```
 
-### テスト実行コマンド
+#### プロパティ置換
+- 行66: `calculation.listingPrice` → `calculation.finalPrice`
+- 行94: `calculation.shippingCost` → `calculation.breakdown.shippingCostUsd`
+
+### Marketplace import について
+- `apps/worker/src/processors/price-sync.ts` は既に `import { Marketplace } from '@prisma/client';` がある（行3）。しかし、RAKUDA のルールでは `@rakuda/database` からインポートするのが正しい。`@prisma/client` のままでもコンパイルは通るが、もし `@rakuda/database` に統一したい場合は変更する。ただし、既存コードの import を壊さないように注意。今回は既存の import はそのまま残す。
+- `apps/worker/src/processors/publish.ts` で Marketplace が import されていなければ追加: `import { Marketplace } from '@rakuda/database';`
+- `apps/worker/src/lib/price-sync.ts` に `import { Marketplace } from '@rakuda/database';` を追加
+
+### テスト実行
 ```bash
 cd ~/Desktop/rakuda
-npx vitest run apps/worker/src/lib/pricing/__tests__/normalizer.test.ts
-```
-
-既存テストが壊れていないことも確認:
-```bash
 npx vitest run apps/worker/src/lib/pricing/__tests__/
 ```
 
 ### 禁止事項
-- types.ts は変更しない
-- 既存のテストを壊さない
-- strategy, pipeline, settings-resolver, post-processor ファイルは変更しない
-- テストのモック構造を壊さない（既存の exchangeRate モックを維持しつつ shippingRateEntry を追加）
+- `price-calculator.ts` は変更しない（後方互換性のために残す）
+- pricing/ 配下のファイル（normalizer, strategy, pipeline, settings-resolver等）は変更しない
+- テストファイルは変更しない
+- 既存のビジネスロジック（価格変動チェック、API更新等）は変更しない
+- import 以外の既存コードの構造は変更しない

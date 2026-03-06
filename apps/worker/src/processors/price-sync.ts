@@ -2,7 +2,7 @@ import { Job } from 'bullmq';
 import { prisma } from '@rakuda/database';
 import { Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
-import { calculatePrice } from '../lib/price-calculator';
+import { PricingPipeline } from '../lib/pricing';
 import { JoomApiClient } from '../lib/joom-api';
 import { EbayApiClient } from '../lib/ebay-api';
 
@@ -137,15 +137,18 @@ export async function processPriceSyncJob(
 
       try {
         // 新しい価格を計算
-        const priceResult = await calculatePrice({
+        const pipeline = new PricingPipeline();
+        const priceResult = await pipeline.calculate({
           sourcePrice: product.price,
           weight: product.weight || 200,
           category: product.category || undefined,
-          marketplace: listing.marketplace.toLowerCase() as 'joom' | 'ebay',
+          marketplace: listing.marketplace as Marketplace,
+          pricingMode: 'DETAILED',
+          profitMode: 'RATE',
         });
 
         const oldPrice = listing.listingPrice;
-        const newPrice = priceResult.listingPrice;
+        const newPrice = priceResult.finalPrice;
         const changePercent = oldPrice > 0
           ? ((newPrice - oldPrice) / oldPrice) * 100
           : 0;
@@ -159,7 +162,7 @@ export async function processPriceSyncJob(
               where: { id: listing.id },
               data: {
                 listingPrice: newPrice,
-                shippingCost: priceResult.shippingCost,
+                shippingCost: priceResult.breakdown.shippingCostUsd,
               },
             }),
             prisma.priceChangeLog.create({
@@ -170,7 +173,7 @@ export async function processPriceSyncJob(
                 currency: listing.currency || 'USD',
                 changePercent,
                 source: 'auto_sync',
-                reason: `Exchange rate sync (threshold: ${priceChangeThreshold}%, rate: ${priceResult.breakdown.exchangeRate.toFixed(6)})`,
+                reason: `Exchange rate sync (threshold: ${priceChangeThreshold}%, rate: ${priceResult.metadata.exchangeRate.toFixed(6)})`,
               },
             }),
           ]);
@@ -394,15 +397,18 @@ export async function recalculateListingPrice(listingId: string): Promise<{
     throw new Error(`Listing not found: ${listingId}`);
   }
 
-  const priceResult = await calculatePrice({
+  const pipeline = new PricingPipeline();
+  const priceResult = await pipeline.calculate({
     sourcePrice: listing.product.price,
     weight: listing.product.weight || 200,
     category: listing.product.category || undefined,
-    marketplace: listing.marketplace.toLowerCase() as 'joom' | 'ebay',
+    marketplace: listing.marketplace as Marketplace,
+    pricingMode: 'DETAILED',
+    profitMode: 'RATE',
   });
 
   const oldPrice = listing.listingPrice;
-  const newPrice = priceResult.listingPrice;
+  const newPrice = priceResult.finalPrice;
   const changePercent = oldPrice > 0
     ? ((newPrice - oldPrice) / oldPrice) * 100
     : 0;
@@ -412,7 +418,7 @@ export async function recalculateListingPrice(listingId: string): Promise<{
       where: { id: listingId },
       data: {
         listingPrice: newPrice,
-        shippingCost: priceResult.shippingCost,
+        shippingCost: priceResult.breakdown.shippingCostUsd,
       },
     }),
     prisma.priceChangeLog.create({
@@ -423,7 +429,7 @@ export async function recalculateListingPrice(listingId: string): Promise<{
         currency: listing.currency || 'USD',
         changePercent,
         source: 'manual',
-        reason: `Manual price recalculation (rate: ${priceResult.breakdown.exchangeRate.toFixed(6)})`,
+        reason: `Manual price recalculation (rate: ${priceResult.metadata.exchangeRate.toFixed(6)})`,
       },
     }),
   ]);

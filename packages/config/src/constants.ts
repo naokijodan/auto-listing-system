@@ -215,6 +215,13 @@ export const PRICE_DEFAULTS = {
     targetProfitRate: 0.30,      // 30%
     adRate: 0,
     exchangeBuffer: 0.02,        // 2% 為替バッファ
+    // Joomは関税なし
+    dutyRate: 0,
+    vatRate: 0,
+    dutyProcessingFeeRate: 0,
+    mpfAmount: 0,
+    customsClearanceFeeJpy: 0,
+    euShippingDiffJpy: 0,
   },
   EBAY: {
     platformFeeRate: 0.13,       // 13%
@@ -222,6 +229,13 @@ export const PRICE_DEFAULTS = {
     targetProfitRate: 0.30,      // 30%
     adRate: 0,
     exchangeBuffer: 0.02,        // 2% 為替バッファ
+    // eBay固有: 関税・VAT・手数料パラメータ
+    dutyRate: 0.15,              // 15% 関税率
+    vatRate: 0,                  // VAT率（国別、デフォルト0）
+    dutyProcessingFeeRate: 0.021, // 2.1% 関税処理手数料率
+    mpfAmount: 0,                // MPF額（USD）
+    customsClearanceFeeJpy: 0,   // CE通関手数料（円）
+    euShippingDiffJpy: 0,        // EU送料差額（円）
   },
 } as const;
 

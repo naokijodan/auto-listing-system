@@ -11,7 +11,8 @@ import {
 } from '@rakuda/config';
 import { joomApi, isJoomConfigured } from '../lib/joom-api';
 import { ebayApi, isEbayConfigured, mapConditionToEbay } from '../lib/ebay-api';
-import { calculatePrice } from '../lib/price-calculator';
+import { PricingPipeline } from '../lib/pricing';
+import { Marketplace } from '@rakuda/database';
 import { alertManager } from '../lib/alert-manager';
 import { eventBus } from '../lib/event-bus';
 import { RateLimiter } from '../lib/api-utils';
@@ -278,11 +279,14 @@ async function publishToJoom(
   }
 
   // 価格計算
-  const priceResult = await calculatePrice({
+  const pipeline = new PricingPipeline();
+  const priceResult = await pipeline.calculate({
     sourcePrice: product.price,
     weight: product.weight || 200,
     category: product.category,
-    marketplace: 'joom',
+    marketplace: Marketplace.JOOM,
+    pricingMode: 'DETAILED',
+    profitMode: 'RATE',
   });
 
   // SKU生成（RAKUDA形式）
@@ -312,7 +316,7 @@ async function publishToJoom(
     type: 'joom_publish_preparing',
     title: title.substring(0, 50),
     mainImage: mainImage.substring(0, 60),
-    price: priceResult.listingPrice,
+    price: priceResult.finalPrice,
   });
 
   // Joom商品作成
@@ -321,14 +325,14 @@ async function publishToJoom(
     description: description,
     mainImage: mainImage,
     extraImages: extraImages,
-    price: priceResult.listingPrice,
+    price: priceResult.finalPrice,
     currency: 'USD',
     quantity: 1,
     sku: parentSku,
     parentSku: parentSku,
     tags: tags,
     shipping: {
-      price: priceResult.shippingCost,
+      price: priceResult.breakdown.shippingCostUsd,
       time: '15-30',
     },
   });
@@ -370,7 +374,7 @@ async function publishToJoom(
   log.info({
     type: 'joom_published',
     joomProductId,
-    price: priceResult.listingPrice,
+    price: priceResult.finalPrice,
     sku: parentSku,
   });
 
@@ -550,20 +554,22 @@ async function publishToEbay(
 
   try {
     // 1. 価格計算
-    const priceResult = await calculatePrice({
+    const pipeline = new PricingPipeline();
+    const priceResult = await pipeline.calculate({
       sourcePrice: product.price,
       weight: product.weight || 200,
       category: product.category,
-      marketplace: 'ebay',
-      region: 'US',
+      marketplace: Marketplace.EBAY,
+      pricingMode: 'DETAILED',
+      profitMode: 'RATE',
     });
 
     log.info({
       type: 'ebay_price_calculated',
       sku,
       sourcePrice: product.price,
-      listingPrice: priceResult.listingPrice,
-      shippingCost: priceResult.shippingCost,
+      listingPrice: priceResult.finalPrice,
+      shippingCost: priceResult.breakdown.shippingCostUsd,
     });
 
     // 2. カテゴリマッピング（EbayCategoryMapping参照）
@@ -638,7 +644,7 @@ async function publishToEbay(
         marketplaceId: 'EBAY_US',
         format: 'FIXED_PRICE',
         categoryId: finalCategoryId,
-        pricingPrice: priceResult.listingPrice,
+        pricingPrice: priceResult.finalPrice,
         pricingCurrency: 'USD',
         quantity: 1,
         listingDescription: description,
@@ -683,7 +689,7 @@ async function publishToEbay(
       sku,
       offerId,
       ebayListingId,
-      price: priceResult.listingPrice,
+      price: priceResult.finalPrice,
       category: finalCategoryId,
     });
 

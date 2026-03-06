@@ -25,12 +25,12 @@ export async function resolveSettings(
         adRate: defaults.adRate,
         profitRate,
         profitAmount,
-        dutyRate: marketplace === Marketplace.JOOM ? 0 : 0,
-        vatRate: 0,
-        dutyProcessingFeeRate: 0,
-        mpfAmount: 0,
-        customsClearanceFeeJpy: 0,
-        euShippingDiffJpy: 0,
+        dutyRate: defaults.dutyRate ?? 0,
+        vatRate: defaults.vatRate ?? 0,
+        dutyProcessingFeeRate: defaults.dutyProcessingFeeRate ?? 0,
+        mpfAmount: defaults.mpfAmount ?? 0,
+        customsClearanceFeeJpy: defaults.customsClearanceFeeJpy ?? 0,
+        euShippingDiffJpy: defaults.euShippingDiffJpy ?? 0,
         exchangeBufferRate: defaults.exchangeBuffer,
       };
       const adjustedDutyRate = base.dutyRate === 0 ? 0 : base.dutyRate / (1 - base.platformFeeRate - base.adRate);
@@ -77,18 +77,19 @@ export async function resolveSettings(
   });
 
   if (defaultSetting) {
+    const defaults = marketplace === Marketplace.JOOM ? PRICE_DEFAULTS.JOOM : PRICE_DEFAULTS.EBAY;
     const base: Omit<ResolvedSettings, 'version' | 'adjustedDutyRate'> = {
       platformFeeRate: defaultSetting.platformFeeRate,
       paymentFeeRate: defaultSetting.paymentFeeRate,
       adRate: defaultSetting.adRate,
       profitRate: defaultSetting.targetProfitRate,
       profitAmount: 0,
-      dutyRate: marketplace === Marketplace.JOOM ? 0 : 0,
-      vatRate: 0,
-      dutyProcessingFeeRate: 0,
-      mpfAmount: 0,
-      customsClearanceFeeJpy: 0,
-      euShippingDiffJpy: 0,
+      dutyRate: defaults.dutyRate ?? 0,
+      vatRate: defaults.vatRate ?? 0,
+      dutyProcessingFeeRate: defaults.dutyProcessingFeeRate ?? 0,
+      mpfAmount: defaults.mpfAmount ?? 0,
+      customsClearanceFeeJpy: defaults.customsClearanceFeeJpy ?? 0,
+      euShippingDiffJpy: defaults.euShippingDiffJpy ?? 0,
       exchangeBufferRate: defaultSetting.exchangeBuffer,
     };
     const adjustedDutyRate = base.dutyRate === 0 ? 0 : base.dutyRate / (1 - base.platformFeeRate - base.adRate);
@@ -103,15 +104,14 @@ export async function resolveSettings(
     adRate: defaults.adRate,
     profitRate: defaults.targetProfitRate,
     profitAmount: 0,
-    dutyRate: marketplace === Marketplace.JOOM ? 0 : 0,
-    vatRate: 0,
-    dutyProcessingFeeRate: 0,
-    mpfAmount: 0,
-    customsClearanceFeeJpy: 0,
-    euShippingDiffJpy: 0,
+    dutyRate: defaults.dutyRate ?? 0,
+    vatRate: defaults.vatRate ?? 0,
+    dutyProcessingFeeRate: defaults.dutyProcessingFeeRate ?? 0,
+    mpfAmount: defaults.mpfAmount ?? 0,
+    customsClearanceFeeJpy: defaults.customsClearanceFeeJpy ?? 0,
+    euShippingDiffJpy: defaults.euShippingDiffJpy ?? 0,
     exchangeBufferRate: defaults.exchangeBuffer,
   };
   const adjustedDutyRate = base.dutyRate === 0 ? 0 : base.dutyRate / (1 - base.platformFeeRate - base.adRate);
   return { ...base, adjustedDutyRate, version: ts.toISOString() };
 }
-
