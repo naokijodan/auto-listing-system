@@ -49,6 +49,33 @@ vi.mock('../../lib/enrichment-service', () => ({
   },
 }));
 
+// Joom API クライアントをスタブ化（実API呼び出しを防止）
+vi.mock('../../lib/joom-api', () => ({
+  JoomApiClient: vi.fn().mockImplementation(() => ({
+    createProduct: vi.fn().mockResolvedValue({ success: true, data: { id: 'joom-prod-123' } }),
+    getProduct: vi.fn().mockResolvedValue({ success: true }),
+    updateProduct: vi.fn().mockResolvedValue({ success: true }),
+  })),
+}));
+
+// 画像/ストレージ/価格計算系の依存をスタブ化
+vi.mock('../../lib/image-downloader', () => ({
+  downloadImages: vi.fn(),
+  isValidImageUrl: vi.fn().mockReturnValue(true),
+}));
+vi.mock('../../lib/image-optimizer', () => ({
+  optimizeImage: vi.fn(),
+  optimizeImagesParallel: vi.fn(),
+}));
+vi.mock('../../lib/storage', () => ({
+  uploadFile: vi.fn().mockResolvedValue('https://s3.example.com/img.jpg'),
+}));
+vi.mock('../../lib/pricing', () => ({
+  PricingPipeline: vi.fn().mockImplementation(() => ({
+     calculate: vi.fn().mockResolvedValue({ finalPrice: 49.99 }),
+  })),
+}));
+
 describe('Joom出品フロー統合テスト（Listing統合後）', () => {
   beforeEach(() => {
     resetMocks();
@@ -63,6 +90,13 @@ describe('Joom出品フロー統合テスト（Listing統合後）', () => {
     // APIログモデルを追加
     // @ts-expect-error dynamic add for tests
     mockPrisma.joomApiLog = { create: vi.fn().mockResolvedValue({ id: 'log-1' }) };
+
+    // $transaction をスタブ（配列の各オペレーションを逐次await）
+    // @ts-expect-error override for tests
+    mockPrisma.$transaction = vi.fn().mockImplementation(async (ops: any[]) => {
+      for (const op of ops) await op;
+      return [];
+    });
   });
 
   describe('createJoomListing', () => {
@@ -74,7 +108,7 @@ describe('Joom出品フロー統合テスト（Listing統合後）', () => {
         pricing: { costJpy: 15000, finalPriceUsd: 99.99 },
         product: { id: 'product-1', title: 'P1', description: 'D1', price: 15000, weight: 500 },
       });
-      mockPrisma.listing.upsert.mockResolvedValue({
+      mockPrisma.listing.create.mockResolvedValue({
         id: 'listing-1',
         productId: 'product-1',
         marketplace: 'JOOM',
@@ -88,9 +122,9 @@ describe('Joom出品フロー統合テスト（Listing統合後）', () => {
       const listingId = await service.createJoomListing('task-1');
 
       expect(listingId).toBe('listing-1');
-      expect(mockPrisma.listing.upsert).toHaveBeenCalledWith(
+      expect(mockPrisma.listing.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          create: expect.objectContaining({ marketplace: 'JOOM', status: 'DRAFT' }),
+          data: expect.objectContaining({ marketplace: 'JOOM', status: 'DRAFT' }),
         })
       );
     });
@@ -124,7 +158,7 @@ describe('Joom出品フロー統合テスト（Listing統合後）', () => {
         product: { id: 'product-1', title: 'P1', description: 'D1', images: ['https://example.com/img1.jpg'], weight: 500 },
         optimizedImages: ['buf1', 'buf2', 'buf3'],
       });
-      mockPrisma.listing.upsert.mockResolvedValue({ id: 'listing-1' } as any);
+      mockPrisma.listing.create.mockResolvedValue({ id: 'listing-1' } as any);
 
       // findUnique は processImagesForListing と publishToJoom の双方で使う
       const mockListing = {
@@ -132,6 +166,7 @@ describe('Joom出品フロー統合テスト（Listing統合後）', () => {
         productId: 'product-1',
         marketplace: 'JOOM',
         status: 'DRAFT',
+        listingPrice: 49.99,
         marketplaceData: {},
         product: { id: 'product-1', title: 'P1', description: 'D1', images: ['https://example.com/img1.jpg'], weight: 500 },
       } as any;
@@ -171,7 +206,7 @@ describe('Joom出品フロー統合テスト（Listing統合後）', () => {
         product: { id: 'product-1', title: 'P1', description: 'D1', images: ['https://example.com/img1.jpg'], weight: 500 },
         optimizedImages: ['buf1', 'buf2', 'buf3'],
       });
-      mockPrisma.listing.upsert.mockResolvedValue({ id: 'listing-err' } as any);
+      mockPrisma.listing.create.mockResolvedValue({ id: 'listing-err' } as any);
 
       const mockListing = {
         id: 'listing-err',
@@ -250,7 +285,7 @@ describe('Joom出品フロー統合テスト（Listing統合後）', () => {
       mockPrisma.listing.findFirst.mockResolvedValue(null);
 
       // createJoomListing用
-      mockPrisma.listing.upsert.mockImplementation(async ({ where }: any) => ({ id: `listing-${where.productId_marketplace.productId}` }));
+      mockPrisma.listing.create.mockImplementation(async ({ data }: any) => ({ id: `listing-${data.productId}` }));
 
       // findUniqueは任意のlistingIdで同じ形状を返す
       mockPrisma.listing.findUnique.mockImplementation(async ({ where }: any) => ({
@@ -289,10 +324,11 @@ describe('Joom出品フロー統合テスト（Listing統合後）', () => {
         productId: 'product-1',
         marketplace: 'JOOM',
         status: 'DRAFT',
+        listingPrice: 49.99,
         marketplaceData: {},
         product: { id: 'product-1', title: 'P1', description: 'D1', images: ['https://example.com/img1.jpg'], weight: 400 },
       } as any;
-      mockPrisma.listing.upsert.mockResolvedValue({ id: 'listing-1' } as any);
+      mockPrisma.listing.create.mockResolvedValue({ id: 'listing-1' } as any);
       mockPrisma.listing.findUnique.mockResolvedValue(mockListing);
 
       const { ImagePipelineService, JoomPublishService } = await import('../../lib/joom-publish-service');

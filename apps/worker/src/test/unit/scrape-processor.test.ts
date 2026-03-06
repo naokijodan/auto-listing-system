@@ -34,6 +34,20 @@ vi.mock('../../lib/alert-manager', () => ({
   },
 }));
 
+// Mock daily limit and circuit breaker
+vi.mock('../../lib/scraping-daily-limit', () => ({
+  canScrape: vi.fn().mockResolvedValue({ allowed: true, currentCount: 0, dailyLimit: 100, phase: 'normal' }),
+  incrementDailyCount: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../lib/scraping-circuit-breaker', () => ({
+  isCircuitOpen: vi.fn().mockResolvedValue({ open: false }),
+  recordScrapeSuccess: vi.fn().mockResolvedValue(undefined),
+  recordScrapeError: vi.fn().mockResolvedValue(undefined),
+  recordScrapeCaptcha: vi.fn().mockResolvedValue(undefined),
+  recordScrapeBan: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock scrapers
 vi.mock('../../lib/scrapers', () => ({
   scrapeProduct: vi.fn(),

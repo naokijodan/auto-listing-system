@@ -31,7 +31,12 @@ vi.mock('../../lib/puppeteer', () => ({
   randomDelay: mockRandomDelay,
 }));
 
+vi.mock('../../lib/scrapers/captcha-detector', () => ({
+  detectCaptchaOrBlock: vi.fn().mockResolvedValue({ captcha: false, blocked: false }),
+}));
+
 import { scrapeAmazon, scrapeAmazonSearch } from '../../lib/scrapers/amazon';
+import { detectCaptchaOrBlock } from '../../lib/scrapers/captcha-detector';
 
 describe('Amazon Scraper', () => {
   beforeEach(() => {
@@ -44,7 +49,6 @@ describe('Amazon Scraper', () => {
   describe('scrapeAmazon', () => {
     it('should scrape product successfully', async () => {
       mockPage.evaluate
-        .mockResolvedValueOnce(false) // CAPTCHA check
         .mockResolvedValueOnce({
           title: 'Test Amazon Product',
           price: 4980,
@@ -70,7 +74,6 @@ describe('Amazon Scraper', () => {
 
     it('should extract ASIN from various URL formats', async () => {
       mockPage.evaluate
-        .mockResolvedValueOnce(false)
         .mockResolvedValueOnce({
           title: 'Test',
           price: 1000,
@@ -97,7 +100,7 @@ describe('Amazon Scraper', () => {
     });
 
     it('should detect CAPTCHA', async () => {
-      mockPage.evaluate.mockResolvedValueOnce(true); // CAPTCHA detected
+      ;(detectCaptchaOrBlock as unknown as vi.Mock).mockResolvedValueOnce({ captcha: true, blocked: false, reason: 'CAPTCHA detected' });
 
       const result = await scrapeAmazon('https://www.amazon.co.jp/dp/B08ABCDEFG');
 
@@ -107,7 +110,6 @@ describe('Amazon Scraper', () => {
 
     it('should return error when title not found', async () => {
       mockPage.evaluate
-        .mockResolvedValueOnce(false)
         .mockResolvedValueOnce({
           title: '',
           price: 0,
@@ -138,7 +140,6 @@ describe('Amazon Scraper', () => {
 
     it('should close page after scraping', async () => {
       mockPage.evaluate
-        .mockResolvedValueOnce(false)
         .mockResolvedValueOnce({
           title: 'Test',
           price: 1000,
@@ -158,7 +159,7 @@ describe('Amazon Scraper', () => {
     });
 
     it('should set HTTP headers for bot detection avoidance', async () => {
-      mockPage.evaluate.mockResolvedValueOnce(false).mockResolvedValueOnce({
+      mockPage.evaluate.mockResolvedValueOnce({
         title: 'Test',
         price: 1000,
         description: '',
@@ -179,7 +180,6 @@ describe('Amazon Scraper', () => {
     it('should limit images to 10', async () => {
       const manyImages = Array.from({ length: 15 }, (_, i) => `https://m.media-amazon.com/images/I/${i}.jpg`);
       mockPage.evaluate
-        .mockResolvedValueOnce(false)
         .mockResolvedValueOnce({
           title: 'Product with many images',
           price: 5000,
@@ -200,7 +200,6 @@ describe('Amazon Scraper', () => {
 
     it('should handle out of stock products', async () => {
       mockPage.evaluate
-        .mockResolvedValueOnce(false)
         .mockResolvedValueOnce({
           title: 'Out of Stock Product',
           price: 3000,
@@ -230,7 +229,6 @@ describe('Amazon Scraper', () => {
 
       // For each product scrape
       mockPage.evaluate
-        .mockResolvedValueOnce(false)
         .mockResolvedValueOnce({
           title: 'Product 1',
           price: 1000,
@@ -243,7 +241,6 @@ describe('Amazon Scraper', () => {
           rating: null,
           reviewCount: 0,
         })
-        .mockResolvedValueOnce(false)
         .mockResolvedValueOnce({
           title: 'Product 2',
           price: 2000,

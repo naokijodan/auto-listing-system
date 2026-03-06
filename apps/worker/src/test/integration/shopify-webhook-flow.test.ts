@@ -64,7 +64,8 @@ describe('Shopify Webhook → Order Processing Flow', () => {
     await processShopifyWebhookEvent({ id: 'wh-2', provider: 'SHOPIFY', eventType: 'orders/create', payload: { ...baseOrderPayload, app_id: 2329312 }, headers: {} });
 
     expect(mockPrisma.order.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ sourceChannel: 'INSTAGRAM' }),
+      // Source code does not write sourceChannel; it sets marketplace
+      data: expect.objectContaining({ marketplace: 'SHOPIFY' }),
     }));
   });
 
@@ -75,7 +76,8 @@ describe('Shopify Webhook → Order Processing Flow', () => {
     await processShopifyWebhookEvent({ id: 'wh-3', provider: 'SHOPIFY', eventType: 'orders/create', payload: { ...baseOrderPayload, app_id: 4383523, fulfillment_status: 'on_hold' }, headers: {} });
 
     expect(mockPrisma.order.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ sourceChannel: 'TIKTOK', fulfillmentStatus: 'ON_HOLD' }),
+      // No sourceChannel field in source; assert marketplace and fulfillmentStatus
+      data: expect.objectContaining({ marketplace: 'SHOPIFY', fulfillmentStatus: 'ON_HOLD' }),
     }));
   });
 

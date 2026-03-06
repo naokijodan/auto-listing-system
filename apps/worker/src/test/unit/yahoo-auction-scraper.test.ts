@@ -30,6 +30,10 @@ vi.mock('../../lib/puppeteer', () => ({
   randomDelay: mockRandomDelay,
 }));
 
+vi.mock('../../lib/scrapers/captcha-detector', () => ({
+  detectCaptchaOrBlock: vi.fn().mockResolvedValue({ captcha: false, blocked: false }),
+}));
+
 import { scrapeYahooAuction, scrapeYahooAuctionSeller } from '../../lib/scrapers/yahoo-auction';
 
 describe('Yahoo Auction Scraper', () => {

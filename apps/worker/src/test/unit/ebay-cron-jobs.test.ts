@@ -58,6 +58,7 @@ vi.mock('ioredis', () => ({
   default: vi.fn().mockReturnValue({
     set: mockRedisSet,
     get: mockRedisGet,
+    exists: vi.fn().mockResolvedValue(0),
     quit: vi.fn().mockResolvedValue('OK'),
   }),
 }));
@@ -340,4 +341,3 @@ describe('BullMQ Cron Jobs: eBay Taxonomy/Policy', () => {
     });
   });
 });
-

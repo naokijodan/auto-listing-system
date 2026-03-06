@@ -10,10 +10,14 @@ const { mockLaunch, mockNewPage, mockClose, mockSetUserAgent, mockSetViewport, m
   mockSetRequestInterception: vi.fn(),
 }));
 
-vi.mock('puppeteer', () => ({
+vi.mock('puppeteer-extra', () => ({
   default: {
     launch: mockLaunch,
+    use: vi.fn(),
   },
+}));
+vi.mock('puppeteer-extra-plugin-stealth', () => ({
+  default: vi.fn(),
 }));
 
 vi.mock('@rakuda/logger', () => ({
@@ -64,7 +68,7 @@ describe('Puppeteer Utils', () => {
   describe('getBrowser', () => {
     it('should launch browser with default args', async () => {
       const mockBrowser = {
-        connected: true,
+        isConnected: vi.fn().mockReturnValue(true),
         newPage: mockNewPage,
         close: mockClose,
       };
@@ -74,13 +78,14 @@ describe('Puppeteer Utils', () => {
 
       const browser = await getBrowser();
 
-      expect(mockLaunch).toHaveBeenCalledWith({
+      expect(mockLaunch).toHaveBeenCalledWith(expect.objectContaining({
         headless: true,
         args: expect.arrayContaining([
           '--no-sandbox',
           '--disable-setuid-sandbox',
         ]),
-      });
+        userDataDir: expect.any(String),
+      }));
       expect(browser).toBe(mockBrowser);
     });
 
@@ -88,7 +93,7 @@ describe('Puppeteer Utils', () => {
       process.env.PROXY_URL = 'http://proxy.example.com:8080';
 
       const mockBrowser = {
-        connected: true,
+        isConnected: vi.fn().mockReturnValue(true),
         newPage: mockNewPage,
         close: mockClose,
       };
@@ -98,17 +103,18 @@ describe('Puppeteer Utils', () => {
 
       await getBrowser();
 
-      expect(mockLaunch).toHaveBeenCalledWith({
+      expect(mockLaunch).toHaveBeenCalledWith(expect.objectContaining({
         headless: true,
         args: expect.arrayContaining([
           '--proxy-server=http://proxy.example.com:8080',
         ]),
-      });
+        userDataDir: expect.any(String),
+      }));
     });
 
     it('should return existing browser if connected', async () => {
       const mockBrowser = {
-        connected: true,
+        isConnected: vi.fn().mockReturnValue(true),
         newPage: mockNewPage,
         close: mockClose,
       };
@@ -133,7 +139,7 @@ describe('Puppeteer Utils', () => {
         on: vi.fn(),
       };
       const mockBrowser = {
-        connected: true,
+        isConnected: vi.fn().mockReturnValue(true),
         newPage: mockNewPage.mockResolvedValueOnce(mockPage),
         close: mockClose,
       };
@@ -144,7 +150,7 @@ describe('Puppeteer Utils', () => {
       const page = await createPage();
 
       expect(mockSetUserAgent).toHaveBeenCalled();
-      expect(mockSetViewport).toHaveBeenCalledWith({ width: 1920, height: 1080 });
+      expect(mockSetViewport).toHaveBeenCalledWith(expect.objectContaining({ width: expect.any(Number), height: expect.any(Number) }));
       expect(mockSetRequestInterception).toHaveBeenCalledWith(true);
       expect(page).toBe(mockPage);
     });
@@ -157,7 +163,7 @@ describe('Puppeteer Utils', () => {
         on: vi.fn(),
       };
       const mockBrowser = {
-        connected: true,
+        isConnected: vi.fn().mockReturnValue(true),
         newPage: mockNewPage.mockResolvedValueOnce(mockPage),
         close: mockClose,
       };
@@ -174,7 +180,7 @@ describe('Puppeteer Utils', () => {
   describe('closeBrowser', () => {
     it('should close browser when open', async () => {
       const mockBrowser = {
-        connected: true,
+        isConnected: vi.fn().mockReturnValue(true),
         newPage: mockNewPage,
         close: mockClose.mockResolvedValueOnce(undefined),
       };

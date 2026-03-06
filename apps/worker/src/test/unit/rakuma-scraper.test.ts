@@ -30,6 +30,10 @@ vi.mock('../../lib/puppeteer', () => ({
   randomDelay: mockRandomDelay,
 }));
 
+vi.mock('../../lib/scrapers/captcha-detector', () => ({
+  detectCaptchaOrBlock: vi.fn().mockResolvedValue({ captcha: false, blocked: false }),
+}));
+
 import { scrapeRakuma, scrapeRakumaSeller } from '../../lib/scrapers/rakuma';
 
 describe('Rakuma Scraper', () => {

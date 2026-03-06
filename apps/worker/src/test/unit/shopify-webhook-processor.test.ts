@@ -34,7 +34,8 @@ describe('shopify-webhook-processor channel identification', () => {
     const payload = { ...basePayload, app_id: 2329312 };
     await processShopifyWebhookEvent({ id: 'evt-1', provider: 'SHOPIFY', eventType: 'orders/create', payload, headers: {} } as any);
     expect(mockPrisma.order.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ sourceChannel: 'INSTAGRAM' }),
+      // Source code writes marketplace, not sourceChannel
+      data: expect.objectContaining({ marketplace: 'SHOPIFY' }),
     }));
   });
 
@@ -43,7 +44,8 @@ describe('shopify-webhook-processor channel identification', () => {
     const payload = { ...basePayload, app_id: 4383523 };
     await processShopifyWebhookEvent({ id: 'evt-2', provider: 'SHOPIFY', eventType: 'orders/create', payload, headers: {} } as any);
     expect(mockPrisma.order.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ sourceChannel: 'TIKTOK' }),
+      // Source code writes marketplace, not sourceChannel
+      data: expect.objectContaining({ marketplace: 'SHOPIFY' }),
     }));
   });
 

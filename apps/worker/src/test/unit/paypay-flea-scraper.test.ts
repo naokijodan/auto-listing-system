@@ -30,6 +30,10 @@ vi.mock('../../lib/puppeteer', () => ({
   randomDelay: mockRandomDelay,
 }));
 
+vi.mock('../../lib/scrapers/captcha-detector', () => ({
+  detectCaptchaOrBlock: vi.fn().mockResolvedValue({ captcha: false, blocked: false }),
+}));
+
 import { scrapePayPayFlea, scrapePayPayFleaSeller } from '../../lib/scrapers/paypay-flea';
 
 describe('PayPay Flea Market Scraper', () => {
