@@ -1,6 +1,6 @@
 # RAKUDA 既知の問題と再発防止策
 
-最終更新: 2026-03-05
+最終更新: 2026-03-07
 
 ## 使い方
 新しいセッション開始時に必ずこのファイルを確認すること。
@@ -89,6 +89,18 @@
 ### 5-2: ci.yml に prisma generate 欠落
 - **解決済み**: commit 6848404b
 
+### 5-3: CIテスト36件失敗（Session 12で修正）
+- **症状**: 12ファイルで36テスト失敗（puppeteer, scraper, shopify-webhook, joom-publish-flow）
+- **原因**: 6つの根本原因
+  1. puppeteer-extra mock不整合（`vi.mock('puppeteer')` → `vi.mock('puppeteer-extra')`）
+  2. captcha-detector mock欠落（6スクレイパーテストに追加）
+  3. scraping-daily-limit / scraping-circuit-breaker mock欠落
+  4. sourceChannel assertionが実装と不一致（ソースコードはsourceChannelを書かない）
+  5. joom-api / image系モジュールmock欠落（統合テスト）
+  6. prisma.$transaction mock欠落
+- **防止策**: テスト追加時はソースコードのimportを確認し、全外部依存をmockする
+- **解決済み**: commit 4e159ef6
+
 ---
 
 ## 6. 見積もり精度
@@ -104,3 +116,19 @@
 ### ルール
 - 本番環境が絡む作業は、AI工数 × 3 で見積もる
 - 「想定外の問題」は必ず発生する前提で計画する
+
+---
+
+## 7. Joom API関連
+
+### 7-1: Joom商品がPAUSEDになる
+- **症状**: joom-status-syncジョブがJoom API側でdisabled検出→DB側をPAUSEDに更新
+- **原因推定**: SBDC101の歴史的価格バグ（variant price: 13,607,648.12 USD）。現在はPricingPipelineの正規化で防止済み
+- **復旧**: Worker再デプロイ後にenable APIジョブで再有効化
+- **防止策**: PricingPipelineのnormalizer.tsで為替レートサニティチェック実装済み（JPY→USD: 0.001-0.02範囲）
+- **ステータス**: 再有効化中（Session 12）
+
+### 7-2: Coolifyデプロイがqueuedのまま進まない
+- **症状**: in_progressデプロイがスタック→後続のqueuedが処理されない
+- **復旧手順**: `POST /api/v1/applications/{uuid}/stop` → 停止確認 → 再デプロイ
+- **防止策**: concurrent_builds=1推奨。デプロイ後はステータス確認を必ず行う
