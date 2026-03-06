@@ -314,6 +314,7 @@ router.post('/listings/:id/enable', async (req: Request, res: Response) => {
 
     // Queue enable job
     await joomPublishQueue.add('enable-product', {
+      type: 'enable-product',
       listingId: id,
       joomProductId,
     });
@@ -342,6 +343,7 @@ router.post('/listings/:id/disable', async (req: Request, res: Response) => {
 
     // Queue disable job
     await joomPublishQueue.add('disable-product', {
+      type: 'disable-product',
       listingId: id,
       joomProductId,
     });
