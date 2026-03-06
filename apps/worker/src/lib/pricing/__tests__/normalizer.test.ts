@@ -21,6 +21,17 @@ vi.mock('@rakuda/config', () => ({
   EXCHANGE_RATE_DEFAULTS: { JPY_TO_USD: 0.0067 },
 }));
 
+// Quiet logger
+vi.mock('@rakuda/logger', () => ({
+  logger: {
+    warn: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    child: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+  },
+}));
+
 import { normalize } from '../../pricing/normalizer';
 import type { PriceCalculationInput } from '../../pricing/types';
 import { Marketplace } from '@rakuda/database';
@@ -125,5 +136,53 @@ describe('normalizer', () => {
     // Joom fallback: baseCost(5) + 300 * perGramCost(0.01) = 8
     expect(result.shippingCostUsd).toBe(8);
     expect(result.shippingMethod).toBe('JOOM_STANDARD');
+  });
+
+  it('uses DB exchange rate in normal range as-is', async () => {
+    mockPrisma.exchangeRate.findFirst.mockResolvedValue({ rate: 0.0067 });
+    mockPrisma.shippingRateEntry.findFirst.mockResolvedValueOnce(null);
+
+    const result = await normalize({
+      sourcePrice: 10000, // JPY
+      weight: 0,
+      marketplace: Marketplace.JOOM as any,
+      pricingMode: 'SIMPLE',
+      profitMode: 'RATE',
+    });
+
+    expect(result.exchangeRate).toBeCloseTo(0.0067, 6);
+    expect(result.sourcePriceUsd).toBeCloseTo(67, 3);
+  });
+
+  it('inverts USD→JPY rate (e.g., 150) to JPY→USD', async () => {
+    mockPrisma.exchangeRate.findFirst.mockResolvedValue({ rate: 150 });
+    mockPrisma.shippingRateEntry.findFirst.mockResolvedValueOnce(null);
+
+    const result = await normalize({
+      sourcePrice: 42600, // JPY
+      weight: 0,
+      marketplace: Marketplace.JOOM as any,
+      pricingMode: 'SIMPLE',
+      profitMode: 'RATE',
+    });
+
+    expect(result.exchangeRate).toBeCloseTo(1 / 150, 6);
+    expect(result.sourcePriceUsd).toBeCloseTo(42600 * (1 / 150), 3);
+  });
+
+  it('falls back to default when rate is out of range (e.g., 0.0001)', async () => {
+    mockPrisma.exchangeRate.findFirst.mockResolvedValue({ rate: 0.0001 });
+    mockPrisma.shippingRateEntry.findFirst.mockResolvedValueOnce(null);
+
+    const result = await normalize({
+      sourcePrice: 10000,
+      weight: 0,
+      marketplace: Marketplace.JOOM as any,
+      pricingMode: 'SIMPLE',
+      profitMode: 'RATE',
+    });
+
+    expect(result.exchangeRate).toBeCloseTo(0.0067, 6);
+    expect(result.sourcePriceUsd).toBeCloseTo(67, 3);
   });
 });

@@ -66,18 +66,20 @@ async function fetchExchangeRateYahoo(): Promise<ExchangeRateResult> {
       throw new Error(`Yahoo API error: ${response.status}`);
     }
 
-    const data = await response.json();
-    const quote = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+  const data = await response.json();
+  const quote = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
 
-    if (quote) {
+  if (quote) {
+      // サニティチェック: JPY→USD は 1未満であるべき
+      const rate = quote > 1 ? 1 / quote : quote;
       return {
         success: true,
-        rate: quote,
-        source: 'yahoo-finance',
+        rate,
+        source: quote > 1 ? 'yahoo-finance:inverted' : 'yahoo-finance',
       };
-    } else {
+  } else {
       throw new Error('Could not extract rate from Yahoo response');
-    }
+  }
   } catch (error: any) {
     log.error({ type: 'exchange_rate_yahoo_error', error: error.message });
     return { success: false, error: error.message };
@@ -130,12 +132,28 @@ export async function updateExchangeRate(): Promise<{
 
   const newRate = result.rate!;
 
+  // サニティチェック: JPY→USD は 0.001〜0.02 の範囲
+  let validatedRate = newRate;
+  if (newRate > 1) {
+    validatedRate = 1 / newRate;
+    log.warn({ type: 'exchange_rate_api_inverted', rawRate: newRate, correctedRate: validatedRate });
+  } else if (newRate < 0.001 || newRate > 0.02) {
+    log.error({ type: 'exchange_rate_api_invalid', rawRate: newRate });
+    return {
+      success: false,
+      oldRate,
+      newRate: oldRate,
+      source: result.source || 'unknown',
+      error: `Exchange rate out of valid range: ${newRate}`,
+    };
+  }
+
   // DB に新しいレートを保存
   await prisma.exchangeRate.create({
     data: {
       fromCurrency: 'JPY',
       toCurrency: 'USD',
-      rate: newRate,
+      rate: validatedRate,
       source: result.source || 'unknown',
     },
   });
@@ -143,7 +161,7 @@ export async function updateExchangeRate(): Promise<{
   // 価格設定の為替レートも更新
   await prisma.priceSetting.updateMany({
     data: {
-      exchangeRate: 1 / newRate, // USD/JPY に変換
+      exchangeRate: 1 / validatedRate, // USD/JPY に変換
       updatedAt: new Date(),
     },
   });
@@ -151,15 +169,15 @@ export async function updateExchangeRate(): Promise<{
   log.info({
     type: 'exchange_rate_updated',
     oldRate,
-    newRate,
+    newRate: validatedRate,
     source: result.source,
-    jpyPerUsd: (1 / newRate).toFixed(2),
+    jpyPerUsd: (1 / validatedRate).toFixed(2),
   });
 
   return {
     success: true,
     oldRate,
-    newRate,
+    newRate: validatedRate,
     source: result.source!,
   };
 }

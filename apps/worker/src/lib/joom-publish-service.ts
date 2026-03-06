@@ -439,6 +439,15 @@ export class JoomPublishService {
         throw new Error('Invalid price: must be greater than 0');
       }
 
+      // Joom価格上限チェック（$10,000超は異常値として拒否）
+      const JOOM_MAX_PRICE_USD = 10000;
+      if (finalPrice > JOOM_MAX_PRICE_USD) {
+        throw new Error(
+          `Price too high for Joom: $${finalPrice.toFixed(2)} USD (max: $${JOOM_MAX_PRICE_USD}). ` +
+          `Possible exchange rate conversion error. Source price: ¥${listing.product.price}`
+        );
+      }
+
       const joomProduct: JoomProduct = {
         name: translations.en.title,
         description: translations.en.description,
