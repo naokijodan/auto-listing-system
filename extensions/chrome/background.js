@@ -319,10 +319,10 @@ function extractProductInfo() {
     const description = document.querySelector('[data-testid="description"]')?.textContent?.trim() ||
                         document.querySelector('.item-description')?.textContent?.trim() || '';
 
-    const sellerName = document.querySelector('[data-testid="seller-name"]')?.textContent?.trim();
+    const sellerName = document.querySelector('[data-testid="seller-link"]')?.textContent?.trim();
     const condition = document.querySelector('[data-testid="商品の状態"]')?.textContent?.trim() ||
                       document.querySelector('.item-condition')?.textContent?.trim();
-    const category = document.querySelector('[data-testid="category"]')?.textContent?.trim();
+    const category = document.querySelector('[data-testid="item-detail-category"]')?.textContent?.trim();
     const brand = document.querySelector('[data-testid="brand"]')?.textContent?.trim();
 
     return {
