@@ -43,6 +43,40 @@
         </div>
       </div>
 
+      <!-- Shipping & Profit Simulator (visible when product detected) -->
+      <div id="shippingSection" class="shipping-section hidden">
+        <h3 class="section-title">Shipping & Profit</h3>
+
+        <!-- Shipping Method Dropdown -->
+        <div class="form-group">
+          <label for="shippingMethod">Shipping Method</label>
+          <select id="shippingMethod" class="shipping-select">
+            <option value="">Auto (recommended)</option>
+            <option value="EP">ePacket (EP)</option>
+            <option value="CF">Cpass Flat (CF)</option>
+            <option value="CD">Cpass DDP (CD)</option>
+            <option value="CE">Cpass Economy (CE)</option>
+            <option value="EL">ePacket Light (EL)</option>
+            <option value="EMS">EMS</option>
+          </select>
+        </div>
+
+        <!-- DDP/DDU Toggle (eBay only) -->
+        <div id="ddpToggle" class="ddp-toggle hidden">
+          <label class="toggle-label">
+            <input type="checkbox" id="ddpMode" checked>
+            <span class="toggle-text">DDP Mode (include duties)</span>
+          </label>
+        </div>
+
+        <!-- Profit Simulator Cards -->
+        <div id="profitCards" class="profit-cards">
+          <div class="profit-card" id="profitLoading">
+            <span class="profit-loading">Calculating...</span>
+          </div>
+        </div>
+      </div>
+
       <!-- アクションボタン -->
       <div class="actions">
         <button id="registerBtn" class="btn btn-primary" disabled>

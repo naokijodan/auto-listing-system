@@ -11,6 +11,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient, ListingStatus, Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import { addEbayBatchPublishJob, addEbayPriceSyncJob, getEbayPublishQueueStats, QUEUE_NAMES, addEbayPublishJob } from '@rakuda/queue';
+import { resolveShippingPolicy } from '../lib/shipping-policy-resolver';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -249,6 +250,17 @@ router.post('/listings', async (req: Request, res: Response) => {
       });
     }
 
+    // fulfillmentPolicyId 自動解決（フォールバック）
+    let finalFulfillmentPolicyId: string | null | undefined = fulfillmentPolicyId;
+    if (!finalFulfillmentPolicyId) {
+      const resolved = await resolveShippingPolicy({
+        shippingMethod: (product as any).shippingMethod as string | null | undefined,
+        priceJpy: (product as any).price ?? undefined,
+      });
+      finalFulfillmentPolicyId = resolved.fulfillmentPolicyId;
+      log.info({ type: 'auto_resolve_fulfillment_policy', productId, policyId: finalFulfillmentPolicyId, reason: resolved.reason });
+    }
+
     // eBay固有データを構築
     const ebayData = {
       categoryId,
@@ -256,7 +268,7 @@ router.post('/listings', async (req: Request, res: Response) => {
       conditionDescription,
       itemSpecifics,
       quantity,
-      fulfillmentPolicyId,
+      fulfillmentPolicyId: finalFulfillmentPolicyId ?? null,
       paymentPolicyId,
       returnPolicyId,
       ...(duration !== undefined && { duration }),

@@ -244,4 +244,92 @@ router.get('/tracking/:trackingNumber', async (req: Request, res: Response, next
   }
 });
 
+// GET /api/shipping/methods?weight=500
+// Returns all shipping methods with cost for the given weight
+router.get('/methods', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const weight = parseInt(req.query.weight as string) || 0;
+
+    // Get all distinct shipping methods
+    const methods = await prisma.shippingRateEntry.findMany({
+      where: { isActive: true },
+      select: { shippingMethod: true },
+      distinct: ['shippingMethod'],
+    });
+
+    const result: Array<{ method: string; label: string; costJpy: number | null; costUsd: number | null; available: boolean }> = [];
+    for (const { shippingMethod } of methods) {
+      // Get cost for specific weight
+      const entry = weight > 0
+        ? await prisma.shippingRateEntry.findFirst({
+            where: {
+              shippingMethod,
+              weightMin: { lte: weight },
+              weightMax: { gte: weight },
+              isActive: true,
+            },
+          })
+        : null;
+
+      result.push({
+        method: shippingMethod,
+        label: getMethodLabel(shippingMethod),
+        costJpy: entry?.costJpy ?? null,
+        costUsd: entry?.costUsd ?? null,
+        available: entry !== null || weight === 0,
+      });
+    }
+
+    // If no DB entries, return hardcoded defaults
+    if (result.length === 0) {
+      const defaults = ['EP', 'CF', 'CD', 'CE', 'EL', 'EMS'];
+      for (const method of defaults) {
+        result.push({
+          method,
+          label: getMethodLabel(method),
+          costJpy: null,
+          costUsd: null,
+          available: true,
+        });
+      }
+    }
+
+    res.json({ methods: result, weight });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/shipping/recommend?priceJpy=50000&shippingMethod=CF
+router.get('/recommend', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const priceJpy = parseInt(req.query.priceJpy as string) || 0;
+    const shippingMethod = (req.query.shippingMethod as string) || null;
+
+    const { resolveShippingPolicy, recommendShippingMethod } = await import('../lib/shipping-policy-resolver');
+
+    const recommendation = recommendShippingMethod(priceJpy);
+    const resolved = await resolveShippingPolicy({ shippingMethod, priceJpy });
+
+    res.json({
+      recommendation,
+      resolved,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+function getMethodLabel(method: string): string {
+  const labels: Record<string, string> = {
+    EP: 'ePacket (EP)',
+    CF: 'Cpass Flat (CF)',
+    CD: 'Cpass DDP (CD)',
+    CE: 'Cpass Economy (CE)',
+    EL: 'ePacket Light (EL)',
+    EMS: 'EMS',
+  };
+  return labels[method] || method;
+}
+
 export { router as shippingRouter };

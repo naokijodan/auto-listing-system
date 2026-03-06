@@ -67,6 +67,7 @@ model Product {
   brand      String?
   condition  String?
   weight     Int? // グラム
+  shippingMethod String? // CF, CD, CE, EP, EL, EMS - selected by user in Chrome extension
   attributes Json    @default("{}") // AI抽出属性
 
   // 画像

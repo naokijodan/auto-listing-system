@@ -581,6 +581,7 @@ router.post('/', async (req, res, next) => {
           brand: data.brand,
           condition: data.condition,
           weight: data.weight,
+          shippingMethod: (data as any).shippingMethod || (existing as any).shippingMethod,
           sourceHash,
           scrapedAt: new Date(),
         },
@@ -608,6 +609,7 @@ router.post('/', async (req, res, next) => {
         brand: data.brand,
         condition: data.condition,
         weight: data.weight,
+        shippingMethod: (data as any).shippingMethod || null,
         sellerId: data.sellerId,
         sellerName: data.sellerName,
         scrapedAt: new Date(),
@@ -1313,10 +1315,11 @@ router.patch('/:id/memo', async (req, res, next) => {
 router.patch('/:id/purchase-info', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { purchaseShippingCost, initialPurchasePrice } = req.body;
+    const { purchaseShippingCost, initialPurchasePrice, shippingMethod } = req.body;
     const data: any = {};
     if (typeof purchaseShippingCost === 'number') data.purchaseShippingCost = purchaseShippingCost;
     if (typeof initialPurchasePrice === 'number') data.initialPurchasePrice = initialPurchasePrice;
+    if (typeof shippingMethod === 'string') data.shippingMethod = shippingMethod;
     const product = await prisma.product.update({
       where: { id },
       data,

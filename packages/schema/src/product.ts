@@ -101,6 +101,7 @@ export const ScrapedProductSchema = z.object({
   brand: z.string().optional(),
   condition: z.string().optional(), // 元サイトの状態表記（後でマッピング）
   weight: z.number().positive().optional(),
+  shippingMethod: z.string().optional(),
   isAvailable: z.boolean().optional(), // 在庫状況
 
   // 画像URL（元サイト）

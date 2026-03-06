@@ -5,6 +5,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '@rakuda/logger';
+import { resolveShippingPolicy } from '../lib/shipping-policy-resolver';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -99,6 +100,17 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
+    // fulfillmentPolicyId 自動解決（フォールバック）
+    let finalFulfillmentPolicyId: string | null | undefined = fulfillmentPolicyId;
+    if (!finalFulfillmentPolicyId) {
+      const resolved = await resolveShippingPolicy({
+        shippingMethod: (req.body?.shippingMethod as string) || null,
+        priceJpy: (req.body?.priceJpy as number) || undefined,
+      });
+      finalFulfillmentPolicyId = resolved.fulfillmentPolicyId;
+      log.info({ type: 'auto_resolve_template_fulfillment_policy', policyId: finalFulfillmentPolicyId, reason: resolved.reason });
+    }
+
     const template = await prisma.ebayListingTemplate.create({
       data: {
         name,
@@ -107,7 +119,7 @@ router.post('/', async (req: Request, res: Response) => {
         ebayCategoryName,
         conditionId,
         conditionDescription,
-        fulfillmentPolicyId,
+        fulfillmentPolicyId: finalFulfillmentPolicyId ?? null,
         paymentPolicyId,
         returnPolicyId,
         defaultShippingCost,

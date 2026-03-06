@@ -387,3 +387,96 @@ body {
 .hidden {
   display: none !important;
 }
+
+/* Shipping Section */
+.shipping-section {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+  margin-bottom: 12px;
+}
+
+.shipping-select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  background: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.shipping-select:focus {
+  border-color: #f59e0b;
+}
+
+/* DDP Toggle */
+.ddp-toggle {
+  margin-bottom: 12px;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+}
+
+.toggle-label input[type="checkbox"] {
+  accent-color: #d97706;
+}
+
+/* Profit Cards */
+.profit-cards {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.profit-card {
+  flex: 0 0 auto;
+  min-width: 110px;
+  padding: 10px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.profit-method {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.profit-shipping {
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.profit-price {
+  font-size: 16px;
+  font-weight: 700;
+  color: #d97706;
+  margin-bottom: 2px;
+}
+
+.profit-amount {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.profit-duty {
+  color: #ef4444;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.profit-loading {
+  color: #9ca3af;
+  font-style: italic;
+}

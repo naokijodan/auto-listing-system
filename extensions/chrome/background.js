@@ -181,6 +181,7 @@ async function registerFromTab(tab) {
         condition: extracted.condition,
         sellerId: extracted.sellerId,
         sellerName: extracted.sellerName,
+        shippingMethod: null,
       };
 
       // 画像がない場合のフォールバック

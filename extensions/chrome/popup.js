@@ -15,6 +15,11 @@ const elements = {
   previewImage: document.getElementById('previewImage'),
   previewTitle: document.getElementById('previewTitle'),
   previewPrice: document.getElementById('previewPrice'),
+  shippingSection: document.getElementById('shippingSection'),
+  shippingMethod: document.getElementById('shippingMethod'),
+  ddpToggle: document.getElementById('ddpToggle'),
+  ddpMode: document.getElementById('ddpMode'),
+  profitCards: document.getElementById('profitCards'),
   registerBtn: document.getElementById('registerBtn'),
   recentSection: document.getElementById('recentSection'),
   recentList: document.getElementById('recentList'),
@@ -42,6 +47,9 @@ let currentTab = null;
 let currentSiteType = 'UNKNOWN';
 let currentProductInfo = null;
 
+// Shipping methods cache
+let shippingMethods = [];
+
 // 初期化
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
@@ -58,6 +66,12 @@ function setupEventListeners() {
   elements.testConnectionBtn.addEventListener('click', testConnection);
   elements.saveSettingsBtn.addEventListener('click', saveSettings);
   elements.registerBtn.addEventListener('click', registerProduct);
+  if (elements.shippingMethod) {
+    elements.shippingMethod.addEventListener('change', updateProfitSimulation);
+  }
+  if (elements.ddpMode) {
+    elements.ddpMode.addEventListener('change', updateProfitSimulation);
+  }
 }
 
 // 設定を読み込み
@@ -147,6 +161,8 @@ async function loadProductInfo() {
     if (result?.result) {
       currentProductInfo = result.result;
       showProductPreview(currentProductInfo);
+      // Show shipping section and profit simulation
+      await showShippingSection(currentProductInfo);
     }
   } catch (error) {
     console.error('Failed to extract product info:', error);
@@ -219,6 +235,118 @@ function showProductPreview(info) {
   elements.productPreview.classList.remove('hidden');
 }
 
+// 表示: 配送セクションと利益シミュレーター
+async function showShippingSection(productInfo) {
+  if (!productInfo || !productInfo.price) {
+    elements.shippingSection?.classList.add('hidden');
+    return;
+  }
+
+  elements.shippingSection?.classList.remove('hidden');
+  // For now, always show DDP toggle (primary channel eBay)
+  elements.ddpToggle?.classList.remove('hidden');
+
+  // Fetch shipping methods from API and render
+  await loadShippingMethods(productInfo.price);
+  await updateProfitSimulation();
+}
+
+// 配送方法一覧を取得しドロップダウン更新
+async function loadShippingMethods(sourcePrice) {
+  try {
+    const config = await chrome.runtime.sendMessage({ action: 'getConfig' });
+    const weight = 500; // Default estimate (grams)
+    const response = await fetch(`${config.apiUrl}/api/shipping/methods?weight=${weight}`);
+    if (response.ok) {
+      const data = await response.json();
+      shippingMethods = data.methods || [];
+
+      const select = elements.shippingMethod;
+      if (!select) return;
+      select.innerHTML = '<option value="">Auto (recommended)</option>';
+      for (const m of shippingMethods) {
+        const costLabel = m.costJpy ? ` - ¥${Math.round(m.costJpy).toLocaleString()}` : '';
+        const opt = document.createElement('option');
+        opt.value = m.method;
+        opt.textContent = `${m.label}${costLabel}`;
+        select.appendChild(opt);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load shipping methods:', e);
+  }
+}
+
+// 利益シミュレーションを更新
+async function updateProfitSimulation() {
+  if (!currentProductInfo?.price) return;
+
+  const selectedMethod = elements.shippingMethod?.value;
+  const ddpMode = !!elements.ddpMode?.checked;
+  const sourcePrice = currentProductInfo.price;
+
+  // Approximate constants (display only)
+  const EXCHANGE_RATE = 0.0067; // JPY -> USD approximate
+  const PLATFORM_FEE_RATE = 0.1315; // eBay FVF
+  const PAYMENT_FEE_RATE = 0.03;    // Payoneer
+  const AD_RATE = 0.04;
+  const PROFIT_RATE = 0.15;
+  const DUTY_RATE = 0.065;
+
+  const cards = [];
+  const methods = selectedMethod
+    ? (shippingMethods || []).filter(m => m.method === selectedMethod)
+    : (shippingMethods || []).slice(0, 3);
+
+  // Fallback if no methods from API
+  if (methods.length === 0) {
+    methods.push(
+      { method: 'EP', label: 'ePacket', costJpy: 1200 },
+      { method: 'CF', label: 'Cpass Flat', costJpy: 1500 },
+      { method: 'EMS', label: 'EMS', costJpy: 3000 },
+    );
+  }
+
+  for (const m of methods) {
+    const shippingJpy = m.costJpy || 1500;
+    const denominator = 1 - PLATFORM_FEE_RATE - PROFIT_RATE - AD_RATE - PAYMENT_FEE_RATE;
+    const dduPrice = (sourcePrice + shippingJpy) / denominator * EXCHANGE_RATE;
+
+    let finalPrice = dduPrice;
+    let dutyEstimate = 0;
+    if (ddpMode) {
+      dutyEstimate = dduPrice * DUTY_RATE;
+      finalPrice = dduPrice + dutyEstimate;
+    }
+
+    const profit = finalPrice * PROFIT_RATE;
+    const profitRate = (profit / finalPrice * 100).toFixed(1);
+
+    cards.push({
+      method: m.method,
+      label: m.label,
+      shippingJpy,
+      finalPrice: finalPrice.toFixed(2),
+      profit: profit.toFixed(2),
+      profitRate,
+      dutyEstimate: dutyEstimate.toFixed(2),
+    });
+  }
+
+  // Render cards
+  if (elements.profitCards) {
+    elements.profitCards.innerHTML = cards.map(c => `
+      <div class="profit-card">
+        <div class="profit-method">${c.label}</div>
+        <div class="profit-shipping">Shipping: ¥${Math.round(c.shippingJpy).toLocaleString()}</div>
+        <div class="profit-price">$${c.finalPrice}</div>
+        <div class="profit-amount">Profit: $${c.profit} (${c.profitRate}%)</div>
+        ${parseFloat(c.dutyEstimate) > 0 ? `<div class="profit-duty">Duty: $${c.dutyEstimate}</div>` : ''}
+      </div>
+    `).join('');
+  }
+}
+
 // 商品を登録
 async function registerProduct() {
   if (!currentTab?.url || currentSiteType === 'UNKNOWN') {
@@ -232,6 +360,7 @@ async function registerProduct() {
     sourceUrl: currentTab.url,
     sourceType: currentSiteType,
     ...(currentProductInfo || {}),
+    shippingMethod: elements.shippingMethod?.value || null,
   };
 
   const result = await chrome.runtime.sendMessage({
