@@ -84,7 +84,7 @@ npx prisma migrate dev --schema=packages/database/prisma/schema.prisma
 - CI/CD（GitHub Actions）
 
 ### Joom連携（OAuth完了）
-- トークン取得済み（有効期限: 2026-03-08）
+- トークン取得済み（有効期限: 2026-03-30）
 - 出品パイプライン完成（Phase 40）
 
 ### eBay連携（OAuth完了）
