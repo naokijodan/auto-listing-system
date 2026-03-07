@@ -1,9 +1,10 @@
 /**
  * Phase 40-A: 翻訳エンジン
- * GPT-4oを使用した日英露翻訳
+ * GPT-4oを使用した日英翻訳
  */
 import OpenAI from 'openai';
 import { logger } from '@rakuda/logger';
+import { prisma } from '@rakuda/database';
 
 const log = logger.child({ module: 'enrichment/translator' });
 
@@ -11,13 +12,23 @@ const log = logger.child({ module: 'enrichment/translator' });
 let openai: OpenAI | null = null;
 let openaiInitialized = false;
 
-function getOpenAIClient(): OpenAI | null {
+async function getApiKeyFromDB(): Promise<string | null> {
+  try {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: 'openai_api_key' },
+    });
+    return setting?.value || null;
+  } catch {
+    return null;
+  }
+}
+
+async function getOpenAIClient(): Promise<OpenAI | null> {
   if (!openaiInitialized) {
     openaiInitialized = true;
-    if (process.env.OPENAI_API_KEY) {
-      openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
+    const apiKey = (await getApiKeyFromDB()) || process.env.OPENAI_API_KEY;
+    if (apiKey) {
+      openai = new OpenAI({ apiKey });
     }
   }
   return openai;
@@ -32,10 +43,6 @@ function getModel(): string {
  */
 export interface TranslationResult {
   en: {
-    title: string;
-    description: string;
-  };
-  ru?: {
     title: string;
     description: string;
   };
@@ -72,7 +79,7 @@ export interface EnrichmentResult {
 const ENRICHMENT_SYSTEM_PROMPT = `あなたは越境EC商品データの専門家です。
 日本語の商品情報を分析し、以下の3つのタスクを同時に実行してください。
 
-1. **翻訳**: 自然で商品説明として適切な英語・ロシア語に翻訳
+1. **翻訳**: 自然で商品説明として適切な英語に翻訳
 2. **属性抽出**: 商品の構造化属性を抽出
 3. **禁制品チェック**: 国際配送における禁制品・リスクを判定
 
@@ -96,8 +103,7 @@ const ENRICHMENT_USER_PROMPT = `以下の日本語商品情報を分析してく
 【出力形式（JSON）】
 {
   "translations": {
-    "en": { "title": "英語タイトル", "description": "英語説明文" },
-    "ru": { "title": "ロシア語タイトル", "description": "ロシア語説明文" }
+    "en": { "title": "英語タイトル", "description": "英語説明文" }
   },
   "attributes": {
     "brand": "ブランド名（推測できる場合）",
@@ -134,7 +140,7 @@ export async function enrichProduct(
   category?: string
 ): Promise<EnrichmentResult> {
   // OpenAI APIキーが設定されていない場合はフォールバック
-  const client = getOpenAIClient();
+  const client = await getOpenAIClient();
   if (!client) {
     log.warn({ type: 'openai_not_configured' });
     return createFallbackResult(title, description);
@@ -181,7 +187,6 @@ export async function enrichProduct(
     return {
       translations: {
         en: parsed.translations?.en || { title: `[EN] ${title}`, description: `[EN] ${description}` },
-        ru: parsed.translations?.ru,
         tokensUsed,
       },
       attributes: {
@@ -219,14 +224,6 @@ export async function translateToEnglish(
   title: string,
   description: string
 ): Promise<{ title: string; description: string; tokensUsed: number }> {
-  if (!openai) {
-    return {
-      title: `[EN] ${title}`,
-      description: `[EN] ${description}`,
-      tokensUsed: 0,
-    };
-  }
-
   const prompt = `Translate the following Japanese product information to natural, SEO-friendly English:
 
 Title: ${title}
@@ -237,7 +234,7 @@ ${description}
 Return JSON: {"title": "...", "description": "..."}`;
 
   try {
-    const client = getOpenAIClient();
+    const client = await getOpenAIClient();
     if (!client) {
       throw new Error('OpenAI not configured');
     }

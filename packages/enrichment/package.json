@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@rakuda/logger": "*",
+    "@rakuda/database": "*",
     "openai": "^4.77.0"
   },
   "devDependencies": {

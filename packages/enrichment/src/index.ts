@@ -22,7 +22,6 @@ const log = logger.child({ module: 'enrichment' });
 export interface FullEnrichmentResult {
   translations: {
     en: { title: string; description: string };
-    ru?: { title: string; description: string };
   };
   attributes: ExtractedAttributes;
   validation: ValidationResult;
@@ -110,7 +109,6 @@ export async function enrichProductFull(
     );
     translations = {
       en: aiResult.translations.en,
-      ru: aiResult.translations.ru,
     };
   } else {
     finalAttributes = ruleAttributes;

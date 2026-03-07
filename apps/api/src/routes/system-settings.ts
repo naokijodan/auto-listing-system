@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { AppError } from '../middleware/error-handler';
+import OpenAI from 'openai';
 
 const router = Router();
 const log = logger.child({ module: 'system-settings' });
@@ -412,6 +413,41 @@ router.delete('/:key', async (req, res, next) => {
       success: true,
       message: 'Setting deleted',
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * APIキーの接続テスト
+ */
+router.post('/:key/verify', async (req, res, next) => {
+  try {
+    const { key } = req.params;
+
+    if (key !== 'openai_api_key') {
+      throw new AppError(400, 'Unsupported key for verification', 'INVALID_INPUT');
+    }
+
+    // 1. SystemSettingからAPIキーを取得（isSecretでも生値）
+    const setting = await prisma.systemSetting.findUnique({ where: { key } });
+    const apiKey = (setting?.value && setting.value.trim()) || process.env.OPENAI_API_KEY;
+
+    if (!apiKey) {
+      return res.status(400).json({ success: false, message: 'API key not configured' });
+    }
+
+    // 2. OpenAI APIに簡単なリクエスト
+    const client = new OpenAI({ apiKey });
+    try {
+      // models.listは権限チェックに十分
+      await client.models.list();
+      return res.json({ success: true, message: 'Verification succeeded' });
+    } catch (err: any) {
+      const status = err?.status || 500;
+      const message = err?.message || 'Verification failed';
+      return res.status(status === 401 ? 401 : 400).json({ success: false, message });
+    }
   } catch (error) {
     next(error);
   }

@@ -1,41 +1,150 @@
-## タスク: Chrome拡張機能メルカリセレクタ修正
+## タスク: Phase 1 - APIキー設定UI + SystemSettingへの保存
 
 ### Working directory
 ~/Desktop/rakuda/
 
-### 問題
-Playwright検証でメルカリの一部セレクタが変更されていることが判明:
-- `[data-testid="seller-name"]` → 存在しない。正しくは `[data-testid="seller-link"]`
-- `[data-testid="category"]` → 存在しない。正しくは `[data-testid="item-detail-category"]`
+### 概要
+設定画面（/settings）のシステムタブにAPIキー管理セクションを追加し、
+OpenAI APIキーをWeb UIから設定できるようにする。
 
-### 修正箇所
+### 背景
+- `SystemSetting`テーブルは既にある（packages/database/prisma/schema.prisma:1947）
+- `isSecret`フラグ、`SECRET` valueType、バージョン管理、SettingHistory付き
+- API: apps/api/src/routes/system-settings.ts に GET/PUT 済み（マスキング対応済み）
+- UI: apps/web/src/app/settings/page.tsx の `SystemSettings` コンポーネント（1320行目〜）は現在ハードコード表示のみ
 
-#### 1. extensions/chrome/background.js の extractProductInfo 関数（メルカリ部分）
-- 305行目付近の `if (url.includes('mercari.com'))` ブロック内
+### 修正内容
 
-変更1: sellerName のセレクタ（322行目付近）
+#### 1. シードスクリプト: APIキー設定のSystemSettingレコードを作成
+
+ファイル: `packages/database/prisma/seed-api-keys.ts`（新規）
+
+以下のSystemSettingレコードをupsertするスクリプトを作成:
+
+```typescript
+const apiKeySettings = [
+  {
+    key: 'openai_api_key',
+    category: 'INTEGRATION',
+    value: process.env.OPENAI_API_KEY || '',
+    valueType: 'SECRET',
+    label: 'OpenAI API Key',
+    description: 'GPT-4oを使った翻訳・属性抽出に必要。sk-で始まるキーを入力してください。',
+    isSecret: true,
+    isReadOnly: false,
+  },
+  {
+    key: 'openai_model',
+    category: 'INTEGRATION',
+    value: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    valueType: 'STRING',
+    label: 'OpenAI モデル',
+    description: '翻訳に使用するモデル名（gpt-4o, gpt-4o-mini等）',
+    isSecret: false,
+    isReadOnly: false,
+  },
+];
 ```
-// 変更前:
-const sellerName = document.querySelector('[data-testid="seller-name"]')?.textContent?.trim();
 
-// 変更後:
-const sellerName = document.querySelector('[data-testid="seller-link"]')?.textContent?.trim();
+#### 2. UI: SystemSettingsコンポーネントにAPIキー管理セクションを追加
+
+ファイル: `apps/web/src/app/settings/page.tsx`
+
+`SystemSettings`関数コンポーネント（1320行目〜）を改修:
+
+- 既存のスケジューラー・データベースカードはそのまま残す
+- 新しい「API連携設定」カードを**先頭に**追加
+- 以下のUI要素を含む:
+  - OpenAI API Key入力欄（type="password"）
+    - 保存済みの場合はマスク表示（「sk-xxxx...xxxx」形式、先頭4文字+末尾4文字）
+    - 空欄で保存すると既存値を維持（上書きしない）
+    - 保存ボタン
+    - 接続テスト（Verify）ボタン → `/api/system-settings/openai_api_key/verify` を呼ぶ
+  - OpenAI モデル選択（ドロップダウン: gpt-4o, gpt-4o-mini, gpt-4o-2024-11-20）
+  - ステータス表示（設定済み/未設定）
+
+- データ取得: `GET /api/system-settings/category/INTEGRATION`
+- 保存: `PUT /api/system-settings/{key}` (既存API使用)
+- マスク表示ロジック: APIから返る`********`をそのまま表示するのではなく、
+  「設定済み」のステータスバッジを表示。入力欄はプレースホルダーで「新しいキーを入力...」
+
+#### 3. API: APIキー検証エンドポイントを追加
+
+ファイル: `apps/api/src/routes/system-settings.ts`
+
+```typescript
+// APIキーの接続テスト
+router.post('/:key/verify', async (req, res, next) => {
+  // key === 'openai_api_key' の場合:
+  // 1. SystemSettingからAPIキーを取得（isSecret=trueでも生値を取得）
+  // 2. OpenAI API に簡単なリクエストを送信（models.list()等）
+  // 3. 成功/失敗を返す
+});
 ```
 
-変更2: category のセレクタ（325行目付近）
-```
-// 変更前:
-const category = document.querySelector('[data-testid="category"]')?.textContent?.trim();
+#### 4. translator.tsの改修: 環境変数→DB読み込みに変更
 
-// 変更後:
-const category = document.querySelector('[data-testid="item-detail-category"]')?.textContent?.trim();
+ファイル: `packages/enrichment/src/translator.ts`
+
+`getOpenAIClient()`を以下のように変更:
+- まずDBの`SystemSetting`から`openai_api_key`を取得
+- 未設定の場合は環境変数`OPENAI_API_KEY`にフォールバック
+- どちらもない場合はnullを返す（現在と同じ挙動）
+
+```typescript
+import { prisma } from '@rakuda/database';
+
+async function getApiKeyFromDB(): Promise<string | null> {
+  try {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: 'openai_api_key' },
+    });
+    return setting?.value || null;
+  } catch {
+    return null;
+  }
+}
+
+// getOpenAIClient()を非同期に変更
+async function getOpenAIClient(): Promise<OpenAI | null> {
+  if (!openaiInitialized) {
+    openaiInitialized = true;
+    const apiKey = await getApiKeyFromDB() || process.env.OPENAI_API_KEY;
+    if (apiKey) {
+      openai = new OpenAI({ apiKey });
+    }
+  }
+  return openai;
+}
 ```
 
-#### 2. extensions/chrome/popup.js のメルカリ部分にも同様のセレクタがあれば修正
-- popup.js 内のメルカリセクションで seller-name や category のセレクタがあれば同様に修正
+注意: `getOpenAIClient()`を非同期にするため、呼び出し元の`enrichProduct()`と
+`translateToEnglish()`も`await getOpenAIClient()`に変更する。
+既存のフォールバック処理（`createFallbackResult`）はそのまま維持。
+
+#### 5. ロシア語翻訳の削除
+
+ファイル: `packages/enrichment/src/translator.ts`
+
+- `TranslationResult`インターフェースから`ru`プロパティを削除
+- `ENRICHMENT_SYSTEM_PROMPT`からロシア語翻訳の指示を削除
+- `ENRICHMENT_USER_PROMPT`の出力形式から`ru`を削除
+- `enrichProduct()`の戻り値から`ru`を削除
+
+### テスト
+
+```bash
+cd ~/Desktop/rakuda
+# 既存テストが壊れないか確認
+npx vitest run --reporter=verbose 2>&1 | tail -50
+
+# シードスクリプトの動作確認（dry-run的に構文チェック）
+npx tsx packages/database/prisma/seed-api-keys.ts --help 2>&1 || true
+```
 
 ### 注意事項
-- ヤフオクとAmazon JPのセレクタは変更しない
-- content.js は変更しない
-- ファイルの他の部分は一切変更しない
-- 既存のコード構造・スタイルに合わせる
+- 既存のSystemSettings APIは変更しない（追加のみ）
+- `isSecret: true`のレコードはGETで`********`にマスクされる（既存ロジック）
+- UIのテーマ切り替え等の既存機能を壊さない
+- 設定画面のタブ構成（tabs配列）は変更しない
+- セキュリティ: APIキーの生値をconsole.logやフロントエンドのレスポンスに出力しない
