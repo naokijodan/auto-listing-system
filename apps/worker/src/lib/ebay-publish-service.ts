@@ -37,25 +37,31 @@ export class EbayPublishService {
       ? pricing.finalPriceUsd
       : this.calculateEbayPrice(baseCostJpy, task.product.weight || undefined);
 
-    const listing = await prisma.listing.upsert({
+    // findFirst + create/update pattern (Prisma upsert doesn't support null in compound unique)
+    const existing = await prisma.listing.findFirst({
       where: {
-        productId_marketplace: {
-          productId: task.productId,
-          marketplace: 'EBAY',
-        },
-      } as any,
-      create: {
         productId: task.productId,
         marketplace: 'EBAY',
-        status: 'DRAFT',
-        listingPrice: initialPriceUsd,
-        currency: 'USD',
-        marketplaceData: {},
-      },
-      update: {
-        listingPrice: initialPriceUsd,
+        credentialId: credentialId ?? null,
       },
     });
+
+    const listing = existing
+      ? await prisma.listing.update({
+          where: { id: existing.id },
+          data: { listingPrice: initialPriceUsd },
+        })
+      : await prisma.listing.create({
+          data: {
+            productId: task.productId,
+            marketplace: 'EBAY',
+            credentialId: credentialId ?? null,
+            status: 'DRAFT',
+            listingPrice: initialPriceUsd,
+            currency: 'USD',
+            marketplaceData: {},
+          },
+        });
 
     log.info({ type: 'ebay_listing_created', listingId: listing.id, productId: task.productId });
     return listing.id;

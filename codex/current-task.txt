@@ -1,150 +1,60 @@
-## タスク: Phase 1 - APIキー設定UI + SystemSettingへの保存
+RAKUDAプロジェクト（~/Desktop/rakuda/）の出品パイプライン結合テストスクリプトを作成してください。
 
-### Working directory
-~/Desktop/rakuda/
+## 目的
+テスト商品を作成し、画像→翻訳→ItemSpecifics→品質チェック→eBay出品の一連フローを検証するスクリプト
 
-### 概要
-設定画面（/settings）のシステムタブにAPIキー管理セクションを追加し、
-OpenAI APIキーをWeb UIから設定できるようにする。
+## ファイル
+`apps/worker/src/__tests__/integration/listing-pipeline.test.ts` に作成
 
-### 背景
-- `SystemSetting`テーブルは既にある（packages/database/prisma/schema.prisma:1947）
-- `isSecret`フラグ、`SECRET` valueType、バージョン管理、SettingHistory付き
-- API: apps/api/src/routes/system-settings.ts に GET/PUT 済み（マスキング対応済み）
-- UI: apps/web/src/app/settings/page.tsx の `SystemSettings` コンポーネント（1320行目〜）は現在ハードコード表示のみ
+## テスト対象フロー
+1. Product作成（テストデータ）
+2. EnrichmentTask作成（翻訳・属性抽出）
+3. 画像処理（processImagesForListing）
+4. 品質チェックゲート（listing-quality-gate.ts の checkListingQuality）
+5. eBay出品（publishToEbay - モック使用）
 
-### 修正内容
+## 重要な参照ファイル
+- `apps/worker/src/lib/ebay-publish-service.ts` - EbayPublishService クラス（createEbayListing, processImagesForListing, publishToEbay）
+- `apps/worker/src/lib/listing-quality-gate.ts` - checkListingQuality関数
+  - hardBlocks: 画像0枚、タイトル空or[EN]始まり、価格<=0
+  - softWarnings: 説明空or[EN]始まり、ItemSpecifics充足率<80%
+- `apps/worker/src/jobs/ebay-publish-worker.ts` - BullMQジョブ処理
+- `packages/enrichment/src/translator.ts` - enrichProduct（翻訳）
+- `packages/enrichment/src/item-specifics/extractor.ts` - extractItemSpecifics
+- `packages/enrichment/src/item-specifics/field-definitions.ts` - getFieldsForCategory, resolveCategory
 
-#### 1. シードスクリプト: APIキー設定のSystemSettingレコードを作成
+## テストケース
 
-ファイル: `packages/database/prisma/seed-api-keys.ts`（新規）
+### 1. 正常フロー（Happy Path）
+- テスト商品（時計カテゴリ）を作成
+- EnrichmentTaskで翻訳・属性抽出を実行（OpenAI APIはモック）
+- 品質チェックPASS → 出品成功（eBay APIはモック）
 
-以下のSystemSettingレコードをupsertするスクリプトを作成:
+### 2. 画像なしでブロック
+- 画像0枚の商品 → 品質ゲートでhardBlock → 出品中止
 
-```typescript
-const apiKeySettings = [
-  {
-    key: 'openai_api_key',
-    category: 'INTEGRATION',
-    value: process.env.OPENAI_API_KEY || '',
-    valueType: 'SECRET',
-    label: 'OpenAI API Key',
-    description: 'GPT-4oを使った翻訳・属性抽出に必要。sk-で始まるキーを入力してください。',
-    isSecret: true,
-    isReadOnly: false,
-  },
-  {
-    key: 'openai_model',
-    category: 'INTEGRATION',
-    value: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-    valueType: 'STRING',
-    label: 'OpenAI モデル',
-    description: '翻訳に使用するモデル名（gpt-4o, gpt-4o-mini等）',
-    isSecret: false,
-    isReadOnly: false,
-  },
-];
-```
+### 3. 翻訳失敗フォールバック
+- OpenAI API失敗 → [EN]プレフィックス付きフォールバック → 品質ゲートでhardBlock
 
-#### 2. UI: SystemSettingsコンポーネントにAPIキー管理セクションを追加
+### 4. ItemSpecifics抽出テスト
+- 時計商品の日本語タイトルからBrand, Model, Movement等を抽出
+- DBのBrandテーブル（505件）とItemSpecificsFieldテーブル（109件）を使用
 
-ファイル: `apps/web/src/app/settings/page.tsx`
+### 5. カテゴリ別プロンプト選択テスト
+- Watchesカテゴリ → 「時計専用V2」プロンプトが選択される
+- 未知カテゴリ → 「一般・汎用」デフォルトプロンプトが選択される
 
-`SystemSettings`関数コンポーネント（1320行目〜）を改修:
+## モック方針
+- **モック**: OpenAI API, eBay API（Inventory/Offer/Publish）, S3/MinIO画像アップロード
+- **実DB使用**: Prisma（ローカルPostgres）- Brand, ItemSpecificsField, TranslationPromptは実データ使用
+- **テストフレームワーク**: Vitest
 
-- 既存のスケジューラー・データベースカードはそのまま残す
-- 新しい「API連携設定」カードを**先頭に**追加
-- 以下のUI要素を含む:
-  - OpenAI API Key入力欄（type="password"）
-    - 保存済みの場合はマスク表示（「sk-xxxx...xxxx」形式、先頭4文字+末尾4文字）
-    - 空欄で保存すると既存値を維持（上書きしない）
-    - 保存ボタン
-    - 接続テスト（Verify）ボタン → `/api/system-settings/openai_api_key/verify` を呼ぶ
-  - OpenAI モデル選択（ドロップダウン: gpt-4o, gpt-4o-mini, gpt-4o-2024-11-20）
-  - ステータス表示（設定済み/未設定）
+## 既存テストの参考
+- `apps/worker/src/__tests__/` 配下の既存テストを参考にスタイルを合わせる
+- `vi.mock` でモジュールモック
+- テスト後のDBクリーンアップを実装
 
-- データ取得: `GET /api/system-settings/category/INTEGRATION`
-- 保存: `PUT /api/system-settings/{key}` (既存API使用)
-- マスク表示ロジック: APIから返る`********`をそのまま表示するのではなく、
-  「設定済み」のステータスバッジを表示。入力欄はプレースホルダーで「新しいキーを入力...」
-
-#### 3. API: APIキー検証エンドポイントを追加
-
-ファイル: `apps/api/src/routes/system-settings.ts`
-
-```typescript
-// APIキーの接続テスト
-router.post('/:key/verify', async (req, res, next) => {
-  // key === 'openai_api_key' の場合:
-  // 1. SystemSettingからAPIキーを取得（isSecret=trueでも生値を取得）
-  // 2. OpenAI API に簡単なリクエストを送信（models.list()等）
-  // 3. 成功/失敗を返す
-});
-```
-
-#### 4. translator.tsの改修: 環境変数→DB読み込みに変更
-
-ファイル: `packages/enrichment/src/translator.ts`
-
-`getOpenAIClient()`を以下のように変更:
-- まずDBの`SystemSetting`から`openai_api_key`を取得
-- 未設定の場合は環境変数`OPENAI_API_KEY`にフォールバック
-- どちらもない場合はnullを返す（現在と同じ挙動）
-
-```typescript
-import { prisma } from '@rakuda/database';
-
-async function getApiKeyFromDB(): Promise<string | null> {
-  try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'openai_api_key' },
-    });
-    return setting?.value || null;
-  } catch {
-    return null;
-  }
-}
-
-// getOpenAIClient()を非同期に変更
-async function getOpenAIClient(): Promise<OpenAI | null> {
-  if (!openaiInitialized) {
-    openaiInitialized = true;
-    const apiKey = await getApiKeyFromDB() || process.env.OPENAI_API_KEY;
-    if (apiKey) {
-      openai = new OpenAI({ apiKey });
-    }
-  }
-  return openai;
-}
-```
-
-注意: `getOpenAIClient()`を非同期にするため、呼び出し元の`enrichProduct()`と
-`translateToEnglish()`も`await getOpenAIClient()`に変更する。
-既存のフォールバック処理（`createFallbackResult`）はそのまま維持。
-
-#### 5. ロシア語翻訳の削除
-
-ファイル: `packages/enrichment/src/translator.ts`
-
-- `TranslationResult`インターフェースから`ru`プロパティを削除
-- `ENRICHMENT_SYSTEM_PROMPT`からロシア語翻訳の指示を削除
-- `ENRICHMENT_USER_PROMPT`の出力形式から`ru`を削除
-- `enrichProduct()`の戻り値から`ru`を削除
-
-### テスト
-
-```bash
-cd ~/Desktop/rakuda
-# 既存テストが壊れないか確認
-npx vitest run --reporter=verbose 2>&1 | tail -50
-
-# シードスクリプトの動作確認（dry-run的に構文チェック）
-npx tsx packages/database/prisma/seed-api-keys.ts --help 2>&1 || true
-```
-
-### 注意事項
-- 既存のSystemSettings APIは変更しない（追加のみ）
-- `isSecret: true`のレコードはGETで`********`にマスクされる（既存ロジック）
-- UIのテーマ切り替え等の既存機能を壊さない
-- 設定画面のタブ構成（tabs配列）は変更しない
-- セキュリティ: APIキーの生値をconsole.logやフロントエンドのレスポンスに出力しない
+## 注意
+- eBay本番APIには絶対にリクエストを送らない
+- テストデータは明確にテスト用と分かる名前にする（例: "TEST-INTEGRATION-..."）
+- 各テストは独立して実行できること

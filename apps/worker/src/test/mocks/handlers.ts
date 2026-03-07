@@ -103,7 +103,7 @@ export const handlers = [
     const body = await request.json();
 
     // バリデーションエラーのシミュレーション
-    if (!body.product?.title) {
+    if (!(body as any)?.product?.title) {
       return HttpResponse.json(
         {
           errors: [
