@@ -374,6 +374,7 @@ router.delete('/listings/:id', async (req: Request, res: Response) => {
     if (joomProductId) {
       try {
         await joomPublishQueue.add('delete-product', {
+          type: 'delete-product' as any,
           joomProductId,
           joomListingId: listing.id,
         });

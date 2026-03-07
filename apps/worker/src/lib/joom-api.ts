@@ -548,7 +548,7 @@ export class JoomApiClient {
     if (params?.since) queryParams.set('since', params.since);
     if (params?.limit) queryParams.set('limit', params.limit.toString());
 
-    const endpoint = `/orders${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const endpoint = `/orders/list${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return this.request<{ orders: any[]; total: number }>('GET', endpoint);
   }
 
