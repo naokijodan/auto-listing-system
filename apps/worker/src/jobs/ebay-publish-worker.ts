@@ -24,7 +24,17 @@ const worker = new Worker(QUEUE_NAME, async (job: Job) => {
       }
       // 3段階実行
       const listingId = await ebayPublishService.createEbayListing(task.id, credentialId);
-      await ebayPublishService.processImagesForListing(listingId);
+      try {
+        await ebayPublishService.processImagesForListing(listingId);
+      } catch (imageError: any) {
+        log.warn({
+          type: 'image_processing_skipped',
+          listingId,
+          productId,
+          error: imageError.message,
+        });
+        // 画像処理が失敗してもpublishToEbayに進む（画像0枚ガードはpublishToEbay内にある）
+      }
       return await ebayPublishService.publishToEbay(listingId, credentialId);
     }
     case 'sync-orders': {

@@ -131,6 +131,57 @@ const ENRICHMENT_USER_PROMPT = `以下の日本語商品情報を分析してく
 - review_required: 商標侵害リスク、医薬品・サプリメント、高額ブランド品
 - approved: 上記に該当しない`;
 
+// カテゴリに応じたプロンプト解決ヘルパー
+interface ResolvedPrompt {
+  systemPrompt: string;
+  userPrompt: string;
+  source: 'db_category' | 'db_default' | 'hardcoded';
+}
+
+async function resolvePrompt(category?: string): Promise<ResolvedPrompt> {
+  try {
+    // 1. カテゴリ指定がある場合、カテゴリ別プロンプトを検索
+    if (category) {
+      const categoryPrompt = await prisma.translationPrompt.findFirst({
+        where: {
+          category: category,
+          isActive: true,
+        },
+        orderBy: { priority: 'desc' },
+      });
+      if (categoryPrompt) {
+        return {
+          systemPrompt: categoryPrompt.systemPrompt,
+          userPrompt: categoryPrompt.userPrompt,
+          source: 'db_category',
+        };
+      }
+    }
+
+    // 2. デフォルトプロンプトを検索
+    const defaultPrompt = await prisma.translationPrompt.findFirst({
+      where: { isDefault: true, isActive: true },
+      orderBy: { priority: 'desc' },
+    });
+    if (defaultPrompt) {
+      return {
+        systemPrompt: defaultPrompt.systemPrompt,
+        userPrompt: defaultPrompt.userPrompt,
+        source: 'db_default',
+      };
+    }
+  } catch (error: any) {
+    log.warn({ type: 'prompt_db_lookup_failed', error: error.message, category });
+  }
+
+  // 3. フォールバック: ハードコードされた汎用プロンプト
+  return {
+    systemPrompt: ENRICHMENT_SYSTEM_PROMPT,
+    userPrompt: ENRICHMENT_USER_PROMPT,
+    source: 'hardcoded',
+  };
+}
+
 /**
  * 商品情報の翻訳・属性抽出・検証を一括実行
  */
@@ -146,7 +197,10 @@ export async function enrichProduct(
     return createFallbackResult(title, description);
   }
 
-  const userPrompt = ENRICHMENT_USER_PROMPT
+  // カテゴリに応じたプロンプトをDBから取得
+  const prompt = await resolvePrompt(category);
+
+  const userPrompt = prompt.userPrompt
     .replace('{{title}}', title)
     .replace('{{description}}', description)
     .replace('{{category}}', category || '不明');
@@ -157,12 +211,14 @@ export async function enrichProduct(
       titleLength: title.length,
       descriptionLength: description.length,
       model: getModel(),
+      promptSource: prompt.source,
+      category: category || 'none',
     });
 
     const response = await client.chat.completions.create({
       model: getModel(),
       messages: [
-        { role: 'system', content: ENRICHMENT_SYSTEM_PROMPT },
+        { role: 'system', content: prompt.systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.3,

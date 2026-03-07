@@ -2,6 +2,7 @@ import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { ebayApi, mapConditionToEbay, getEbayClient } from './ebay-api';
 import { imagePipelineService } from './joom-publish-service';
+import { checkListingQuality } from './listing-quality-gate';
 
 export interface EbayPublishResult {
   success: boolean;
@@ -76,24 +77,60 @@ export class EbayPublishService {
       throw new Error(`EnrichmentTask not found for product: ${listing.productId}`);
     }
 
-    const imageResult = await imagePipelineService.processImages(listing.productId, listing.product.images);
-
-    await prisma.$transaction([
-      prisma.enrichmentTask.update({
-        where: { id: task.id },
-        data: {
-          bufferedImages: imageResult.buffered,
-          optimizedImages: imageResult.optimized,
-          imageStatus: 'COMPLETED',
-        },
-      }),
-      prisma.listing.update({
+    // 元画像がない場合は早期リターン
+    if (!listing.product.images || listing.product.images.length === 0) {
+      log.warn({ type: 'no_source_images', productId: listing.productId, listingId });
+      await prisma.listing.update({
         where: { id: listingId },
         data: { status: 'PENDING_PUBLISH' },
-      }),
-    ]);
+      });
+      return;
+    }
 
-    log.info({ type: 'images_processed_for_ebay', listingId, count: imageResult.optimized.length });
+    try {
+      const imageResult = await imagePipelineService.processImages(listing.productId, listing.product.images);
+
+      await prisma.$transaction([
+        prisma.enrichmentTask.update({
+          where: { id: task.id },
+          data: {
+            bufferedImages: imageResult.buffered,
+            optimizedImages: imageResult.optimized,
+            imageStatus: 'COMPLETED',
+          },
+        }),
+        prisma.listing.update({
+          where: { id: listingId },
+          data: { status: 'PENDING_PUBLISH' },
+        }),
+      ]);
+
+      log.info({ type: 'images_processed_for_ebay', listingId, count: imageResult.optimized.length });
+    } catch (error: any) {
+      log.error({
+        type: 'image_processing_failed',
+        productId: listing.productId,
+        listingId,
+        error: error.message,
+      });
+
+      // フォールバック: Product.imagesをそのまま使用
+      await prisma.$transaction([
+        prisma.enrichmentTask.update({
+          where: { id: task.id },
+          data: {
+            optimizedImages: listing.product.images,
+            imageStatus: 'FAILED',
+          },
+        }),
+        prisma.listing.update({
+          where: { id: listingId },
+          data: { status: 'PENDING_PUBLISH' },
+        }),
+      ]);
+
+      log.warn({ type: 'image_fallback_used', listingId, imageCount: listing.product.images.length });
+    }
   }
 
   // Step 3: eBayに出品
@@ -132,10 +169,35 @@ export class EbayPublishService {
       : (listing.product.processedImages.length > 0 ? listing.product.processedImages : listing.product.images);
     const imageUrls = optimizedImages.slice(0, 12);
 
-    const condition = mapConditionToEbay(attributes?.condition || listing.product.condition || undefined);
+    // 価格決定（品質チェックで使用）
     const priceUsd: number = typeof pricing.finalPriceUsd === 'number'
       ? pricing.finalPriceUsd
-      : this.calculateEbayPrice(typeof pricing.costJpy === 'number' ? pricing.costJpy : listing.product.price, listing.product.weight || undefined);
+      : this.calculateEbayPrice(
+          typeof pricing.costJpy === 'number' ? pricing.costJpy : listing.product.price,
+          listing.product.weight || undefined,
+        );
+
+    // 品質チェックゲート
+    const qualityCheck = checkListingQuality({
+      imageUrls,
+      title,
+      description,
+      price: priceUsd,
+    });
+
+    if (!qualityCheck.passed) {
+      const errorMsg = `Quality check failed: ${qualityCheck.hardBlocks.join('; ')}`;
+      await prisma.listing.update({
+        where: { id: listingId },
+        data: {
+          status: 'ERROR',
+          errorMessage: errorMsg,
+        },
+      });
+      return { success: false, error: errorMsg };
+    }
+
+    const condition = mapConditionToEbay(attributes?.condition || listing.product.condition || undefined);
 
     // ポリシーID（環境変数）
     const fulfillmentPolicyId = process.env.EBAY_FULFILLMENT_POLICY_ID;

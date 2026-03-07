@@ -1,0 +1,148 @@
+import { PrismaClient } from '@prisma/client';
+import * as fs from 'fs';
+import * as path from 'path';
+
+const prisma = new PrismaClient();
+
+const USER_PROMPT_TEMPLATE = `以下の日本語商品情報を分析してください。
+
+タイトル: {{title}}
+
+説明文:
+{{description}}
+
+カテゴリ: {{category}}`;
+
+interface PromptDefinition {
+  name: string;
+  category: string | null;
+  filePath: string;
+  priority: number;
+  isDefault: boolean;
+}
+
+const PROMPT_DEFINITIONS: PromptDefinition[] = [
+  {
+    name: '時計専用V2',
+    category: 'Watches',
+    filePath: path.join(process.env.HOME || '', 'Desktop/ガイド・ドキュメント/プロンプト編集/時計プロンプトV2.txt'),
+    priority: 100,
+    isDefault: false,
+  },
+  {
+    name: 'ポケモンカードV9',
+    category: 'Trading Cards',
+    filePath: path.join(process.env.HOME || '', 'Desktop/ガイド・ドキュメント/プロンプト編集/ポケカプロンプト_改善版V9.txt'),
+    priority: 100,
+    isDefault: false,
+  },
+  {
+    name: 'ジュエリー専用',
+    category: 'Jewelry',
+    filePath: path.join(process.env.HOME || '', 'Desktop/ガイド・ドキュメント/プロンプト編集/ジュエリー専用プロンプト.txt'),
+    priority: 90,
+    isDefault: false,
+  },
+  {
+    name: 'フィギュア用',
+    category: 'Collectibles',
+    filePath: path.join(process.env.HOME || '', 'Desktop/ツール開発/一括シートApps_v3/プロンプト例/フィギュア用.txt'),
+    priority: 80,
+    isDefault: false,
+  },
+  {
+    name: '時計専用V1',
+    category: 'Watches',
+    filePath: path.join(process.env.HOME || '', 'Desktop/ツール開発/一括シートApps_v3/プロンプト例/時計専用.txt'),
+    priority: 50,
+    isDefault: false,
+  },
+  {
+    name: 'ゲーム用',
+    category: 'Video Games',
+    filePath: path.join(process.env.HOME || '', 'Desktop/ツール開発/一括シートApps_v3/プロンプト例/ゲーム用.txt'),
+    priority: 70,
+    isDefault: false,
+  },
+  {
+    name: 'ハイブランドアパレル',
+    category: 'Designer',
+    filePath: path.join(process.env.HOME || '', 'Desktop/ツール開発/一括シートApps_v3/プロンプト例/ミドル〜ハイブランドアパレル・小物専用.txt'),
+    priority: 70,
+    isDefault: false,
+  },
+  {
+    name: '日本ブランド特化',
+    category: 'Japanese Brands',
+    filePath: path.join(process.env.HOME || '', 'Desktop/ツール開発/一括シートApps_v3/プロンプト例/日本ブラント特化.txt'),
+    priority: 70,
+    isDefault: false,
+  },
+  {
+    name: '一般・汎用',
+    category: null,
+    filePath: path.join(process.env.HOME || '', 'Desktop/ツール開発/一括シートApps_v3/プロンプト例/一般・汎用.txt'),
+    priority: 10,
+    isDefault: true,
+  },
+];
+
+async function main() {
+  console.log('Starting prompt seed...');
+
+  let successCount = 0;
+  let skipCount = 0;
+  let errorCount = 0;
+
+  for (const def of PROMPT_DEFINITIONS) {
+    try {
+      if (!fs.existsSync(def.filePath)) {
+        console.warn(`  SKIP: File not found: ${def.filePath}`);
+        skipCount++;
+        continue;
+      }
+
+      const systemPrompt = fs.readFileSync(def.filePath, 'utf-8');
+
+      await prisma.translationPrompt.upsert({
+        where: { name: def.name },
+        create: {
+          name: def.name,
+          category: def.category,
+          systemPrompt: systemPrompt,
+          userPrompt: USER_PROMPT_TEMPLATE,
+          extractAttributes: ['brand', 'model', 'color', 'size', 'material', 'condition', 'category'],
+          priority: def.priority,
+          isActive: true,
+          isDefault: def.isDefault,
+        },
+        update: {
+          category: def.category,
+          systemPrompt: systemPrompt,
+          userPrompt: USER_PROMPT_TEMPLATE,
+          priority: def.priority,
+          isActive: true,
+          isDefault: def.isDefault,
+        },
+      });
+
+      console.log(`  OK: ${def.name} (category: ${def.category || 'default'}, priority: ${def.priority})`);
+      successCount++;
+    } catch (error: any) {
+      console.error(`  ERROR: ${def.name}: ${error.message}`);
+      errorCount++;
+    }
+  }
+
+  console.log(`\nSeed complete: ${successCount} success, ${skipCount} skipped, ${errorCount} errors`);
+}
+
+main()
+  .catch((e) => {
+    console.error('Seed failed:', e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
+

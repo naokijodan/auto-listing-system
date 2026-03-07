@@ -11,6 +11,7 @@ import { uploadFile } from './storage';
 import { enrichmentTaskManager } from './enrichment-service';
 import { PricingPipeline } from './pricing';
 import { getCategoryMapping, fillRequiredAttributes, type ProductInfo } from './category-mapper';
+import { checkListingQuality } from './listing-quality-gate';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
@@ -434,6 +435,26 @@ export class JoomPublishService {
       const listingPrice = typeof listing.listingPrice === 'number' ? listing.listingPrice : 0;
       const enrichmentPrice = typeof pricing?.finalPrice === 'number' ? pricing.finalPrice : 0;
       const finalPrice = listingPrice > 0 ? listingPrice : enrichmentPrice;
+
+      // 品質チェックゲート
+      const qualityCheck = checkListingQuality({
+        imageUrls: imageUrls,
+        title: translations.en.title,
+        description: translations.en.description,
+        price: finalPrice,
+      });
+
+      if (!qualityCheck.passed) {
+        const errorMsg = `Quality check failed: ${qualityCheck.hardBlocks.join('; ')}`;
+        await prisma.listing.update({
+          where: { id: listingId },
+          data: {
+            status: 'ERROR',
+            errorMessage: errorMsg,
+          },
+        });
+        return { success: false, error: errorMsg };
+      }
 
       if (!finalPrice || finalPrice <= 0) {
         throw new Error('Invalid price: must be greater than 0');

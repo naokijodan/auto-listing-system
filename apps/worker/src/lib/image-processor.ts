@@ -194,6 +194,11 @@ export async function processImages(
   removeBackgroundEnabled: boolean = true,
   concurrency: number = 3
 ): Promise<ProcessedImage[]> {
+  // 空配列の早期リターン
+  if (!imageUrls || imageUrls.length === 0) {
+    log.warn({ type: 'no_images_to_process', productId });
+    return [];
+  }
   const results: ProcessedImage[] = [];
   const errors: string[] = [];
 

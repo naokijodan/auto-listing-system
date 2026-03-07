@@ -126,10 +126,6 @@ export async function processTranslateJob(
         itemSpecifics: enrichment.attributes.itemSpecifics,
         confidence: enrichment.attributes.confidence,
         // ロシア語翻訳を属性に含める
-        ...(includeRussian && enrichment.translations.ru ? {
-          titleRu: enrichment.translations.ru.title,
-          descriptionRu: enrichment.translations.ru.description,
-        } : {}),
         // 検証結果
         validation: {
           status: enrichment.validation.status,
@@ -160,8 +156,8 @@ export async function processTranslateJob(
         message: `Enrichment completed (${enrichment.validation.status})`,
         titleEn: enrichment.translations.en.title,
         descriptionEn: enrichment.translations.en.description,
-        titleRu: enrichment.translations.ru?.title,
-        descriptionRu: enrichment.translations.ru?.description,
+        titleRu: undefined,
+        descriptionRu: undefined,
         attributes: {
           brand: enrichment.attributes.brand,
           model: enrichment.attributes.model,
