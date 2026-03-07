@@ -536,19 +536,34 @@ export class JoomApiClient {
   }
 
   /**
-   * Phase 40-C: 注文一覧を取得
+   * 更新された注文一覧を取得（Joom API v3: GET /orders/multi）
+   * @param params.since - RFC3339タイムスタンプ。この時刻以降に更新された注文を取得（必須）
+   * @param params.limit - 1ページあたりの取得件数（デフォルト100、最大500）
    */
   async getOrders(params?: {
-    status?: string;
     since?: string;
     limit?: number;
   }): Promise<JoomApiResponse<{ orders: any[]; total: number }>> {
     const queryParams = new URLSearchParams();
-    if (params?.status) queryParams.set('status', params.status);
-    if (params?.since) queryParams.set('since', params.since);
+    // sinceがない場合は7日前をデフォルトとする
+    const since = params?.since || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    queryParams.set('updatedFrom', since);
     if (params?.limit) queryParams.set('limit', params.limit.toString());
 
-    const endpoint = `/orders/list${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const endpoint = `/orders/multi?${queryParams.toString()}`;
+    return this.request<{ orders: any[]; total: number }>('GET', endpoint);
+  }
+
+  /**
+   * 未発送の注文一覧を取得（Joom API v3: GET /orders/unfulfilled）
+   */
+  async getUnfulfilledOrders(params?: {
+    limit?: number;
+  }): Promise<JoomApiResponse<{ orders: any[]; total: number }>> {
+    const queryParams = new URLSearchParams();
+    if (params?.limit) queryParams.set('limit', params.limit.toString());
+
+    const endpoint = `/orders/unfulfilled${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
     return this.request<{ orders: any[]; total: number }>('GET', endpoint);
   }
 
@@ -582,7 +597,7 @@ export class JoomApiClient {
    * Phase 41-E: 注文詳細を取得
    */
   async getOrder(orderId: string): Promise<JoomApiResponse<any>> {
-    return this.request<any>('GET', `/orders/${orderId}`);
+    return this.request<any>('GET', `/orders?id=${orderId}`);
   }
 
   /**

@@ -219,10 +219,19 @@ describe('Joom API', () => {
         expect(result.data?.orders).toBeDefined();
       });
 
-      it('should filter by status', async () => {
-        const result = await client.getOrders({ status: 'pending' });
+      it('should support since and limit params', async () => {
+        const result = await client.getOrders({ since: '2026-01-01T00:00:00Z', limit: 1 });
 
         expect(result.success).toBe(true);
+        expect(result.data?.orders?.length).toBeGreaterThanOrEqual(0);
+      });
+    });
+
+    describe('getUnfulfilledOrders', () => {
+      it('should get unfulfilled orders', async () => {
+        const result = await client.getUnfulfilledOrders({ limit: 5 });
+        expect(result.success).toBe(true);
+        expect(result.data?.orders).toBeDefined();
       });
     });
 

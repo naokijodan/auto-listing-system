@@ -41,7 +41,7 @@ export class OrderSyncManager {
 
     try {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const res = await joomApi.getOrders({ status: 'pending', since, limit: 50 });
+      const res = await joomApi.getOrders({ since, limit: 50 });
       if (!res.success || !res.data) return { synced, errors: errors + 1 };
       const orders = res.data.orders || [];
 

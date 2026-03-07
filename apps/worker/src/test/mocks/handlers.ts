@@ -331,20 +331,34 @@ export const handlers = [
     return HttpResponse.json({});
   }),
 
-  // Phase 40-C: Get orders
-  http.get(`${JOOM_API}/orders`, ({ request }) => {
+  // Joom v3: Get updated orders (GET /orders/multi)
+  http.get(`${JOOM_API}/orders/multi`, ({ request }) => {
     const url = new URL(request.url);
-    const status = url.searchParams.get('status');
+    const updatedFrom = url.searchParams.get('updatedFrom');
+    const limit = parseInt(url.searchParams.get('limit') || '100');
 
+    // simple mock response ignoring updatedFrom and limit specifics
     const orders = [
-      { id: 'order-1', status: 'pending', total: 29.99 },
-      { id: 'order-2', status: 'shipped', total: 49.99 },
-    ].filter(o => !status || o.status === status);
+      { id: 'order-1', status: 'approved', total: 29.99, createdAt: '2026-02-01T10:00:00Z' },
+      { id: 'order-2', status: 'shipped', total: 49.99, createdAt: '2026-02-02T10:00:00Z' },
+    ].slice(0, limit);
 
     return HttpResponse.json({
       orders,
       total: orders.length,
+      paging: { next: null },
+      updatedFrom,
     });
+  }),
+
+  // Joom v3: Get unfulfilled orders (GET /orders/unfulfilled)
+  http.get(`${JOOM_API}/orders/unfulfilled`, ({ request }) => {
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit') || '100');
+    const orders = [
+      { id: 'order-3', status: 'approved', total: 19.99, createdAt: '2026-02-03T10:00:00Z' },
+    ].slice(0, limit);
+    return HttpResponse.json({ orders, total: orders.length });
   }),
 
   // Phase 41-E: Cancel order
