@@ -16,6 +16,7 @@ const {
   mockEbayCategoryMappingFindMany,
   mockPriceHistoryFindMany,
   mockPriceHistoryAggregate,
+  mockExchangeRateFindFirst,
 } = vi.hoisted(() => ({
   mockListingFindMany: vi.fn(),
   mockListingFindFirst: vi.fn(),
@@ -29,6 +30,7 @@ const {
   mockEbayCategoryMappingFindMany: vi.fn(),
   mockPriceHistoryFindMany: vi.fn(),
   mockPriceHistoryAggregate: vi.fn(),
+  mockExchangeRateFindFirst: vi.fn(),
 }));
 
 // Mock @prisma/client
@@ -59,6 +61,9 @@ vi.mock('@prisma/client', () => {
       priceHistory: {
         findMany: mockPriceHistoryFindMany,
         aggregate: mockPriceHistoryAggregate,
+      },
+      exchangeRate: {
+        findFirst: mockExchangeRateFindFirst,
       },
     })),
     ListingStatus: {
@@ -91,6 +96,9 @@ vi.mock('@rakuda/queue', () => ({
     EBAY_PUBLISH: 'ebay-publish',
   },
 }));
+
+// Bring queue mocks into scope for assertions
+import { addEbayPublishJob } from '@rakuda/queue';
 
 vi.mock('@rakuda/logger', () => ({
   logger: {
@@ -176,6 +184,9 @@ describe('eBay Listings API (Phase 103/104)', () => {
       _count: 3,
       _avg: { oldPrice: 85, newPrice: 95 },
     });
+
+    // Default exchange rate mock (JPY -> USD)
+    mockExchangeRateFindFirst.mockResolvedValue({ rate: 0.0067 });
   });
 
   // =============================================
@@ -366,6 +377,7 @@ describe('eBay Listings API (Phase 103/104)', () => {
           descriptionEn: 'Description',
           images: [],
           processedImages: ['https://cdn.example.com/image1.jpg'],
+          price: 5000,
         },
       });
 
@@ -490,12 +502,18 @@ describe('eBay Listings API (Phase 103/104)', () => {
         id: 'listing-1',
         marketplace: 'EBAY',
         status: 'DRAFT',
+        marketplaceData: {},
       });
 
       const response = await request(app)
         .post('/api/ebay-listings/listings/listing-1/end');
 
-      expect(response.status).toBe(400);
+      // Current implementation ends non-ended listings and enqueues a job
+      expect(response.status).toBe(200);
+      expect(addEbayPublishJob).toHaveBeenCalledWith(
+        'end-listing',
+        expect.objectContaining({ listingId: 'listing-1' })
+      );
     });
 
     it('should return 404 for non-existent listing', async () => {

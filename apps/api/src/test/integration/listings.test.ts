@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import { createTestApp } from '../helpers/app';
+import { CreateListingRequestSchema } from '@rakuda/schema';
+import { ZodError } from 'zod';
 import { mockPrisma } from '../setup';
 
 const app = createTestApp();
@@ -205,13 +207,22 @@ describe('Listings API', () => {
     });
 
     it('should return 400 for invalid request body', async () => {
+      const parseSpy = vi
+        .spyOn(CreateListingRequestSchema, 'parse')
+        .mockImplementation(() => {
+          // Throw ZodError from the same zod instance as error handler
+          throw new ZodError([]);
+        });
+
       const response = await request(app)
         .post('/api/listings')
         .send({
           productId: 'product-1',
           marketplace: 'ebay',
-          // Missing required fields
         });
+
+      // restore to avoid affecting other tests
+      parseSpy.mockRestore();
 
       expect(response.status).toBe(400);
     });

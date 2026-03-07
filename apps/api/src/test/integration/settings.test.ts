@@ -63,7 +63,7 @@ describe('Settings API', () => {
     });
 
     it('should handle database error gracefully', async () => {
-      mockPrisma.marketplaceSyncSetting.findMany.mockRejectedValue(new Error('DB Error'));
+      mockPrisma.marketplaceSyncSetting.findMany.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app).get('/api/settings/sync-schedule');
 
@@ -128,7 +128,7 @@ describe('Settings API', () => {
     });
 
     it('should handle database error gracefully', async () => {
-      mockPrisma.marketplaceSyncSetting.findUnique.mockRejectedValue(new Error('DB Error'));
+      mockPrisma.marketplaceSyncSetting.findUnique.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app).get('/api/settings/sync-schedule/joom/inventory');
 
@@ -247,7 +247,7 @@ describe('Settings API', () => {
     });
 
     it('should handle database error gracefully', async () => {
-      mockPrisma.marketplaceSyncSetting.upsert.mockRejectedValue(new Error('DB Error'));
+      mockPrisma.marketplaceSyncSetting.upsert.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .put('/api/settings/sync-schedule')
@@ -394,7 +394,7 @@ describe('Settings API', () => {
     });
 
     it('should handle database error gracefully', async () => {
-      mockPrisma.marketplaceSyncSetting.findUnique.mockRejectedValue(new Error('DB Error'));
+      mockPrisma.marketplaceSyncSetting.findUnique.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .patch('/api/settings/sync-schedule/joom/inventory/toggle');
@@ -457,7 +457,7 @@ describe('Settings API', () => {
     });
 
     it('should handle database error gracefully', async () => {
-      mockPrisma.marketplaceSyncSetting.update.mockRejectedValue(new Error('DB Error'));
+      mockPrisma.marketplaceSyncSetting.update.mockRejectedValueOnce(new Error('DB Error'));
 
       const response = await request(app)
         .post('/api/settings/sync-schedule/joom/inventory/run');

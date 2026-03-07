@@ -266,6 +266,10 @@ describe('Listing Performance API', () => {
     });
 
     it('should accept request body without error', async () => {
+      // Ensure DB calls in sync route resolve quickly and do not cascade
+      (prisma.listingPerformance.findUnique as any).mockResolvedValue(null);
+      (prisma.lowPerformanceFlag.create as any).mockResolvedValue({});
+
       const response = await request(app)
         .post('/api/listing-performance/sync')
         .send({ marketplace: 'ebay' });
