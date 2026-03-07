@@ -134,12 +134,24 @@
 - **修正**: `POST /products/update?id={id}` + `{ enabled: true/false }` に変更
 - **解決済み**: commit 292d9e9d
 
-### 7-3: テスト出品の放置によるアカウントリスク
+### 7-3: eBayブラウザ操作の禁止【絶対遵守】
+- **症状**: Playwrightでログイン画面を操作→ボット検知で永久サスペンドのリスク
+- **ルール**: eBayに対するブラウザ自動操作（Playwright/Puppeteer）・スクレイピングは全面禁止
+- **安全なアクセス**: API経由のみ、またはユーザーの直接操作
+- **OAuth認証**: URLを提示してユーザーに手動ログインしてもらう（ブラウザ自動操作厳禁）
+
+### 7-4: Worker環境変数のSandbox/Production不整合
+- **症状**: Worker EBAY_ENV=sandbox + DB本番トークン → トークンリフレッシュ常時失敗 → 全eBay API操作停止
+- **原因**: Coolify Worker環境変数がSandbox設定のまま放置されていた
+- **防止策**: デプロイ時にAPI/Worker/Web間で環境変数の整合性を必ず確認。将来的にはDBのSSoT化で環境変数依存を排除する
+- **解決済み**: Session 13（2026-03-07）で環境変数をProduction設定に修正
+
+### 7-5: テスト出品の放置によるアカウントリスク
 - **症状**: eBayテスト出品がViewを集めてしまった
 - **防止策**: テスト出品は動作確認後に即座に削除する。セッション内でクリーンアップ確認必須
 - **対応**: eBayは手動終了、Shopifyはadmin API DELETE、JoomはWorker経由disable
 
-### 7-4: Coolifyデプロイがqueuedのまま進まない
+### 7-6: Coolifyデプロイがqueuedのまま進まない
 - **症状**: in_progressデプロイがスタック→後続のqueuedが処理されない
 - **復旧手順**: `POST /api/v1/applications/{uuid}/stop` → 停止確認 → 再デプロイ
 - **防止策**: concurrent_builds=1推奨。デプロイ後はステータス確認を必ず行う
