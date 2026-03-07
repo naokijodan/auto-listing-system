@@ -23,7 +23,7 @@ async function getApiKeyFromDB(): Promise<string | null> {
   }
 }
 
-async function getOpenAIClient(): Promise<OpenAI | null> {
+export async function getOpenAIClient(): Promise<OpenAI | null> {
   if (!openaiInitialized) {
     openaiInitialized = true;
     const apiKey = (await getApiKeyFromDB()) || process.env.OPENAI_API_KEY;

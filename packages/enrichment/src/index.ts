@@ -152,3 +152,5 @@ export function quickValidate(
     flags: validation.flags,
   };
 }
+
+export { extractItemSpecifics, type ItemSpecificsResult } from './item-specifics';

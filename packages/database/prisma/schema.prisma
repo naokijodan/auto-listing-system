@@ -550,6 +550,39 @@ model EbayCategoryMapping {
 }
 
 // ========================================
+// ブランド・Item Specifics 項目
+// ========================================
+model Brand {
+  id          String   @id @default(cuid())
+  name        String   @unique  // 英語名（例: "Rolex", "Seiko")
+  jpNames     String[]          // 日本語名の配列（例: ["ロレックス", "ROLEX"]）
+  country     String?           // 製造国（例: "Switzerland", "Japan"）
+  parentBrand String?           // 親ブランド名（例: "Rolex" for "Submariner"）
+  categories  String[]          // 対象カテゴリ（例: ["Watches"]）空なら全カテゴリ
+  isMaterial  Boolean  @default(false) // 素材ブランドか（例: Swarovski）
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([country])
+  @@index([parentBrand])
+  @@map("brands")
+}
+
+model ItemSpecificsField {
+  id        String  @id @default(cuid())
+  category  String             // eBayカテゴリ名（例: "Watches", "Rings"）
+  tagJp     String             // 対応する日本語タグ（カンマ区切り。例: "時計,腕時計,ウォッチ"）
+  fieldName String             // Item Specifics項目名（例: "Brand", "Movement"）
+  fieldType String             // "required" or "recommended"
+  priority  Int    @default(0) // 表示優先順位（小さいほど先）
+  notes     String?            // AIへのヒント（例: "製造国（本社所在国ではない）"）
+
+  @@unique([category, fieldName])
+  @@index([category])
+  @@map("item_specifics_fields")
+}
+
+// ========================================
 // eBay ビジネスポリシー（Fulfillment/Payment/Return）
 // ========================================
 model EbayPolicy {
