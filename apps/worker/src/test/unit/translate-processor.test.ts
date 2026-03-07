@@ -46,7 +46,6 @@ describe('Translate Processor', () => {
       mockEnrichProductFull.mockResolvedValue({
         translations: {
           en: { title: 'Test Product', description: 'This is a test product description' },
-          ru: { title: 'Тестовый продукт', description: 'Это описание тестового продукта' },
         },
         attributes: {
           brand: 'TestBrand',
@@ -79,12 +78,7 @@ describe('Translate Processor', () => {
       expect(mockEnrichProductFull).toHaveBeenCalledWith('テスト商品', 'これはテスト商品の説明です');
     });
 
-    it('should include Russian translation', async () => {
-      const result = await processTranslateJob(mockJob);
-
-      expect(result.titleRu).toBe('Тестовый продукт');
-      expect(result.descriptionRu).toBe('Это описание тестового продукта');
-    });
+    // Russian translation removed; no RU assertions
 
     it('should update product status to APPROVED when validation passes', async () => {
       await processTranslateJob(mockJob);

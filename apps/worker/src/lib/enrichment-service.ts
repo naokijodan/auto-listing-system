@@ -20,7 +20,6 @@ const openai = new OpenAI({
 
 export interface TranslationResult {
   en: { title: string; description: string };
-  ru?: { title: string; description: string };
 }
 
 export interface AttributeResult {
@@ -162,13 +161,12 @@ export class TranslatorService {
   async translateOnly(
     title: string,
     description: string,
-    targetLanguages: string[] = ['en', 'ru']
+    targetLanguages: string[] = ['en']
   ): Promise<TranslationResult> {
     const prompt = `Translate the following Japanese product information to ${targetLanguages.join(' and ')}.
 Return JSON format:
 {
-  "en": { "title": "...", "description": "..." },
-  "ru": { "title": "...", "description": "..." }
+  "en": { "title": "...", "description": "..." }
 }
 
 Japanese title: ${title}

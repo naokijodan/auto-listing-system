@@ -10,7 +10,6 @@ import { enrichProductFull, quickValidate } from '@rakuda/enrichment';
  */
 export interface EnrichmentJobPayload extends TranslateJobPayload {
   useEnrichment?: boolean;  // Phase 40エンリッチメントを使用
-  includeRussian?: boolean; // ロシア語翻訳を含める
   validateContent?: boolean; // 禁制品チェックを行う
 }
 
@@ -18,8 +17,6 @@ export interface EnrichmentJobPayload extends TranslateJobPayload {
  * Phase 40-A: 拡張翻訳ジョブ結果
  */
 export interface EnrichmentJobResult extends TranslateJobResult {
-  titleRu?: string;
-  descriptionRu?: string;
   validation?: {
     status: 'approved' | 'rejected' | 'review_required';
     flags: string[];
@@ -39,7 +36,6 @@ export async function processTranslateJob(
     description,
     extractAttributes,
     useEnrichment = true,  // デフォルトでPhase 40エンリッチメント使用
-    includeRussian = true,
     validateContent = true,
   } = job.data;
   const log = logger.child({ jobId: job.id, processor: 'translate' });
@@ -125,7 +121,6 @@ export async function processTranslateJob(
         category: enrichment.attributes.category ?? null,
         itemSpecifics: enrichment.attributes.itemSpecifics,
         confidence: enrichment.attributes.confidence,
-        // ロシア語翻訳を属性に含める
         // 検証結果
         validation: {
           status: enrichment.validation.status,
@@ -156,8 +151,6 @@ export async function processTranslateJob(
         message: `Enrichment completed (${enrichment.validation.status})`,
         titleEn: enrichment.translations.en.title,
         descriptionEn: enrichment.translations.en.description,
-        titleRu: undefined,
-        descriptionRu: undefined,
         attributes: {
           brand: enrichment.attributes.brand,
           model: enrichment.attributes.model,
