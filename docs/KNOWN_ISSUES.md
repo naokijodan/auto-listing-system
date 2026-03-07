@@ -1,6 +1,6 @@
 # RAKUDA 既知の問題と再発防止策
 
-最終更新: 2026-03-07
+最終更新: 2026-03-07 (Session 13)
 
 ## 使い方
 新しいセッション開始時に必ずこのファイルを確認すること。
@@ -128,7 +128,18 @@
 - **防止策**: PricingPipelineのnormalizer.tsで為替レートサニティチェック実装済み（JPY→USD: 0.001-0.02範囲）
 - **ステータス**: 再有効化中（Session 12）
 
-### 7-2: Coolifyデプロイがqueuedのまま進まない
+### 7-2: Joom API v3 enable/disable エンドポイント変更
+- **症状**: `POST /products/{id}/enable` と `/disable` が404エラー
+- **原因**: Joom API v3でこれらのエンドポイントは廃止（v2のみ）
+- **修正**: `POST /products/update?id={id}` + `{ enabled: true/false }` に変更
+- **解決済み**: commit 292d9e9d
+
+### 7-3: テスト出品の放置によるアカウントリスク
+- **症状**: eBayテスト出品がViewを集めてしまった
+- **防止策**: テスト出品は動作確認後に即座に削除する。セッション内でクリーンアップ確認必須
+- **対応**: eBayは手動終了、Shopifyはadmin API DELETE、JoomはWorker経由disable
+
+### 7-4: Coolifyデプロイがqueuedのまま進まない
 - **症状**: in_progressデプロイがスタック→後続のqueuedが処理されない
 - **復旧手順**: `POST /api/v1/applications/{uuid}/stop` → 停止確認 → 再デプロイ
 - **防止策**: concurrent_builds=1推奨。デプロイ後はステータス確認を必ず行う

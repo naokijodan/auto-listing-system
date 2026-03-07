@@ -593,8 +593,14 @@ router.post('/listings/:id/end', async (req: Request, res: Response) => {
 
     const ebayData = (listing.marketplaceData as Record<string, unknown>) || {};
 
-    // eBay API呼び出しでアイテム終了（実装省略）
-    // await endEbayItem(listing.marketplaceListingId);
+    // eBay APIでオファーを取り下げ（ワーカーに委譲）
+    const offerId = ebayData.offerId as string | undefined;
+    if (offerId) {
+      await addEbayPublishJob('withdraw-offer' as any, { listingId: id, offerId } as any);
+    } else {
+      // フォールバック: リスティングIDのみで終了ジョブを投入
+      await addEbayPublishJob('end-listing', { listingId: id } as any);
+    }
 
     await prisma.listing.update({
       where: { id },

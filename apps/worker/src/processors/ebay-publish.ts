@@ -45,6 +45,38 @@ export async function processEbayPublishJob(job: Job<EbayPublishJobData>): Promi
       case 'end-listing':
         return await processEndListing(listingId!);
 
+      case 'withdraw-offer' as any: {
+        // 明示的にオファーIDを指定して取り下げ
+        const offerId = (job.data as any).offerId as string | undefined;
+        const lid = (job.data as any).listingId as string | undefined;
+
+        if (!offerId) {
+          throw new Error('offerId is required for withdraw-offer');
+        }
+
+        // 可能ならクレデンシャルをリスティングから取得
+        let credentialId: string | undefined;
+        if (lid) {
+          const l = await prisma.listing.findUnique({ where: { id: lid } });
+          const md = (l?.marketplaceData as any) || {};
+          credentialId = md.credentialId as string | undefined;
+        }
+
+        const client = getEbayClient(credentialId);
+        const result = await client.withdrawOffer(offerId);
+        if (result.success) {
+          if (lid) {
+            await prisma.listing.update({
+              where: { id: lid },
+              data: { status: 'ENDED' },
+            });
+          }
+        } else {
+          throw new Error(`Failed to withdraw offer: ${result.error?.message}`);
+        }
+        return;
+      }
+
       case 'sync-status':
         return await processSyncStatus(listingId!);
 

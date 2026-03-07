@@ -192,6 +192,18 @@ async function executeAlertAction(
  * リスティングを停止
  */
 async function pauseListing(alertId: string, listingId: string): Promise<string> {
+  // まずリスティング情報を取得（marketplaceとmarketplaceDataが必要）
+  const listing = await prisma.listing.findUnique({
+    where: { id: listingId },
+    include: { product: { select: { title: true } } },
+  });
+
+  if (!listing) {
+    log.warn({ alertId, listingId }, 'Listing not found for pauseListing');
+    return 'LISTING_NOT_FOUND';
+  }
+
+  // DB更新（ローカル停止フラグ）
   await prisma.$transaction([
     prisma.listing.update({
       where: { id: listingId },
@@ -210,12 +222,51 @@ async function pauseListing(alertId: string, listingId: string): Promise<string>
     }),
   ]);
 
-  // 通知を作成
-  const listing = await prisma.listing.findUnique({
-    where: { id: listingId },
-    include: { product: { select: { title: true } } },
-  });
+  // マーケットプレイスAPIで出品を停止（BullMQ経由）
+  const marketplaceData = (listing.marketplaceData as Record<string, unknown>) || {};
+  try {
+    switch (listing.marketplace) {
+      case 'JOOM': {
+        const joomProductId = marketplaceData.joomProductId as string | undefined;
+        if (joomProductId) {
+          const { addJoomPublishJob } = await import('./queue-service');
+          await addJoomPublishJob('disable-product' as any, {
+            // processor側は any キャストで参照
+            joomListingId: listingId,
+            // 型定義外パラメータは any で通す
+            ...( { listingId, joomProductId } as any ),
+          });
+        }
+        break;
+      }
+      case 'EBAY': {
+        const offerId = marketplaceData.offerId as string | undefined;
+        if (offerId) {
+          const { addEbayPublishJob } = await import('./queue-service');
+          await addEbayPublishJob('withdraw-offer' as any, {
+            // processor側で offerId を直接使用
+            ...( { listingId, offerId } as any ),
+          });
+        } else {
+          // フォールバック: 既存の end-listing ハンドラー（DBからofferId参照）
+          const { addEbayEndListingJob } = await import('./queue-service');
+          await addEbayEndListingJob(listingId);
+        }
+        break;
+      }
+      case 'SHOPIFY': {
+        // TODO: Shopify unpublish を実装（draft/archive へ）
+        break;
+      }
+      default:
+        break;
+    }
+  } catch (err: any) {
+    // キュー投入失敗はログのみ（DB更新は完了しているので）
+    log.error({ listingId, marketplace: listing.marketplace, error: err?.message }, 'Failed to queue marketplace pause');
+  }
 
+  // 通知を作成
   await prisma.notification.create({
     data: {
       type: 'OUT_OF_STOCK',
