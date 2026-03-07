@@ -12,6 +12,7 @@ import { PrismaClient, ListingStatus, Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import { addEbayBatchPublishJob, addEbayPriceSyncJob, getEbayPublishQueueStats, QUEUE_NAMES, addEbayPublishJob } from '@rakuda/queue';
 import { resolveShippingPolicy } from '../lib/shipping-policy-resolver';
+import { calculateSellingPrice } from '../lib/pricing-engine';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -261,12 +262,82 @@ router.post('/listings', async (req: Request, res: Response) => {
       log.info({ type: 'auto_resolve_fulfillment_policy', productId, policyId: finalFulfillmentPolicyId, reason: resolved.reason });
     }
 
+    // 価格自動計算（USD）と各種自動補完
+    // レート取得（DB: JPY -> USD）。無ければ 0.0067 を使用
+    const exchangeRateRecord = await prisma.exchangeRate.findFirst({
+      where: { fromCurrency: 'JPY', toCurrency: 'USD' },
+      orderBy: { fetchedAt: 'desc' },
+    });
+    const exchangeRate = exchangeRateRecord?.rate ?? 0.0067;
+
+    // 価格: 明示的 price が無ければ原価JPYから販売価格USDを計算（目標利益率25%）
+    const { sellingPriceUsd } = calculateSellingPrice(product.price, 25, exchangeRate);
+    const finalPrice = price || Math.round(sellingPriceUsd * 100) / 100;
+
+    // カテゴリ自動判定
+    const CATEGORY_MAP: Record<string, string> = {
+      '腕時計': '31387',
+      'Watches': '31387',
+      'バッグ': '169291',
+      'Bags': '169291',
+      'アクセサリー': '10968',
+      'Jewelry': '10968',
+    };
+    const finalCategoryId = categoryId || CATEGORY_MAP[product.category || ''] || '31387';
+
+    // コンディション自動判定
+    const CONDITION_MAP: Record<string, string> = {
+      '新品': '1000',
+      'new': '1000',
+      '未使用': '1500',
+      'like_new': '1500',
+      '中古美品': '3000',
+      '中古': '3000',
+      'good': '3000',
+      'used': '3000',
+      'fair': '3000',
+      'poor': '7000',
+    };
+    const finalConditionId = conditionId || CONDITION_MAP[product.condition || ''] || '3000';
+
+    // アイテムスペック自動補完（空 or 未指定の場合）
+    let finalItemSpecifics = itemSpecifics as Record<string, any> | undefined;
+    if (!itemSpecifics || Object.keys(itemSpecifics).length === 0) {
+      const attrs = (product.attributes as Record<string, any> | null) || null;
+      const rawSpecifics = (attrs?.itemSpecifics as Record<string, any>) || {};
+      if (product.brand && !rawSpecifics.Brand) {
+        rawSpecifics.Brand = product.brand;
+      }
+      finalItemSpecifics = {};
+      for (const [key, value] of Object.entries(rawSpecifics)) {
+        if (value != null && value !== '') {
+          (finalItemSpecifics as any)[key] = Array.isArray(value) ? value : [String(value)];
+        }
+      }
+    }
+
+    // 自動補完ログ
+    if (!price || !categoryId || !conditionId || Object.keys(itemSpecifics || {}).length === 0) {
+      log.info({
+        type: 'auto_populate_listing',
+        productId,
+        autoPrice: !price,
+        autoCategoryId: !categoryId,
+        autoConditionId: !conditionId,
+        autoItemSpecifics: Object.keys(itemSpecifics || {}).length === 0,
+        finalPrice: finalPrice,
+        finalCategoryId: finalCategoryId,
+        finalConditionId: finalConditionId,
+        itemSpecificsCount: Object.keys(finalItemSpecifics || {}).length,
+      });
+    }
+
     // eBay固有データを構築
     const ebayData = {
-      categoryId,
-      conditionId,
+      categoryId: finalCategoryId,
+      conditionId: finalConditionId,
       conditionDescription,
-      itemSpecifics,
+      itemSpecifics: finalItemSpecifics,
       quantity,
       fulfillmentPolicyId: finalFulfillmentPolicyId ?? null,
       paymentPolicyId,
@@ -284,7 +355,7 @@ router.post('/listings', async (req: Request, res: Response) => {
       data: {
         productId,
         marketplace: Marketplace.EBAY,
-        listingPrice: price || product.price,
+        listingPrice: finalPrice,
         shippingCost,
         currency: 'USD',
         marketplaceData: ebayData,
@@ -404,7 +475,61 @@ router.post('/listings/:id/preview', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Listing not found' });
     }
 
-    const ebayData = (listing.marketplaceData as Record<string, unknown>) || {};
+    const ebayData = (listing.marketplaceData as Record<string, any>) || {};
+
+    // 自動補完（プレビュー用も同様のロジックを適用）
+    // 最新レート取得（JPY -> USD）
+    const exchangeRateRecord = await prisma.exchangeRate.findFirst({
+      where: { fromCurrency: 'JPY', toCurrency: 'USD' },
+      orderBy: { fetchedAt: 'desc' },
+    });
+    const exchangeRate = exchangeRateRecord?.rate ?? 0.0067;
+
+    // 価格計算（リスティング価格があれば優先）
+    const { sellingPriceUsd: previewSellingUsd } = calculateSellingPrice(listing.product.price, 25, exchangeRate);
+    const finalPreviewPrice = (listing.listingPrice ?? Math.round(previewSellingUsd * 100) / 100);
+
+    // カテゴリ判定
+    const CATEGORY_MAP: Record<string, string> = {
+      '腕時計': '31387',
+      'Watches': '31387',
+      'バッグ': '169291',
+      'Bags': '169291',
+      'アクセサリー': '10968',
+      'Jewelry': '10968',
+    };
+    const finalCategoryId = ebayData.categoryId || CATEGORY_MAP[listing.product.category || ''] || '31387';
+
+    // コンディション判定
+    const CONDITION_MAP: Record<string, string> = {
+      '新品': '1000',
+      'new': '1000',
+      '未使用': '1500',
+      'like_new': '1500',
+      '中古美品': '3000',
+      '中古': '3000',
+      'good': '3000',
+      'used': '3000',
+      'fair': '3000',
+      'poor': '7000',
+    };
+    const finalConditionId = ebayData.conditionId || CONDITION_MAP[listing.product.condition || ''] || '3000';
+
+    // アイテムスペック
+    let finalItemSpecifics = ebayData.itemSpecifics as Record<string, any> | undefined;
+    if (!finalItemSpecifics || Object.keys(finalItemSpecifics || {}).length === 0) {
+      const attrs = (listing.product.attributes as Record<string, any> | null) || null;
+      const rawSpecifics = (attrs?.itemSpecifics as Record<string, any>) || {};
+      if (listing.product.brand && !rawSpecifics.Brand) {
+        rawSpecifics.Brand = listing.product.brand;
+      }
+      finalItemSpecifics = {};
+      for (const [key, value] of Object.entries(rawSpecifics)) {
+        if (value != null && value !== '') {
+          (finalItemSpecifics as any)[key] = Array.isArray(value) ? value : [String(value)];
+        }
+      }
+    }
 
     // プレビュー結果を構築
     const preview = {
@@ -412,11 +537,11 @@ router.post('/listings/:id/preview', async (req: Request, res: Response) => {
         id: listing.id,
         title: listing.product.titleEn || listing.product.title,
         description: listing.product.descriptionEn || listing.product.description,
-        price: listing.listingPrice,
+        price: finalPreviewPrice,
         currency: listing.currency,
-        category: ebayData.categoryId,
-        condition: ebayData.conditionId,
-        itemSpecifics: ebayData.itemSpecifics,
+        category: finalCategoryId,
+        condition: finalConditionId,
+        itemSpecifics: finalItemSpecifics,
         images: listing.product.processedImages?.length > 0
           ? listing.product.processedImages
           : listing.product.images,
@@ -428,23 +553,23 @@ router.post('/listings/:id/preview', async (req: Request, res: Response) => {
       },
       estimatedFees: {
         insertionFee: 0,
-        finalValueFee: listing.listingPrice * 0.1325, // ~13.25%
-        paymentProcessingFee: listing.listingPrice * 0.029 + 0.30,
-        total: listing.listingPrice * 0.1325 + listing.listingPrice * 0.029 + 0.30,
+        finalValueFee: finalPreviewPrice * 0.1325, // ~13.25%
+        paymentProcessingFee: finalPreviewPrice * 0.029 + 0.30,
+        total: finalPreviewPrice * 0.1325 + finalPreviewPrice * 0.029 + 0.30,
       },
     };
 
     // バリデーション
-    if (!ebayData.categoryId) {
+    if (!finalCategoryId) {
       preview.validation.warnings.push('Category not specified');
     }
-    if (!ebayData.conditionId) {
+    if (!finalConditionId) {
       preview.validation.warnings.push('Condition not specified');
     }
     if (!listing.product.titleEn) {
       preview.validation.warnings.push('English title not available');
     }
-    if (listing.listingPrice < 1) {
+    if (finalPreviewPrice < 1) {
       preview.validation.errors.push('Price must be at least $1.00');
       preview.validation.isValid = false;
     }
