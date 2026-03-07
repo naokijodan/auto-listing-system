@@ -17,9 +17,16 @@ export interface ExtractedAttributes {
   material?: string;
   condition?: 'new' | 'like_new' | 'good' | 'fair';
   category?: string;
-  weight?: number;
+  // 追加フィールド（Joom強化）
+  weightGrams?: number;        // 推定重量（グラム）
+  movementType?: string;       // 時計: Automatic, Quartz, Mechanical, Solar
+  caseMaterial?: string;       // 時計: Stainless Steel, Titanium, Gold etc
+  bandMaterial?: string;       // 時計: Leather, Metal, Rubber etc
+  waterResistance?: string;    // 時計: 30m, 50m, 100m, 200m etc
+  displayType?: string;        // スマートウォッチ: LCD, OLED, AMOLED
+  gender?: string;             // mens, womens, unisex
+  countryOfOrigin?: string;    // 製造国: Japan, Switzerland etc
   year?: number;
-  gender?: 'mens' | 'womens' | 'unisex';
   itemSpecifics: Record<string, string>;
   confidence: number;
 }
@@ -230,6 +237,38 @@ export function extractMaterial(text: string): string | undefined {
 }
 
 /**
+ * テキスト・カテゴリから重量（グラム）を推定
+ */
+export function estimateWeight(text: string, category?: string): number | undefined {
+  // 明示的な重量表記
+  const weightMatch = text.match(/(?:重さ|重量|weight)[：:\s]*?(?:約)?\s*(\d+)\s*(g|kg|グラム)\b/i);
+  if (weightMatch) {
+    const value = parseInt(weightMatch[1], 10);
+    const unit = weightMatch[2].toLowerCase();
+    if (Number.isFinite(value)) {
+      return unit === 'kg' ? value * 1000 : value;
+    }
+  }
+
+  // カテゴリベースのデフォルト重量（グラム）
+  const categoryWeights: Record<string, number> = {
+    'Watches': 150,
+    'Jewelry & Accessories': 50,
+    'Bags': 500,
+    'Clothing': 300,
+    'Electronics': 400,
+    'Collectibles': 200,
+    'Toys & Hobbies': 300,
+    'Musical Instruments': 2000,
+    'Cameras': 500,
+  };
+  if (category && categoryWeights[category]) {
+    return categoryWeights[category];
+  }
+  return undefined;
+}
+
+/**
  * テキストからカテゴリを推定
  */
 export function inferCategory(text: string): string | undefined {
@@ -286,6 +325,7 @@ export function extractAttributes(
   const material = extractMaterial(combinedText);
   const size = extractSize(combinedText);
   const category = inferCategory(combinedText) || sourceCategory;
+  const weightGrams = estimateWeight(combinedText, category);
 
   // 抽出された属性の数から信頼度を計算
   const extractedCount = [brand, color, condition, material, size, category]
@@ -315,6 +355,7 @@ export function extractAttributes(
     material,
     size,
     category,
+    weightGrams,
     confidence,
   });
 
@@ -325,6 +366,7 @@ export function extractAttributes(
     material,
     size,
     category,
+    weightGrams,
     itemSpecifics,
     confidence,
   };
@@ -345,9 +387,15 @@ export function mergeAttributes(
     material: aiAttributes.material || ruleAttributes.material,
     condition: (aiAttributes.condition as any) || ruleAttributes.condition,
     category: aiAttributes.category || ruleAttributes.category,
-    weight: aiAttributes.weight,
+    weightGrams: aiAttributes.weightGrams || ruleAttributes.weightGrams,
     year: aiAttributes.year,
-    gender: aiAttributes.gender,
+    movementType: aiAttributes.movementType || ruleAttributes.movementType,
+    caseMaterial: aiAttributes.caseMaterial || ruleAttributes.caseMaterial,
+    bandMaterial: aiAttributes.bandMaterial || ruleAttributes.bandMaterial,
+    waterResistance: aiAttributes.waterResistance || ruleAttributes.waterResistance,
+    displayType: aiAttributes.displayType || ruleAttributes.displayType,
+    gender: aiAttributes.gender || ruleAttributes.gender,
+    countryOfOrigin: aiAttributes.countryOfOrigin || ruleAttributes.countryOfOrigin,
     itemSpecifics: {
       ...ruleAttributes.itemSpecifics,
       ...aiAttributes.itemSpecifics,

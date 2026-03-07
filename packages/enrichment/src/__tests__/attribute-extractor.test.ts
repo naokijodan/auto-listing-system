@@ -8,6 +8,7 @@ import {
   inferCategory,
   extractAttributes,
   mergeAttributes,
+  estimateWeight,
 } from '../attribute-extractor';
 
 describe('attribute-extractor', () => {
@@ -138,6 +139,14 @@ describe('attribute-extractor', () => {
         })
       );
     });
+
+    it('should include estimated weight in result', () => {
+      const result = extractAttributes(
+        'SEIKO 腕時計',
+        '重量 約150g ステンレス製',
+      );
+      expect(result.weightGrams).toBe(150);
+    });
   });
 
   describe('mergeAttributes', () => {
@@ -162,6 +171,42 @@ describe('attribute-extractor', () => {
       expect(merged.color).toBe('Midnight Blue'); // AI優先
       expect(merged.material).toBe('Stainless Steel'); // ルールベースから
       expect(merged.confidence).toBe(0.95); // AI優先
+    });
+
+    it('should merge new fields with AI priority', () => {
+      const aiAttributes = {
+        weightGrams: 220,
+        caseMaterial: 'Titanium',
+        bandMaterial: 'Leather',
+        waterResistance: '100m',
+      } as any;
+
+      const ruleAttributes = {
+        itemSpecifics: {},
+        confidence: 0.6,
+        weightGrams: 150,
+        caseMaterial: 'Stainless Steel',
+        bandMaterial: 'Metal',
+        waterResistance: '50m',
+      } as any;
+
+      const merged = mergeAttributes(aiAttributes, ruleAttributes);
+      expect(merged.weightGrams).toBe(220);
+      expect(merged.caseMaterial).toBe('Titanium');
+      expect(merged.bandMaterial).toBe('Leather');
+      expect(merged.waterResistance).toBe('100m');
+    });
+  });
+
+  describe('estimateWeight', () => {
+    it('should extract explicit weight in grams from text', () => {
+      const text = '重さ約120g、コンパクトな設計です';
+      expect(estimateWeight(text, undefined)).toBe(120);
+    });
+
+    it('should default to category weight when missing', () => {
+      const text = 'SEIKO 腕時計 自動巻き';
+      expect(estimateWeight(text, 'Watches')).toBe(150);
     });
   });
 });

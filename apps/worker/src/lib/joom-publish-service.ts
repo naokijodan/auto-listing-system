@@ -424,7 +424,9 @@ export class JoomPublishService {
       }
 
       // Joom商品データを構築
-      const weightKg = listing.product.weight ? listing.product.weight / 1000 : 0.15;
+      // 優先順位: product.weight > enrichment推定weightGrams > デフォルト150g
+      const weightGrams = listing.product.weight || attributes?.weightGrams || 150;
+      const weightKg = weightGrams / 1000;
       const defaultShipping = calculateShippingCost(weightKg);
       const md = (listing.marketplaceData as any) || {};
       // joomImages が空の場合、元の商品画像URLを直接使用
@@ -488,12 +490,12 @@ export class JoomPublishService {
         tags: joomCategory ? [joomCategory] : [],
 
         // 推奨フィールド追加（存在する場合のみ意味を持つ）
-        brand: (listing.product as any).brand || attributes?.brand || undefined,
+        brand: attributes?.brand || (listing.product as any).brand || undefined,
         categoryId: md.joomCategory || undefined,
-        color: attributes?.color || undefined,
-        size: attributes?.size || undefined,
-        material: attributes?.material || attributes?.caseMaterial || undefined,
-        condition: 'new',
+        color: attributes?.color || filledAttributes?.color || undefined,
+        size: attributes?.size || filledAttributes?.size || undefined,
+        material: attributes?.material || attributes?.caseMaterial || filledAttributes?.material || undefined,
+        condition: attributes?.condition || 'new',
         searchTags: attributes?.keywords || attributes?.searchTags || [],
         dangerousKind: 'none',
       };

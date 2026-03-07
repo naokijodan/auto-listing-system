@@ -63,6 +63,15 @@ export interface EnrichmentResult {
     category?: string;
     itemSpecifics: Record<string, string>;
     confidence: number;
+    // --- Joom固有/追加属性 ---
+    weightGrams?: number;        // 推定重量（グラム）
+    movementType?: string;       // 時計: Automatic, Quartz, Mechanical, Solar
+    caseMaterial?: string;       // 時計: Stainless Steel, Titanium, Gold etc
+    bandMaterial?: string;       // 時計: Leather, Metal, Rubber etc
+    waterResistance?: string;    // 時計: 30m, 50m, 100m, 200m etc
+    displayType?: string;        // スマートウォッチ: LCD, OLED, AMOLED
+    gender?: string;             // mens, womens, unisex
+    countryOfOrigin?: string;    // 製造国: Japan, Switzerland etc
   };
   validation: {
     isSafe: boolean;
@@ -112,6 +121,14 @@ const ENRICHMENT_USER_PROMPT = `以下の日本語商品情報を分析してく
     "material": "素材",
     "condition": "new|like_new|good|fair",
     "category": "推定カテゴリ",
+    "weightGrams": 150,
+    "movementType": "Automatic|Quartz|Mechanical|Solar",
+    "caseMaterial": "Stainless Steel|Titanium|Gold|Ceramic|Plastic|Resin|Alloy",
+    "bandMaterial": "Leather|Metal|Rubber|Silicone|Nylon|Resin",
+    "waterResistance": "例: 30m, 50m, 100m, 200m",
+    "displayType": "例: LCD, OLED, AMOLED",
+    "gender": "mens|womens|unisex",
+    "countryOfOrigin": "製造国（例: Japan, Switzerland）",
     "itemSpecifics": {
       "Type": "商品タイプ",
       "Style": "スタイル"
@@ -125,6 +142,14 @@ const ENRICHMENT_USER_PROMPT = `以下の日本語商品情報を分析してく
     "reviewNotes": "人間確認が必要な場合のメモ"
   }
 }
+
+【属性抽出の詳細ルール】
+- weightGrams: 商品の推定重量をグラムで返す（梱包を含む）。時計は概ね80-300g、フィギュアは200-1000g、衣類は200-600gなど妥当な範囲で見積もる。
+- 時計カテゴリの場合: movementType, caseMaterial, bandMaterial, waterResistance を積極的に抽出。
+- displayType: スマートウォッチ・電子機器で表示方式（LCD/OLED/AMOLEDなど）を抽出。
+- gender: mens/womens/unisex のいずれかで返す（該当ない場合は省略可）。
+- countryOfOrigin: 製造国を返す（ブランド本社所在地ではなく、実際の製造国）。
+- 新しいフィールドが不明な場合は省略して良い。
 
 【禁制品判定基準】
 - rejected: 電池含有、リチウムイオン、可燃物、スプレー缶、象牙・べっ甲、武器類、アダルト
@@ -254,6 +279,14 @@ export async function enrichProduct(
         category: parsed.attributes?.category,
         itemSpecifics: parsed.attributes?.itemSpecifics || {},
         confidence: parsed.attributes?.confidence || 0.5,
+        weightGrams: parsed.attributes?.weightGrams,
+        movementType: parsed.attributes?.movementType,
+        caseMaterial: parsed.attributes?.caseMaterial,
+        bandMaterial: parsed.attributes?.bandMaterial,
+        waterResistance: parsed.attributes?.waterResistance,
+        displayType: parsed.attributes?.displayType,
+        gender: parsed.attributes?.gender,
+        countryOfOrigin: parsed.attributes?.countryOfOrigin,
       },
       validation: {
         isSafe: parsed.validation?.isSafe ?? true,

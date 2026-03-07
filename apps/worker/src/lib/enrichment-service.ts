@@ -32,6 +32,15 @@ export interface AttributeResult {
   category?: string;
   itemSpecifics: Record<string, string>;
   confidence: number;
+  // 新規追加
+  weightGrams?: number;
+  movementType?: string;
+  caseMaterial?: string;
+  bandMaterial?: string;
+  waterResistance?: string;
+  displayType?: string;
+  gender?: string;
+  countryOfOrigin?: string;
 }
 
 export interface ValidationResult {
@@ -115,6 +124,14 @@ export class TranslatorService {
           category: ai.attributes.category,
           itemSpecifics: ai.attributes.itemSpecifics || {},
           confidence: ai.attributes.confidence ?? 0,
+          weightGrams: ai.attributes.weightGrams,
+          movementType: ai.attributes.movementType,
+          caseMaterial: ai.attributes.caseMaterial,
+          bandMaterial: ai.attributes.bandMaterial,
+          waterResistance: ai.attributes.waterResistance,
+          displayType: ai.attributes.displayType,
+          gender: ai.attributes.gender,
+          countryOfOrigin: ai.attributes.countryOfOrigin,
         },
         validation: {
           passed: ai.validation.status === 'approved',
