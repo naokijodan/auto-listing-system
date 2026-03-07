@@ -1,0 +1,196 @@
+Phase 3: translator.tsカテゴリ別プロンプト対応 - RAKUDAプロジェクト
+
+プロジェクトルート: ~/Desktop/rakuda/
+
+## 修正対象ファイル
+
+### packages/enrichment/src/translator.ts
+
+#### 修正概要
+enrichProduct()関数（137行目〜）は既にcategory引数を持っているが、常にハードコードされたENRICHMENT_SYSTEM_PROMPT/ENRICHMENT_USER_PROMPTを使っている。
+これをDBのTranslationPromptテーブルからカテゴリに応じたプロンプトを取得するように変更する。
+
+#### DBスキーマ（TranslationPrompt）
+```prisma
+model TranslationPrompt {
+  id String @id @default(cuid())
+  name        String  @unique
+  category    String?
+  marketplace String?
+  systemPrompt String @db.Text
+  userPrompt   String @db.Text
+  extractAttributes String[]
+  additionalInstructions String? @db.Text
+  priority  Int     @default(0)
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("translation_prompts")
+}
+```
+
+#### 修正内容
+
+enrichProduct()関数を以下のように修正する。変更箇所はプロンプト取得ロジックのみ。
+
+**現在のコード（148-152行目）:**
+```typescript
+  const userPrompt = ENRICHMENT_USER_PROMPT
+    .replace('{{title}}', title)
+    .replace('{{description}}', description)
+    .replace('{{category}}', category || '不明');
+```
+
+**修正後のenrichProduct()全体:**
+```typescript
+export async function enrichProduct(
+  title: string,
+  description: string,
+  category?: string
+): Promise<EnrichmentResult> {
+  const client = await getOpenAIClient();
+  if (!client) {
+    log.warn({ type: 'openai_not_configured' });
+    return createFallbackResult(title, description);
+  }
+
+  // カテゴリに応じたプロンプトをDBから取得
+  const prompt = await resolvePrompt(category);
+
+  const userPrompt = prompt.userPrompt
+    .replace('{{title}}', title)
+    .replace('{{description}}', description)
+    .replace('{{category}}', category || '不明');
+
+  try {
+    log.info({
+      type: 'enrichment_start',
+      titleLength: title.length,
+      descriptionLength: description.length,
+      model: getModel(),
+      promptSource: prompt.source,
+      category: category || 'none',
+    });
+
+    const response = await client.chat.completions.create({
+      model: getModel(),
+      messages: [
+        { role: 'system', content: prompt.systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response from OpenAI');
+    }
+
+    const parsed = JSON.parse(content);
+    const tokensUsed = response.usage?.total_tokens || 0;
+
+    log.info({
+      type: 'enrichment_complete',
+      tokensUsed,
+      validationStatus: parsed.validation?.status,
+      flags: parsed.validation?.flags,
+    });
+
+    return {
+      translations: {
+        en: parsed.translations?.en || { title: `[EN] ${title}`, description: `[EN] ${description}` },
+        tokensUsed,
+      },
+      attributes: {
+        brand: parsed.attributes?.brand,
+        color: parsed.attributes?.color,
+        size: parsed.attributes?.size,
+        material: parsed.attributes?.material,
+        condition: parsed.attributes?.condition,
+        category: parsed.attributes?.category,
+        itemSpecifics: parsed.attributes?.itemSpecifics || {},
+        confidence: parsed.attributes?.confidence || 0.5,
+      },
+      validation: {
+        isSafe: parsed.validation?.isSafe ?? true,
+        status: parsed.validation?.status || 'review_required',
+        flags: parsed.validation?.flags || [],
+        reviewNotes: parsed.validation?.reviewNotes,
+      },
+      tokensUsed,
+    };
+  } catch (error: any) {
+    log.error({
+      type: 'enrichment_error',
+      error: error.message,
+    });
+
+    return createFallbackResult(title, description);
+  }
+}
+```
+
+#### 新しいヘルパー関数を追加
+
+enrichProduct()の前（136行目あたり）に以下のヘルパー関数を追加:
+
+```typescript
+interface ResolvedPrompt {
+  systemPrompt: string;
+  userPrompt: string;
+  source: 'db_category' | 'db_default' | 'hardcoded';
+}
+
+async function resolvePrompt(category?: string): Promise<ResolvedPrompt> {
+  try {
+    // 1. カテゴリ指定がある場合、カテゴリ別プロンプトを検索
+    if (category) {
+      const categoryPrompt = await prisma.translationPrompt.findFirst({
+        where: {
+          category: category,
+          isActive: true,
+        },
+        orderBy: { priority: 'desc' },
+      });
+      if (categoryPrompt) {
+        return {
+          systemPrompt: categoryPrompt.systemPrompt,
+          userPrompt: categoryPrompt.userPrompt,
+          source: 'db_category',
+        };
+      }
+    }
+
+    // 2. デフォルトプロンプトを検索
+    const defaultPrompt = await prisma.translationPrompt.findFirst({
+      where: { isDefault: true, isActive: true },
+      orderBy: { priority: 'desc' },
+    });
+    if (defaultPrompt) {
+      return {
+        systemPrompt: defaultPrompt.systemPrompt,
+        userPrompt: defaultPrompt.userPrompt,
+        source: 'db_default',
+      };
+    }
+  } catch (error: any) {
+    log.warn({ type: 'prompt_db_lookup_failed', error: error.message, category });
+  }
+
+  // 3. フォールバック: ハードコードされた汎用プロンプト
+  return {
+    systemPrompt: ENRICHMENT_SYSTEM_PROMPT,
+    userPrompt: ENRICHMENT_USER_PROMPT,
+    source: 'hardcoded',
+  };
+}
+```
+
+## 注意事項
+- ENRICHMENT_SYSTEM_PROMPTとENRICHMENT_USER_PROMPTは削除しない（フォールバックとして残す）
+- translateToEnglish()関数やcreateFallbackResult()関数は変更しない
+- isOpenAIConfigured()関数は変更しない
+- 既存のimport文はそのまま維持する（prismaは既にインポート済み）
+- TypeScriptの型安全性を維持する

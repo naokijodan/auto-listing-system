@@ -1,0 +1,610 @@
+Phase 5 Task 2: ItemSpecifics抽出ロジックをRAKUDAに移植
+
+プロジェクトルート: ~/Desktop/rakuda/
+パッケージ: packages/enrichment/
+
+## 新規ファイル作成
+
+packages/enrichment/src/item-specifics/ ディレクトリを作成し、以下のファイルを作成する。
+
+### 1. packages/enrichment/src/item-specifics/index.ts
+
+エントリポイント。全体の2段階抽出フローを提供する。
+
+```typescript
+import { PrismaClient } from '@prisma/client';
+import { extractByRules, type RuleExtractionResult } from './rule-extractor';
+import { extractByAI, type AIExtractionResult } from './ai-extractor';
+import { getFieldsForCategory, resolveCategory } from './field-definitions';
+import { logger } from '@rakuda/logger';
+
+const log = logger.child({ module: 'item-specifics' });
+
+export interface ItemSpecificsResult {
+  category: string;
+  specifics: Record<string, string>;
+  source: Record<string, 'rule' | 'ai' | 'default'>;
+  coverage: { filled: number; total: number; ratio: number };
+}
+
+const prisma = new PrismaClient();
+
+/**
+ * 2段階でItem Specificsを抽出
+ * Step 1: ルールベース（Brand, Country, Type等）
+ * Step 2: AI抽出（残りの項目）
+ */
+export async function extractItemSpecifics(params: {
+  title: string;
+  description: string;
+  tag?: string;
+  category?: string;
+}): Promise<ItemSpecificsResult> {
+  const { title, description, tag } = params;
+
+  // 1. カテゴリ判定
+  const category = params.category || await resolveCategory(tag || '', prisma);
+  if (!category) {
+    log.warn({ type: 'category_unknown', tag, title: title.substring(0, 50) });
+    return {
+      category: 'Unknown',
+      specifics: {},
+      source: {},
+      coverage: { filled: 0, total: 0, ratio: 0 },
+    };
+  }
+
+  // 2. カテゴリ別フィールド定義取得
+  const fields = await getFieldsForCategory(category, prisma);
+
+  // 3. Step 1: ルールベース抽出
+  const ruleResult = await extractByRules({ title, description, tag: tag || '', category, fields, prisma });
+
+  // 4. Step 2: AI抽出（未入力フィールドのみ）
+  const emptyFields = fields.filter(f => !ruleResult.specifics[f.fieldName]);
+  let aiResult: AIExtractionResult = { specifics: {}, source: {} };
+
+  if (emptyFields.length > 0) {
+    try {
+      aiResult = await extractByAI({
+        title,
+        description,
+        category,
+        fields: emptyFields,
+        existingData: ruleResult.specifics,
+      });
+    } catch (error: any) {
+      log.error({ type: 'ai_extraction_failed', error: error.message });
+    }
+  }
+
+  // 5. マージ（ルールベースが優先）
+  const merged: Record<string, string> = { ...aiResult.specifics, ...ruleResult.specifics };
+  const sources: Record<string, 'rule' | 'ai' | 'default'> = { ...aiResult.source, ...ruleResult.source };
+
+  // 6. カバレッジ計算
+  const totalFields = fields.length;
+  const filledFields = Object.values(merged).filter(v => v && v !== '' && v !== 'Does not apply').length;
+
+  return {
+    category,
+    specifics: merged,
+    source: sources,
+    coverage: {
+      filled: filledFields,
+      total: totalFields,
+      ratio: totalFields > 0 ? filledFields / totalFields : 0,
+    },
+  };
+}
+
+export { extractByRules } from './rule-extractor';
+export { extractByAI } from './ai-extractor';
+export { getFieldsForCategory, resolveCategory } from './field-definitions';
+```
+
+### 2. packages/enrichment/src/item-specifics/field-definitions.ts
+
+カテゴリ判定とフィールド定義取得。DBから取得し、フォールバックとしてハードコード定義を持つ。
+
+```typescript
+import type { PrismaClient } from '@prisma/client';
+
+export interface FieldDefinition {
+  fieldName: string;
+  fieldType: 'required' | 'recommended';
+  priority: number;
+  notes: string;
+}
+
+// タグ→カテゴリのデフォルトマッピング（DBが空の場合のフォールバック）
+const TAG_CATEGORY_MAP: Record<string, string> = {
+  '時計': 'Watches', '腕時計': 'Watches', 'ウォッチ': 'Watches', '懐中時計': 'Watches',
+  'リング': 'Rings', '指輪': 'Rings',
+  'ネックレス': 'Necklaces & Pendants', 'ペンダント': 'Necklaces & Pendants',
+  'ブレスレット': 'Bracelets', 'バングル': 'Bracelets',
+  'ピアス': 'Earrings', 'イヤリング': 'Earrings',
+  'バッグ': 'Handbags', 'ハンドバッグ': 'Handbags', 'ショルダーバッグ': 'Handbags',
+  'トートバッグ': 'Handbags', 'リュック': 'Handbags',
+  '衣類': 'Clothing', '服': 'Clothing', 'ジャケット': 'Clothing', 'コート': 'Clothing',
+  'カメラ': 'Cameras', 'デジカメ': 'Cameras', '一眼レフ': 'Cameras',
+  '電子機器': 'Electronics', '家電': 'Electronics', 'オーディオ': 'Electronics',
+  'トレカ': 'Trading Cards', 'ポケカ': 'Trading Cards', '遊戯王': 'Trading Cards',
+  '靴': 'Shoes', 'スニーカー': 'Shoes', 'ブーツ': 'Shoes',
+  'フィギュア': 'Collectibles', 'コレクティブル': 'Collectibles',
+  'ウォッチパーツ': 'Watch Parts', '時計パーツ': 'Watch Parts',
+};
+
+/**
+ * 日本語タグからeBayカテゴリ名を解決
+ * DBのItemSpecificsFieldのtagJpから検索 → フォールバックでハードコードマップ
+ */
+export async function resolveCategory(tag: string, prisma: PrismaClient): Promise<string> {
+  if (!tag) return '';
+
+  const trimmed = tag.trim();
+
+  // 1. DBから検索（tagJpにカンマ区切りで含まれるか）
+  const dbFields = await prisma.itemSpecificsField.findMany({
+    select: { category: true, tagJp: true },
+    distinct: ['category'],
+  });
+
+  for (const field of dbFields) {
+    const tags = field.tagJp.split(/[，,、]/).map((t: string) => t.trim());
+    // 完全一致
+    if (tags.includes(trimmed)) return field.category;
+  }
+
+  for (const field of dbFields) {
+    const tags = field.tagJp.split(/[，,、]/).map((t: string) => t.trim());
+    // 部分一致（長いタグを優先するためソート）
+    const sortedTags = [...tags].sort((a, b) => b.length - a.length);
+    for (const t of sortedTags) {
+      if (t && (trimmed.includes(t) || t.includes(trimmed))) return field.category;
+    }
+  }
+
+  // 2. ハードコードフォールバック
+  if (TAG_CATEGORY_MAP[trimmed]) return TAG_CATEGORY_MAP[trimmed];
+
+  // 部分一致
+  const keys = Object.keys(TAG_CATEGORY_MAP).sort((a, b) => b.length - a.length);
+  for (const key of keys) {
+    if (trimmed.includes(key)) return TAG_CATEGORY_MAP[key];
+  }
+
+  return '';
+}
+
+/**
+ * カテゴリに対応するフィールド定義をDBから取得
+ */
+export async function getFieldsForCategory(category: string, prisma: PrismaClient): Promise<FieldDefinition[]> {
+  const dbFields = await prisma.itemSpecificsField.findMany({
+    where: { category },
+    orderBy: [
+      { fieldType: 'asc' }, // required first
+      { priority: 'asc' },
+    ],
+  });
+
+  if (dbFields.length > 0) {
+    return dbFields.map(f => ({
+      fieldName: f.fieldName,
+      fieldType: f.fieldType as 'required' | 'recommended',
+      priority: f.priority,
+      notes: f.notes || '',
+    }));
+  }
+
+  // フォールバック: 基本3項目
+  return [
+    { fieldName: 'Brand', fieldType: 'required', priority: 1, notes: '' },
+    { fieldName: 'Type', fieldType: 'required', priority: 2, notes: '' },
+    { fieldName: 'Country/Region of Manufacture', fieldType: 'recommended', priority: 3, notes: '' },
+  ];
+}
+```
+
+### 3. packages/enrichment/src/item-specifics/rule-extractor.ts
+
+ルールベース抽出（Step 1）。ブランド辞書、素材パターン、色パターン等。
+
+```typescript
+import type { PrismaClient } from '@prisma/client';
+import type { FieldDefinition } from './field-definitions';
+
+export interface RuleExtractionResult {
+  specifics: Record<string, string>;
+  source: Record<string, 'rule'>;
+}
+
+interface BrandMatch {
+  name: string;
+  country: string;
+  subBrand?: string;
+}
+
+// 素材パターン（ルールベース）
+const METAL_PATTERNS: Array<{ keywords: string[]; value: string }> = [
+  { keywords: ['K18', '18K', '18金', '750'], value: '18K Gold' },
+  { keywords: ['K14', '14K', '14金', '585'], value: '14K Gold' },
+  { keywords: ['K10', '10K', '10金'], value: '10K Gold' },
+  { keywords: ['K24', '24K', '24金', '999'], value: '24K Gold' },
+  { keywords: ['Pt950', 'プラチナ950', 'Pt 950'], value: 'Platinum' },
+  { keywords: ['Pt900', 'プラチナ', 'Pt 900'], value: 'Platinum' },
+  { keywords: ['SV925', 'シルバー925', 'Sterling', 'スターリング', 'Ag925', '925'], value: 'Sterling Silver' },
+  { keywords: ['チタン', 'Titanium', 'TITANIUM', 'titanium'], value: 'Titanium' },
+  { keywords: ['ステンレス', 'Stainless', 'STAINLESS', 'SS'], value: 'Stainless Steel' },
+  { keywords: ['セラミック', 'Ceramic', 'CERAMIC'], value: 'Ceramic' },
+  { keywords: ['レザー', 'Leather', 'LEATHER', '革', '本革'], value: 'Leather' },
+  { keywords: ['ラバー', 'Rubber', 'RUBBER', 'シリコン', 'Silicon'], value: 'Rubber' },
+  { keywords: ['ナイロン', 'Nylon', 'NYLON', 'NATO'], value: 'Nylon' },
+];
+
+const MOVEMENT_PATTERNS: Array<{ keywords: string[]; value: string }> = [
+  { keywords: ['自動巻', 'Automatic', 'AUTOMATIC', 'オートマチック', 'Cal.'], value: 'Automatic' },
+  { keywords: ['手巻', 'Manual', 'MANUAL', '手巻き'], value: 'Manual' },
+  { keywords: ['クォーツ', 'Quartz', 'QUARTZ', 'クオーツ', 'QUARTS'], value: 'Quartz' },
+  { keywords: ['ソーラー', 'Solar', 'SOLAR', 'エコドライブ', 'Eco-Drive'], value: 'Solar' },
+  { keywords: ['キネティック', 'Kinetic', 'KINETIC'], value: 'Kinetic' },
+];
+
+const COLOR_PATTERNS: Array<{ keywords: string[]; value: string }> = [
+  { keywords: ['ブラック', 'Black', 'BLACK', '黒'], value: 'Black' },
+  { keywords: ['ホワイト', 'White', 'WHITE', '白'], value: 'White' },
+  { keywords: ['シルバー', 'Silver', 'SILVER', '銀色'], value: 'Silver' },
+  { keywords: ['ゴールド', 'Gold', 'GOLD', '金色'], value: 'Gold' },
+  { keywords: ['ブルー', 'Blue', 'BLUE', '青'], value: 'Blue' },
+  { keywords: ['レッド', 'Red', 'RED', '赤'], value: 'Red' },
+  { keywords: ['グリーン', 'Green', 'GREEN', '緑'], value: 'Green' },
+  { keywords: ['ブラウン', 'Brown', 'BROWN', '茶'], value: 'Brown' },
+  { keywords: ['ピンク', 'Pink', 'PINK'], value: 'Pink' },
+  { keywords: ['グレー', 'Gray', 'Grey', 'GRAY', 'GREY'], value: 'Gray' },
+  { keywords: ['ネイビー', 'Navy', 'NAVY', '紺'], value: 'Navy' },
+  { keywords: ['パープル', 'Purple', 'PURPLE', '紫'], value: 'Purple' },
+  { keywords: ['イエロー', 'Yellow', 'YELLOW', '黄'], value: 'Yellow' },
+  { keywords: ['オレンジ', 'Orange', 'ORANGE'], value: 'Orange' },
+  { keywords: ['ベージュ', 'Beige', 'BEIGE'], value: 'Beige' },
+];
+
+const TAG_TYPE_MAP: Record<string, string> = {
+  '時計': 'Wrist Watch', '腕時計': 'Wrist Watch', 'ウォッチ': 'Wrist Watch',
+  '懐中時計': 'Pocket Watch',
+  'リング': 'Ring', '指輪': 'Ring',
+  'ネックレス': 'Necklace', 'ペンダント': 'Pendant',
+  'ブレスレット': 'Bracelet', 'バングル': 'Bangle',
+  'ピアス': 'Stud', 'イヤリング': 'Clip-On',
+  'バッグ': 'Bag', 'ハンドバッグ': 'Handbag', 'ショルダーバッグ': 'Shoulder Bag',
+  'トートバッグ': 'Tote', 'リュック': 'Backpack', 'ボストンバッグ': 'Duffel',
+  'スニーカー': 'Sneakers', 'ブーツ': 'Boots', 'サンダル': 'Sandals',
+  'パンプス': 'Pumps', 'ローファー': 'Loafers',
+};
+
+function matchFromPatterns(text: string, patterns: Array<{ keywords: string[]; value: string }>): string {
+  for (const p of patterns) {
+    for (const kw of p.keywords) {
+      if (text.includes(kw)) return p.value;
+    }
+  }
+  return '';
+}
+
+function matchAllColors(text: string): string {
+  const found: string[] = [];
+  for (const p of COLOR_PATTERNS) {
+    for (const kw of p.keywords) {
+      if (text.includes(kw) && !found.includes(p.value)) {
+        found.push(p.value);
+        break;
+      }
+    }
+  }
+  return found.join(', ');
+}
+
+async function matchBrand(title: string, category: string, prisma: PrismaClient): Promise<BrandMatch | null> {
+  const brands = await prisma.brand.findMany();
+  const t = title.toLowerCase();
+
+  let bestMatch: BrandMatch | null = null;
+  let bestLen = 0;
+
+  for (const brand of brands) {
+    // カテゴリ制限チェック
+    if (brand.categories.length > 0 && !brand.categories.some(c => c.toLowerCase() === category.toLowerCase())) {
+      continue;
+    }
+    if (brand.isMaterial) continue; // 素材ブランドはスキップ
+
+    // 英語名チェック
+    if (t.includes(brand.name.toLowerCase()) && brand.name.length > bestLen) {
+      bestMatch = {
+        name: brand.parentBrand || brand.name,
+        country: brand.country || '',
+        subBrand: brand.parentBrand ? brand.name : undefined,
+      };
+      bestLen = brand.name.length;
+    }
+
+    // 日本語名チェック
+    for (const jp of brand.jpNames) {
+      if (jp && t.includes(jp.toLowerCase()) && jp.length > bestLen) {
+        bestMatch = {
+          name: brand.parentBrand || brand.name,
+          country: brand.country || '',
+          subBrand: brand.parentBrand ? brand.name : undefined,
+        };
+        bestLen = jp.length;
+      }
+    }
+  }
+
+  return bestMatch;
+}
+
+function matchCaseSize(title: string): string {
+  const t = title;
+  // パターン1: 数字+mm（20-60mmの範囲）
+  let m = t.match(/(\d{2,3})\s*(?:mm|MM|ＭＭ)/);
+  if (m) {
+    const size = parseInt(m[1], 10);
+    if (size >= 20 && size <= 60) return `${size} mm`;
+  }
+  // パターン2: 数字+ミリ
+  m = t.match(/(\d{2,3})\s*ミリ/);
+  if (m) {
+    const size = parseInt(m[1], 10);
+    if (size >= 20 && size <= 60) return `${size} mm`;
+  }
+  return '';
+}
+
+export async function extractByRules(params: {
+  title: string;
+  description: string;
+  tag: string;
+  category: string;
+  fields: FieldDefinition[];
+  prisma: PrismaClient;
+}): Promise<RuleExtractionResult> {
+  const { title, description, tag, category, fields, prisma: db } = params;
+  const specifics: Record<string, string> = {};
+  const source: Record<string, 'rule'> = {};
+
+  const brandInfo = await matchBrand(title, category, db);
+  const combinedText = `${title} ${description}`;
+
+  for (const field of fields) {
+    let value = '';
+
+    switch (field.fieldName) {
+      case 'Brand':
+        value = brandInfo?.name || '';
+        break;
+      case 'Country/Region of Manufacture':
+      case 'Country of Origin':
+        value = brandInfo?.country || '';
+        break;
+      case 'Model':
+        value = brandInfo?.subBrand || '';
+        break;
+      case 'Type':
+        value = TAG_TYPE_MAP[tag] || '';
+        break;
+      case 'Metal':
+      case 'Case Material':
+      case 'Band Material':
+        value = matchFromPatterns(combinedText, METAL_PATTERNS);
+        break;
+      case 'Metal Purity': {
+        const metal = matchFromPatterns(combinedText, METAL_PATTERNS);
+        // Only set purity if it's a precious metal
+        if (metal.includes('Gold') || metal === 'Platinum' || metal === 'Sterling Silver') {
+          value = metal.replace('Gold', '').replace('Platinum', 'Pt950').replace('Sterling Silver', '925').trim() || metal;
+        }
+        break;
+      }
+      case 'Movement':
+        value = matchFromPatterns(combinedText, MOVEMENT_PATTERNS);
+        break;
+      case 'Display': {
+        const movement = matchFromPatterns(combinedText, MOVEMENT_PATTERNS);
+        if (movement === 'Automatic' || movement === 'Manual') value = 'Analog';
+        else if (combinedText.includes('デジタル') || combinedText.includes('Digital')) value = 'Digital';
+        else if (movement) value = 'Analog';
+        break;
+      }
+      case 'Color':
+      case 'Exterior Color':
+      case 'Dial Color':
+        value = matchAllColors(combinedText);
+        break;
+      case 'Material':
+      case 'Exterior Material':
+        value = matchFromPatterns(combinedText, METAL_PATTERNS);
+        break;
+      case 'Department':
+        if (combinedText.match(/メンズ|Men|MEN|男性/)) value = 'Men';
+        else if (combinedText.match(/レディース|Women|WOMEN|女性/)) value = 'Women';
+        else if (combinedText.match(/ユニセックス|Unisex|UNISEX/)) value = 'Unisex';
+        break;
+      case 'Case Size':
+        value = matchCaseSize(combinedText);
+        break;
+      case 'Language':
+        value = 'Japanese';
+        break;
+      case 'Graded':
+        if (combinedText.match(/PSA|BGS|CGC|SGC|ARS|グレード/)) value = 'Yes';
+        else value = 'No';
+        break;
+      case 'Game':
+        if (combinedText.match(/ポケモン|Pokemon|POKEMON|ポケカ/)) value = 'Pokemon';
+        else if (combinedText.match(/遊戯王|Yu-Gi-Oh|YUGIOH/)) value = 'Yu-Gi-Oh!';
+        else if (combinedText.match(/MTG|Magic|マジック/)) value = 'Magic: The Gathering';
+        else if (combinedText.match(/ワンピース|One Piece|ONE PIECE/)) value = 'One Piece';
+        break;
+      default:
+        break;
+    }
+
+    if (value) {
+      specifics[field.fieldName] = value;
+      source[field.fieldName] = 'rule';
+    }
+  }
+
+  return { specifics, source };
+}
+```
+
+### 4. packages/enrichment/src/item-specifics/ai-extractor.ts
+
+AI抽出（Step 2）。残りのフィールドをOpenAI GPT-4oで抽出。
+
+```typescript
+import { getOpenAIClient } from '../translator';
+import type { FieldDefinition } from './field-definitions';
+import { logger } from '@rakuda/logger';
+
+const log = logger.child({ module: 'item-specifics-ai' });
+
+export interface AIExtractionResult {
+  specifics: Record<string, string>;
+  source: Record<string, 'ai'>;
+}
+
+function buildPrompt(params: {
+  title: string;
+  description: string;
+  category: string;
+  fields: FieldDefinition[];
+  existingData: Record<string, string>;
+}): string {
+  const { title, description, category, fields, existingData } = params;
+  const lines: string[] = [];
+
+  lines.push('You are an expert eBay Item Specifics extractor for Japanese sellers.');
+  lines.push('');
+  lines.push('### INPUT DATA');
+  lines.push(`Category: ${category}`);
+  lines.push(`Title: ${title}`);
+  lines.push(`Description: ${description}`);
+  lines.push('');
+
+  // 既存データ
+  const existingKeys = Object.keys(existingData).filter(k => existingData[k]);
+  if (existingKeys.length > 0) {
+    lines.push('### ALREADY CONFIRMED DATA (from rule-based extraction)');
+    lines.push('DO NOT overwrite these unless clearly incorrect:');
+    for (const key of existingKeys) {
+      lines.push(`- ${key}: ${existingData[key]}`);
+    }
+    lines.push('');
+  }
+
+  // 抽出対象フィールド
+  const requiredFields = fields.filter(f => f.fieldType === 'required').map(f => f.fieldName);
+  const recommendedFields = fields.filter(f => f.fieldType === 'recommended').map(f => f.fieldName);
+
+  lines.push('### FIELDS TO EXTRACT');
+  if (requiredFields.length > 0) lines.push(`Required: ${requiredFields.join(', ')}`);
+  if (recommendedFields.length > 0) lines.push(`Recommended: ${recommendedFields.join(', ')}`);
+  lines.push('');
+
+  // Notes
+  const fieldsWithNotes = fields.filter(f => f.notes);
+  if (fieldsWithNotes.length > 0) {
+    lines.push('### FIELD NOTES');
+    for (const f of fieldsWithNotes) {
+      lines.push(`- ${f.fieldName}: ${f.notes}`);
+    }
+    lines.push('');
+  }
+
+  // 正規化ルール
+  lines.push('### RULES');
+  lines.push('- Values must be in English');
+  lines.push('- Normalize to eBay standard terms');
+  lines.push('- Country of Origin = manufacturing country (NOT brand HQ)');
+  lines.push('- For unknown required fields: "Does not apply" (Brand: "Unbranded")');
+  lines.push('- For unknown recommended fields: empty string ""');
+  lines.push('- Do NOT guess or hallucinate values');
+  lines.push('');
+
+  lines.push('### OUTPUT');
+  lines.push('Return ONLY a valid JSON object with field names as keys and extracted values.');
+  lines.push('No markdown, no explanation, no code fences.');
+
+  return lines.join('\n');
+}
+
+export async function extractByAI(params: {
+  title: string;
+  description: string;
+  category: string;
+  fields: FieldDefinition[];
+  existingData: Record<string, string>;
+}): Promise<AIExtractionResult> {
+  const client = await getOpenAIClient();
+  if (!client) {
+    log.warn({ type: 'openai_not_configured' });
+    return { specifics: {}, source: {} };
+  }
+
+  const prompt = buildPrompt(params);
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: 'You are an expert eBay Item Specifics extractor. Always respond with valid JSON only.' },
+      { role: 'user', content: prompt },
+    ],
+    temperature: 0.1,
+    max_tokens: 1500,
+    response_format: { type: 'json_object' },
+  });
+
+  const content = response.choices[0]?.message?.content || '{}';
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    log.error({ type: 'ai_response_parse_error', content: content.substring(0, 200) });
+    return { specifics: {}, source: {} };
+  }
+
+  const specifics: Record<string, string> = {};
+  const source: Record<string, 'ai'> = {};
+
+  // フィールド定義にマッチするキーのみ抽出
+  for (const field of params.fields) {
+    const value = parsed[field.fieldName];
+    if (value && typeof value === 'string' && value.trim() !== '') {
+      specifics[field.fieldName] = value.trim();
+      source[field.fieldName] = 'ai';
+    }
+  }
+
+  return { specifics, source };
+}
+```
+
+### 5. packages/enrichment/src/index.ts の更新
+
+既存のindex.tsにitem-specificsのre-exportを追加:
+
+ファイル末尾に以下を追加:
+```typescript
+export { extractItemSpecifics, type ItemSpecificsResult } from './item-specifics';
+```
+
+## 注意事項
+- getOpenAIClient は packages/enrichment/src/translator.ts から import する（既存関数を再利用）
+- getOpenAIClient がexportされていない場合はexportを追加する
+- PrismaClientは @prisma/client から import
+- logger は @rakuda/logger から import
+- ビルド確認: `npx turbo run build --filter=@rakuda/enrichment`
+- translator.ts の getOpenAIClient の export 状況を確認し、未exportなら export を追加すること

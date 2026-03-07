@@ -1,0 +1,186 @@
+Phase 6: 品質チェックゲート - RAKUDAプロジェクト
+
+プロジェクトルート: ~/Desktop/rakuda/
+
+## 新規ファイル作成
+
+### apps/worker/src/lib/listing-quality-gate.ts
+
+出品前に商品データの品質をチェックし、不十分な場合は出品をブロックするゲート機能。
+
+```typescript
+import { logger } from '@rakuda/logger';
+
+const log = logger.child({ module: 'listing-quality-gate' });
+
+export interface QualityCheckResult {
+  passed: boolean;
+  hardBlocks: string[];
+  softWarnings: string[];
+}
+
+/**
+ * 出品前品質チェック
+ * hardBlocksが1つでもある場合は出品不可
+ */
+export function checkListingQuality(params: {
+  imageUrls: string[];
+  title: string;
+  description: string;
+  price: number;
+  itemSpecifics?: Record<string, string | string[]>;
+  requiredSpecificsCount?: number;
+}): QualityCheckResult {
+  const hardBlocks: string[] = [];
+  const softWarnings: string[] = [];
+
+  // 1. 画像チェック（ハードブロック）
+  if (!params.imageUrls || params.imageUrls.length === 0) {
+    hardBlocks.push('No images available. At least 1 image is required.');
+  }
+
+  // 2. タイトル翻訳チェック（ハードブロック）
+  if (!params.title || params.title.trim() === '') {
+    hardBlocks.push('Title is empty.');
+  } else if (params.title.startsWith('[EN]')) {
+    hardBlocks.push('Title has not been translated (still has [EN] prefix).');
+  }
+
+  // 3. 価格チェック（ハードブロック）
+  if (!params.price || params.price <= 0) {
+    hardBlocks.push('Price must be greater than 0.');
+  }
+
+  // 4. 説明文翻訳チェック（ソフトブロック）
+  if (!params.description || params.description.trim() === '') {
+    softWarnings.push('Description is empty.');
+  } else if (params.description.startsWith('[EN]')) {
+    softWarnings.push('Description has not been translated (still has [EN] prefix).');
+  }
+
+  // 5. ItemSpecifics充足率チェック（ソフトブロック）
+  if (params.itemSpecifics && params.requiredSpecificsCount) {
+    const filledCount = Object.keys(params.itemSpecifics).length;
+    const ratio = filledCount / params.requiredSpecificsCount;
+    if (ratio < 0.8) {
+      softWarnings.push(`ItemSpecifics coverage is ${Math.round(ratio * 100)}% (${filledCount}/${params.requiredSpecificsCount}). Recommended: 80%+`);
+    }
+  }
+
+  const passed = hardBlocks.length === 0;
+
+  if (!passed) {
+    log.warn({
+      type: 'quality_check_failed',
+      hardBlocks,
+      softWarnings,
+      title: params.title?.substring(0, 50),
+    });
+  } else if (softWarnings.length > 0) {
+    log.info({
+      type: 'quality_check_warnings',
+      softWarnings,
+      title: params.title?.substring(0, 50),
+    });
+  }
+
+  return { passed, hardBlocks, softWarnings };
+}
+```
+
+## 既存ファイル修正
+
+### apps/worker/src/lib/ebay-publish-service.ts
+
+publishToEbay()メソッドの中で、画像URLを取得した後（約170行目、画像0枚ハードブロックの前後）に品質チェックゲートを追加。
+
+1. ファイル先頭のimportに追加:
+```typescript
+import { checkListingQuality } from './listing-quality-gate';
+```
+
+2. publishToEbay()の中で、imageUrlsを確定した直後（既存の画像0枚ハードブロックの代わり）に品質チェック挿入:
+
+現在のコード（約168-180行目）:
+```typescript
+const imageUrls = optimizedImages.slice(0, 12);
+
+// 画像0枚ハードブロック
+if (imageUrls.length === 0) {
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: {
+      status: 'ERROR',
+      errorMessage: 'Cannot publish to eBay without images. At least 1 image is required.',
+    },
+  });
+  return { success: false, error: 'Cannot publish to eBay without images. At least 1 image is required.' };
+}
+```
+
+修正後:
+```typescript
+const imageUrls = optimizedImages.slice(0, 12);
+
+// 品質チェックゲート
+const qualityCheck = checkListingQuality({
+  imageUrls,
+  title,
+  description,
+  price: priceUsd,
+});
+
+if (!qualityCheck.passed) {
+  const errorMsg = `Quality check failed: ${qualityCheck.hardBlocks.join('; ')}`;
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: {
+      status: 'ERROR',
+      errorMessage: errorMsg,
+    },
+  });
+  return { success: false, error: errorMsg };
+}
+```
+
+### apps/worker/src/lib/joom-publish-service.ts
+
+publishToJoom()メソッド（364行目〜）の中にも同様の品質チェックを追加。
+
+1. ファイル先頭のimportに追加:
+```typescript
+import { checkListingQuality } from './listing-quality-gate';
+```
+
+2. publishToJoom()内で、出品データを構築した後、Joom APIに送信する前に品質チェックを挿入。
+   具体的には、listingのproductから画像・タイトル・価格を取得した箇所の後に:
+
+```typescript
+// 品質チェックゲート
+const qualityCheck = checkListingQuality({
+  imageUrls: imageUrls, // publishToJoom内で使用している画像URL配列
+  title: title,         // 英語タイトル
+  description: description, // 英語説明文
+  price: price,         // USD価格
+});
+
+if (!qualityCheck.passed) {
+  const errorMsg = `Quality check failed: ${qualityCheck.hardBlocks.join('; ')}`;
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: {
+      status: 'ERROR',
+      errorMessage: errorMsg,
+    },
+  });
+  return { success: false, error: errorMsg };
+}
+```
+
+注意: joom-publish-service.tsの変数名は実際のコードを確認して合わせること。publishToJoom()内の画像URL、タイトル、価格の変数名を使用する。
+
+## 注意事項
+- listing-quality-gate.tsは純粋関数（DBアクセスなし）で、テストしやすい設計
+- 既存の画像0枚チェック（ebay-publish-service.ts内）は品質チェックゲートに統合されるので削除してよい
+- ソフトブロック（softWarnings）はログに記録するのみで出品はブロックしない
+- TypeScriptのビルドが通ることを確認すること

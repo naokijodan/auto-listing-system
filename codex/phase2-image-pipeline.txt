@@ -1,0 +1,194 @@
+Phase 2: 画像パイプライン修正 - RAKUDAプロジェクト
+
+プロジェクトルート: ~/Desktop/rakuda/
+
+## 修正対象ファイル
+
+### 1. apps/worker/src/lib/ebay-publish-service.ts
+
+#### processImagesForListing() メソッド (64-97行目)
+現在try-catchがなく、Product.imagesが空の場合にエラーがpropagateされる。
+
+修正内容:
+- processImagesForListing()の先頭で、product.imagesが空（nullまたは空配列）の場合は早期リターン（ログ出力のみ）
+- imagePipelineService.processImages()の呼び出しをtry-catchで囲む
+- catchブロックでエラーをログ出力し、Product.imagesをフォールバックとしてenrichmentTask.optimizedImagesに書き込む（imageStatus: 'FALLBACK'）
+- フォールバック時もlistingのstatusはPENDING_PUBLISHに更新する
+
+修正後のprocessImagesForListing:
+```typescript
+async processImagesForListing(listingId: string): Promise<void> {
+    const listing = await prisma.listing.findUnique({
+      where: { id: listingId },
+      include: { product: true },
+    });
+
+    if (!listing) {
+      throw new Error(`Listing not found: ${listingId}`);
+    }
+
+    const task = await prisma.enrichmentTask.findUnique({ where: { productId: listing.productId } });
+    if (!task) {
+      throw new Error(`EnrichmentTask not found for product: ${listing.productId}`);
+    }
+
+    // 元画像がない場合は早期リターン
+    if (!listing.product.images || listing.product.images.length === 0) {
+      log.warn({ type: 'no_source_images', productId: listing.productId, listingId });
+      await prisma.listing.update({
+        where: { id: listingId },
+        data: { status: 'PENDING_PUBLISH' },
+      });
+      return;
+    }
+
+    try {
+      const imageResult = await imagePipelineService.processImages(listing.productId, listing.product.images);
+
+      await prisma.$transaction([
+        prisma.enrichmentTask.update({
+          where: { id: task.id },
+          data: {
+            bufferedImages: imageResult.buffered,
+            optimizedImages: imageResult.optimized,
+            imageStatus: 'COMPLETED',
+          },
+        }),
+        prisma.listing.update({
+          where: { id: listingId },
+          data: { status: 'PENDING_PUBLISH' },
+        }),
+      ]);
+
+      log.info({ type: 'images_processed_for_ebay', listingId, count: imageResult.optimized.length });
+    } catch (error: any) {
+      log.error({
+        type: 'image_processing_failed',
+        productId: listing.productId,
+        listingId,
+        error: error.message,
+      });
+
+      // フォールバック: Product.imagesをそのまま使用
+      await prisma.$transaction([
+        prisma.enrichmentTask.update({
+          where: { id: task.id },
+          data: {
+            optimizedImages: listing.product.images,
+            imageStatus: 'FALLBACK',
+          },
+        }),
+        prisma.listing.update({
+          where: { id: listingId },
+          data: { status: 'PENDING_PUBLISH' },
+        }),
+      ]);
+
+      log.warn({ type: 'image_fallback_used', listingId, imageCount: listing.product.images.length });
+    }
+  }
+```
+
+#### publishToEbay() メソッド (130-133行目付近)
+画像URLの取得ロジック後に、画像0枚ガードを追加する。
+
+現在のコード (130-133行目):
+```typescript
+const optimizedImages: string[] = task.optimizedImages && task.optimizedImages.length > 0
+  ? task.optimizedImages
+  : (listing.product.processedImages.length > 0 ? listing.product.processedImages : listing.product.images);
+const imageUrls = optimizedImages.slice(0, 12);
+```
+
+修正後（133行目の後に画像0枚ガードを追加）:
+```typescript
+const optimizedImages: string[] = task.optimizedImages && task.optimizedImages.length > 0
+  ? task.optimizedImages
+  : (listing.product.processedImages.length > 0 ? listing.product.processedImages : listing.product.images);
+const imageUrls = optimizedImages.slice(0, 12);
+
+// 画像0枚ハードブロック
+if (imageUrls.length === 0) {
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: {
+      status: 'ERROR',
+      errorMessage: 'Cannot publish to eBay without images. At least 1 image is required.',
+    },
+  });
+  return { success: false, error: 'Cannot publish to eBay without images. At least 1 image is required.' };
+}
+```
+
+### 2. apps/worker/src/jobs/ebay-publish-worker.ts
+
+publish caseブロック (17-28行目) で、processImagesForListingの呼び出しをtry-catchで囲み、失敗時もpublishToEbayに進むようにする（フォールバック画像があるため）。
+
+現在のコード:
+```typescript
+case 'publish': {
+  const productId: string = job.data.productId;
+  const credentialId: string | undefined = job.data.credentialId;
+  const task = await prisma.enrichmentTask.findUnique({ where: { productId } });
+  if (!task) {
+    throw new Error(`No enrichment task for product: ${productId}`);
+  }
+  const listingId = await ebayPublishService.createEbayListing(task.id, credentialId);
+  await ebayPublishService.processImagesForListing(listingId);
+  return await ebayPublishService.publishToEbay(listingId, credentialId);
+}
+```
+
+修正後:
+```typescript
+case 'publish': {
+  const productId: string = job.data.productId;
+  const credentialId: string | undefined = job.data.credentialId;
+  const task = await prisma.enrichmentTask.findUnique({ where: { productId } });
+  if (!task) {
+    throw new Error(`No enrichment task for product: ${productId}`);
+  }
+  const listingId = await ebayPublishService.createEbayListing(task.id, credentialId);
+  try {
+    await ebayPublishService.processImagesForListing(listingId);
+  } catch (imageError: any) {
+    log.warn({
+      type: 'image_processing_skipped',
+      listingId,
+      productId,
+      error: imageError.message,
+    });
+    // 画像処理が失敗してもpublishToEbayに進む（画像0枚ガードはpublishToEbay内にある）
+  }
+  return await ebayPublishService.publishToEbay(listingId, credentialId);
+}
+```
+
+### 3. apps/worker/src/lib/image-processor.ts
+
+processImages()関数 (191行目〜) の先頭に空配列チェックを追加。
+
+現在の関数シグネチャ:
+```typescript
+export async function processImages(
+  imageUrls: string[],
+  productId: string,
+  removeBackgroundEnabled: boolean = true,
+  concurrency: number = 3
+): Promise<ProcessedImage[]> {
+```
+
+関数の先頭（196行目あたり、`const results`の前）に以下を追加:
+```typescript
+  // 空配列の早期リターン
+  if (!imageUrls || imageUrls.length === 0) {
+    log.warn({ type: 'no_images_to_process', productId });
+    return [];
+  }
+```
+
+## 注意事項
+- 既存のimport文はそのまま維持する
+- 型定義は変更しない
+- 他のメソッド（calculateEbayPrice, EbayOrderSyncService等）には触らない
+- TypeScriptの型安全性を維持する
