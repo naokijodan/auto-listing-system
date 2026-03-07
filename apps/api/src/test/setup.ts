@@ -394,10 +394,11 @@ export function setupDefaultMocks() {
 
 // モックをリセット
 export function resetMocks() {
+  // Keep implementations (especially $transaction); only clear calls/state
   Object.values(mockPrisma).forEach((model) => {
     Object.values(model).forEach((method) => {
-      if (typeof method === 'function' && 'mockReset' in method) {
-        (method as ReturnType<typeof vi.fn>).mockReset();
+      if (typeof method === 'function' && 'mockClear' in method) {
+        (method as ReturnType<typeof vi.fn>).mockClear();
       }
     });
   });
@@ -408,7 +409,8 @@ beforeAll(() => {
 });
 
 afterEach(() => {
-  resetMocks();
+  // Do not reset implementations; just clear calls and reapply defaults
+  vi.clearAllMocks();
   setupDefaultMocks();
 });
 

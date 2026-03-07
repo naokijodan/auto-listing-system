@@ -6385,7 +6385,7 @@ model ProhibitedKeyword {
   caseSensitive Boolean          @default(false)
 
   // 対象言語
-  languages String[] // ja, en, ru等
+  languages String[] // ja, en
 
   // 説明
   description String?
