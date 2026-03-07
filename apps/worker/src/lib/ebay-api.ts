@@ -72,6 +72,7 @@ export class EbayApiClient {
   private accessToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
   private credentialId: string | null = null;
+  private latestCredentialRecord: any | null = null;
 
   constructor(credentialId?: string) {
     this.credentialId = credentialId || null;
@@ -113,6 +114,10 @@ export class EbayApiClient {
       throw new Error('eBay credentials not configured');
     }
 
+    // キャッシュ: 呼び出し元でtokenExpiresAt等を再利用できるように保存
+    this.latestCredentialRecord = credential;
+
+    // sandboxフラグを将来的に利用できるように型へ追加
     return credential.credentials as {
       clientId: string;
       clientSecret: string;
@@ -120,6 +125,7 @@ export class EbayApiClient {
       accessToken?: string;
       refreshToken?: string;
       ruName?: string;
+      sandbox?: boolean;
     };
   }
 
@@ -127,21 +133,62 @@ export class EbayApiClient {
    * アクセストークンを取得/更新
    */
   private async ensureAccessToken(): Promise<string> {
-    // キャッシュされたトークンが有効ならそれを使う
-    if (this.accessToken && this.tokenExpiresAt && this.tokenExpiresAt > new Date()) {
+    // 1. インメモリキャッシュ（5分グレース）
+    const GRACE_PERIOD_MS = 5 * 60 * 1000; // 5分
+    if (
+      this.accessToken &&
+      this.tokenExpiresAt &&
+      this.tokenExpiresAt.getTime() - GRACE_PERIOD_MS > Date.now()
+    ) {
+      log.info({ type: 'ebay_token_from_memory_cache', expiresAt: this.tokenExpiresAt });
       return this.accessToken;
     }
 
     const credentials = await this.getCredentials();
+    const credential = this.latestCredentialRecord; // getCredentials()実行時のDBレコード
 
-    // リフレッシュトークンがあれば更新
-    if (credentials.refreshToken) {
-      return this.refreshAccessToken(credentials);
+    // 2. DBのaccessTokenが有効（5分グレース）ならそれを使う
+    if (
+      credential?.tokenExpiresAt &&
+      new Date(credential.tokenExpiresAt).getTime() - GRACE_PERIOD_MS > Date.now() &&
+      credentials.accessToken
+    ) {
+      this.accessToken = credentials.accessToken;
+      this.tokenExpiresAt = new Date(credential.tokenExpiresAt);
+      log.info({ type: 'ebay_token_from_db_cache', expiresAt: this.tokenExpiresAt });
+      return this.accessToken;
     }
 
-    // 既存のアクセストークンがあればそれを使う
+    // 3. リフレッシュを試みる
+    if (credentials.refreshToken) {
+      try {
+        const refreshed = await this.refreshAccessToken(credentials);
+        // refreshAccessToken内でログとexpiresAt更新済み
+        return refreshed;
+      } catch (refreshError: any) {
+        log.warn({
+          type: 'ebay_token_refresh_fallback',
+          error: refreshError?.message || String(refreshError),
+        });
+        // 4. リフレッシュ失敗でもDBトークンが期限内なら使う（バッファなし）
+        if (
+          credential?.tokenExpiresAt &&
+          new Date(credential.tokenExpiresAt).getTime() > Date.now() &&
+          credentials.accessToken
+        ) {
+          log.info({ type: 'ebay_using_existing_token_after_refresh_failure' });
+          this.accessToken = credentials.accessToken;
+          this.tokenExpiresAt = new Date(credential.tokenExpiresAt);
+          return this.accessToken;
+        }
+        throw refreshError;
+      }
+    }
+
+    // 5. 既存のアクセストークンがあればそれを使う
     if (credentials.accessToken) {
       this.accessToken = credentials.accessToken;
+      log.info({ type: 'ebay_token_from_existing_credentials' });
       return this.accessToken;
     }
 
