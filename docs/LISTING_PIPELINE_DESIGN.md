@@ -15,11 +15,11 @@ RAKUDAの出品パイプラインには以下の問題がある:
 | Phase | 内容 | 優先度 | 依存 |
 |-------|------|--------|------|
 | Phase 1 | APIキー設定UI + DB保存 | **完了** | - |
-| Phase 2 | 画像パイプライン修正 | 最高 | - |
-| Phase 3 | translator.tsカテゴリ別プロンプト対応 | 高 | Phase 1 |
-| Phase 4 | 主力プロンプトDB投入 | 高 | Phase 3 |
+| Phase 2 | 画像パイプライン修正 | **完了** | - |
+| Phase 3 | translator.tsカテゴリ別プロンプト対応 | **完了** | Phase 1 |
+| Phase 4 | 主力プロンプトDB投入 | **完了**（シードスクリプト作成済、本番実行待ち） | Phase 3 |
 | Phase 5 | ItemSpecifics統合 + ブランド辞書DB化 | 中 | Phase 3 |
-| Phase 6 | 品質チェックゲート | 中 | Phase 2,3,5 |
+| Phase 6 | 品質チェックゲート | **完了** | Phase 2,3 |
 
 ## 理想的なパイプラインフロー（完成後）
 
