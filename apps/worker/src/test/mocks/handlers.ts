@@ -269,12 +269,8 @@ export const handlers = [
     });
   }),
 
-  http.post(`${JOOM_API}/products/:productId/enable`, () => {
-    return HttpResponse.json({});
-  }),
-
-  http.post(`${JOOM_API}/products/:productId/disable`, () => {
-    return HttpResponse.json({});
+  http.post(`${JOOM_API}/products/update`, () => {
+    return HttpResponse.json({ code: 0, data: {} });
   }),
 
   http.put(`${JOOM_API}/products/:productId/variants/:sku/inventory`, () => {

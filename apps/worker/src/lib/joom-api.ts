@@ -396,7 +396,9 @@ export class JoomApiClient {
       productId,
     });
 
-    return this.request<void>('POST', `/products/${productId}/enable`);
+    return this.request<void>('POST', `/products/update?id=${productId}`, {
+      enabled: true,
+    });
   }
 
   /**
@@ -408,7 +410,9 @@ export class JoomApiClient {
       productId,
     });
 
-    return this.request<void>('POST', `/products/${productId}/disable`);
+    return this.request<void>('POST', `/products/update?id=${productId}`, {
+      enabled: false,
+    });
   }
 
   /**
