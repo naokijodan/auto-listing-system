@@ -147,3 +147,4 @@ ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
 
 CMD ["node", "apps/web/server.js"]
+
