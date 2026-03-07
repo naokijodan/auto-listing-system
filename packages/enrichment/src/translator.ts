@@ -242,7 +242,7 @@ export async function enrichProduct(
 
     return {
       translations: {
-        en: parsed.translations?.en || { title: `[EN] ${title}`, description: `[EN] ${description}` },
+        en: parsed.translations?.en || { title: `${title}`, description: `${description}` },
         tokensUsed,
       },
       attributes: {
@@ -317,8 +317,8 @@ Return JSON: {"title": "...", "description": "..."}`;
   } catch (error: any) {
     log.error({ type: 'translate_en_error', error: error.message });
     return {
-      title: `[EN] ${title}`,
-      description: `[EN] ${description}`,
+      title: title,
+      description: description,
       tokensUsed: 0,
     };
   }
@@ -330,7 +330,7 @@ Return JSON: {"title": "...", "description": "..."}`;
 function createFallbackResult(title: string, description: string): EnrichmentResult {
   return {
     translations: {
-      en: { title: `[EN] ${title}`, description: `[EN] ${description}` },
+      en: { title: `${title}`, description: `${description}` },
       tokensUsed: 0,
     },
     attributes: {

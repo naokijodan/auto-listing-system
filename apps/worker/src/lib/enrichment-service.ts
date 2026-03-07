@@ -5,10 +5,11 @@
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import OpenAI from 'openai';
+import { enrichProduct as enrichProductNew } from '@rakuda/enrichment';
 
 const log = logger.child({ module: 'enrichment-service' });
 
-// OpenAI クライアント
+// OpenAI クライアント（translateOnly や他のレガシー機能で使用）
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -61,64 +62,7 @@ export interface PricingResult {
 // 翻訳・属性抽出サービス
 // ========================================
 
-const ENRICHMENT_PROMPT = `あなたは越境EC商品データの専門家です。
-以下の日本語商品情報を分析し、JSON形式で出力してください。
-
-【入力】
-タイトル: {title}
-説明文: {description}
-カテゴリ: {category}
-ブランド: {brand}
-
-【出力形式】
-{
-  "translations": {
-    "en": { "title": "英語タイトル", "description": "英語説明文" },
-    "ru": { "title": "ロシア語タイトル", "description": "ロシア語説明文" }
-  },
-  "attributes": {
-    "brand": "ブランド名（英語）",
-    "color": "色（英語）",
-    "size": "サイズ",
-    "material": "素材（英語）",
-    "condition": "new|like_new|good|fair|poor",
-    "category": "カテゴリ（英語）",
-    "itemSpecifics": { "キー": "値" },
-    "confidence": 0.0-1.0
-  },
-  "validation": {
-    "passed": true/false,
-    "flags": ["prohibited_item", "trademark", "battery", "hazardous", "cites", "adult", "pharmaceutical", "weapon"],
-    "reviewNotes": "問題がある場合のみ記載",
-    "severity": "low|medium|high|critical"
-  }
-}
-
-【翻訳のルール】
-- 商品説明として自然で魅力的な表現にする
-- 専門用語は正確に翻訳する
-- ブランド名は翻訳しない
-
-【属性抽出のルール】
-- 元データから確実に推測できるもののみ抽出
-- 不明な場合はnullにする
-- confidenceは抽出の確信度（0.0-1.0）
-
-【検証のルール】
-以下をチェックし、該当する場合はflagsに追加:
-- battery: リチウムイオン電池、ボタン電池
-- hazardous: 可燃物、スプレー缶、化学物質
-- cites: ワシントン条約対象（象牙、べっ甲、毛皮）
-- trademark: 偽ブランド品の疑い（価格が異常に安い等）
-- adult: 成人向けコンテンツ
-- pharmaceutical: 医薬品、サプリメント
-- weapon: ナイフ、銃器類
-
-severityの基準:
-- critical: 明確な禁制品（自動却下）
-- high: 禁制品の可能性高（却下推奨）
-- medium: 要確認（人間レビュー推奨）
-- low: 軽微な問題（警告のみ）`;
+// 旧ハードコードプロンプトは新実装へ移行したため削除
 
 export class TranslatorService {
   /**
@@ -135,52 +79,62 @@ export class TranslatorService {
       throw new Error(`Product not found: ${productId}`);
     }
 
-    log.info({
-      type: 'enrich_start',
-      productId,
-      title: product.title,
-    });
-
-    const prompt = ENRICHMENT_PROMPT
-      .replace('{title}', product.title)
-      .replace('{description}', product.description || '')
-      .replace('{category}', product.category || '不明')
-      .replace('{brand}', product.brand || '不明');
+    log.info({ type: 'enrich_start', productId, title: product.title });
 
     try {
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: 'You are a cross-border e-commerce product data specialist. Always respond in valid JSON.' },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.3,
-        max_tokens: 2000,
-      });
+      const ai = await enrichProductNew(
+        product.title,
+        product.description || '',
+        product.category || undefined
+      );
 
-      const content = response.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('Empty response from OpenAI');
-      }
+      // 新実装の結果をこのサービスの型に変換
+      const severity = (() => {
+        if (ai.validation.status === 'rejected') {
+          const criticalFlags = ['weapon', 'adult', 'cites'];
+          const hasCritical = (ai.validation.flags || []).some((f) => criticalFlags.includes(f));
+          return hasCritical ? 'critical' : 'high';
+        }
+        if (ai.validation.status === 'review_required') return 'medium';
+        return 'low';
+      })() as ValidationResult['severity'];
 
-      const result = JSON.parse(content) as EnrichmentResult;
+      const mapped: EnrichmentResult = {
+        translations: {
+          en: {
+            title: ai.translations.en.title,
+            description: ai.translations.en.description,
+          },
+        },
+        attributes: {
+          brand: ai.attributes.brand,
+          color: ai.attributes.color,
+          size: ai.attributes.size,
+          material: ai.attributes.material,
+          condition: ai.attributes.condition as any,
+          category: ai.attributes.category,
+          itemSpecifics: ai.attributes.itemSpecifics || {},
+          confidence: ai.attributes.confidence ?? 0,
+        },
+        validation: {
+          passed: ai.validation.status === 'approved',
+          flags: ai.validation.flags || [],
+          reviewNotes: ai.validation.reviewNotes,
+          severity,
+        },
+      };
 
       log.info({
         type: 'enrich_success',
         productId,
-        confidence: result.attributes.confidence,
-        validationPassed: result.validation.passed,
-        flags: result.validation.flags,
+        confidence: mapped.attributes.confidence,
+        validationPassed: mapped.validation.passed,
+        flags: mapped.validation.flags,
       });
 
-      return result;
+      return mapped;
     } catch (error: any) {
-      log.error({
-        type: 'enrich_error',
-        productId,
-        error: error.message,
-      });
+      log.error({ type: 'enrich_error', productId, error: error.message });
       throw error;
     }
   }
