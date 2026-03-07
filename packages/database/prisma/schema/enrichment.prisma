@@ -203,3 +203,37 @@ enum KeywordMatchType {
   STARTS_WITH // 前方一致
   REGEX // 正規表現
 }
+
+
+// ========================================
+// ブランド・Item Specifics 項目
+// ========================================
+model Brand {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  jpNames     String[]
+  country     String?
+  parentBrand String?
+  categories  String[]
+  isMaterial  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([country])
+  @@index([parentBrand])
+  @@map("brands")
+}
+
+model ItemSpecificsField {
+  id        String  @id @default(cuid())
+  category  String
+  tagJp     String
+  fieldName String
+  fieldType String
+  priority  Int    @default(0)
+  notes     String?
+
+  @@unique([category, fieldName])
+  @@index([category])
+  @@map("item_specifics_fields")
+}
