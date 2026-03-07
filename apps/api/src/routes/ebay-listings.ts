@@ -587,8 +587,14 @@ router.post('/listings/:id/end', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Listing not found' });
     }
 
-    if (listing.status !== 'ACTIVE') {
-      return res.status(400).json({ error: 'Can only end active listings' });
+    if (listing.status === 'ENDED') {
+      // 冪等: 既にENDEDでもマーケットプレイスAPI側の終了を再試行
+      const md = (listing.marketplaceData as Record<string, unknown>) || {};
+      const oid = md.offerId as string | undefined;
+      if (oid) {
+        await addEbayPublishJob('withdraw-offer' as any, { listingId: id, offerId: oid } as any);
+      }
+      return res.json({ message: 'Listing already ended, withdraw retried', listingId: id });
     }
 
     const ebayData = (listing.marketplaceData as Record<string, unknown>) || {};
@@ -852,6 +858,48 @@ router.get('/pricing/sync/status', async (req: Request, res: Response) => {
   } catch (error) {
     log.error({ type: 'get_price_sync_status_error', error });
     res.status(500).json({ error: 'Failed to get price sync status' });
+  }
+});
+
+/**
+ * 緊急: 全eBay出品を取り下げ
+ */
+router.post('/emergency-end-all', async (req: Request, res: Response) => {
+  try {
+    const activeListings = await prisma.listing.findMany({
+      where: {
+        marketplace: Marketplace.EBAY,
+        status: { in: ['ACTIVE', 'PAUSED'] },
+      },
+    });
+
+    const jobs: Promise<unknown>[] = [];
+    for (const listing of activeListings) {
+      const ebayData = (listing.marketplaceData as Record<string, unknown>) || {};
+      const offerId = ebayData.offerId as string | undefined;
+      if (offerId) {
+        jobs.push(
+          addEbayPublishJob('withdraw-offer' as any, { listingId: listing.id, offerId } as any)
+        );
+      }
+    }
+    await Promise.all(jobs);
+
+    await prisma.listing.updateMany({
+      where: {
+        marketplace: Marketplace.EBAY,
+        status: { in: ['ACTIVE', 'PAUSED'] },
+      },
+      data: { status: 'ENDED' },
+    });
+
+    res.json({
+      message: `Emergency end: ${activeListings.length} listings queued for withdrawal`,
+      count: activeListings.length,
+    });
+  } catch (error) {
+    log.error({ type: 'emergency_end_all_error', error });
+    res.status(500).json({ error: 'Failed to emergency end all listings' });
   }
 });
 

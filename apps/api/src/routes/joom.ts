@@ -763,4 +763,50 @@ router.get('/queue/jobs/:jobId', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * 緊急: 全Joom出品を取り下げ
+ */
+router.post('/emergency-disable-all', async (req: Request, res: Response) => {
+  try {
+    const activeListings = await prisma.listing.findMany({
+      where: {
+        marketplace: Marketplace.JOOM,
+        status: { in: ['ACTIVE', 'PAUSED'] },
+      },
+    });
+
+    const jobs: Promise<any>[] = [];
+    for (const listing of activeListings) {
+      const marketplaceData = (listing.marketplaceData as Record<string, unknown>) || {};
+      const joomProductId = marketplaceData.joomProductId as string | undefined;
+      if (joomProductId) {
+        jobs.push(
+          joomPublishQueue.add('disable-product', {
+            type: 'disable-product',
+            listingId: listing.id,
+            joomProductId,
+          })
+        );
+      }
+    }
+    await Promise.all(jobs);
+
+    await prisma.listing.updateMany({
+      where: {
+        marketplace: Marketplace.JOOM,
+        status: { in: ['ACTIVE', 'PAUSED'] },
+      },
+      data: { status: 'PAUSED' },
+    });
+
+    res.json({
+      message: `Emergency disable: ${activeListings.length} Joom listings queued`,
+      count: activeListings.length,
+    });
+  } catch (error) {
+    console.error('Failed to emergency disable all Joom listings:', error);
+    res.status(500).json({ error: 'Failed to emergency disable all listings' });
+  }
+});
+
 export default router;
