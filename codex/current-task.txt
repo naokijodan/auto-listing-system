@@ -1,60 +1,32 @@
-RAKUDAプロジェクト（~/Desktop/rakuda/）の出品パイプライン結合テストスクリプトを作成してください。
+## タスク: テスト失敗3件の修正
 
-## 目的
-テスト商品を作成し、画像→翻訳→ItemSpecifics→品質チェック→eBay出品の一連フローを検証するスクリプト
+### 失敗テスト
 
-## ファイル
-`apps/worker/src/__tests__/integration/listing-pipeline.test.ts` に作成
+#### 1. listings.test.ts "should return 400 for invalid request body"
+- ファイル: `apps/api/src/test/integration/listings.test.ts`
+- 問題: POSTリクエストが400ではなく別のステータスを返す
+- 修正: テストのmock設定またはリクエストボディを実装に合わせる
+- ルート実装: `apps/api/src/routes/listings.ts` を確認
 
-## テスト対象フロー
-1. Product作成（テストデータ）
-2. EnrichmentTask作成（翻訳・属性抽出）
-3. 画像処理（processImagesForListing）
-4. 品質チェックゲート（listing-quality-gate.ts の checkListingQuality）
-5. eBay出品（publishToEbay - モック使用）
+#### 2. listing-performance.test.ts "should accept request body without error"
+- ファイル: `apps/api/src/test/unit/listing-performance.test.ts`
+- 問題: 5003msタイムアウト
+- 修正: テスト内のmock設定が不足していてレスポンスが返らない可能性。mockを追加するか、タイムアウトを延ばすか確認
+- ルート実装: `apps/api/src/routes/listing-performance.ts` を確認
 
-## 重要な参照ファイル
-- `apps/worker/src/lib/ebay-publish-service.ts` - EbayPublishService クラス（createEbayListing, processImagesForListing, publishToEbay）
-- `apps/worker/src/lib/listing-quality-gate.ts` - checkListingQuality関数
-  - hardBlocks: 画像0枚、タイトル空or[EN]始まり、価格<=0
-  - softWarnings: 説明空or[EN]始まり、ItemSpecifics充足率<80%
-- `apps/worker/src/jobs/ebay-publish-worker.ts` - BullMQジョブ処理
-- `packages/enrichment/src/translator.ts` - enrichProduct（翻訳）
-- `packages/enrichment/src/item-specifics/extractor.ts` - extractItemSpecifics
-- `packages/enrichment/src/item-specifics/field-definitions.ts` - getFieldsForCategory, resolveCategory
+#### 3. settings.test.ts Unhandled Rejection
+- ファイル: `apps/api/src/test/integration/settings.test.ts` line 250
+- 問題: `mockRejectedValue`で投げたErrorがUnhandled Rejectionになる
+- 原因: `mockPrisma.marketplaceSyncSetting.upsert.mockRejectedValue(new Error('DB Error'))` — テスト対象のルートがPromiseを正しくcatchしていない可能性。または `mockRejectedValue` → `mockRejectedValueOnce` に変更が必要
+- 修正: mockRejectedValueOnce に変更して他のテストへの影響を防ぐ
 
-## テストケース
+### ルール
+- テストコードのみ修正（プロダクションコードは変更しない）
+- 既存のパスしているテストを壊さない
+- listing-pipeline.test.ts は実DB必要なので無視
 
-### 1. 正常フロー（Happy Path）
-- テスト商品（時計カテゴリ）を作成
-- EnrichmentTaskで翻訳・属性抽出を実行（OpenAI APIはモック）
-- 品質チェックPASS → 出品成功（eBay APIはモック）
-
-### 2. 画像なしでブロック
-- 画像0枚の商品 → 品質ゲートでhardBlock → 出品中止
-
-### 3. 翻訳失敗フォールバック
-- OpenAI API失敗 → [EN]プレフィックス付きフォールバック → 品質ゲートでhardBlock
-
-### 4. ItemSpecifics抽出テスト
-- 時計商品の日本語タイトルからBrand, Model, Movement等を抽出
-- DBのBrandテーブル（505件）とItemSpecificsFieldテーブル（109件）を使用
-
-### 5. カテゴリ別プロンプト選択テスト
-- Watchesカテゴリ → 「時計専用V2」プロンプトが選択される
-- 未知カテゴリ → 「一般・汎用」デフォルトプロンプトが選択される
-
-## モック方針
-- **モック**: OpenAI API, eBay API（Inventory/Offer/Publish）, S3/MinIO画像アップロード
-- **実DB使用**: Prisma（ローカルPostgres）- Brand, ItemSpecificsField, TranslationPromptは実データ使用
-- **テストフレームワーク**: Vitest
-
-## 既存テストの参考
-- `apps/worker/src/__tests__/` 配下の既存テストを参考にスタイルを合わせる
-- `vi.mock` でモジュールモック
-- テスト後のDBクリーンアップを実装
-
-## 注意
-- eBay本番APIには絶対にリクエストを送らない
-- テストデータは明確にテスト用と分かる名前にする（例: "TEST-INTEGRATION-..."）
-- 各テストは独立して実行できること
+### 検証
+```bash
+cd ~/Desktop/rakuda
+npx vitest run apps/api/src/test/integration/listings.test.ts apps/api/src/test/unit/listing-performance.test.ts apps/api/src/test/integration/settings.test.ts --reporter=verbose
+```
