@@ -8,6 +8,7 @@ import { JoomApiClient, JoomProduct } from './joom-api';
 import { downloadImages, isValidImageUrl } from './image-downloader';
 import { optimizeImage, optimizeImagesParallel } from './image-optimizer';
 import { uploadFile } from './storage';
+import { uploadToCloudinary, isCloudinaryConfigured } from './cloudinary-uploader';
 import { enrichmentTaskManager } from './enrichment-service';
 import { PricingPipeline } from './pricing';
 import { getCategoryMapping, fillRequiredAttributes, type ProductInfo } from './category-mapper';
@@ -149,7 +150,7 @@ export class ImagePipelineService {
         {
           maxWidth: 1200,
           maxHeight: 1200,
-          format: 'webp',
+          format: 'jpeg',
           quality: 85,
           background: 'white',
           concurrency: 4,  // 同時処理数
@@ -180,8 +181,25 @@ export class ImagePipelineService {
 
       for (let i = 0; i < optimizedPaths.length; i++) {
         const optimizedPath = optimizedPaths[i];
-        const key = `products/${productId}/image-${i}.webp`;
 
+        // Cloudinaryが設定されていればCloudinaryにアップロード（Joom対応）
+        if (isCloudinaryConfigured()) {
+          try {
+            const cloudResult = await uploadToCloudinary(optimizedPath, {
+              folder: `rakuda/joom/${productId}`,
+              publicId: `image-${i}`,
+            });
+            bufferedUrls.push(cloudResult.url);
+            optimizedUrls.push(cloudResult.url);
+            continue;
+          } catch (err: any) {
+            log.warn({ type: 'cloudinary_upload_failed', productId, index: i, error: err?.message });
+            // フォールバック: MinIOにアップロード
+          }
+        }
+
+        // MinIOにアップロード（フォールバック）
+        const key = `products/${productId}/image-${i}.jpg`;
         const uploadResult = await uploadFile(optimizedPath, key);
         if (uploadResult.success && uploadResult.url) {
           bufferedUrls.push(uploadResult.url);
@@ -416,7 +434,8 @@ export class JoomPublishService {
         const md1 = (listing.marketplaceData as any) || {};
         const processedImages: string[] = Array.isArray(md1.joomImages) ? md1.joomImages : [];
         if (processedImages.length === 0) {
-          throw new Error('Image processing failed: no images available for listing');
+          // 画像処理に失敗してもフォールバックで元URLを使用
+          log.warn({ type: 'image_processing_empty_after_retry', listingId });
         }
       }
 

@@ -70,6 +70,11 @@ vi.mock('../../lib/image-optimizer', () => ({
 vi.mock('../../lib/storage', () => ({
   uploadFile: vi.fn().mockResolvedValue('https://s3.example.com/img.jpg'),
 }));
+// Cloudinaryアップローダーはテストでスタブ化
+vi.mock('../../lib/cloudinary-uploader', () => ({
+  isCloudinaryConfigured: vi.fn().mockReturnValue(false),
+  uploadToCloudinary: vi.fn().mockResolvedValue({ url: 'https://res.cloudinary.com/demo/image/upload/v123/rakuda/joom/p1/image-0.jpg', publicId: 'rakuda/joom/p1/image-0' }),
+}));
 vi.mock('../../lib/pricing', () => ({
   PricingPipeline: vi.fn().mockImplementation(() => ({
      calculate: vi.fn().mockResolvedValue({ finalPrice: 49.99 }),

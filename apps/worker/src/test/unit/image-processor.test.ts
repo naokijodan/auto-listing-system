@@ -241,7 +241,7 @@ describe('Image Processor', () => {
       );
 
       expect(result.originalUrl).toBe('https://example.com/image.jpg');
-      expect(result.format).toBe('webp');
+      expect(result.format).toBe('jpeg');
       expect(result.joomCompliant).toBe(true);
       expect(result.validationIssues).toHaveLength(0);
     });
@@ -254,13 +254,13 @@ describe('Image Processor', () => {
       ).rejects.toThrow('Invalid image URL');
     });
 
-    it('should use WebP format', async () => {
+    it('should use JPEG format', async () => {
       await processImageForJoom('https://example.com/image.jpg', 'product-123', 0);
 
       expect(mockOptimizeImage).toHaveBeenCalledWith(
         expect.any(String),
         expect.any(String),
-        expect.objectContaining({ format: 'webp' })
+        expect.objectContaining({ format: 'jpeg' })
       );
     });
 
@@ -289,7 +289,7 @@ describe('Image Processor', () => {
     it('should generate Joom-specific storage key', async () => {
       await processImageForJoom('https://example.com/image.jpg', 'product-123', 0);
 
-      expect(mockGenerateProductImageKey).toHaveBeenCalledWith('product-123', 0, 'webp');
+      expect(mockGenerateProductImageKey).toHaveBeenCalledWith('product-123', 0, 'jpg');
     });
   });
 
@@ -304,7 +304,7 @@ describe('Image Processor', () => {
 
       expect(results).toHaveLength(2);
       results.forEach((result) => {
-        expect(result.format).toBe('webp');
+        expect(result.format).toBe('jpeg');
       });
     });
 

@@ -281,11 +281,11 @@ export async function processImageForJoom(
       throw new Error(downloadResult.error || 'Download failed');
     }
 
-    // 2. WebP形式で最適化（Joom推奨）
+    // 2. JPEG形式で最適化（Joom要件対応）
     const optimizeResult = await optimizeImage(originalPath, optimizedPath, {
       maxWidth: 1200,
       maxHeight: 1200,
-      format: 'webp',
+      format: 'jpeg',
       quality: 85,
       background: 'white',
     });
@@ -302,9 +302,9 @@ export async function processImageForJoom(
     );
 
     // 4. S3にアップロード
-    const key = generateProductImageKey(productId, index, 'webp');
+    const key = generateProductImageKey(productId, index, 'jpg');
     const uploadResult = await uploadFile(optimizeResult.outputPath, key, {
-      contentType: 'image/webp',
+      contentType: 'image/jpeg',
     });
 
     if (!uploadResult.success || !uploadResult.url) {
@@ -315,7 +315,7 @@ export async function processImageForJoom(
       type: 'joom_image_complete',
       productId,
       index,
-      format: 'webp',
+      format: 'jpeg',
       joomCompliant: validation.valid,
       issues: validation.issues,
     });
@@ -327,7 +327,7 @@ export async function processImageForJoom(
       width: optimizeResult.width || 0,
       height: optimizeResult.height || 0,
       size: optimizeResult.optimizedSize || 0,
-      format: 'webp',
+      format: 'jpeg',
       joomCompliant: validation.valid,
       validationIssues: validation.issues,
     };
