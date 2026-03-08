@@ -192,7 +192,6 @@ export async function suggestCategoryWithAI(
         { role: 'system', content: 'You are an e-commerce category classification expert. Always respond with valid JSON.' },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.3,
       max_completion_tokens: 500,
       response_format: { type: 'json_object' },
     });
@@ -430,7 +429,6 @@ JSON形式で出力してください:
         { role: 'system', content: 'You are a product attribute extraction expert. Always respond with valid JSON.' },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.2,
       max_completion_tokens: 300,
       response_format: { type: 'json_object' },
     });

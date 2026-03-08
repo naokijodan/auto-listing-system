@@ -213,7 +213,6 @@ Only return the translated title, nothing else.`,
             },
           ],
           max_completion_tokens: 100,
-          temperature: 0.3,
         });
         translations[lang].title = titleResponse.choices[0]?.message?.content?.trim() || sourceTitle;
       }
@@ -235,7 +234,6 @@ Only return the translated description, nothing else.`,
             },
           ],
           max_completion_tokens: 1000,
-          temperature: 0.3,
         });
         translations[lang].description = descResponse.choices[0]?.message?.content?.trim() || sourceDescription;
       }
@@ -256,7 +254,6 @@ Return only a comma-separated list of keywords, nothing else.`,
             },
           ],
           max_completion_tokens: 200,
-          temperature: 0.5,
         });
         translations[lang].keywords = keywordsResponse.choices[0]?.message?.content?.trim() || '';
       }
@@ -353,7 +350,6 @@ router.post('/translate/bulk', async (req: Request, res: Response) => {
                 { role: 'user', content: sourceTitle },
               ],
               max_completion_tokens: 100,
-              temperature: 0.3,
             });
             translations[lang].title = response.choices[0]?.message?.content?.trim() || sourceTitle;
           }
@@ -578,7 +574,6 @@ router.post('/detect', async (req: Request, res: Response) => {
         { role: 'user', content: body.text },
       ],
       max_completion_tokens: 10,
-      temperature: 0,
     });
 
     const detectedCode = response.choices[0]?.message?.content?.trim()?.toLowerCase() || 'en';

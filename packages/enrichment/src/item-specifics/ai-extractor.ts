@@ -95,7 +95,6 @@ export async function extractByAI(params: {
       { role: 'system', content: 'You are an expert eBay Item Specifics extractor. Always respond with valid JSON only.' },
       { role: 'user', content: prompt },
     ],
-    temperature: 0.1,
     max_completion_tokens: 1500,
     response_format: { type: 'json_object' },
   });

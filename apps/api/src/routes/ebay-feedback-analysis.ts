@@ -362,7 +362,6 @@ Write in English.`;
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Customer feedback (${data.rating}):\n"${data.comment}"\n\nGenerate an appropriate response:` },
       ],
-      temperature: 0.7,
       max_completion_tokens: 200,
     });
 

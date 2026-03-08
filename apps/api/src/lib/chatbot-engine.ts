@@ -279,7 +279,6 @@ async function generateAIResponse(
     const completion = await openai.chat.completions.create({
       model: config?.model || (process.env.OPENAI_MODEL || 'gpt-5-nano'),
       messages,
-      temperature: config?.temperature || 0.7,
       max_completion_tokens: config?.maxTokens || 1000,
     });
 

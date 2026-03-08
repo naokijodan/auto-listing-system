@@ -183,7 +183,6 @@ Respond with only the optimized title, nothing else.`,
             },
           ],
           max_completion_tokens: 150,
-          temperature: 0.7,
         });
 
         const suggestedTitle = titleResponse.choices[0]?.message?.content?.trim();
@@ -222,7 +221,6 @@ Respond with only the optimized description, nothing else.`,
             },
           ],
           max_completion_tokens: 1000,
-          temperature: 0.7,
         });
 
         const suggestedDesc = descResponse.choices[0]?.message?.content?.trim();
@@ -255,7 +253,6 @@ Respond with only the optimized description, nothing else.`,
             },
           ],
           max_completion_tokens: 200,
-          temperature: 0.7,
         });
 
         const keywordsText = keywordResponse.choices[0]?.message?.content?.trim();
