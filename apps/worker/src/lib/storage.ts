@@ -11,6 +11,7 @@ import {
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import fs from 'fs/promises';
 import path from 'path';
 import { logger } from '@rakuda/logger';
@@ -32,6 +33,18 @@ function getS3Client(): S3Client {
         secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
       },
       forcePathStyle: true, // MinIO互換性のため
+      requestHandler: new NodeHttpHandler({
+        connectionTimeout: 5000, // 5秒の接続タイムアウト
+        socketTimeout: 30000, // 30秒のソケットタイムアウト
+      }),
+    });
+
+    // クライアント初期化時の接続情報をログ出力
+    log.info({
+      type: 's3_client_initialized',
+      endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
+      bucket: process.env.S3_BUCKET || 'rakuda-images',
+      cdnUrl: process.env.CDN_URL || '(not set)',
     });
   }
   return s3Client;
