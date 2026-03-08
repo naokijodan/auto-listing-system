@@ -333,7 +333,7 @@ export class JoomApiClient {
 
     const requestBody = {
       // トップレベル（商品情報）
-      ...(storeId ? { store_id: storeId } : {}),
+      ...(storeId ? { storeId: storeId } : {}),
       name: product.name,
       description: product.description,
       currency: 'USD',
@@ -341,33 +341,33 @@ export class JoomApiClient {
       extraImages: product.extraImages || [],
       sku: parentSku,
       tags: product.tags || [],
-      ...(product.shippingMethod ? { shipping_method: product.shippingMethod } : { shipping_method: 'offline' }),
+      ...(product.shippingMethod ? { shippingMethod: product.shippingMethod } : { shippingMethod: 'offline' }),
       // 推奨フィールド（値がある場合のみ送信）
       ...(product.brand ? { brand: product.brand } : {}),
-      ...(product.categoryId ? { category_id: product.categoryId } : {}),
+      ...(product.categoryId ? { categoryId: product.categoryId } : {}),
       ...(product.color ? { color: product.color } : {}),
       ...(product.size ? { size: product.size } : {}),
       ...(product.material ? { material: product.material } : {}),
       ...(product.gtin ? { gtin: product.gtin } : {}),
       ...(product.msrp ? { msrp: { amount: String(product.msrp), currency: 'USD' } } : {}),
       ...(product.condition ? { condition: product.condition } : {}),
-      ...(product.searchTags?.length ? { search_tags: product.searchTags } : {}),
+      ...(product.searchTags?.length ? { searchTags: product.searchTags } : {}),
       // Shipping dimensions（すべて揃っている場合のみ）
       ...(product.shippingLength && product.shippingWidth && product.shippingHeight ? {
-        shipping_length: product.shippingLength,
-        shipping_width: product.shippingWidth,
-        shipping_height: product.shippingHeight,
+        shippingLength: product.shippingLength,
+        shippingWidth: product.shippingWidth,
+        shippingHeight: product.shippingHeight,
       } : {}),
-      ...(product.dangerousKind ? { dangerous_kind: product.dangerousKind } : {}),
+      ...(product.dangerousKind ? { dangerousKind: product.dangerousKind } : {}),
       // バリアント（1つ）
       variants: [
         {
           sku: variantSku,
           price: String(product.price),
           inventory: product.quantity,
-          shipping_price: String(shippingPrice),
+          shippingPrice: String(shippingPrice),
           // shipping_weightはkg単位で送信（未指定時は0.15kg）
-          shipping_weight: typeof product.weight === 'number' ? product.weight : 0.15,
+          shippingWeight: typeof product.weight === 'number' ? product.weight : 0.15,
           mainImage: imageUrl,
         },
       ],
@@ -537,7 +537,7 @@ export class JoomApiClient {
 
     return this.request<void>('POST', `/products/${productId}/images`, {
       url: imageUrl,
-      is_main: isMain,
+      isMain: isMain,
     });
   }
 
@@ -609,9 +609,9 @@ export class JoomApiClient {
 
     // Joom APIの出荷通知エンドポイント
     return this.request<void>('POST', `/orders/${orderId}/fulfill`, {
-      tracking_number: trackingInfo.trackingNumber,
-      tracking_provider: trackingInfo.carrier,
-      shipping_provider: trackingInfo.shippingProvider || trackingInfo.carrier,
+      trackingNumber: trackingInfo.trackingNumber,
+      trackingProvider: trackingInfo.carrier,
+      shippingProvider: trackingInfo.shippingProvider || trackingInfo.carrier,
     });
   }
 
