@@ -246,10 +246,10 @@ describe('Translate Processor', () => {
       const result = await processTranslateJob(noEnrichmentJob);
 
       expect(result.success).toBe(true);
-      expect(result.titleEn).toBe('[EN] テスト商品');
-      expect(result.descriptionEn).toBe('[EN] これはテスト商品の説明です');
+      expect(result.titleEn).toBe('テスト商品');
+      expect(result.descriptionEn).toBe('これはテスト商品の説明です');
       expect(result.tokensUsed).toBe(0);
-      expect(result.message).toContain('placeholder');
+      expect(result.message).toContain('pending');
     });
 
     it('should include placeholder attributes when extractAttributes is true', async () => {

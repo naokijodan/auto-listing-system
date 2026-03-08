@@ -118,7 +118,16 @@ const REVIEW_REQUIRED_ITEMS: RiskCategory[] = [
   },
   {
     keywords: ['電池式', '乾電池', '単三', '単四', 'アルカリ電池'],
-    excludeKeywords: ['ソーラー', 'solar', 'クォーツ', 'quartz', 'エコドライブ', 'eco-drive', 'キネティック', 'kinetic', '光発電'],
+    // Exclusions: solar/eco-drive/kinetic watches use capacitors, not batteries
+    excludeKeywords: [
+      'ソーラー', 'solar', 'solar powered', 'solar watch', 'solar cell',
+      'エコドライブ', 'eco-drive', 'eco drive', 'ecodrive',
+      'キネティック', 'kinetic',
+      'autoquartz', 'auto quartz',
+      '光発電', 'light powered', 'light-powered',
+      'capacitor', 'コンデンサ',
+      'クォーツ', 'quartz'
+    ],
     status: 'review_required',
     flagName: 'battery_operated',
     description: '電池使用製品は電池の種類確認が必要',

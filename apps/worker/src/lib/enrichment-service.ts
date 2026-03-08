@@ -287,9 +287,24 @@ export class ContentValidatorService {
       pharmaceutical: ['医薬品', 'medicine', 'サプリ', 'supplement', '薬'],
     };
 
+    // Exclusion keywords for solar/eco-drive/kinetic watches (not battery items)
+    const batteryExclusions = [
+      'ソーラー', 'solar', 'solar powered', 'solar watch', 'solar cell',
+      'エコドライブ', 'eco-drive', 'eco drive', 'ecodrive',
+      'キネティック', 'kinetic',
+      'autoquartz', 'auto quartz',
+      '光発電', 'light powered', 'light-powered',
+      'capacitor', 'コンデンサ'
+    ];
+    const hasBatteryExclusion = batteryExclusions.some((ex) => text.includes(ex));
+
     for (const [category, keywords] of Object.entries(hardcodedKeywords)) {
       for (const keyword of keywords) {
         if (text.includes(keyword.toLowerCase())) {
+          // Battery: require that no exclusion keyword is present
+          if (category === 'battery' && hasBatteryExclusion) {
+            break; // skip battery flag due to exclusion
+          }
           flags.push(category);
           if (category === 'weapon' || category === 'adult') {
             maxSeverity = 'critical';

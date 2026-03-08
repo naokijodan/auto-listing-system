@@ -58,8 +58,8 @@ describe('OpenAI Integration', () => {
 
       const result = await translateProduct('テスト商品', 'これはテストです');
 
-      expect(result.titleEn).toBe('[EN] テスト商品');
-      expect(result.descriptionEn).toBe('[EN] これはテストです');
+      expect(result.titleEn).toBe('テスト商品');
+      expect(result.descriptionEn).toBe('これはテストです');
       expect(result.tokensUsed).toBe(0);
     });
 
@@ -144,7 +144,7 @@ describe('OpenAI Integration', () => {
 
       const result = await translateProduct('テスト', 'テスト説明');
 
-      expect(result.titleEn).toBe('[EN] テスト');
+      expect(result.titleEn).toBe('テスト');
       expect(result.tokensUsed).toBe(0);
     });
 
@@ -159,7 +159,7 @@ describe('OpenAI Integration', () => {
 
       const result = await translateProduct('テスト', 'テスト説明');
 
-      expect(result.titleEn).toBe('[EN] テスト');
+      expect(result.titleEn).toBe('テスト');
     });
 
     it('should skip attribute extraction when disabled', async () => {

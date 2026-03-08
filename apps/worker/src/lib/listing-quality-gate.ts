@@ -23,6 +23,9 @@ export function checkListingQuality(params: {
   const hardBlocks: string[] = [];
   const softWarnings: string[] = [];
 
+  // Utility: detect presence of Japanese characters
+  const hasJapanese = (text: string) => /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF]/.test(text || '');
+
   // 1. 画像チェック（ハードブロック）
   if (!params.imageUrls || params.imageUrls.length === 0) {
     hardBlocks.push('No images available. At least 1 image is required.');
@@ -31,8 +34,8 @@ export function checkListingQuality(params: {
   // 2. タイトル翻訳チェック（ハードブロック）
   if (!params.title || params.title.trim() === '') {
     hardBlocks.push('Title is empty.');
-  } else if (params.title.startsWith('[EN]')) {
-    hardBlocks.push('Title has not been translated (still has [EN] prefix).');
+  } else if (hasJapanese(params.title)) {
+    hardBlocks.push('Title appears untranslated (contains Japanese characters).');
   }
 
   // 3. 価格チェック（ハードブロック）
@@ -43,8 +46,8 @@ export function checkListingQuality(params: {
   // 4. 説明文翻訳チェック（ソフトブロック）
   if (!params.description || params.description.trim() === '') {
     softWarnings.push('Description is empty.');
-  } else if (params.description.startsWith('[EN]')) {
-    softWarnings.push('Description has not been translated (still has [EN] prefix).');
+  } else if (hasJapanese(params.description)) {
+    softWarnings.push('Description appears untranslated (contains Japanese characters).');
   }
 
   // 5. ItemSpecifics充足率チェック（ソフトブロック）
@@ -75,4 +78,3 @@ export function checkListingQuality(params: {
 
   return { passed, hardBlocks, softWarnings };
 }
-

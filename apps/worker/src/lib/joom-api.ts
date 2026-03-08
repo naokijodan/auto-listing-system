@@ -154,8 +154,9 @@ export class JoomApiClient {
   ): Promise<JoomApiResponse<T>> {
     const startTime = Date.now();
     const token = await this.ensureAccessToken();
-
-    const url = `${JOOM_API_BASE}${endpoint}`;
+    // Normalize legacy/query-style endpoints to v3 path-style when needed
+    const effectiveEndpoint = this.normalizeEndpoint(endpoint);
+    const url = `${JOOM_API_BASE}${effectiveEndpoint}`;
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -164,7 +165,7 @@ export class JoomApiClient {
     log.debug({
       type: 'joom_api_request',
       method,
-      endpoint,
+      endpoint: effectiveEndpoint,
     });
 
     try {
@@ -193,7 +194,7 @@ export class JoomApiClient {
         if (!response.ok) {
           // Phase 45: エラー時もログ記録
           await this.logApiCall(
-            method, endpoint, body, response.status, data,
+            method, effectiveEndpoint, body, response.status, data,
             false, data.message || 'Unknown error', duration,
             options?.joomProductId, options?.productId
           );
@@ -245,7 +246,7 @@ export class JoomApiClient {
 
         // Phase 45: 成功時もログ記録
         await this.logApiCall(
-          method, endpoint, body, response.status, actualData,
+          method, effectiveEndpoint, body, response.status, actualData,
           true, null, duration,
           options?.joomProductId || actualData?.id, options?.productId
         );
@@ -264,7 +265,7 @@ export class JoomApiClient {
 
       // Phase 45: 例外時もログ記録
       await this.logApiCall(
-        method, endpoint, body, null, null,
+        method, effectiveEndpoint, body, null, null,
         false, error.message, duration,
         options?.joomProductId, options?.productId
       );
@@ -283,6 +284,27 @@ export class JoomApiClient {
         },
       };
     }
+  }
+
+  /**
+   * Normalize legacy query-form endpoints to v3 path style.
+   * Example: 
+   *  - '/orders?id=123' -> '/orders/123'
+   */
+  private normalizeEndpoint(endpoint: string): string {
+    try {
+      const [path, query = ''] = endpoint.split('?');
+      if (path === '/orders' && query) {
+        const params = new URLSearchParams(query);
+        const id = params.get('id');
+        if (id) {
+          return `/orders/${encodeURIComponent(id)}`;
+        }
+      }
+    } catch {
+      // fall through to return original endpoint
+    }
+    return endpoint;
   }
 
   /**

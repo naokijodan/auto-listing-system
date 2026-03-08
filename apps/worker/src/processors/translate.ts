@@ -201,8 +201,9 @@ export async function processTranslateJob(
       // OpenAI未設定: プレースホルダー
       log.warn({ type: 'openai_not_configured' });
 
-      const titleEn = `[EN] ${title}`;
-      const descriptionEn = `[EN] ${description}`;
+      // Keep original text when translation unavailable
+      const titleEn = title;
+      const descriptionEn = description;
       const attributes = extractAttributes
         ? {
             brand: null,
@@ -219,14 +220,15 @@ export async function processTranslateJob(
           titleEn,
           descriptionEn,
           attributes: attributes || {},
-          translationStatus: 'COMPLETED',
+          // Indicate translation still needed
+          translationStatus: 'PENDING',
           status: 'READY_TO_REVIEW',
         },
       });
 
       result = {
         success: true,
-        message: 'Translation placeholder (OpenAI not configured)',
+        message: 'Translation pending (OpenAI not configured)',
         titleEn,
         descriptionEn,
         attributes,

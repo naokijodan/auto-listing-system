@@ -215,8 +215,9 @@ export async function translateProduct(
   if (!openai) {
     log.warn({ type: 'openai_not_configured' });
     return {
-      titleEn: `[EN] ${title}`,
-      descriptionEn: `[EN] ${description}`,
+      // Keep original text and signal zero token usage
+      titleEn: title,
+      descriptionEn: description,
       tokensUsed: 0,
     };
   }
@@ -292,10 +293,10 @@ Return a JSON object with this structure:
       error: error.message,
     });
 
-    // フォールバック: プレフィックス付きで返す
+    // Fallback: return original text when translation fails
     return {
-      titleEn: `[EN] ${title}`,
-      descriptionEn: `[EN] ${description}`,
+      titleEn: title,
+      descriptionEn: description,
       tokensUsed: 0,
     };
   }

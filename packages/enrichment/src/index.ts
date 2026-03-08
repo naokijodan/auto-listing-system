@@ -23,6 +23,8 @@ export interface FullEnrichmentResult {
   translations: {
     en: { title: string; description: string };
   };
+  // Indicates whether AI translation was performed successfully
+  translationStatus?: 'completed' | 'pending' | 'failed';
   attributes: ExtractedAttributes;
   validation: ValidationResult;
   tokensUsed: number;
@@ -66,8 +68,10 @@ export async function enrichProductFull(
     const processingTime = Date.now() - startTime;
     return {
       translations: {
-        en: { title: `[EN] ${title}`, description: `[EN] ${description}` },
+        // Keep original text when translation not performed
+        en: { title, description },
       },
+      translationStatus: 'pending',
       attributes: ruleAttributes,
       validation: ruleValidation,
       tokensUsed: 0,
@@ -110,31 +114,50 @@ export async function enrichProductFull(
     translations = {
       en: aiResult.translations.en,
     };
+    const processingTime = Date.now() - startTime;
+
+    log.info({
+      type: 'enrichment_full_complete',
+      processingTime,
+      tokensUsed,
+      validationStatus: finalValidation.status,
+      attributeConfidence: finalAttributes.confidence,
+    });
+
+    return {
+      translations,
+      translationStatus: 'completed',
+      attributes: finalAttributes,
+      validation: finalValidation,
+      tokensUsed,
+      processingTime,
+    };
   } else {
     finalAttributes = ruleAttributes;
     finalValidation = ruleValidation;
     translations = {
-      en: { title: `[EN] ${title}`, description: `[EN] ${description}` },
+      // Keep original text when translation not performed
+      en: { title, description },
+    };
+    const processingTime = Date.now() - startTime;
+
+    log.info({
+      type: 'enrichment_full_complete',
+      processingTime,
+      tokensUsed,
+      validationStatus: finalValidation.status,
+      attributeConfidence: finalAttributes.confidence,
+    });
+
+    return {
+      translations,
+      translationStatus: 'pending',
+      attributes: finalAttributes,
+      validation: finalValidation,
+      tokensUsed,
+      processingTime,
     };
   }
-
-  const processingTime = Date.now() - startTime;
-
-  log.info({
-    type: 'enrichment_full_complete',
-    processingTime,
-    tokensUsed,
-    validationStatus: finalValidation.status,
-    attributeConfidence: finalAttributes.confidence,
-  });
-
-  return {
-    translations,
-    attributes: finalAttributes,
-    validation: finalValidation,
-    tokensUsed,
-    processingTime,
-  };
 }
 
 /**

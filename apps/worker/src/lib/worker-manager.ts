@@ -41,6 +41,7 @@ import { notifyExchangeRateUpdated } from './notifications';
 import { processScheduledResumes } from './inventory-alert-service';
 import { prisma } from '@rakuda/database';
 import { processShopifyWebhookEvent } from './shopify-webhook-processor';
+import { calculateDailySummary, calculateWeeklySummary, calculateMonthlySummary } from './sales-analytics-service';
 
 const workers: Worker[] = [];
 let deadLetterQueue: Queue | null = null;
@@ -77,6 +78,14 @@ export async function startWorkers(connection: IORedis): Promise<void> {
       // 売上レポートジョブ（日次・週次）
       if (job.name === 'daily-sales-report' || job.name === 'weekly-sales-report') {
         return handleSalesReport(job);
+      }
+      // 売上サマリー計算（Phase 18）
+      if (
+        job.name === 'sales-summary-daily' ||
+        job.name === 'sales-summary-weekly' ||
+        job.name === 'sales-summary-monthly'
+      ) {
+        return handleSalesSummary(job);
       }
       // ヘルスチェックジョブ
       if (job.name === 'health-check') {
@@ -473,6 +482,74 @@ async function handleDailyReport(job: any): Promise<any> {
     };
   } catch (error: any) {
     log.error({ type: 'daily_report_job_error', error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * 売上サマリー計算ジョブのハンドラー（Phase 18）
+ */
+async function handleSalesSummary(job: any): Promise<any> {
+  const log = logger.child({ jobId: job.id, processor: 'sales-summary' });
+  const { periodType: rawPeriodType, marketplace, date, year, month } = job.data || {};
+
+  // periodType を job.name からフォールバック決定
+  let periodType: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  if (rawPeriodType === 'DAILY' || rawPeriodType === 'WEEKLY' || rawPeriodType === 'MONTHLY') {
+    periodType = rawPeriodType;
+  } else if (job.name === 'sales-summary-weekly') {
+    periodType = 'WEEKLY';
+  } else if (job.name === 'sales-summary-monthly') {
+    periodType = 'MONTHLY';
+  } else {
+    periodType = 'DAILY';
+  }
+
+  log.info({ type: 'sales_summary_job_start', periodType, marketplace: marketplace || 'ALL' });
+
+  try {
+    let result: any;
+
+    if (periodType === 'DAILY') {
+      // 指定日、なければ「昨日」を対象
+      const targetDate = date ? new Date(date) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+      result = await calculateDailySummary(targetDate, marketplace);
+    } else if (periodType === 'WEEKLY') {
+      // 指定日、なければ前日を含む週を対象
+      const targetDate = date ? new Date(date) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+      result = await calculateWeeklySummary(targetDate, marketplace);
+    } else {
+      // MONTHLY: year/month 指定があれば使用、なければ前日から年月を決定
+      if (typeof year === 'number' && typeof month === 'number') {
+        result = await calculateMonthlySummary(year, month, marketplace);
+      } else {
+        const d = date ? new Date(date) : new Date(Date.now() - 24 * 60 * 60 * 1000);
+        result = await calculateMonthlySummary(d.getFullYear(), d.getMonth() + 1, marketplace);
+      }
+    }
+
+    log.info({
+      type: 'sales_summary_job_complete',
+      periodType,
+      id: result?.id,
+      periodStart: result?.periodStart,
+      periodEnd: result?.periodEnd,
+      orderCount: result?.orderCount,
+      grossRevenue: result?.grossRevenue,
+    });
+
+    return {
+      success: true,
+      periodType,
+      summaryId: result?.id,
+      periodStart: result?.periodStart,
+      periodEnd: result?.periodEnd,
+      orderCount: result?.orderCount,
+      grossRevenue: result?.grossRevenue,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error: any) {
+    log.error({ type: 'sales_summary_job_error', error: error.message });
     throw error;
   }
 }
