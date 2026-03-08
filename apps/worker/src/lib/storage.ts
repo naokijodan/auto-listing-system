@@ -34,8 +34,8 @@ function getS3Client(): S3Client {
       },
       forcePathStyle: true, // MinIO互換性のため
       requestHandler: new NodeHttpHandler({
-        connectionTimeout: 5000, // 5秒の接続タイムアウト
-        socketTimeout: 30000, // 30秒のソケットタイムアウト
+        connectionTimeout: 10000, // 10秒の接続タイムアウト
+        socketTimeout: 120000, // 120秒のソケットタイムアウト
       }),
     });
 
@@ -88,64 +88,81 @@ export async function uploadFile(
   options: UploadOptions = {}
 ): Promise<UploadResult> {
   const bucket = options.bucket || getDefaultBucket();
+  const maxRetries = 3;
 
-  try {
-    // ファイル読み込み
-    const fileContent = await fs.readFile(filePath);
-    const stats = await fs.stat(filePath);
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const fileContent = await fs.readFile(filePath);
+      const stats = await fs.stat(filePath);
+      const contentType = options.contentType || guessContentType(filePath);
 
-    // Content-Typeを推測
-    const contentType = options.contentType || guessContentType(filePath);
+      log.debug({
+        type: 'upload_start',
+        key,
+        bucket,
+        size: stats.size,
+        contentType,
+        attempt,
+      });
 
-    log.debug({
-      type: 'upload_start',
-      key,
-      bucket,
-      size: stats.size,
-      contentType,
-    });
+      await getS3Client().send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          Body: fileContent,
+          ContentType: contentType,
+          Metadata: options.metadata,
+          CacheControl: options.cacheControl || 'public, max-age=31536000',
+        })
+      );
 
-    // アップロード実行
-    await getS3Client().send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: fileContent,
-        ContentType: contentType,
-        Metadata: options.metadata,
-        CacheControl: options.cacheControl || 'public, max-age=31536000', // 1年キャッシュ
-      })
-    );
+      const url = buildPublicUrl(bucket, key);
 
-    const url = buildPublicUrl(bucket, key);
+      log.info({
+        type: 'upload_success',
+        key,
+        bucket,
+        size: stats.size,
+        url,
+        attempt,
+      });
 
-    log.info({
-      type: 'upload_success',
-      key,
-      bucket,
-      size: stats.size,
-      url,
-    });
+      return {
+        success: true,
+        key,
+        url,
+        size: stats.size,
+      };
+    } catch (error: any) {
+      log.warn({
+        type: 'upload_retry',
+        key,
+        bucket,
+        attempt,
+        maxRetries,
+        error: error.message,
+      });
 
-    return {
-      success: true,
-      key,
-      url,
-      size: stats.size,
-    };
-  } catch (error: any) {
-    log.error({
-      type: 'upload_error',
-      key,
-      bucket,
-      error: error.message,
-    });
+      if (attempt >= maxRetries) {
+        log.error({
+          type: 'upload_error',
+          key,
+          bucket,
+          error: error.message,
+          attempts: maxRetries,
+        });
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
 
-    return {
-      success: false,
-      error: error.message,
-    };
+      // exponential backoff: 1s, 2s, 4s
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)));
+    }
   }
+
+  return { success: false, error: 'Unexpected: all retries exhausted' };
 }
 
 /**

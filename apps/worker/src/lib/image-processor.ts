@@ -12,6 +12,7 @@ import { logger } from '@rakuda/logger';
 import { downloadImage, isValidImageUrl } from './image-downloader';
 import { optimizeImage, validateForJoom, OptimizationOptions } from './image-optimizer';
 import { uploadFile, generateProductImageKey, deleteProductImages } from './storage';
+import { uploadToCloudinary, isCloudinaryConfigured } from './cloudinary-uploader';
 
 const execAsync = promisify(exec);
 
@@ -112,10 +113,43 @@ async function doOptimizeImage(inputPath: string, outputPath: string): Promise<v
  */
 async function uploadToS3(filePath: string, key: string): Promise<string> {
   const result = await uploadFile(filePath, key);
-  if (!result.success || !result.url) {
+  if (result.success && result.url) {
+    return result.url;
+  }
+
+  // S3失敗時にCloudinaryフォールバック（設定されている場合のみ）
+  if (!isCloudinaryConfigured()) {
     throw new Error(result.error || 'Upload failed');
   }
-  return result.url;
+
+  log.warn({
+    type: 'upload_s3_failed_trying_cloudinary',
+    key,
+    error: result.error,
+  });
+
+  try {
+    const { url } = await uploadToCloudinary(filePath, {
+      folder: 'rakuda/products',
+      publicId: key.replace(/\//g, '-'),
+    });
+    log.info({
+      type: 'upload_cloudinary_fallback_success',
+      key,
+      url,
+    });
+    return url;
+  } catch (cloudinaryError: any) {
+    log.error({
+      type: 'upload_all_failed',
+      key,
+      s3Error: result.error,
+      cloudinaryError: cloudinaryError.message,
+    });
+    throw new Error(
+      `All upload methods failed: S3=${result.error}, Cloudinary=${cloudinaryError.message}`
+    );
+  }
 }
 
 /**

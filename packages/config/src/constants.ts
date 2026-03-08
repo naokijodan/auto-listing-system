@@ -98,8 +98,8 @@ export const QUEUE_CONFIG = {
   [QUEUE_NAMES.IMAGE]: {
     priority: 4,
     concurrency: 3,
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 10000 },
+    attempts: 5,
+    backoff: { type: 'exponential', delay: 15000 },
   },
   [QUEUE_NAMES.TRANSLATE]: {
     priority: 3,
