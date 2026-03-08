@@ -357,7 +357,7 @@ Keep the response under 500 characters (eBay limit).
 Write in English.`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Customer feedback (${data.rating}):\n"${data.comment}"\n\nGenerate an appropriate response:` },

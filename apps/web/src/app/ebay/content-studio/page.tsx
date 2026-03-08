@@ -610,12 +610,17 @@ function SettingsTab() {
           <div>
             <label className="block text-sm font-medium text-gray-900 mb-2">モデル</label>
             <select
-              defaultValue={aiSettings?.settings?.model}
+              defaultValue={aiSettings?.settings?.model || 'gpt-5-nano'}
               className="w-48 border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
             >
-              <option value="gpt-4o">GPT-4o</option>
-              <option value="gpt-4">GPT-4</option>
-              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+              <option value="gpt-5-nano">GPT-5 Nano（最速・最安）</option>
+              <option value="gpt-5-mini">GPT-5 Mini（高速・コスト効率）</option>
+              <option value="gpt-5">GPT-5（高性能）</option>
+              <option value="gpt-5.2">GPT-5.2（フロンティア）</option>
+              <option value="gpt-5.4">GPT-5.4（最新・最高性能）</option>
+              <option value="gpt-4.1-nano">GPT-4.1 Nano（非推論・最安）</option>
+              <option value="gpt-4.1-mini">GPT-4.1 Mini（非推論・コスト効率）</option>
+              <option value="gpt-4.1">GPT-4.1（非推論・最高性能）</option>
             </select>
           </div>
 

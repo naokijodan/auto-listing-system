@@ -492,14 +492,19 @@ export default function TranslationHubPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">AIプロバイダー</label>
-                  <Select defaultValue={settings?.settings?.aiProvider || 'gpt-4'}>
+                  <Select defaultValue={settings?.settings?.aiProvider || 'gpt-5-nano'}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="gpt-4">GPT-4</SelectItem>
-                      <SelectItem value="claude">Claude</SelectItem>
-                      <SelectItem value="deepl">DeepL</SelectItem>
+                      <SelectItem value="gpt-5-nano">GPT-5 Nano（最速・最安）</SelectItem>
+                      <SelectItem value="gpt-5-mini">GPT-5 Mini（高速・コスト効率）</SelectItem>
+                      <SelectItem value="gpt-5">GPT-5（高性能）</SelectItem>
+                      <SelectItem value="gpt-5.2">GPT-5.2（フロンティア）</SelectItem>
+                      <SelectItem value="gpt-5.4">GPT-5.4（最新・最高性能）</SelectItem>
+                      <SelectItem value="gpt-4.1-nano">GPT-4.1 Nano（非推論・最安）</SelectItem>
+                      <SelectItem value="gpt-4.1-mini">GPT-4.1 Mini（非推論・コスト効率）</SelectItem>
+                      <SelectItem value="gpt-4.1">GPT-4.1（非推論・最高性能）</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

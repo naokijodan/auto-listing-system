@@ -1,10 +1,22 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
+function getHeaders(contentType = true): HeadersInit {
+  const headers: Record<string, string> = {};
+  if (contentType) {
+    headers['Content-Type'] = 'application/json';
+  }
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY || '';
+  if (apiKey) {
+    headers['x-api-key'] = apiKey;
+  }
+  return headers;
+}
+
 // Generic fetcher for SWR
 export async function fetcher<T>(url: string): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`);
   if (!res.ok) {
-    const error = new Error('API error');
+    const error = new Error(`API error: ${res.status} ${res.statusText}`);
     throw error;
   }
   return res.json();
@@ -302,11 +314,11 @@ export const api = {
 export async function postApi<T>(url: string, data?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: data ? JSON.stringify(data) : undefined,
   });
   if (!res.ok) {
-    throw new Error('API error');
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
   return res.json();
 }
@@ -314,11 +326,11 @@ export async function postApi<T>(url: string, data?: unknown): Promise<T> {
 export async function deleteApi<T>(url: string, data?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
     method: 'DELETE',
-    headers: data ? { 'Content-Type': 'application/json' } : undefined,
+    headers: getHeaders(),
     body: data ? JSON.stringify(data) : undefined,
   });
   if (!res.ok) {
-    throw new Error('API error');
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
   return res.json();
 }
@@ -326,11 +338,11 @@ export async function deleteApi<T>(url: string, data?: unknown): Promise<T> {
 export async function putApi<T>(url: string, data?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: data ? JSON.stringify(data) : undefined,
   });
   if (!res.ok) {
-    throw new Error('API error');
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
   return res.json();
 }
@@ -338,11 +350,11 @@ export async function putApi<T>(url: string, data?: unknown): Promise<T> {
 export async function patchApi<T>(url: string, data?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: getHeaders(),
     body: data ? JSON.stringify(data) : undefined,
   });
   if (!res.ok) {
-    throw new Error('API error');
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
   return res.json();
 }

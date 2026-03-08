@@ -199,7 +199,7 @@ router.post('/translate', async (req: Request, res: Response) => {
       // タイトル翻訳
       if (body.fields.includes('title')) {
         const titleResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: process.env.OPENAI_MODEL || 'gpt-5-nano',
           messages: [
             {
               role: 'system',
@@ -221,7 +221,7 @@ Only return the translated title, nothing else.`,
       // 説明文翻訳
       if (body.fields.includes('description')) {
         const descResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: process.env.OPENAI_MODEL || 'gpt-5-nano',
           messages: [
             {
               role: 'system',
@@ -243,7 +243,7 @@ Only return the translated description, nothing else.`,
       // キーワード生成
       if (body.fields.includes('keywords')) {
         const keywordsResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: process.env.OPENAI_MODEL || 'gpt-5-nano',
           messages: [
             {
               role: 'system',
@@ -344,7 +344,7 @@ router.post('/translate/bulk', async (req: Request, res: Response) => {
 
           if (body.fields.includes('title')) {
             const response = await openai.chat.completions.create({
-              model: 'gpt-4o',
+              model: process.env.OPENAI_MODEL || 'gpt-5-nano',
               messages: [
                 {
                   role: 'system',
@@ -569,7 +569,7 @@ router.post('/detect', async (req: Request, res: Response) => {
     const body = detectLanguageSchema.parse(req.body);
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       messages: [
         {
           role: 'system',

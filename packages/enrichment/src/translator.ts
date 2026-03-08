@@ -35,7 +35,7 @@ export async function getOpenAIClient(): Promise<OpenAI | null> {
 }
 
 function getModel(): string {
-  return process.env.OPENAI_MODEL || 'gpt-4o';
+  return process.env.OPENAI_MODEL || 'gpt-5-nano';
 }
 
 /**

@@ -90,7 +90,7 @@ export async function extractByAI(params: {
   const prompt = buildPrompt(params);
 
   const response = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: process.env.OPENAI_MODEL || 'gpt-5-nano',
     messages: [
       { role: 'system', content: 'You are an expert eBay Item Specifics extractor. Always respond with valid JSON only.' },
       { role: 'user', content: prompt },
@@ -123,4 +123,3 @@ export async function extractByAI(params: {
 
   return { specifics, source };
 }
-

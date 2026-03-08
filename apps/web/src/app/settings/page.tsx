@@ -1328,7 +1328,7 @@ function SystemSettings() {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
-  const [model, setModel] = useState<string>('gpt-4o-mini');
+  const [model, setModel] = useState<string>('gpt-5-nano');
   const [savingModel, setSavingModel] = useState(false);
 
   useEffect(() => {
@@ -1445,9 +1445,14 @@ function SystemSettings() {
                   <SelectValue placeholder="モデルを選択" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="gpt-4o">gpt-4o</SelectItem>
-                  <SelectItem value="gpt-4o-mini">gpt-4o-mini</SelectItem>
-                  <SelectItem value="gpt-4o-2024-11-20">gpt-4o-2024-11-20</SelectItem>
+                  <SelectItem value="gpt-5-nano">GPT-5 Nano（最速・最安）</SelectItem>
+                  <SelectItem value="gpt-5-mini">GPT-5 Mini（高速・コスト効率）</SelectItem>
+                  <SelectItem value="gpt-5">GPT-5（高性能）</SelectItem>
+                  <SelectItem value="gpt-5.2">GPT-5.2（フロンティア）</SelectItem>
+                  <SelectItem value="gpt-5.4">GPT-5.4（最新・最高性能）</SelectItem>
+                  <SelectItem value="gpt-4.1-nano">GPT-4.1 Nano（非推論・最安）</SelectItem>
+                  <SelectItem value="gpt-4.1-mini">GPT-4.1 Mini（非推論・コスト効率）</SelectItem>
+                  <SelectItem value="gpt-4.1">GPT-4.1（非推論・最高性能）</SelectItem>
                 </SelectContent>
               </Select>
               <Button onClick={handleSaveModel} disabled={savingModel}>

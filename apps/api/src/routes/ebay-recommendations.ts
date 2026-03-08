@@ -28,7 +28,7 @@ const ALGORITHMS = {
   COLLABORATIVE: { code: 'COLLABORATIVE', name: '協調フィルタリング', description: 'ユーザー行動ベース' },
   CONTENT_BASED: { code: 'CONTENT_BASED', name: 'コンテンツベース', description: '商品属性ベース' },
   HYBRID: { code: 'HYBRID', name: 'ハイブリッド', description: '協調+コンテンツ' },
-  AI_POWERED: { code: 'AI_POWERED', name: 'AI推奨', description: 'GPT-4oベース' },
+  AI_POWERED: { code: 'AI_POWERED', name: 'AI推奨', description: 'OpenAIベース' },
 } as const;
 
 // ダッシュボード
@@ -242,7 +242,7 @@ router.post('/ai-generate', async (req, res) => {
       });
     }
 
-    // GPT-4oで推奨を生成
+    // OpenAIで推奨を生成
     const prompt = `
 あなたはECサイトの商品推奨エンジンです。
 以下の商品を見ているユーザーに、推奨する商品を選んでください。
@@ -268,7 +268,7 @@ ${candidates.slice(0, 20).map((c, i) => `${i + 1}. ${c.product.titleEn || c.prod
 `;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       response_format: { type: 'json_object' },
@@ -304,7 +304,7 @@ ${candidates.slice(0, 20).map((c, i) => `${i + 1}. ${c.product.titleEn || c.prod
     res.json({
       success: true,
       recommendations,
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
@@ -530,7 +530,7 @@ router.post('/suggest-bundle', async (req, res) => {
     const discountAmount = totalPrice * (body.discountPercent / 100);
     const bundlePrice = totalPrice - discountAmount;
 
-    // GPT-4oでバンドル名を生成
+    // OpenAIでバンドル名を生成
     const prompt = `
 以下の商品をバンドルセットとして販売する場合の魅力的なバンドル名を考えてください。
 
@@ -543,7 +543,7 @@ ${listings.map(l => `- ${l.product.titleEn || l.product.title}`).join('\n')}
     let bundleName = 'Value Bundle';
     try {
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: process.env.OPENAI_MODEL || 'gpt-5-nano',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.8,
         max_tokens: 50,

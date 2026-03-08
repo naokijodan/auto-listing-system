@@ -13,7 +13,7 @@ if (process.env.OPENAI_API_KEY) {
 }
 
 // モデル設定
-const MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const MODEL = process.env.OPENAI_MODEL || 'gpt-5-nano';
 
 export interface TranslationResult {
   titleEn: string;

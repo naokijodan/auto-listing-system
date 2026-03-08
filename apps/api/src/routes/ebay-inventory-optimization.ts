@@ -492,7 +492,7 @@ ${body.constraints?.minServiceLevel ? `最低サービスレベル: ${body.const
 `;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       response_format: { type: 'json_object' },

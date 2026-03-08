@@ -420,7 +420,7 @@ ${data.context?.previousMessages?.length ? `Previous conversation:\n${data.conte
 Please generate an appropriate response:`;
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -644,7 +644,7 @@ router.get('/settings', async (req, res) => {
       days: [1, 2, 3, 4, 5], // Mon-Fri
     },
     aiSettings: {
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       temperature: 0.7,
       maxTokens: 500,
       defaultTone: 'professional',

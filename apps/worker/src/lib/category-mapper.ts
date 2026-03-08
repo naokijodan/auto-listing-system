@@ -187,7 +187,7 @@ export async function suggestCategoryWithAI(
     log.debug({ type: 'ai_category_request', title });
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       messages: [
         { role: 'system', content: 'You are an e-commerce category classification expert. Always respond with valid JSON.' },
         { role: 'user', content: prompt },
@@ -425,7 +425,7 @@ JSON形式で出力してください:
 }`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       messages: [
         { role: 'system', content: 'You are a product attribute extraction expert. Always respond with valid JSON.' },
         { role: 'user', content: prompt },

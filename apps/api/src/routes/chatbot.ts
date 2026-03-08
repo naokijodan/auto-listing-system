@@ -400,7 +400,7 @@ router.post('/setup-defaults', async (_req, res) => {
     const defaultConfig = await prisma.chatbotConfig.create({
       data: {
         marketplace: 'default',
-        model: 'gpt-4o',
+        model: process.env.OPENAI_MODEL || 'gpt-5-nano',
         temperature: 0.7,
         maxTokens: 1000,
         systemPrompt: `You are a helpful customer support assistant for RAKUDA, a cross-border e-commerce platform that sells Japanese products internationally.

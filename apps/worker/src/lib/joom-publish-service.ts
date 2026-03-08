@@ -363,7 +363,7 @@ export class JoomPublishService {
    * Joomに出品
    */
   async publishToJoom(listingId: string): Promise<JoomPublishResult> {
-    const listing = await prisma.listing.findUnique({
+    let listing = await prisma.listing.findUnique({
       where: { id: listingId },
       include: { product: true },
     });
@@ -390,6 +390,33 @@ export class JoomPublishService {
     }
 
     try {
+      // 画像処理の自動実行（冪等）
+      const md0 = (listing.marketplaceData as any) || {};
+      const existingImages: string[] = Array.isArray(md0.joomImages) ? md0.joomImages : [];
+
+      if (!existingImages || existingImages.length === 0) {
+        // 元画像が無ければエラー（画像なし出品を防止）
+        const productImages: string[] = Array.isArray(listing.product.images) ? listing.product.images : [];
+        if (productImages.length === 0) {
+          throw new Error('No product images to process');
+        }
+
+        // 画像処理を実行（処理結果は listing.marketplaceData.joomImages に保存される）
+        await this.processImagesForListing(listingId);
+
+        // リロードして結果を取得
+        listing = await prisma.listing.findUnique({
+          where: { id: listingId },
+          include: { product: true },
+        });
+
+        const md1 = (listing!.marketplaceData as any) || {};
+        const processedImages: string[] = Array.isArray(md1.joomImages) ? md1.joomImages : [];
+        if (processedImages.length === 0) {
+          throw new Error('Image processing failed: no images available for listing');
+        }
+      }
+
       // ステータスを更新
       await prisma.listing.update({ where: { id: listingId }, data: { status: 'PUBLISHING' } });
 

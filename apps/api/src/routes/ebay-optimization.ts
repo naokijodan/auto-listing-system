@@ -166,7 +166,7 @@ router.post('/generate', async (req: Request, res: Response) => {
     if (optimizeTitle) {
       try {
         const titleResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: process.env.OPENAI_MODEL || 'gpt-5-nano',
           messages: [
             {
               role: 'system',
@@ -204,7 +204,7 @@ Respond with only the optimized title, nothing else.`,
     if (optimizeDescription && currentDescription) {
       try {
         const descResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: process.env.OPENAI_MODEL || 'gpt-5-nano',
           messages: [
             {
               role: 'system',
@@ -243,7 +243,7 @@ Respond with only the optimized description, nothing else.`,
     if (suggestKeywords) {
       try {
         const keywordResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: process.env.OPENAI_MODEL || 'gpt-5-nano',
           messages: [
             {
               role: 'system',

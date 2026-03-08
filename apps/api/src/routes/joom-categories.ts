@@ -85,7 +85,7 @@ async function suggestCategoryWithAI(product: z.infer<typeof ProductInfoSchema>)
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       messages: [
         { role: 'system', content: 'You are an e-commerce category classification expert. Respond with valid JSON.' },
         { role: 'user', content: `Analyze this product and select the best Joom category.

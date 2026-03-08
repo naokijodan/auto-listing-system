@@ -277,7 +277,7 @@ async function generateAIResponse(
 
   try {
     const completion = await openai.chat.completions.create({
-      model: config?.model || 'gpt-4o',
+      model: config?.model || (process.env.OPENAI_MODEL || 'gpt-5-nano'),
       messages,
       temperature: config?.temperature || 0.7,
       max_tokens: config?.maxTokens || 1000,
@@ -596,7 +596,7 @@ export async function getChatbotConfig(marketplace?: string) {
     // デフォルト設定を返す
     return {
       marketplace: marketplace || 'default',
-      model: 'gpt-4o',
+      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       temperature: 0.7,
       maxTokens: 1000,
       systemPrompt: DEFAULT_SYSTEM_PROMPT,

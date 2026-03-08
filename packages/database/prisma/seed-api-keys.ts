@@ -15,10 +15,10 @@ const apiKeySettings = [
   {
     key: 'openai_model',
     category: 'INTEGRATION' as const,
-    value: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    value: process.env.OPENAI_MODEL || 'gpt-5-nano',
     valueType: 'STRING' as const,
     label: 'OpenAI モデル',
-    description: '翻訳に使用するモデル名（gpt-4o, gpt-4o-mini等）',
+    description: '翻訳に使用するモデル名（gpt-5-nano 等）',
     isSecret: false,
     isReadOnly: false,
   },
@@ -76,4 +76,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
