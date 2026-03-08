@@ -337,8 +337,8 @@ export class JoomApiClient {
       name: product.name,
       description: product.description,
       currency: 'USD',
-      main_image_url: imageUrl,
-      extra_image_urls: product.extraImages || [],
+      mainImage: imageUrl,
+      extraImages: product.extraImages || [],
       sku: parentSku,
       tags: product.tags || [],
       ...(product.shippingMethod ? { shipping_method: product.shippingMethod } : { shipping_method: 'offline' }),
@@ -368,7 +368,7 @@ export class JoomApiClient {
           shipping_price: String(shippingPrice),
           // shipping_weightはkg単位で送信（未指定時は0.15kg）
           shipping_weight: typeof product.weight === 'number' ? product.weight : 0.15,
-          main_image_url: imageUrl,
+          mainImage: imageUrl,
         },
       ],
     };
@@ -389,17 +389,17 @@ export class JoomApiClient {
       productId,
     });
 
-    // フィールド名をsnake_caseに正規化
+    // Joom API v3 はcamelCaseフィールド名を使用
     const body: Record<string, any> = {};
     if (typeof updates.name !== 'undefined') body.name = updates.name;
     if (typeof updates.description !== 'undefined') body.description = updates.description;
     if (typeof updates.currency !== 'undefined') body.currency = updates.currency;
-    if (typeof updates.mainImage !== 'undefined') body.main_image_url = updates.mainImage;
-    if (typeof updates.extraImages !== 'undefined') body.extra_image_urls = updates.extraImages;
-    if (typeof updates.parentSku !== 'undefined') body.parent_sku = updates.parentSku;
+    if (typeof updates.mainImage !== 'undefined') body.mainImage = updates.mainImage;
+    if (typeof updates.extraImages !== 'undefined') body.extraImages = updates.extraImages;
+    if (typeof updates.parentSku !== 'undefined') body.parentSku = updates.parentSku;
     if (typeof updates.tags !== 'undefined') body.tags = updates.tags;
 
-    return this.request<{ id: string }>('PUT', `/products/${productId}`, body);
+    return this.request<{ id: string }>('POST', `/products/update?id=${productId}`, body);
   }
 
   /**
