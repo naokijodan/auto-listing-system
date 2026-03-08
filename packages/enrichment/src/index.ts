@@ -135,9 +135,9 @@ export async function enrichProductFull(
   } else {
     finalAttributes = ruleAttributes;
     finalValidation = ruleValidation;
+    // AI翻訳失敗時のフォールバック：英訳は空文字にする
     translations = {
-      // Keep original text when translation not performed
-      en: { title, description },
+      en: { title: '', description: '' },
     };
     const processingTime = Date.now() - startTime;
 
@@ -151,7 +151,8 @@ export async function enrichProductFull(
 
     return {
       translations,
-      translationStatus: 'pending',
+      // 失敗として扱う（completed/pendingにしない）
+      translationStatus: 'failed',
       attributes: finalAttributes,
       validation: finalValidation,
       tokensUsed,

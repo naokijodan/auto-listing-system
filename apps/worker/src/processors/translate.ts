@@ -110,6 +110,12 @@ export async function processTranslateJob(
         newStatus = 'APPROVED';
       }
 
+      // タイトルが空文字/未定義の場合は翻訳失敗として扱い、APPROVEDにしない
+      const isTranslationEmpty = !enrichment.translations.en.title || enrichment.translations.en.title.trim() === '';
+      if (isTranslationEmpty && newStatus === 'APPROVED') {
+        newStatus = 'READY_TO_REVIEW';
+      }
+
       // 属性をJSON互換形式に変換
       const attributesJson = {
         brand: enrichment.attributes.brand ?? null,
@@ -138,7 +144,8 @@ export async function processTranslateJob(
           titleEn: enrichment.translations.en.title,
           descriptionEn: enrichment.translations.en.description,
           attributes: attributesJson,
-          translationStatus: 'COMPLETED',
+          // 翻訳が空の場合はERRORとして保存（DBのProcessStatusに準拠）
+          translationStatus: isTranslationEmpty ? 'ERROR' : 'COMPLETED',
           status: newStatus,
           lastError: enrichment.validation.status === 'rejected'
             ? `禁制品検出: ${enrichment.validation.flags.join(', ')}`

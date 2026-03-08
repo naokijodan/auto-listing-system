@@ -365,7 +365,8 @@ Return JSON: {"title": "...", "description": "..."}`;
 function createFallbackResult(title: string, description: string): EnrichmentResult {
   return {
     translations: {
-      en: { title: `${title}`, description: `${description}` },
+      // フォールバック時は英訳は空にする（原文は入れない）
+      en: { title: '', description: '' },
       tokensUsed: 0,
     },
     attributes: {
@@ -375,7 +376,8 @@ function createFallbackResult(title: string, description: string): EnrichmentRes
     validation: {
       isSafe: true,
       status: 'review_required',
-      flags: ['openai_not_configured'],
+      // 翻訳失敗フラグを追加
+      flags: ['openai_not_configured', 'translation_failed'],
       reviewNotes: 'OpenAI APIが設定されていないため、手動確認が必要です',
     },
     tokensUsed: 0,

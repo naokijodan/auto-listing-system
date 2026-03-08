@@ -48,7 +48,7 @@ export async function processImageJob(
       where: { id: productId },
       data: {
         processedImages: processedUrls,
-        imageStatus: 'COMPLETED',
+        imageStatus: processedUrls.length > 0 ? 'COMPLETED' : 'ERROR',
         status: 'READY_TO_REVIEW',
       },
     });

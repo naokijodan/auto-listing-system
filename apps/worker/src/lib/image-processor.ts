@@ -215,19 +215,27 @@ export async function processImages(
       if (result.status === 'fulfilled') {
         results.push(result.value);
       } else {
-        errors.push(result.reason?.message || 'Unknown error');
+        const msg = result.reason?.message || 'Unknown error';
+        errors.push(msg);
+        log.error({ type: 'image_process_failed', productId, message: msg });
       }
     }
   }
 
   if (errors.length > 0) {
-    log.warn({
+    log.error({
       type: 'some_images_failed',
       productId,
       successCount: results.length,
       errorCount: errors.length,
-      errors: errors.slice(0, 5),
+      errors,
     });
+    // 全件失敗した場合のみエラーを投げる（部分成功があれば結果を返す）
+    if (results.length === 0) {
+      throw new Error(
+        `Image processing failed for ${errors.length} of ${imageUrls.length} images`
+      );
+    }
   }
 
   return results;

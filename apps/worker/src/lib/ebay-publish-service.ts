@@ -189,6 +189,8 @@ export class EbayPublishService {
       title,
       description,
       price: priceUsd,
+      processedImages: (listing.product.processedImages || []) as string[],
+      originalImages: (listing.product.images || []) as string[],
     });
 
     if (!qualityCheck.passed) {
