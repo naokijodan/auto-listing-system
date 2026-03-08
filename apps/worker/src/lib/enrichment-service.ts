@@ -185,7 +185,6 @@ Japanese description: ${description}`;
       model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
-      temperature: 0.3,
     });
 
     const content = response.choices[0]?.message?.content;
@@ -231,7 +230,6 @@ Category hint: ${category || 'unknown'}`;
       model: process.env.OPENAI_MODEL || 'gpt-5-nano',
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
-      temperature: 0.2,
     });
 
     const content = response.choices[0]?.message?.content;
@@ -374,7 +372,6 @@ Respond in JSON:
         model: process.env.OPENAI_MODEL || 'gpt-5-nano',
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
-        temperature: 0.1,
       });
 
       const content = response.choices[0]?.message?.content;

@@ -253,7 +253,6 @@ export async function enrichProduct(
         { role: 'system', content: systemWithJson },
         { role: 'user', content: userPrompt },
       ],
-      temperature: 0.3,
       response_format: { type: 'json_object' },
     });
 
@@ -383,7 +382,6 @@ Return JSON: {"title": "...", "description": "..."}`;
         { role: 'system', content: 'You are an expert e-commerce product translator.' },
         { role: 'user', content: prompt },
       ],
-      temperature: 0.3,
       response_format: { type: 'json_object' },
     });
 

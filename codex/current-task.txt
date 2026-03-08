@@ -1,32 +1,27 @@
-## タスク: テスト失敗3件の修正
+# タスク: joom-publish-service.ts のTypeScriptコンパイルエラー修正
 
-### 失敗テスト
+## 問題
+apps/worker/src/lib/joom-publish-service.ts の publishToJoom() メソッドで、
+行408で listing を再代入した後、TypeScriptがlistingをnull可能と判定している。
+行425以降で listing.product.title 等のアクセスが TS18047 エラーになる。
 
-#### 1. listings.test.ts "should return 400 for invalid request body"
-- ファイル: `apps/api/src/test/integration/listings.test.ts`
-- 問題: POSTリクエストが400ではなく別のステータスを返す
-- 修正: テストのmock設定またはリクエストボディを実装に合わせる
-- ルート実装: `apps/api/src/routes/listings.ts` を確認
+## エラー箇所
+行408: listing = await prisma.listing.findUnique(...)  ← ここで listing が null | Listing になる
+行425: listing.product.title ← TS18047: 'listing' is possibly 'null'
+（以降、行427, 446, 455, 458, 462, 464, 497, 520 も同様）
 
-#### 2. listing-performance.test.ts "should accept request body without error"
-- ファイル: `apps/api/src/test/unit/listing-performance.test.ts`
-- 問題: 5003msタイムアウト
-- 修正: テスト内のmock設定が不足していてレスポンスが返らない可能性。mockを追加するか、タイムアウトを延ばすか確認
-- ルート実装: `apps/api/src/routes/listing-performance.ts` を確認
+## 修正方法
+行412（`const md1 = ...`の前）に以下のnullガードを追加:
 
-#### 3. settings.test.ts Unhandled Rejection
-- ファイル: `apps/api/src/test/integration/settings.test.ts` line 250
-- 問題: `mockRejectedValue`で投げたErrorがUnhandled Rejectionになる
-- 原因: `mockPrisma.marketplaceSyncSetting.upsert.mockRejectedValue(new Error('DB Error'))` — テスト対象のルートがPromiseを正しくcatchしていない可能性。または `mockRejectedValue` → `mockRejectedValueOnce` に変更が必要
-- 修正: mockRejectedValueOnce に変更して他のテストへの影響を防ぐ
-
-### ルール
-- テストコードのみ修正（プロダクションコードは変更しない）
-- 既存のパスしているテストを壊さない
-- listing-pipeline.test.ts は実DB必要なので無視
-
-### 検証
-```bash
-cd ~/Desktop/rakuda
-npx vitest run apps/api/src/test/integration/listings.test.ts apps/api/src/test/unit/listing-performance.test.ts apps/api/src/test/integration/settings.test.ts --reporter=verbose
+```typescript
+if (!listing) {
+  throw new Error('Listing not found after image processing');
+}
 ```
+
+これにより行413以降で listing が non-null と推論される。
+行413の `listing!` の `!` も不要になるので `listing` に変更する。
+
+## 制約
+- この1箇所だけ修正する
+- 他のファイルは変更しない

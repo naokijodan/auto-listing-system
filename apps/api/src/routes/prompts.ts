@@ -298,7 +298,6 @@ Return a JSON object:
           { role: 'system', content: prompt.systemPrompt },
           { role: 'user', content: fullUserPrompt },
         ],
-        temperature: 0.3,
         response_format: { type: 'json_object' },
       });
 

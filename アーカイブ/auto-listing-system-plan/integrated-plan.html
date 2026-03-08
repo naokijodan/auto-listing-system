@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAKUDA統合設計書 v2.0</title>
+    <meta name="color-scheme" content="dark light" />
+    <style>
+      :root {
+        --bg-primary: #0d1117;
+        --bg-secondary: #161b22;
+        --bg-tertiary: #21262d;
+        --text-primary: #e6edf3;
+        --accent-blue: #58a6ff;
+        --accent-green: #3fb950;
+        --accent-red: #f85149;
+        --accent-orange: #d29922;
+        --accent-purple: #a371f7;
+        --border: #30363d;
+        --muted: #8b949e;
+        --shadow: 0 2px 8px rgba(0,0,0,0.25);
+      }
+
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        color: var(--text-primary);
+        background: var(--bg-primary);
+        font: 14px/1.7 system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      }
+
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+
+      header.page-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        backdrop-filter: blur(6px);
+        background: color-mix(in oklab, var(--bg-primary) 85%, transparent);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .page-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+      }
+
+      .title-badge {
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .summary {
+        margin: 16px 0 24px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .summary-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px 8px;
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 13px;
+      }
+
+      .progress-bar {
+        height: 10px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+        margin: 0 16px 16px;
+      }
+      .progress-bar > .fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+        width: var(--percent, 0%);
+        transition: width 600ms ease;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        gap: 20px;
+      }
+      @media (max-width: 900px) {
+        .grid { grid-template-columns: 1fr; }
+        nav.toc { position: static; top: auto; }
+      }
+
+      nav.toc {
+        position: sticky;
+        top: 74px;
+        align-self: start;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        padding: 12px;
+      }
+      nav.toc h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      nav.toc a {
+        display: block;
+        color: var(--text-primary);
+        text-decoration: none;
+        padding: 6px 8px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+      }
+      nav.toc a:hover { background: var(--bg-tertiary); border-color: var(--border); }
+
+      main.content {
+        display: grid;
+        gap: 24px;
+      }
+
+      section.card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+      }
+      .card .card-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .card .card-body { padding: 12px 16px 16px; }
+
+      h1, h2, h3, h4 { margin: 0; font-weight: 700; }
+      h1 { font-size: 24px; }
+      h2 { font-size: 18px; }
+      h3 { font-size: 16px; }
+      h4 { font-size: 15px; color: var(--muted); }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        color: var(--muted);
+        padding: 8px 0 0 16px;
+        font-size: 13px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--bg-tertiary);
+        font-weight: 600;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .badge.now { color: #fff; background: color-mix(in oklab, var(--accent-red) 70%, black); border-color: rgba(0,0,0,0.2); }
+      .badge.done { color: var(--accent-green); }
+      .badge.pending { color: var(--muted); }
+      .badge.partial { color: var(--accent-orange); }
+      .badge.fixed { color: var(--accent-purple); }
+
+      .dot {
+        width: 8px; height: 8px; border-radius: 999px;
+        background: var(--accent-red);
+        box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent-red) 40%, transparent);
+        animation: ping 1.4s infinite;
+      }
+      @keyframes ping {
+        0% { transform: scale(0.9); opacity: 1; }
+        70% { transform: scale(1.3); opacity: .35; }
+        100% { transform: scale(0.9); opacity: 1; }
+      }
+
+      .phase-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .phase-progress { padding: 8px 16px 16px; }
+
+      .table-responsive { overflow-x: auto; border-top: 1px solid var(--border); }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+      th { text-align: left; color: var(--muted); font-weight: 600; font-size: 13px; }
+      td { font-size: 14px; }
+
+      ul, ol { margin: 8px 0 12px 22px; }
+      li { margin: 4px 0; }
+
+      .callout {
+        margin: 8px 0 0;
+        padding: 10px 12px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      /* Print styles */
+      @media print {
+        :root {
+          color-scheme: light;
+        }
+        body { background: white; color: black; }
+        header.page-header, nav.toc { position: static; box-shadow: none; }
+        .summary, section.card { break-inside: avoid; }
+        .badge { border-color: #ccc; background: #f6f8fa; color: #333; }
+        .progress-bar { border-color: #ddd; background: #eee; }
+        .progress-bar > .fill { background: #2da44e; }
+        a { color: black; text-decoration: underline; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="container">
+        <div class="page-title">
+          <h1>RAKUDA統合設計書 v2.0</h1>
+          <span class="title-badge">GitHub風ダークテーマ</span>
+        </div>
+        <div class="summary" aria-label="全体進捗">
+          <div class="summary-header">
+            <div>全体進捗</div>
+            <div>30%</div>
+          </div>
+          <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="30">
+            <div class="fill" style="--percent: 30%"></div>
+          </div>
+        </div>
+        <div class="meta">
+          <div><strong>最終更新:</strong> 2026-03-07</div>
+          <div><strong>作成:</strong> Claude + GPT-5 + Gemini（3者AI協議）</div>
+          <div><strong>プロジェクト開始:</strong> 2026-02-04</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="container grid">
+      <nav class="toc" aria-label="目次">
+        <h2>目次</h2>
+        <a href="#overview">プロジェクト概要</a>
+        <a href="#schedule">全体スケジュール</a>
+        <a href="#phase-1">Phase 1</a>
+        <a href="#phase-2">Phase 2（今ここ）</a>
+        <a href="#phase-3">Phase 3</a>
+        <a href="#phase-4">Phase 4</a>
+        <a href="#phase-5">Phase 5</a>
+        <a href="#deps">依存関係</a>
+        <a href="#risks">リスク対策</a>
+        <a href="#costs">月額コスト</a>
+        <a href="#stack">技術スタック</a>
+      </nav>
+
+      <main class="content">
+        <section id="overview" class="card">
+          <div class="card-header"><h2>プロジェクト概要</h2></div>
+          <div class="card-body">
+            <p>日本のECサイト（メルカリ、ヤフオク、楽天、Amazon等）から商品を取得し、Joom/eBayに自動出品・在庫管理を行う越境EC自動化システム。</p>
+            <p><strong>目標</strong>: 300〜500件/日の自動出品、月額コスト¥18,750〜27,250</p>
+          </div>
+        </section>
+
+        <section id="schedule" class="card">
+          <div class="card-header"><h2>全体スケジュール</h2></div>
+          <div class="card-body table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th>フェーズ</th>
+                  <th>期間</th>
+                  <th>内容</th>
+                  <th>ステータス</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Phase 1</td>
+                  <td>2/4〜2/17</td>
+                  <td>基盤構築</td>
+                  <td>✅ 完了</td>
+                </tr>
+                <tr>
+                  <td>Phase 2</td>
+                  <td>2/18〜3/20</td>
+                  <td>Joom出品パイプライン完成</td>
+                  <td>🔴 50%（今ここ）</td>
+                </tr>
+                <tr>
+                  <td>Phase 3</td>
+                  <td>3/21〜4/4</td>
+                  <td>eBay統合</td>
+                  <td>⬜ 未着手</td>
+                </tr>
+                <tr>
+                  <td>Phase 4</td>
+                  <td>4/5〜4/19</td>
+                  <td>スクレイピング自動化</td>
+                  <td>⬜ 未着手</td>
+                </tr>
+                <tr>
+                  <td>Phase 5</td>
+                  <td>4/20〜5/4</td>
+                  <td>全体統合・自律運用</td>
+                  <td>⬜ 未着手</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="phase-1" class="card">
+          <div class="card-header phase-header">
+            <h2>Phase 1: 基盤構築</h2>
+            <span class="badge done">✅ 完了</span>
+          </div>
+          <div class="phase-progress">
+            <div class="progress-bar" aria-hidden="true"><div class="fill" style="--percent: 100%"></div></div>
+          </div>
+          <div class="card-body">
+            <h3>完了済みタスク</h3>
+            <ol>
+              <li>1-1. Coolify（Docker）環境構築・本番サーバーデプロイ</li>
+              <li>1-2. PostgreSQL（Prisma ORM）データベース設計・構築</li>
+              <li>1-3. Redis + BullMQ ジョブキュー基盤</li>
+              <li>1-4. 統一商品モデル定義（TypeScript + Zod）</li>
+              <li>1-5. 認証・管理画面の骨格（Next.js App Router）</li>
+              <li>1-6. CI/CD パイプライン（GitHub Actions → Coolify）</li>
+            </ol>
+            <h3>設計書からの変更点</h3>
+            <ul>
+              <li>Supabase → 自前PostgreSQL（Coolify上）に変更</li>
+              <li>Docker Compose → Coolify スタックに変更</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="phase-2" class="card">
+          <div class="card-header phase-header">
+            <h2>Phase 2: Joom出品パイプライン完成</h2>
+            <span class="badge now"><span class="dot" aria-hidden="true"></span> 今ここ</span>
+            <span class="badge" style="color: var(--accent-red)">🔴 50%</span>
+          </div>
+          <div class="phase-progress">
+            <div class="progress-bar" aria-hidden="true"><div class="fill" style="--percent: 50%"></div></div>
+          </div>
+          <div class="card-body">
+            <h3>目標</h3>
+            <p>Joomに商品を自動出品し、取り下げまでの一連フローが安定動作すること。</p>
+
+            <h3>完了基準</h3>
+            <ul>
+              <li>画像付きの商品がJoomに正しく表示される</li>
+              <li>タイトル・説明文が英語に翻訳されている</li>
+              <li>価格が手数料・送料込みで適正（赤字にならない）</li>
+              <li>Joom API出品成功率 &gt; 95%（30件連続テスト）</li>
+              <li>取り下げ（disable/delete）が確実に動作する</li>
+              <li>注文取得・在庫管理の基本機能が動作する</li>
+            </ul>
+
+            <h3>サブタスク一覧</h3>
+
+            <h4>2-1. 画像パイプラインの結合 <span class="badge pending">🔴 未完了</span></h4>
+            <div class="callout">
+              <p><strong>問題</strong>: Product DBに画像URLがあるが、出品時にmarketplaceDataに渡されていない</p>
+              <p><strong>やること</strong>:</p>
+              <ul>
+                <li>joom-publish-service.ts の createJoomListing で Product.images を読み取り、Joom API の main_image_url / extra_image_urls に設定する</li>
+                <li>画像URLの有効性チェック（HEAD リクエスト）</li>
+                <li>無効な画像URLのフォールバック処理</li>
+              </ul>
+              <p><strong>完了基準</strong>: Joomの商品ページに画像が表示される</p>
+              <p><strong>見積もり</strong>: 1.5日</p>
+              <p><strong>依存</strong>: なし</p>
+            </div>
+
+            <h4>2-2. 翻訳エンジンの実装 <span class="badge pending">🔴 未完了</span></h4>
+            <div class="callout">
+              <p><strong>問題</strong>: 翻訳機能が完全に未実装（APIキー未設定、プロンプト未作成）</p>
+              <p><strong>やること</strong>:</p>
+              <ul>
+                <li>OpenAI APIキーの設定（環境変数 OPENAI_API_KEY）</li>
+                <li>翻訳プロンプトの作成（商品タイトル用、説明文用）</li>
+                <li>packages/enrichment/src/translator.ts の enrichProduct 関数を実装</li>
+                <li>出品フローに翻訳ステップを組み込む</li>
+              </ul>
+              <p><strong>完了基準</strong>: 日本語の商品タイトル・説明文が自然な英語に翻訳される</p>
+              <p><strong>見積もり</strong>: 2日</p>
+              <p><strong>依存</strong>: なし（2-1と並列可能）</p>
+            </div>
+
+            <h4>2-3. AI属性抽出の補完 <span class="badge partial">🟡 部分完了</span></h4>
+            <div class="callout">
+              <p><strong>問題</strong>: Joom必須属性（material, size, color等）が一部欠落</p>
+              <p><strong>やること</strong>:</p>
+              <ul>
+                <li>packages/enrichment/src/item-specifics/extractor.ts の抽出ロジック改善</li>
+                <li>Joom用の必須属性リスト定義</li>
+                <li>商品タイトル・説明文からAIで属性を自動抽出</li>
+              </ul>
+              <p><strong>完了基準</strong>: Joomの必須属性が全て埋まった状態で出品される</p>
+              <p><strong>見積もり</strong>: 1日</p>
+              <p><strong>依存</strong>: 2-2（翻訳後のテキストから抽出するため）</p>
+            </div>
+
+            <h4>2-4. 出品E2E安定化テスト <span class="badge pending">🔴 未完了</span></h4>
+            <div class="callout">
+              <p><strong>問題</strong>: 画像+翻訳+価格が全部揃った状態でのテストができていない</p>
+              <p><strong>やること</strong>:</p>
+              <ul>
+                <li>2-1〜2-3が完了した状態で、オーナーが用意した商品を30件連続出品</li>
+                <li>失敗パターンの特定と修正</li>
+                <li>リトライロジックの検証</li>
+              </ul>
+              <p><strong>完了基準</strong>: 30件連続出品で成功率 &gt; 95%</p>
+              <p><strong>見積もり</strong>: 2日</p>
+              <p><strong>依存</strong>: 2-1, 2-2, 2-3（全て完了後）</p>
+            </div>
+
+            <h4>2-5. 取り下げ機能の安定化 <span class="badge fixed">🔧 バグ修正済み・未検証</span></h4>
+            <div class="callout">
+              <p><strong>問題</strong>: delete-product のtypeフィールド欠落バグを3/7に修正（commit c5dca24d）</p>
+              <p><strong>やること</strong>:</p>
+              <ul>
+                <li>disable-product / delete-product の動作確認テスト</li>
+                <li>取り下げ後のListing.statusの正しい遷移確認</li>
+                <li>Joom API側での商品状態確認</li>
+              </ul>
+              <p><strong>完了基準</strong>: 出品した商品を確実にJoomから取り下げられる</p>
+              <p><strong>見積もり</strong>: 0.5日</p>
+              <p><strong>依存</strong>: 2-4（出品後に取り下げテスト）</p>
+            </div>
+
+            <h4>2-6. 在庫・注文管理の基本実装 <span class="badge pending">🔴 未完了</span></h4>
+            <div class="callout">
+              <p><strong>問題</strong>: 注文取得APIエンドポイント修正済み（3/7）、在庫管理は未実装</p>
+              <p><strong>やること</strong>:</p>
+              <ul>
+                <li>Joom注文取得APIの動作確認（/orders/list エンドポイント）</li>
+                <li>注文受信時のListing.status更新</li>
+                <li>在庫0時の自動disable処理（BullMQジョブ）</li>
+                <li>仕入元の在庫確認スケジューラー（基本版：1日3回）</li>
+              </ul>
+              <p><strong>完了基準</strong>: 注文が取得でき、在庫切れ商品が自動で取り下げられる</p>
+              <p><strong>見積もり</strong>: 2日</p>
+              <p><strong>依存</strong>: 2-5</p>
+            </div>
+
+            <p><strong>Phase 2 合計見積もり:</strong> 9日（3/7〜3/20）</p>
+          </div>
+        </section>
+
+        <section id="phase-3" class="card">
+          <div class="card-header phase-header">
+            <h2>Phase 3: eBay統合（3/21〜4/4）</h2>
+            <span class="badge pending">⬜ 未着手</span>
+          </div>
+          <div class="phase-progress">
+            <div class="progress-bar" aria-hidden="true"><div class="fill" style="--percent: 0%"></div></div>
+          </div>
+          <div class="card-body">
+            <h3>目標</h3>
+            <p>eBayに商品を自動出品し、Joomと同等の安定性を実現する。</p>
+            <h3>完了基準</h3>
+            <ul>
+              <li>GAS既存ロジックとの価格計算100%一致</li>
+              <li>eBay API出品成功率 &gt; 90%</li>
+              <li>地域別送料計算の精度確認（5地域テスト）</li>
+              <li>画像・翻訳はPhase 2の成果物を共有</li>
+            </ul>
+
+            <h3>サブタスク一覧</h3>
+            <h4>3-1. GASロジックのNode.js移植 <span class="badge pending">🔴 未完了</span></h4>
+            <ul>
+              <li>一括V3ロジック（価格計算、DDU/DDP）をNode.jsに移植</li>
+              <li><strong>完了基準</strong>: GASとの突合テスト20ケース全て一致</li>
+              <li><strong>見積もり</strong>: 4日</li>
+            </ul>
+            <h4>3-2. 地域別送料DBの構築 <span class="badge pending">🔴 未完了</span></h4>
+            <ul>
+              <li>国別・重量別の送料マスタテーブル作成</li>
+              <li>シッピングポリシー連携</li>
+              <li><strong>完了基準</strong>: 5地域の送料計算が正確</li>
+              <li><strong>見積もり</strong>: 2日</li>
+            </ul>
+            <h4>3-3. eBay出品E2E安定化 <span class="badge pending">🔴 未完了</span></h4>
+            <ul>
+              <li>Phase 2の画像・翻訳パイプラインを共有</li>
+              <li>eBay固有のitemSpecifics、categoryId、conditionIdの自動入力（一部実装済み）</li>
+              <li><strong>完了基準</strong>: 30件連続出品で成功率 &gt; 90%</li>
+              <li><strong>見積もり</strong>: 3日</li>
+            </ul>
+            <h4>3-4. eBay取り下げ・在庫同期 <span class="badge pending">🔴 未完了</span></h4>
+            <ul>
+              <li>eBay側の在庫管理（End Listing API）</li>
+              <li>Joomとの在庫同期（片方で売れたら他方を取り下げ）</li>
+              <li><strong>完了基準</strong>: 在庫切れ時に自動取り下げが動作</li>
+              <li><strong>見積もり</strong>: 2日</li>
+            </ul>
+
+            <p><strong>Phase 3 合計見積もり:</strong> 11日</p>
+          </div>
+        </section>
+
+        <section id="phase-4" class="card">
+          <div class="card-header phase-header">
+            <h2>Phase 4: スクレイピング自動化（4/5〜4/19）</h2>
+            <span class="badge pending">⬜ 未着手</span>
+          </div>
+          <div class="phase-progress">
+            <div class="progress-bar" aria-hidden="true"><div class="fill" style="--percent: 0%"></div></div>
+          </div>
+          <div class="card-body">
+            <h3>目標</h3>
+            <p>商品の発見・収集を自動化し、人間の介入を最小化する。</p>
+            <h3>完了基準</h3>
+            <ul>
+              <li>人間の介入なしに1日500件の商品候補が収集される</li>
+              <li>テキストフィルタ精度 &gt; 90%</li>
+              <li>AI画像分析の自動化率 &gt; 95%</li>
+              <li>Ban確率 &lt; 0.5%</li>
+            </ul>
+
+            <h3>サブタスク一覧</h3>
+            <h4>4-1. Chrome拡張機能のメッセージングAPI追加 <span class="badge partial">🟡 部分完了</span></h4>
+            <ul>
+              <li>とりこみ君、みちゃった君、しらべる君へのリスナー追加</li>
+              <li><strong>完了基準</strong>: 10商品での統合テスト成功</li>
+              <li><strong>見積もり</strong>: 2日</li>
+            </ul>
+            <h4>4-2. Extension Bridge構築 <span class="badge pending">🔴 未着手</span></h4>
+            <ul>
+              <li>Node.js + Puppeteer + WebSocketでブラウザ操縦</li>
+              <li>住宅用Proxy経由実行</li>
+              <li><strong>完了基準</strong>: 50商品E2Eテスト成功率 &gt; 95%</li>
+              <li><strong>見積もり</strong>: 3日</li>
+            </ul>
+            <h4>4-3. スケジューラー + テキストフィルタ <span class="badge pending">🔴 未着手</span></h4>
+            <ul>
+              <li>3セッション分散実行（10:12 / 15:08 / 21:15）</li>
+              <li>ランダムジッター（±30分）</li>
+              <li>テキストフィルタ（Layer 0）によるフィルタリング</li>
+              <li><strong>完了基準</strong>: 100商品フィルタ動作、エラー率 &lt; 5%</li>
+              <li><strong>見積もり</strong>: 3日</li>
+            </ul>
+            <h4>4-4. AI画像分析 + ルーティング <span class="badge pending">🔴 未着手</span></h4>
+            <ul>
+              <li>Claude Vision統合、信頼度スコアリング</li>
+              <li>自動/人間レビュー振り分け（0.8以上=自動、0.6-0.8=人間、以下=除外）</li>
+              <li><strong>完了基準</strong>: 自動化率 &gt; 95%、精度 &gt; 90%</li>
+              <li><strong>見積もり</strong>: 4日</li>
+            </ul>
+            <h4>4-5. Smartproxy統合 <span class="badge pending">🔴 未着手</span></h4>
+            <ul>
+              <li>住宅用プロキシの本番環境セットアップ</li>
+              <li>ローテーション検証</li>
+              <li><strong>完了基準</strong>: Ban確率 &lt; 0.5%</li>
+              <li><strong>見積もり</strong>: 2日</li>
+            </ul>
+
+            <p><strong>Phase 4 合計見積もり:</strong> 14日</p>
+          </div>
+        </section>
+
+        <section id="phase-5" class="card">
+          <div class="card-header phase-header">
+            <h2>Phase 5: 全体統合・自律運用（4/20〜5/4）</h2>
+            <span class="badge pending">⬜ 未着手</span>
+          </div>
+          <div class="phase-progress">
+            <div class="progress-bar" aria-hidden="true"><div class="fill" style="--percent: 0%"></div></div>
+          </div>
+          <div class="card-body">
+            <h3>目標</h3>
+            <p>全パイプラインを統合し、人間の介入なしで安定運用できる状態にする。</p>
+            <h3>完了基準</h3>
+            <ul>
+              <li>1週間の完全無人運用で在庫不整合ゼロ</li>
+              <li>在庫同期遅延 &lt; 5分（高回転商品は10分間隔監視）</li>
+              <li>価格自動調整の実行間隔 &lt; 1時間</li>
+              <li>エラー時のDiscord通知が動作</li>
+              <li>運用ダッシュボードで全指標がリアルタイム表示</li>
+            </ul>
+
+            <h3>サブタスク一覧</h3>
+            <h4>5-1. 在庫監視の高頻度化 <span class="badge pending">🔴 未着手</span></h4>
+            <ul>
+              <li>仕入元在庫チェック：通常商品1日3回、高回転商品10分間隔</li>
+              <li>BullMQ Priority Queueで動的リソース配分</li>
+              <li><strong>完了基準</strong>: 在庫同期遅延 &lt; 5分</li>
+              <li><strong>見積もり</strong>: 3日</li>
+            </ul>
+            <h4>5-2. 価格自動調整 <span class="badge pending">🔴 未着手</span></h4>
+            <ul>
+              <li>為替レート変動の自動反映</li>
+              <li>仕入価格変動の検知と販売価格更新</li>
+              <li><strong>完了基準</strong>: 調整間隔 &lt; 1時間、赤字出品ゼロ</li>
+              <li><strong>見積もり</strong>: 2日</li>
+            </ul>
+            <h4>5-3. エラー自己修復 + 通知 <span class="badge partial">🟡 部分実装</span></h4>
+            <ul>
+              <li>APIエラー時のBullMQ自動リトライ</li>
+              <li>重大エラーのDiscord通知（既存のnotify-discord.sh活用）</li>
+              <li>緊急停止プロトコル（Ban 5%、エラー20%超過時）</li>
+              <li><strong>完了基準</strong>: エラー時の自動復帰率 &gt; 90%</li>
+              <li><strong>見積もり</strong>: 2日</li>
+            </ul>
+            <h4>5-4. 運用ダッシュボード <span class="badge pending">🔴 未着手</span></h4>
+            <ul>
+              <li>出品成功率、在庫不整合数、日次利益のリアルタイム表示</li>
+              <li>Joom/eBay別のステータスサマリー</li>
+              <li><strong>完了基準</strong>: 全指標がリアルタイム更新</li>
+              <li><strong>見積もり</strong>: 3日</li>
+            </ul>
+            <h4>5-5. 本番耐久テスト <span class="badge pending">🔴 未着手</span></h4>
+            <ul>
+              <li>500商品×3日連続テスト</li>
+              <li>成功率 &gt; 95%、Ban確率 &lt; 0.5%</li>
+              <li><strong>完了基準</strong>: 1週間連続稼働でエラーなし</li>
+              <li><strong>見積もり</strong>: 5日（テスト期間含む）</li>
+            </ul>
+
+            <p><strong>Phase 5 合計見積もり:</strong> 15日</p>
+          </div>
+        </section>
+
+        <section id="deps" class="card">
+          <div class="card-header"><h2>依存関係</h2></div>
+          <div class="card-body">
+            <p>Phase 1 ✅ → Phase 2 🔴（今ここ）→ Phase 3 → Phase 4 → Phase 5<br/>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&uarr;<br/>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Phase 2の画像・翻訳を共有
+            </p>
+            <p>Phase 4（スクレイピング）は Phase 2・3の出品成功率が95%を超えてから着手。<br />
+            出口（出品）が詰まっている限り、入口（収集）を広げない（バックプレッシャー設計）。</p>
+          </div>
+        </section>
+
+        <section id="risks" class="card">
+          <div class="card-header"><h2>リスク対策</h2></div>
+          <div class="card-body table-responsive">
+            <table>
+              <thead>
+                <tr><th>リスク</th><th>対策</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>スクレイピングBan</td><td>住宅用Proxy必須、3セッション分散、BullMQレート制限</td></tr>
+                <tr><td>価格計算ミス</td><td>GAS突合テスト、送料・関税・為替をDB化</td></tr>
+                <tr><td>プラットフォームBan</td><td>画像品質確保、正確な翻訳、在庫同期の確実性</td></tr>
+                <tr><td>APIレート制限</td><td>BullMQ流量制限、Exponential Backoff</td></tr>
+                <tr><td>AIコスト増大</td><td>処理の多層化（高額品=Claude、通常=Gemini Flash）</td></tr>
+                <tr><td>仕入元DOM変更</td><td>統一商品モデルで影響局所化、アダプターパターン</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="costs" class="card">
+          <div class="card-header"><h2>月額コスト</h2></div>
+          <div class="card-body table-responsive">
+            <table>
+              <thead>
+                <tr><th>項目</th><th>最小</th><th>最大</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>VPS（Vultr 2GB）</td><td>¥1,000</td><td>¥1,500</td></tr>
+                <tr><td>PostgreSQL</td><td>¥0</td><td>¥0</td></tr>
+                <tr><td>翻訳AI（OpenAI）</td><td>¥2,000</td><td>¥3,000</td></tr>
+                <tr><td>AI属性抽出</td><td>¥1,000</td><td>¥2,000</td></tr>
+                <tr><td>AI選別（Claude Vision）</td><td>¥3,000</td><td>¥5,000</td></tr>
+                <tr><td>住宅用プロキシ</td><td>¥8,000</td><td>¥12,000</td></tr>
+                <tr><td><strong>合計</strong></td><td><strong>¥15,000</strong></td><td><strong>¥23,500</strong></td></tr>
+              </tbody>
+            </table>
+            <p class="meta" style="padding-left:0; gap: 16px;">※ PostgreSQL は（自前）</p>
+          </div>
+        </section>
+
+        <section id="stack" class="card">
+          <div class="card-header"><h2>技術スタック</h2></div>
+          <div class="card-body table-responsive">
+            <table>
+              <thead>
+                <tr><th>層</th><th>技術</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Frontend</td><td>Next.js 16 (App Router), Tailwind CSS, shadcn/ui</td></tr>
+                <tr><td>Backend</td><td>Express.js, TypeScript</td></tr>
+                <tr><td>Database</td><td>PostgreSQL (Prisma ORM)</td></tr>
+                <tr><td>Queue</td><td>BullMQ (Redis)</td></tr>
+                <tr><td>Storage</td><td>MinIO/S3</td></tr>
+                <tr><td>AI翻訳</td><td>OpenAI GPT-4o</td></tr>
+                <tr><td>AI属性抽出</td><td>Gemini Flash</td></tr>
+                <tr><td>AI画像分析</td><td>Claude Vision</td></tr>
+                <tr><td>スクレイピング</td><td>Puppeteer + 住宅用Proxy</td></tr>
+                <tr><td>インフラ</td><td>Coolify (Docker) on Vultr VPS</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </body>
+</html>
+
