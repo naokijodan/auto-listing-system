@@ -65,7 +65,10 @@ export async function processScrapeJob(
   const log = logger.child({ jobId: job.id, processor: 'scrape' });
 
   // Validate sourceType to prevent toLowerCase on undefined
-  if (!sourceType) {
+  // eBay特殊ジョブ（taxonomy-sync, policy-sync）はsourceType不要
+  const isEbaySpecialJob = job.name === 'ebay-taxonomy-sync' || job.name === 'ebay-policy-sync'
+    || (job.data as any)?.type === 'ebay-taxonomy-sync' || (job.data as any)?.type === 'ebay-policy-sync';
+  if (!sourceType && !isEbaySpecialJob) {
     log.warn({ type: 'scrape_missing_source_type', jobId: job.id, url });
     throw new Error('sourceType is required for scrape job');
   }
