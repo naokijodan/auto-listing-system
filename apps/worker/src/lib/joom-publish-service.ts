@@ -410,7 +410,10 @@ export class JoomPublishService {
           include: { product: true },
         });
 
-        const md1 = (listing!.marketplaceData as any) || {};
+        if (!listing) {
+          throw new Error('Listing not found after image processing');
+        }
+        const md1 = (listing.marketplaceData as any) || {};
         const processedImages: string[] = Array.isArray(md1.joomImages) ? md1.joomImages : [];
         if (processedImages.length === 0) {
           throw new Error('Image processing failed: no images available for listing');
