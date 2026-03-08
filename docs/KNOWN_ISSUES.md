@@ -55,6 +55,13 @@
 ### 3-4: Coolify デプロイ stuck in_progress
 - **復旧手順**: `POST /api/v1/applications/{uuid}/stop` で明示停止
 - **防止策**: concurrent_builds=1 を推奨
+- **解決済み（Session 17）**: concurrent_builds=1に変更完了（Coolify Server > Advanced設定）
+
+### 3-5: Docker Build Cache蓄積によるメモリ枯渇
+- **症状**: Build Cache 30GB蓄積 → メモリ177MB free → Docker buildがハング
+- **復旧**: `docker builder prune -f --all` で25GB回収
+- **防止策**: Coolifyの毎日Docker Cleanup（0:00 UTC）が有効。force_docker_cleanup=true
+- **解決済み（Session 16-17）**: Cleanup自動実行確認済み、Build Cache 5.8GBに安定
 
 ---
 
