@@ -265,6 +265,48 @@ export async function enrichProduct(
     const parsed = JSON.parse(content);
     const tokensUsed = response.usage?.total_tokens || 0;
 
+    // Normalize GPT response - handle both JSON structures
+    const enTitle = (parsed?.translations?.en?.title
+      || parsed?.Title
+      || parsed?.title
+      || parsed?.titleEn
+      || title) as string;
+
+    const enDescription = (parsed?.translations?.en?.description
+      || parsed?.Description
+      || parsed?.description
+      || parsed?.descriptionEn
+      || description) as string;
+
+    const normalizedAttributes = (parsed?.attributes && typeof parsed.attributes === 'object')
+      ? parsed.attributes
+      : {
+          brand: parsed?.brand,
+          color: parsed?.color,
+          size: parsed?.size,
+          material: parsed?.material,
+          condition: parsed?.condition,
+          category: parsed?.category || parsed?.Category,
+          itemSpecifics: parsed?.itemSpecifics || {},
+          confidence: parsed?.confidence || 0.5,
+          weightGrams: parsed?.weightGrams,
+          movementType: parsed?.movementType,
+          caseMaterial: parsed?.caseMaterial,
+          bandMaterial: parsed?.bandMaterial,
+          waterResistance: parsed?.waterResistance,
+          displayType: parsed?.displayType,
+          gender: parsed?.gender,
+          countryOfOrigin: parsed?.countryOfOrigin,
+        };
+
+    const normalizedValidation = (parsed?.validation && typeof parsed.validation === 'object')
+      ? parsed.validation
+      : {
+          isSafe: true,
+          status: 'review_required' as const,
+          flags: [] as string[],
+        };
+
     log.info({
       type: 'enrichment_complete',
       tokensUsed,
@@ -274,32 +316,32 @@ export async function enrichProduct(
 
     return {
       translations: {
-        en: parsed.translations?.en || { title: `${title}`, description: `${description}` },
+        en: { title: `${enTitle}`, description: `${enDescription}` },
         tokensUsed,
       },
       attributes: {
-        brand: parsed.attributes?.brand,
-        color: parsed.attributes?.color,
-        size: parsed.attributes?.size,
-        material: parsed.attributes?.material,
-        condition: parsed.attributes?.condition,
-        category: parsed.attributes?.category,
-        itemSpecifics: parsed.attributes?.itemSpecifics || {},
-        confidence: parsed.attributes?.confidence || 0.5,
-        weightGrams: parsed.attributes?.weightGrams,
-        movementType: parsed.attributes?.movementType,
-        caseMaterial: parsed.attributes?.caseMaterial,
-        bandMaterial: parsed.attributes?.bandMaterial,
-        waterResistance: parsed.attributes?.waterResistance,
-        displayType: parsed.attributes?.displayType,
-        gender: parsed.attributes?.gender,
-        countryOfOrigin: parsed.attributes?.countryOfOrigin,
+        brand: normalizedAttributes?.brand,
+        color: normalizedAttributes?.color,
+        size: normalizedAttributes?.size,
+        material: normalizedAttributes?.material,
+        condition: normalizedAttributes?.condition,
+        category: normalizedAttributes?.category,
+        itemSpecifics: normalizedAttributes?.itemSpecifics || {},
+        confidence: normalizedAttributes?.confidence ?? 0.5,
+        weightGrams: normalizedAttributes?.weightGrams,
+        movementType: normalizedAttributes?.movementType,
+        caseMaterial: normalizedAttributes?.caseMaterial,
+        bandMaterial: normalizedAttributes?.bandMaterial,
+        waterResistance: normalizedAttributes?.waterResistance,
+        displayType: normalizedAttributes?.displayType,
+        gender: normalizedAttributes?.gender,
+        countryOfOrigin: normalizedAttributes?.countryOfOrigin,
       },
       validation: {
-        isSafe: parsed.validation?.isSafe ?? true,
-        status: parsed.validation?.status || 'review_required',
-        flags: parsed.validation?.flags || [],
-        reviewNotes: parsed.validation?.reviewNotes,
+        isSafe: normalizedValidation?.isSafe ?? true,
+        status: normalizedValidation?.status || 'review_required',
+        flags: normalizedValidation?.flags || [],
+        reviewNotes: normalizedValidation?.reviewNotes,
       },
       tokensUsed,
     };

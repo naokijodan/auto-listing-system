@@ -570,6 +570,35 @@ export class EnrichmentTaskManager {
         },
       });
 
+      // Sync enrichment results to Product table
+      const completedTask = await prisma.enrichmentTask.findUnique({
+        where: { id: taskId },
+      });
+
+      if (completedTask?.translations) {
+        const trans = completedTask.translations as any;
+        const attrs = completedTask.attributes as any;
+        const enTitle = trans?.en?.title || '';
+        const enDesc = trans?.en?.description || '';
+
+        await prisma.product.update({
+          where: { id: task.productId },
+          data: {
+            titleEn: enTitle,
+            descriptionEn: enDesc,
+            translationStatus: (enTitle ? 'COMPLETED' : 'ERROR') as any,
+            ...(attrs ? { attributes: attrs } : {}),
+            status: (
+              finalStatus === 'APPROVED'
+                ? 'APPROVED'
+                : finalStatus === 'REJECTED'
+                ? 'REJECTED'
+                : 'READY_TO_REVIEW'
+            ) as any,
+          },
+        });
+      }
+
       log.info({
         type: 'task_completed',
         taskId,
