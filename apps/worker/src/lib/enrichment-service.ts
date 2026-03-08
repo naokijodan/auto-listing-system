@@ -4,10 +4,19 @@
  */
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
+import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
+import { QUEUE_NAMES } from '@rakuda/config';
 import OpenAI from 'openai';
 import { enrichProduct as enrichProductNew } from '@rakuda/enrichment';
 
 const log = logger.child({ module: 'enrichment-service' });
+
+// Queue setup (follow scrape.ts pattern)
+const redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null,
+});
+const imageQueue = new Queue(QUEUE_NAMES.IMAGE, { connection: redis });
 
 // OpenAI クライアント（translateOnly や他のレガシー機能で使用）
 const openai = new OpenAI({
@@ -597,6 +606,22 @@ export class EnrichmentTaskManager {
             ) as any,
           },
         });
+      }
+
+      // Queue image processing if product has unprocessed images
+      const productImages = (task.product.images as unknown as string[]) || [];
+      const existingProcessed = (task.product.processedImages as unknown as string[]) || [];
+      if (productImages.length > 0 && existingProcessed.length === 0) {
+        await imageQueue.add(
+          'process-images',
+          {
+            productId: task.productId,
+            imageUrls: productImages,
+            removeBackground: true,
+          },
+          { priority: 4 }
+        );
+        log.info({ type: 'image_job_queued', productId: task.productId, imageCount: productImages.length });
       }
 
       log.info({
