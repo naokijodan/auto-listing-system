@@ -242,10 +242,15 @@ export async function enrichProduct(
       category: category || 'none',
     });
 
+    // OpenAI json_object mode requires "json" in messages
+    const systemWithJson = prompt.systemPrompt.toLowerCase().includes('json')
+      ? prompt.systemPrompt
+      : prompt.systemPrompt + '\n\nRespond in JSON format.';
+
     const response = await client.chat.completions.create({
       model: getModel(),
       messages: [
-        { role: 'system', content: prompt.systemPrompt },
+        { role: 'system', content: systemWithJson },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.3,

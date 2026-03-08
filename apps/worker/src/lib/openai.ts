@@ -257,10 +257,15 @@ Return a JSON object with this structure:
       model: MODEL,
     });
 
+    // OpenAI json_object mode requires "json" in messages
+    const systemWithJson = promptConfig.systemPrompt.toLowerCase().includes('json')
+      ? promptConfig.systemPrompt
+      : promptConfig.systemPrompt + '\n\nRespond in JSON format.';
+
     const response = await openai.chat.completions.create({
       model: MODEL,
       messages: [
-        { role: 'system', content: promptConfig.systemPrompt },
+        { role: 'system', content: systemWithJson },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.3,
