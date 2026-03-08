@@ -1,6 +1,6 @@
 # RAKUDA 既知の問題と再発防止策
 
-最終更新: 2026-03-07 (Session 13)
+最終更新: 2026-03-09 (Session 22)
 
 ## 使い方
 新しいセッション開始時に必ずこのファイルを確認すること。
@@ -162,3 +162,19 @@
 - **症状**: in_progressデプロイがスタック→後続のqueuedが処理されない
 - **復旧手順**: `POST /api/v1/applications/{uuid}/stop` → 停止確認 → 再デプロイ
 - **防止策**: concurrent_builds=1推奨。デプロイ後はステータス確認を必ず行う
+
+### 7-7: Joom API v3はcamelCaseフィールド名必須
+- **症状**: 画像origUrl空、shippingWeight送信されない → J1009, J1130 infraction
+- **原因**: `joom-api.ts`がsnake_case（`main_image_url`, `shipping_weight`等）を送信
+- **修正**: 全フィールドをcamelCase化（`mainImage`, `shippingWeight`等）
+- **解決済み**: commit f9526e4e
+
+### 7-8: OpenAI GPT-5はtemperature・max_tokensパラメータ非対応
+- **症状**: `400 Unsupported value: 'temperature' does not support 0.3` / `Unsupported parameter: 'max_tokens'`
+- **修正**: temperature行を全削除（15ファイル）、max_tokens→max_completion_tokens（11ファイル）
+- **解決済み**: commit 28daca33, 681b6d3c
+
+### 7-9: S3アップロードのタイムアウト・リトライ不足
+- **症状**: image-queue DLQに12件蓄積（socket timeout）
+- **修正**: socketTimeout 30s→120s、uploadFile()に3回リトライ+exponential backoff、Cloudinaryフォールバック追加
+- **解決済み**: commit 4aad8679
