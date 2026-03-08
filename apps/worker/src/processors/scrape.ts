@@ -64,6 +64,12 @@ export async function processScrapeJob(
   const { url, sourceType, isBulkScrape, sellerId } = job.data as any;
   const log = logger.child({ jobId: job.id, processor: 'scrape' });
 
+  // Validate sourceType to prevent toLowerCase on undefined
+  if (!sourceType) {
+    log.warn({ type: 'scrape_missing_source_type', jobId: job.id, url });
+    throw new Error('sourceType is required for scrape job');
+  }
+
   log.info({ type: 'scrape_start', url, sourceType });
 
   // ジョブ名でセラー一括か単品か判定

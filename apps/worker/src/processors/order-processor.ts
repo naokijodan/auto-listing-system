@@ -296,6 +296,9 @@ export async function processUnprocessedOrders(): Promise<{
     where: {
       status: 'PENDING',
     },
+    include: {
+      sales: true,
+    },
     orderBy: { orderedAt: 'asc' },
     take: 50, // バッチサイズ
   });

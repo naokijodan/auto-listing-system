@@ -15,7 +15,7 @@ import { processPriceSyncJob, PriceSyncJobPayload } from './price-sync';
 const log = logger.child({ processor: 'pricing' });
 
 export interface PricingJobData {
-  type: 'evaluate' | 'apply' | 'process_expired' | 'process_approved' | 'price-sync';
+  type: 'evaluate' | 'apply' | 'process_expired' | 'process_approved' | 'price-sync' | 'price-adjustment';
   listingId?: string;
   listingIds?: string[];
   ruleIds?: string[];
@@ -25,6 +25,13 @@ export interface PricingJobData {
   forceUpdate?: boolean;
   maxListings?: number;
   priceChangeThreshold?: number;
+  // price-adjustment用のパラメータ
+  limit?: number;
+  targetProfitRate?: number;
+  minProfitRate?: number;
+  maxPriceChangePercent?: number;
+  scheduledAt?: string;
+  manual?: boolean;
 }
 
 export interface PricingJobResult {
@@ -72,6 +79,21 @@ export async function pricingProcessor(job: Job<PricingJobData>): Promise<Pricin
           processedCount: syncResult.summary.totalProcessed,
           applied: syncResult.summary.totalUpdated,
           failed: syncResult.summary.totalErrors,
+        };
+      case 'price-adjustment':
+        // 為替レート変動に基づく価格調整（price-syncの拡張版として処理）
+        const adjustmentPayload: PriceSyncJobPayload = {
+          marketplace: job.data.marketplace,
+          forceUpdate: true,
+          maxListings: job.data.limit,
+          priceChangeThreshold: job.data.maxPriceChangePercent,
+        };
+        const adjustmentResult = await processPriceSyncJob({ ...job, data: adjustmentPayload } as Job<PriceSyncJobPayload>);
+        return {
+          success: adjustmentResult.success,
+          processedCount: adjustmentResult.summary.totalProcessed,
+          applied: adjustmentResult.summary.totalUpdated,
+          failed: adjustmentResult.summary.totalErrors,
         };
       default:
         throw new Error(`Unknown job type: ${type}`);

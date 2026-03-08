@@ -18,6 +18,11 @@ export async function processInventoryJob(
   const { productId, sourceUrl, currentHash, checkPrice, checkStock } = job.data;
   const log = logger.child({ jobId: job.id, processor: 'inventory' });
 
+  if (!productId) {
+    log.warn({ type: 'inventory_missing_product_id', jobId: job.id });
+    throw new Error('productId is required for inventory check');
+  }
+
   log.info({
     type: 'inventory_check_start',
     productId,

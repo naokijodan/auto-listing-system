@@ -693,6 +693,10 @@ export async function queueInventoryChecks(productIds?: string[]): Promise<numbe
 
   let queuedCount = 0;
   for (const product of products) {
+    if (!product.id) {
+      log.warn({ type: 'inventory_skip_no_id', sourceUrl: product.sourceUrl });
+      continue;
+    }
     await inventoryQueue.add(
       'inventory-check',
       {
