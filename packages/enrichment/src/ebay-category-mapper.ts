@@ -544,7 +544,7 @@ ${availableCategories}
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
-      max_tokens: 200,
+      max_completion_tokens: 200,
       response_format: { type: 'json_object' },
     });
 

@@ -193,7 +193,7 @@ export async function suggestCategoryWithAI(
         { role: 'user', content: prompt },
       ],
       temperature: 0.3,
-      max_tokens: 500,
+      max_completion_tokens: 500,
       response_format: { type: 'json_object' },
     });
 
@@ -431,7 +431,7 @@ JSON形式で出力してください:
         { role: 'user', content: prompt },
       ],
       temperature: 0.2,
-      max_tokens: 300,
+      max_completion_tokens: 300,
       response_format: { type: 'json_object' },
     });
 

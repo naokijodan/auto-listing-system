@@ -102,7 +102,7 @@ ${categoriesText}
 Respond in JSON: { "categoryId": "id", "confidence": 0.0-1.0, "reasoning": "..." }` },
       ],
       temperature: 0.3,
-      max_tokens: 300,
+      max_completion_tokens: 300,
       response_format: { type: 'json_object' },
     });
 

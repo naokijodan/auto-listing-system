@@ -230,7 +230,7 @@ export class AiModelService {
           { role: 'user', content: prompt },
         ],
         temperature: options.temperature ?? (config.temperature as number) ?? 0.7,
-        max_tokens: options.maxTokens ?? (config.maxTokens as number) ?? 2000,
+        max_completion_tokens: options.maxTokens ?? (config.maxTokens as number) ?? 2000,
       }),
     });
 

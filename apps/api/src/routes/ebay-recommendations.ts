@@ -546,7 +546,7 @@ ${listings.map(l => `- ${l.product.titleEn || l.product.title}`).join('\n')}
         model: process.env.OPENAI_MODEL || 'gpt-5-nano',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.8,
-        max_tokens: 50,
+        max_completion_tokens: 50,
       });
       bundleName = completion.choices[0]?.message?.content?.trim() || bundleName;
     } catch {

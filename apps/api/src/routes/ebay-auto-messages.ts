@@ -426,7 +426,7 @@ Please generate an appropriate response:`;
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.7,
-      max_tokens: 500,
+      max_completion_tokens: 500,
     });
 
     const generatedResponse = completion.choices[0]?.message?.content || '';

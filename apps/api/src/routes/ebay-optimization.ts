@@ -182,7 +182,7 @@ Respond with only the optimized title, nothing else.`,
               content: `Optimize this eBay product title:\n\nOriginal: ${currentTitle}\n\nCategory: ${product.category || 'General'}\nBrand: ${product.brand || 'Unknown'}\nCondition: ${product.condition || 'Unknown'}`,
             },
           ],
-          max_tokens: 150,
+          max_completion_tokens: 150,
           temperature: 0.7,
         });
 
@@ -221,7 +221,7 @@ Respond with only the optimized description, nothing else.`,
               content: `Optimize this eBay product description:\n\n${currentDescription.substring(0, 2000)}\n\nProduct: ${currentTitle}`,
             },
           ],
-          max_tokens: 1000,
+          max_completion_tokens: 1000,
           temperature: 0.7,
         });
 
@@ -254,7 +254,7 @@ Respond with only the optimized description, nothing else.`,
               content: `Suggest keywords for:\nTitle: ${currentTitle}\nCategory: ${product.category || 'General'}\nBrand: ${product.brand || 'Unknown'}`,
             },
           ],
-          max_tokens: 200,
+          max_completion_tokens: 200,
           temperature: 0.7,
         });
 

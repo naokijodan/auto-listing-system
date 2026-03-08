@@ -212,7 +212,7 @@ Only return the translated title, nothing else.`,
               content: sourceTitle,
             },
           ],
-          max_tokens: 100,
+          max_completion_tokens: 100,
           temperature: 0.3,
         });
         translations[lang].title = titleResponse.choices[0]?.message?.content?.trim() || sourceTitle;
@@ -234,7 +234,7 @@ Only return the translated description, nothing else.`,
               content: sourceDescription,
             },
           ],
-          max_tokens: 1000,
+          max_completion_tokens: 1000,
           temperature: 0.3,
         });
         translations[lang].description = descResponse.choices[0]?.message?.content?.trim() || sourceDescription;
@@ -255,7 +255,7 @@ Return only a comma-separated list of keywords, nothing else.`,
               content: sourceTitle,
             },
           ],
-          max_tokens: 200,
+          max_completion_tokens: 200,
           temperature: 0.5,
         });
         translations[lang].keywords = keywordsResponse.choices[0]?.message?.content?.trim() || '';
@@ -352,7 +352,7 @@ router.post('/translate/bulk', async (req: Request, res: Response) => {
                 },
                 { role: 'user', content: sourceTitle },
               ],
-              max_tokens: 100,
+              max_completion_tokens: 100,
               temperature: 0.3,
             });
             translations[lang].title = response.choices[0]?.message?.content?.trim() || sourceTitle;
@@ -577,7 +577,7 @@ router.post('/detect', async (req: Request, res: Response) => {
         },
         { role: 'user', content: body.text },
       ],
-      max_tokens: 10,
+      max_completion_tokens: 10,
       temperature: 0,
     });
 

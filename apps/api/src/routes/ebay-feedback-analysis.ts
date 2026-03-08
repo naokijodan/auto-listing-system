@@ -363,7 +363,7 @@ Write in English.`;
         { role: 'user', content: `Customer feedback (${data.rating}):\n"${data.comment}"\n\nGenerate an appropriate response:` },
       ],
       temperature: 0.7,
-      max_tokens: 200,
+      max_completion_tokens: 200,
     });
 
     const generatedResponse = completion.choices[0]?.message?.content || '';
