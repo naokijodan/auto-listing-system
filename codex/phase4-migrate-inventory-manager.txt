@@ -1,0 +1,136 @@
+ファイル apps/worker/src/lib/inventory-manager.ts を以下のように変更してください。
+
+## 変更1: import変更 (line 4)
+
+旧:
+```typescript
+import { joomApi } from './joom-api';
+```
+
+新:
+```typescript
+import { JoomWarehousesClient } from './joom/warehouses';
+```
+
+## 変更2: シングルトン追加（line 8の前、logの後に追加）
+
+追加:
+```typescript
+let joomWarehousesClient: JoomWarehousesClient | null = null;
+function getJoomWarehousesClient(): JoomWarehousesClient {
+  if (!joomWarehousesClient) {
+    joomWarehousesClient = new JoomWarehousesClient();
+  }
+  return joomWarehousesClient;
+}
+```
+
+## 変更3: syncToAllMarketplaces内のJoom在庫更新 (line 129-147)
+
+旧:
+```typescript
+    if (grouped['JOOM']) {
+      tasks.push((async () => {
+        try {
+          for (const listing of grouped['JOOM']) {
+            const sku = (listing.marketplaceData as any)?.sku || `RAKUDA-${productId}`;
+            const joomProductId = listing.marketplaceListingId || (listing.marketplaceData as any)?.joomProductId;
+            if (!joomProductId) throw new Error('Missing Joom productId');
+            const res = await joomApi.updateInventory(joomProductId, sku, newStock);
+            if (!res.success) throw new Error(res.error?.message || 'Joom update failed');
+          }
+          await updateSyncState('JOOM', true);
+        } catch (e: any) {
+          const msg = `JOOM sync error: ${e.message}`;
+          errors.push(msg);
+          await updateSyncState('JOOM', false, msg);
+          log.error({ type: 'inventory_sync_error', marketplace: 'JOOM', productId, error: e.message });
+        }
+      })());
+    }
+```
+
+新:
+```typescript
+    if (grouped['JOOM']) {
+      tasks.push((async () => {
+        try {
+          const joom = getJoomWarehousesClient();
+          for (const listing of grouped['JOOM']) {
+            const sku = (listing.marketplaceData as any)?.sku || `RAKUDA-${productId}`;
+            const joomProductId = listing.marketplaceListingId || (listing.marketplaceData as any)?.joomProductId;
+            if (!joomProductId) throw new Error('Missing Joom productId');
+            await joom.updateProductAvailability(
+              { id: joomProductId },
+              { items: [{ variantSku: sku, inventory: newStock }] }
+            );
+          }
+          await updateSyncState('JOOM', true);
+        } catch (e: any) {
+          const msg = `JOOM sync error: ${e.message}`;
+          errors.push(msg);
+          await updateSyncState('JOOM', false, msg);
+          log.error({ type: 'inventory_sync_error', marketplace: 'JOOM', productId, error: e.message });
+        }
+      })());
+    }
+```
+
+## 変更4: pauseListingsForProduct内のJoom在庫更新 (line 241-245)
+
+旧:
+```typescript
+          case 'JOOM': {
+            const sku = (l.marketplaceData as any)?.sku || `RAKUDA-${productId}`;
+            const joomProductId = l.marketplaceListingId || (l.marketplaceData as any)?.joomProductId;
+            if (joomProductId) tasks.push(joomApi.updateInventory(joomProductId, sku, 0));
+            break;
+          }
+```
+
+新:
+```typescript
+          case 'JOOM': {
+            const sku = (l.marketplaceData as any)?.sku || `RAKUDA-${productId}`;
+            const joomProductId = l.marketplaceListingId || (l.marketplaceData as any)?.joomProductId;
+            if (joomProductId) tasks.push(
+              getJoomWarehousesClient().updateProductAvailability(
+                { id: joomProductId },
+                { items: [{ variantSku: sku, inventory: 0 }] }
+              )
+            );
+            break;
+          }
+```
+
+## 変更5: resumeListingsForProduct内のJoom在庫更新 (line 281-285)
+
+旧:
+```typescript
+          case 'JOOM': {
+            const sku = (l.marketplaceData as any)?.sku || `RAKUDA-${productId}`;
+            const joomProductId = l.marketplaceListingId || (l.marketplaceData as any)?.joomProductId;
+            if (joomProductId) tasks.push(joomApi.updateInventory(joomProductId, sku, newStock));
+            break;
+          }
+```
+
+新:
+```typescript
+          case 'JOOM': {
+            const sku = (l.marketplaceData as any)?.sku || `RAKUDA-${productId}`;
+            const joomProductId = l.marketplaceListingId || (l.marketplaceData as any)?.joomProductId;
+            if (joomProductId) tasks.push(
+              getJoomWarehousesClient().updateProductAvailability(
+                { id: joomProductId },
+                { items: [{ variantSku: sku, inventory: newStock }] }
+              )
+            );
+            break;
+          }
+```
+
+## 重要ルール
+- eBay, Etsy, Shopify関連のコードは一切変更しない
+- v3 APIはエラー時にthrowする設計。旧コードで `res.success` をチェックしていた箇所は、try/catchのcatchで処理済み（syncToAllMarketplacesの外側try/catch）
+- reconcileInventory, getInventorySummary は変更不要

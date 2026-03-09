@@ -1,0 +1,232 @@
+ファイル apps/worker/src/processors/order-sync.ts を以下のように変更してください。
+
+## 変更1: import変更 (line 5)
+
+旧:
+```typescript
+import { JoomApiClient } from '../lib/joom-api';
+```
+
+新:
+```typescript
+import { JoomOrdersClient } from '../lib/joom/orders';
+import type { Order } from '../lib/joom/orders/types';
+```
+
+## 変更2: シングルトン変更 (line 11-19)
+
+旧:
+```typescript
+let joomClient: JoomApiClient | null = null;
+
+function getJoomClient(): JoomApiClient {
+  if (!joomClient) {
+    joomClient = new JoomApiClient();
+  }
+  return joomClient;
+}
+```
+
+新:
+```typescript
+let joomClient: JoomOrdersClient | null = null;
+
+function getJoomClient(): JoomOrdersClient {
+  if (!joomClient) {
+    joomClient = new JoomOrdersClient();
+  }
+  return joomClient;
+}
+```
+
+## 変更3: Joom注文取得のAPI呼び出し変更 (line 211-222)
+
+旧:
+```typescript
+    if (marketplace === 'joom') {
+      // Joomから注文を取得
+      const joom = getJoomClient();
+      const response = await joom.getOrders({
+        since: sinceDate.toISOString(),
+        limit: maxOrders,
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Failed to fetch orders from Joom');
+      }
+      fetchedOrders = response.data.orders || [];
+```
+
+新:
+```typescript
+    if (marketplace === 'joom') {
+      // Joomから注文を取得（v3 API）
+      const joom = getJoomClient();
+      const response = await joom.retrieveOrders({
+        updatedFrom: sinceDate.toISOString(),
+        limit: maxOrders,
+      });
+
+      // v3 APIはエラー時にthrowするため、ここに到達すれば成功
+      fetchedOrders = response.data || [];
+```
+
+## 変更4: JoomOrder型をv3 Order型に合わせて変更 (line 53-102の独自JoomOrder interfaceを削除)
+
+旧のJoomOrder interfaceを削除して、v3のOrder型を使う。
+
+旧:
+```typescript
+// Joom注文のレスポンス型
+interface JoomOrder {
+  id: string;
+  orderId?: string;
+  order_id?: string;
+  status: string;
+  createdAt?: string;
+  created_at?: string;
+  total?: {
+    amount: number;
+    currency: string;
+  };
+  totalAmount?: number;
+  shipping?: {
+    cost?: number;
+    address?: {
+      name?: string;
+      street?: string;
+      city?: string;
+      state?: string;
+      country?: string;
+      postalCode?: string;
+      postal_code?: string;
+    };
+  };
+  shippingAddress?: {
+    name?: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    postal_code?: string;
+  };
+  buyer?: {
+    username?: string;
+    name?: string;
+  };
+  buyerUsername?: string;
+  items?: Array<{
+    productId?: string;
+    product_id?: string;
+    sku?: string;
+    title?: string;
+    name?: string;
+    quantity?: number;
+    price?: number;
+    unitPrice?: number;
+    unit_price?: number;
+  }>;
+}
+```
+
+新（削除してコメントに置き換え）:
+```typescript
+// Joom注文型はv3 Order型を使用（../lib/joom/orders/types からimport）
+```
+
+## 変更5: fetchedOrders の型を調整 (line 209)
+
+旧:
+```typescript
+    let fetchedOrders: Array<JoomOrder | EbayOrder> = [];
+```
+
+新:
+```typescript
+    let fetchedOrders: Array<Order | EbayOrder> = [];
+```
+
+## 変更6: Joom注文のマッピングをv3 Order型に合わせる (line 258-289)
+
+旧:
+```typescript
+      if (marketplace === 'joom') {
+        const joomOrder = fetchedOrder as JoomOrder;
+        marketplaceOrderId = joomOrder.orderId || joomOrder.order_id || joomOrder.id;
+        orderStatus = mapJoomStatus(joomOrder.status);
+        paymentStatus = mapJoomPaymentStatus(joomOrder.status);
+
+        const shippingAddr = joomOrder.shippingAddress || joomOrder.shipping?.address || {};
+        shippingAddress = {
+          street: shippingAddr.street || '',
+          city: shippingAddr.city || '',
+          state: shippingAddr.state || '',
+          country: shippingAddr.country || '',
+          postalCode: shippingAddr.postalCode || shippingAddr.postal_code || '',
+        };
+
+        total = joomOrder.total?.amount || joomOrder.totalAmount || 0;
+        shippingCost = joomOrder.shipping?.cost || 0;
+        subtotal = total - shippingCost;
+        buyerUsername = joomOrder.buyer?.username || joomOrder.buyerUsername || 'unknown';
+        buyerName = joomOrder.buyer?.name || '';
+        orderedAt = new Date(joomOrder.createdAt || joomOrder.created_at || Date.now());
+        currency = joomOrder.total?.currency || 'USD';
+        marketplaceFee = total * 0.15; // Joom手数料 15%推定
+
+        if (joomOrder.items) {
+          items = joomOrder.items.map(item => ({
+            sku: item.sku || item.productId || item.product_id || 'unknown',
+            title: item.title || item.name || 'Unknown Item',
+            quantity: item.quantity || 1,
+            unitPrice: item.unitPrice || item.unit_price || item.price || 0,
+          }));
+        }
+```
+
+新（v3 Order型に準拠。v3 Orderはフラット構造でcamelCaseのみ）:
+```typescript
+      if (marketplace === 'joom') {
+        const joomOrder = fetchedOrder as Order;
+        marketplaceOrderId = joomOrder.id;
+        orderStatus = mapJoomStatus(joomOrder.status);
+        paymentStatus = mapJoomPaymentStatus(joomOrder.status);
+
+        const shippingAddr = joomOrder.shippingAddress || {};
+        shippingAddress = {
+          street: shippingAddr.streetAddress1 || '',
+          city: shippingAddr.city || '',
+          state: shippingAddr.state || '',
+          country: shippingAddr.country || '',
+          postalCode: shippingAddr.postalCode || shippingAddr.zipCode || '',
+        };
+
+        // v3 Order uses Money (string) for prices via priceInfo
+        const totalCostStr = joomOrder.priceInfo?.totalCost || '0';
+        const shippingStr = joomOrder.priceInfo?.shipping || '0';
+        total = parseFloat(totalCostStr);
+        shippingCost = parseFloat(shippingStr);
+        subtotal = total - shippingCost;
+        buyerUsername = 'unknown'; // v3 Order doesn't expose buyer info
+        buyerName = shippingAddr.name || '';
+        orderedAt = new Date(joomOrder.orderTimestamp);
+        currency = joomOrder.currency || 'USD';
+        marketplaceFee = total * 0.15; // Joom手数料 15%推定
+
+        // v3 Order has single product per order
+        if (joomOrder.product) {
+          items = [{
+            sku: joomOrder.product.sku || joomOrder.product.variantSku || joomOrder.product.id,
+            title: joomOrder.product.name || 'Unknown Item',
+            quantity: joomOrder.quantity || 1,
+            unitPrice: parseFloat(joomOrder.priceInfo?.price || '0'),
+          }];
+        }
+```
+
+## 重要ルール
+- eBay関連のコードは一切変更しない
+- mapJoomStatus, mapJoomPaymentStatus 関数は変更しない（ただしv3のstatusマッピングを追加してもよい）
+- Money型はstring。parseFloatで数値変換する
+- 変更後、他の部分（DBオペレーション等）はそのまま維持

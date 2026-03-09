@@ -1,11 +1,19 @@
 import { prisma, Prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { ebayApi } from './ebay-api';
-import { joomApi } from './joom-api';
+import { JoomWarehousesClient } from './joom/warehouses';
 import { etsyApi } from './etsy-api';
 import { shopifyApi } from './shopify-api';
 
 const log = logger.child({ module: 'inventory-manager' });
+
+let joomWarehousesClient: JoomWarehousesClient | null = null;
+function getJoomWarehousesClient(): JoomWarehousesClient {
+  if (!joomWarehousesClient) {
+    joomWarehousesClient = new JoomWarehousesClient();
+  }
+  return joomWarehousesClient;
+}
 
 type InventoryEventType = 'SALE' | 'RESTOCK' | 'ADJUSTMENT' | 'RETURN' | 'SYNC' | 'RESERVED';
 
@@ -129,12 +137,15 @@ export class InventoryManager {
     if (grouped['JOOM']) {
       tasks.push((async () => {
         try {
+          const joom = getJoomWarehousesClient();
           for (const listing of grouped['JOOM']) {
             const sku = (listing.marketplaceData as any)?.sku || `RAKUDA-${productId}`;
             const joomProductId = listing.marketplaceListingId || (listing.marketplaceData as any)?.joomProductId;
             if (!joomProductId) throw new Error('Missing Joom productId');
-            const res = await joomApi.updateInventory(joomProductId, sku, newStock);
-            if (!res.success) throw new Error(res.error?.message || 'Joom update failed');
+            await joom.updateProductAvailability(
+              { id: joomProductId },
+              { items: [{ variantSku: sku, inventory: newStock }] }
+            );
           }
           await updateSyncState('JOOM', true);
         } catch (e: any) {
@@ -241,7 +252,12 @@ export class InventoryManager {
           case 'JOOM': {
             const sku = (l.marketplaceData as any)?.sku || `RAKUDA-${productId}`;
             const joomProductId = l.marketplaceListingId || (l.marketplaceData as any)?.joomProductId;
-            if (joomProductId) tasks.push(joomApi.updateInventory(joomProductId, sku, 0));
+            if (joomProductId) tasks.push(
+              getJoomWarehousesClient().updateProductAvailability(
+                { id: joomProductId },
+                { items: [{ variantSku: sku, inventory: 0 }] }
+              )
+            );
             break;
           }
           case 'ETSY': {
@@ -281,7 +297,12 @@ export class InventoryManager {
           case 'JOOM': {
             const sku = (l.marketplaceData as any)?.sku || `RAKUDA-${productId}`;
             const joomProductId = l.marketplaceListingId || (l.marketplaceData as any)?.joomProductId;
-            if (joomProductId) tasks.push(joomApi.updateInventory(joomProductId, sku, newStock));
+            if (joomProductId) tasks.push(
+              getJoomWarehousesClient().updateProductAvailability(
+                { id: joomProductId },
+                { items: [{ variantSku: sku, inventory: newStock }] }
+              )
+            );
             break;
           }
           case 'ETSY': {

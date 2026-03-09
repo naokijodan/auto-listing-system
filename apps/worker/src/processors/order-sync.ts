@@ -2,18 +2,19 @@ import { Job } from 'bullmq';
 import { prisma } from '@rakuda/database';
 import { Marketplace, OrderStatus, PaymentStatus, FulfillmentStatus } from '@prisma/client';
 import { logger } from '@rakuda/logger';
-import { JoomApiClient } from '../lib/joom-api';
+import { JoomOrdersClient } from '../lib/joom/orders';
+import type { Order } from '../lib/joom/orders/types';
 import { EbayApiClient, EbayOrder } from '../lib/ebay-api';
 
 const log = logger.child({ processor: 'order-sync' });
 
 // APIクライアントのシングルトン
-let joomClient: JoomApiClient | null = null;
+let joomClient: JoomOrdersClient | null = null;
 let ebayClient: EbayApiClient | null = null;
 
-function getJoomClient(): JoomApiClient {
+function getJoomClient(): JoomOrdersClient {
   if (!joomClient) {
-    joomClient = new JoomApiClient();
+    joomClient = new JoomOrdersClient();
   }
   return joomClient;
 }
@@ -49,57 +50,7 @@ export interface OrderSyncJobResult {
   timestamp: string;
 }
 
-// Joom注文のレスポンス型
-interface JoomOrder {
-  id: string;
-  orderId?: string;
-  order_id?: string;
-  status: string;
-  createdAt?: string;
-  created_at?: string;
-  total?: {
-    amount: number;
-    currency: string;
-  };
-  totalAmount?: number;
-  shipping?: {
-    cost?: number;
-    address?: {
-      name?: string;
-      street?: string;
-      city?: string;
-      state?: string;
-      country?: string;
-      postalCode?: string;
-      postal_code?: string;
-    };
-  };
-  shippingAddress?: {
-    name?: string;
-    street?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-    postal_code?: string;
-  };
-  buyer?: {
-    username?: string;
-    name?: string;
-  };
-  buyerUsername?: string;
-  items?: Array<{
-    productId?: string;
-    product_id?: string;
-    sku?: string;
-    title?: string;
-    name?: string;
-    quantity?: number;
-    price?: number;
-    unitPrice?: number;
-    unit_price?: number;
-  }>;
-}
+// Joom v3 Order type imported from ../lib/joom/orders/types
 
 /**
  * Joomの注文ステータスをシステムステータスにマッピング
@@ -206,20 +157,16 @@ export async function processOrderSyncJob(
     sinceDate.setDate(sinceDate.getDate() - sinceDays);
     const dbMarketplace = marketplace === 'joom' ? 'JOOM' : 'EBAY';
 
-    let fetchedOrders: Array<JoomOrder | EbayOrder> = [];
+    let fetchedOrders: Array<Order | EbayOrder> = [];
 
     if (marketplace === 'joom') {
       // Joomから注文を取得
       const joom = getJoomClient();
-      const response = await joom.getOrders({
-        since: sinceDate.toISOString(),
+      const response = await joom.retrieveOrders({
+        updatedFrom: sinceDate.toISOString(),
         limit: maxOrders,
       });
-
-      if (!response.success || !response.data) {
-        throw new Error(response.error?.message || 'Failed to fetch orders from Joom');
-      }
-      fetchedOrders = response.data.orders || [];
+      fetchedOrders = response.data?.items || [];
     } else {
       // eBayから注文を取得
       const ebay = getEbayClient();
@@ -256,37 +203,36 @@ export async function processOrderSyncJob(
       let items: Array<{ sku: string; title: string; quantity: number; unitPrice: number }> = [];
 
       if (marketplace === 'joom') {
-        const joomOrder = fetchedOrder as JoomOrder;
-        marketplaceOrderId = joomOrder.orderId || joomOrder.order_id || joomOrder.id;
+        const joomOrder = fetchedOrder as Order;
+        marketplaceOrderId = joomOrder.id;
         orderStatus = mapJoomStatus(joomOrder.status);
         paymentStatus = mapJoomPaymentStatus(joomOrder.status);
 
-        const shippingAddr = joomOrder.shippingAddress || joomOrder.shipping?.address || {};
+        const shippingAddr = joomOrder.shippingAddress || {};
         shippingAddress = {
-          street: shippingAddr.street || '',
+          street: shippingAddr.streetAddress1 || '',
           city: shippingAddr.city || '',
           state: shippingAddr.state || '',
           country: shippingAddr.country || '',
-          postalCode: shippingAddr.postalCode || shippingAddr.postal_code || '',
+          postalCode: shippingAddr.postalCode || shippingAddr.zipCode || '',
         };
 
-        total = joomOrder.total?.amount || joomOrder.totalAmount || 0;
-        shippingCost = joomOrder.shipping?.cost || 0;
+        total = parseFloat(joomOrder.priceInfo.totalCost);
+        shippingCost = parseFloat(joomOrder.priceInfo.shipping);
         subtotal = total - shippingCost;
-        buyerUsername = joomOrder.buyer?.username || joomOrder.buyerUsername || 'unknown';
-        buyerName = joomOrder.buyer?.name || '';
-        orderedAt = new Date(joomOrder.createdAt || joomOrder.created_at || Date.now());
-        currency = joomOrder.total?.currency || 'USD';
+        buyerUsername = 'unknown';
+        const buyerNameFromShipping = shippingAddr.name || '';
+        buyerName = buyerNameFromShipping;
+        orderedAt = new Date(joomOrder.orderTimestamp);
+        currency = joomOrder.currency || 'USD';
         marketplaceFee = total * 0.15; // Joom手数料 15%推定
 
-        if (joomOrder.items) {
-          items = joomOrder.items.map(item => ({
-            sku: item.sku || item.productId || item.product_id || 'unknown',
-            title: item.title || item.name || 'Unknown Item',
-            quantity: item.quantity || 1,
-            unitPrice: item.unitPrice || item.unit_price || item.price || 0,
-          }));
-        }
+        items = [{
+          sku: joomOrder.product.sku || joomOrder.product.variantSku || joomOrder.product.id || 'unknown',
+          title: joomOrder.product.name || 'Unknown Item',
+          quantity: joomOrder.quantity || 1,
+          unitPrice: parseFloat(joomOrder.priceInfo.price),
+        }];
       } else {
         const ebayOrder = fetchedOrder as EbayOrder;
         marketplaceOrderId = ebayOrder.orderId;

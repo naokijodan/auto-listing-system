@@ -2,18 +2,18 @@ import { Job } from 'bullmq';
 import { prisma } from '@rakuda/database';
 import { Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
-import { JoomApiClient } from '../lib/joom-api';
+import { JoomWarehousesClient } from '../lib/joom/warehouses';
 import { EbayApiClient } from '../lib/ebay-api';
 
 const log = logger.child({ processor: 'inventory-sync' });
 
 // APIクライアントのシングルトン
-let joomClient: JoomApiClient | null = null;
+let joomClient: JoomWarehousesClient | null = null;
 let ebayClient: EbayApiClient | null = null;
 
-function getJoomClient(): JoomApiClient {
+function getJoomClient(): JoomWarehousesClient {
   if (!joomClient) {
-    joomClient = new JoomApiClient();
+    joomClient = new JoomWarehousesClient();
   }
   return joomClient;
 }
@@ -172,13 +172,17 @@ export async function processInventorySyncJob(
         let result: { success: boolean; error?: { message: string } };
 
         if (marketplace === 'joom' && joom) {
-          // Joom: productId + variantSku で更新
+          // Joom v3: Warehouses API で在庫更新
           const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
-          result = await joom.updateInventory(
-            listing.marketplaceListingId!,
-            sku,
-            localQuantity
-          );
+          try {
+            await joom.updateProductAvailability(
+              { id: listing.marketplaceListingId! },
+              { items: [{ variantSku: sku, inventory: localQuantity }] }
+            );
+            result = { success: true };
+          } catch (error: any) {
+            result = { success: false, error: { message: error.message } };
+          }
         } else if (marketplace === 'ebay' && ebay) {
           // eBay: SKUで更新
           const sku = marketplaceData?.sku || listing.marketplaceListingId!;
@@ -320,11 +324,15 @@ export async function syncListingInventory(
     if (listing.marketplace === 'JOOM') {
       const joom = getJoomClient();
       const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
-      result = await joom.updateInventory(
-        listing.marketplaceListingId,
-        sku,
-        quantity
-      );
+      try {
+        await joom.updateProductAvailability(
+          { id: listing.marketplaceListingId! },
+          { items: [{ variantSku: sku, inventory: quantity }] }
+        );
+        result = { success: true };
+      } catch (error: any) {
+        result = { success: false, error: { message: error.message } };
+      }
     } else {
       // eBay
       const ebay = getEbayClient();

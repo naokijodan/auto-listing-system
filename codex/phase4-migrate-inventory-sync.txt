@@ -1,0 +1,104 @@
+ファイル apps/worker/src/processors/inventory-sync.ts を以下のように変更してください。
+
+## 変更1: import変更 (line 5)
+
+旧:
+```typescript
+import { JoomApiClient } from '../lib/joom-api';
+```
+
+新:
+```typescript
+import { JoomWarehousesClient } from '../lib/joom/warehouses';
+```
+
+## 変更2: シングルトン変更 (line 11-19)
+
+旧:
+```typescript
+let joomClient: JoomApiClient | null = null;
+
+function getJoomClient(): JoomApiClient {
+  if (!joomClient) {
+    joomClient = new JoomApiClient();
+  }
+  return joomClient;
+}
+```
+
+新:
+```typescript
+let joomClient: JoomWarehousesClient | null = null;
+
+function getJoomClient(): JoomWarehousesClient {
+  if (!joomClient) {
+    joomClient = new JoomWarehousesClient();
+  }
+  return joomClient;
+}
+```
+
+## 変更3: processInventorySyncJob内のJoom在庫更新 (line 174-181)
+
+旧:
+```typescript
+        if (marketplace === 'joom' && joom) {
+          // Joom: productId + variantSku で更新
+          const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+          result = await joom.updateInventory(
+            listing.marketplaceListingId!,
+            sku,
+            localQuantity
+          );
+```
+
+新（v3 Warehouses API: updateProductAvailability）:
+```typescript
+        if (marketplace === 'joom' && joom) {
+          // Joom v3: Warehouses API で在庫更新
+          const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+          try {
+            await joom.updateProductAvailability(
+              { id: listing.marketplaceListingId! },
+              { items: [{ variantSku: sku, inventory: localQuantity }] }
+            );
+            result = { success: true };
+          } catch (error: any) {
+            result = { success: false, error: { message: error.message } };
+          }
+```
+
+## 変更4: syncListingInventory関数内のJoom在庫更新 (line 320-327)
+
+旧:
+```typescript
+    if (listing.marketplace === 'JOOM') {
+      const joom = getJoomClient();
+      const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+      result = await joom.updateInventory(
+        listing.marketplaceListingId,
+        sku,
+        quantity
+      );
+```
+
+新:
+```typescript
+    if (listing.marketplace === 'JOOM') {
+      const joom = getJoomClient();
+      const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+      try {
+        await joom.updateProductAvailability(
+          { id: listing.marketplaceListingId! },
+          { items: [{ variantSku: sku, inventory: quantity }] }
+        );
+        result = { success: true };
+      } catch (error: any) {
+        result = { success: false, error: { message: error.message } };
+      }
+```
+
+## 重要ルール
+- eBay関連のコードは一切変更しない
+- v3 APIはエラー時にthrowする設計。旧コードの `result.success` パターンを維持するため、try/catchでラップする
+- `listing.marketplaceListingId!` の非nullアサーションは元のコードにもあるのでそのまま

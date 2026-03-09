@@ -3,18 +3,19 @@ import { prisma } from '@rakuda/database';
 import { Marketplace } from '@prisma/client';
 import { logger } from '@rakuda/logger';
 import { PricingPipeline } from '../lib/pricing';
-import { JoomApiClient } from '../lib/joom-api';
+import { JoomProductsClient } from '../lib/joom/products';
+import type { Money } from '../lib/joom/shared-types';
 import { EbayApiClient } from '../lib/ebay-api';
 
 const log = logger.child({ processor: 'price-sync' });
 
 // APIクライアントのシングルトン
-let joomClient: JoomApiClient | null = null;
+let joomClient: JoomProductsClient | null = null;
 let ebayClient: EbayApiClient | null = null;
 
-function getJoomClient(): JoomApiClient {
+function getJoomClient(): JoomProductsClient {
   if (!joomClient) {
-    joomClient = new JoomApiClient();
+    joomClient = new JoomProductsClient();
   }
   return joomClient;
 }
@@ -186,14 +187,12 @@ export async function processPriceSyncJob(
 
               if (listing.marketplace === 'JOOM') {
                 const joom = getJoomClient();
-                // JoomのSKUはmarketplaceDataから取得するか、デフォルト形式を使用
                 const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
-                const result = await joom.updatePrice(
-                  listing.marketplaceListingId,
-                  sku,
-                  newPrice
-                );
-                if (result.success) {
+                try {
+                  await joom.updateProduct(
+                    { id: listing.marketplaceListingId! },
+                    { variants: [{ sku, price: String(newPrice) as Money }] }
+                  );
                   marketplaceSyncSuccess = true;
                   marketplaceSynced++;
                   log.info({
@@ -202,13 +201,13 @@ export async function processPriceSyncJob(
                     marketplace: 'JOOM',
                     newPrice,
                   });
-                } else {
+                } catch (syncErr: any) {
                   marketplaceFailed++;
                   log.warn({
                     type: 'marketplace_price_sync_failed',
                     listingId: listing.id,
                     marketplace: 'JOOM',
-                    error: result.error?.message,
+                    error: syncErr.message,
                   });
                 }
               } else if (listing.marketplace === 'EBAY') {

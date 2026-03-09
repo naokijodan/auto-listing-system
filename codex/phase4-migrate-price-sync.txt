@@ -1,0 +1,108 @@
+ファイル apps/worker/src/processors/price-sync.ts を以下のように変更してください。
+
+## 変更1: import変更 (line 6)
+
+旧:
+```typescript
+import { JoomApiClient } from '../lib/joom-api';
+```
+
+新:
+```typescript
+import { JoomProductsClient } from '../lib/joom/products';
+import type { Money } from '../lib/joom/shared-types';
+```
+
+## 変更2: シングルトン変更 (line 12-20)
+
+旧:
+```typescript
+let joomClient: JoomApiClient | null = null;
+
+function getJoomClient(): JoomApiClient {
+  if (!joomClient) {
+    joomClient = new JoomApiClient();
+  }
+  return joomClient;
+}
+```
+
+新:
+```typescript
+let joomClient: JoomProductsClient | null = null;
+
+function getJoomClient(): JoomProductsClient {
+  if (!joomClient) {
+    joomClient = new JoomProductsClient();
+  }
+  return joomClient;
+}
+```
+
+## 変更3: Joom価格同期のAPI呼び出し変更 (line 187-213)
+
+旧:
+```typescript
+              if (listing.marketplace === 'JOOM') {
+                const joom = getJoomClient();
+                // JoomのSKUはmarketplaceDataから取得するか、デフォルト形式を使用
+                const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+                const result = await joom.updatePrice(
+                  listing.marketplaceListingId,
+                  sku,
+                  newPrice
+                );
+                if (result.success) {
+                  marketplaceSyncSuccess = true;
+                  marketplaceSynced++;
+                  log.info({
+                    type: 'marketplace_price_synced',
+                    listingId: listing.id,
+                    marketplace: 'JOOM',
+                    newPrice,
+                  });
+                } else {
+                  marketplaceFailed++;
+                  log.warn({
+                    type: 'marketplace_price_sync_failed',
+                    listingId: listing.id,
+                    marketplace: 'JOOM',
+                    error: result.error?.message,
+                  });
+                }
+```
+
+新（v3 Products API: updateProduct with variants）:
+```typescript
+              if (listing.marketplace === 'JOOM') {
+                const joom = getJoomClient();
+                const sku = marketplaceData?.variantSku || marketplaceData?.sku || `${listing.marketplaceListingId}-V1`;
+                try {
+                  await joom.updateProduct(
+                    { id: listing.marketplaceListingId! },
+                    { variants: [{ sku, price: String(newPrice) as Money }] }
+                  );
+                  marketplaceSyncSuccess = true;
+                  marketplaceSynced++;
+                  log.info({
+                    type: 'marketplace_price_synced',
+                    listingId: listing.id,
+                    marketplace: 'JOOM',
+                    newPrice,
+                  });
+                } catch (syncErr: any) {
+                  marketplaceFailed++;
+                  log.warn({
+                    type: 'marketplace_price_sync_failed',
+                    listingId: listing.id,
+                    marketplace: 'JOOM',
+                    error: syncErr.message,
+                  });
+                }
+```
+
+## 重要ルール
+- eBay関連のコードは一切変更しない
+- Money型はstring。`String(newPrice) as Money` で変換する
+- v3 APIはエラー時にthrowする設計なのでtry/catchを使う
+- recalculateListingPrice関数は変更不要（マーケットプレイスAPIを呼ばない）
