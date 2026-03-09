@@ -1,6 +1,6 @@
 # RAKUDA 既知の問題と再発防止策
 
-最終更新: 2026-03-09 (Session 23)
+最終更新: 2026-03-10 (Session 24)
 
 ## 使い方
 新しいセッション開始時に必ずこのファイルを確認すること。
@@ -207,6 +207,19 @@
 ### 7-14: Joom画像 "Invalid aspect ratio" エラー
 - **症状**: Joom Merchant Portalで画像にエラーアイコン表示。"Invalid aspect ratio"
 - **原因**: Joom API v3は画像に「square or almost square」を要求。テスト出品で1000x1620（比率1:1.62）の縦長画像を送信→拒否
-- **修正**: image-optimizer.tsに`squarePadding`オプション追加。`fit: 'contain'` + 白背景で正方形にパディング。processImageForJoomとImagePipelineServiceで使用
-- **教訓**: Joom画像要件「550x550 minimum」だけでなく「square or almost square」のアスペクト比制約も必須
-- **解決済み**: commit 3ff77681
+- **修正**: image-optimizer.tsに`squarePadding`オプション追加。`fit: 'contain'` + 白背景で正方形にパディング
+- **追加修正**: `addWhiteBackground()`がsharpパイプラインを消費し、resizeが無効化される問題を修正。squarePadding時はaddWhiteBackgroundをスキップ
+- **教訓**: sharpのmetadata()はパイプラインを消費する。同一インスタンスでmetadata()→toBuffer()を連続呼びすると、中間のresize等が適用されない
+- **解決済み**: commit 3ff77681, 9bd32abb, 4ca2cd47
+
+### 7-15: JoomBaseClient durationMs フィールド名不一致
+- **症状**: Joom API呼び出し後のログ記録でPrismaClientValidationError
+- **原因**: base-client.tsが`durationMs`を使用、Prismaスキーマは`duration`
+- **影響**: APIログが記録されないだけで出品自体には影響なし
+- **解決済み**: commit pending (同セッション)
+
+### 7-16: Joom商品重複作成エラー (product_already_exists)
+- **症状**: 同じSKUで再出品しようとすると400エラー
+- **原因**: publishToJoomがcreateProduct固定で、既存商品のupdateに対応していない
+- **対応**: publishToJoom内でproduct_already_existsエラー時にupdateProductにフォールバックする修正が必要
+- **ステータス**: 未対応（テスト出品では手動で旧商品を削除して回避）

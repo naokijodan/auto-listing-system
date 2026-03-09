@@ -129,7 +129,7 @@ export class JoomBaseClient {
           responseBody: responseBody ?? null,
           success,
           errorMessage: errorMessage ?? null,
-          durationMs: duration,
+          duration,
           joomProductId: joomProductId ?? null,
           productId: productId ?? null,
         } as any,
