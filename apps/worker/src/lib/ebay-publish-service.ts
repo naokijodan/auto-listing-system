@@ -93,6 +93,13 @@ export class EbayPublishService {
       return;
     }
 
+    // トランザクション前に現在のmarketplaceDataを取得
+    const currentListing = await prisma.listing.findUnique({
+      where: { id: listingId },
+      select: { marketplaceData: true },
+    });
+    const existingData = ((currentListing?.marketplaceData as Record<string, unknown>) || {});
+
     try {
       const imageResult = await imagePipelineService.processImages(listing.productId, listing.product.images);
 
@@ -107,7 +114,16 @@ export class EbayPublishService {
         }),
         prisma.listing.update({
           where: { id: listingId },
-          data: { status: 'PENDING_PUBLISH' },
+          data: {
+            status: 'PENDING_PUBLISH',
+            marketplaceData: {
+              ...existingData,
+              ebayImages:
+                imageResult.optimized.length > 0
+                  ? imageResult.optimized
+                  : imageResult.buffered,
+            },
+          },
         }),
       ]);
 
@@ -131,7 +147,13 @@ export class EbayPublishService {
         }),
         prisma.listing.update({
           where: { id: listingId },
-          data: { status: 'PENDING_PUBLISH' },
+          data: {
+            status: 'PENDING_PUBLISH',
+            marketplaceData: {
+              ...existingData,
+              ebayImages: listing.product.images,
+            },
+          },
         }),
       ]);
 

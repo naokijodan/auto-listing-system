@@ -120,10 +120,18 @@ async function processCreateInventoryItem(listingId: string): Promise<any> {
   // SKU生成（既存があれば使用）
   const sku = marketplaceData.sku || `RAKUDA-${listing.id}`;
 
-  // 画像URL取得（processedImagesを優先、なければimages）
-  const allImages = product.processedImages.length > 0
-    ? product.processedImages
-    : product.images;
+  // 画像URL取得（優先順位: optimizedImages > processedImages > images）
+  const task = await prisma.enrichmentTask.findFirst({
+    where: { productId: product.id },
+    orderBy: { updatedAt: 'desc' },
+    select: { optimizedImages: true },
+  });
+
+  const allImages = (task?.optimizedImages && task.optimizedImages.length > 0)
+    ? (task.optimizedImages as string[])
+    : (product.processedImages.length > 0
+      ? product.processedImages
+      : product.images);
   const imageUrls = allImages.slice(0, 12); // eBayは最大12枚
 
   // ロケーション確認/作成
