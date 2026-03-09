@@ -42,14 +42,21 @@ export class JoomBaseClient {
     this.timestamps = []
   }
 
-  private async getCredentials(): Promise<JoomApiConfig> {
-    const creds = await prisma.marketplaceCredential.findFirst({
+  private async getCredentials(): Promise<JoomApiConfig & { tokenExpiresAt?: Date | null }> {
+    const row = await prisma.marketplaceCredential.findFirst({
       where: { marketplace: 'JOOM', isActive: true },
     })
-    if (!creds) {
+    if (!row) {
       throw makeError('Joom credentials not found or inactive')
     }
-    return creds as unknown as JoomApiConfig
+    const creds = row.credentials as Record<string, any>
+    return {
+      clientId: creds.clientId,
+      clientSecret: creds.clientSecret,
+      accessToken: creds.accessToken,
+      refreshToken: creds.refreshToken,
+      tokenExpiresAt: row.tokenExpiresAt,
+    } as JoomApiConfig & { tokenExpiresAt?: Date | null }
   }
 
   private async ensureAccessToken(): Promise<string> {
@@ -58,12 +65,12 @@ export class JoomBaseClient {
       return this.cachedToken
     }
     const cfg = await this.getCredentials()
-    const token = (cfg as any).accessToken as string | undefined
+    const token = cfg.accessToken
     if (!token) {
       throw makeError('Joom access token not configured')
     }
-    // Use provided expiry if available, otherwise cache for a short TTL
-    const expiresAt = (cfg as any).accessTokenExpiresAt || (cfg as any).expiresAt
+    // Use DB row's tokenExpiresAt for cache expiry
+    const expiresAt = (cfg as any).tokenExpiresAt
     const expiryMs = expiresAt ? new Date(expiresAt as any).getTime() : now + 60_000
     this.cachedToken = token
     this.cachedTokenExpiry = Math.max(now + 30_000, expiryMs) // ensure minimal TTL
@@ -234,4 +241,3 @@ export class JoomBaseClient {
 }
 
 export default JoomBaseClient
-
