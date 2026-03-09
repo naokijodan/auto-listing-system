@@ -203,3 +203,10 @@
 - **原因**: マーチャントがUnverified Tierのため、商品審査が厳しい
 - **対応**: Joom Merchant PortalでTrusted Tier取得を申請する必要がある
 - **ステータス**: 未対応
+
+### 7-14: Joom画像 "Invalid aspect ratio" エラー
+- **症状**: Joom Merchant Portalで画像にエラーアイコン表示。"Invalid aspect ratio"
+- **原因**: Joom API v3は画像に「square or almost square」を要求。テスト出品で1000x1620（比率1:1.62）の縦長画像を送信→拒否
+- **修正**: image-optimizer.tsに`squarePadding`オプション追加。`fit: 'contain'` + 白背景で正方形にパディング。processImageForJoomとImagePipelineServiceで使用
+- **教訓**: Joom画像要件「550x550 minimum」だけでなく「square or almost square」のアスペクト比制約も必須
+- **解決済み**: commit 3ff77681
