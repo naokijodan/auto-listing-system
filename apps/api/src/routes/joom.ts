@@ -810,4 +810,135 @@ router.post('/emergency-disable-all', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * TEMPORARY: Joomテスト出品クリーンアップ
+ * Joom API v3に直接アクセスして商品を一覧・削除する
+ * 使用後にこのエンドポイントを削除すること
+ */
+router.get('/cleanup/list-joom-products', async (req: Request, res: Response) => {
+  try {
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: { marketplace: 'JOOM', isActive: true },
+    });
+    if (!credential) {
+      return res.status(400).json({ error: 'Joom credentials not found' });
+    }
+    const creds = (credential.credentials || credential) as any;
+    const accessToken = creds.accessToken || (credential as any).accessToken;
+    if (!accessToken) {
+      return res.status(400).json({ error: 'No access token' });
+    }
+
+    const resp = await fetch('https://api-merchant.joom.com/api/v3/products/multi?limit=100', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' },
+    });
+
+    const body = await resp.text();
+    let data: any;
+    try { data = JSON.parse(body); } catch { data = body; }
+
+    res.json({
+      status: resp.status,
+      productCount: Array.isArray(data?.data) ? data.data.length : 'unknown',
+      products: Array.isArray(data?.data)
+        ? data.data.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            enabled: p.enabled,
+            hasActiveVersion: p.hasActiveVersion,
+          }))
+        : data,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/cleanup/remove-joom-products', async (req: Request, res: Response) => {
+  try {
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: { marketplace: 'JOOM', isActive: true },
+    });
+    if (!credential) {
+      return res.status(400).json({ error: 'Joom credentials not found' });
+    }
+    const creds = (credential.credentials || credential) as any;
+    const accessToken = creds.accessToken || (credential as any).accessToken;
+    if (!accessToken) {
+      return res.status(400).json({ error: 'No access token' });
+    }
+
+    // First list all products
+    const listResp = await fetch('https://api-merchant.joom.com/api/v3/products/multi?limit=100', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' },
+    });
+    const listData = await listResp.json() as any;
+    const products = Array.isArray(listData?.data) ? listData.data : [];
+
+    const results: any[] = [];
+    for (const product of products) {
+      // Try remove first
+      try {
+        const removeResp = await fetch(
+          `https://api-merchant.joom.com/api/v3/products/remove?id=${product.id}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ reason: 'stopSelling' }),
+          }
+        );
+        const removeBody = await removeResp.text();
+        if (removeResp.ok) {
+          results.push({ id: product.id, name: product.name, action: 'removed', status: removeResp.status });
+        } else {
+          // Fallback: disable the product
+          const disableResp = await fetch(
+            `https://api-merchant.joom.com/api/v3/products/update?id=${product.id}`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify({ enabled: false }),
+            }
+          );
+          const disableBody = await disableResp.text();
+          results.push({
+            id: product.id,
+            name: product.name,
+            action: disableResp.ok ? 'disabled' : 'failed',
+            removeError: removeBody.substring(0, 200),
+            disableStatus: disableResp.status,
+          });
+        }
+      } catch (err: any) {
+        results.push({ id: product.id, name: product.name, action: 'error', error: err.message });
+      }
+    }
+
+    // Also update RAKUDA DB listings to ENDED
+    await prisma.listing.updateMany({
+      where: { marketplace: 'JOOM' },
+      data: { status: 'ENDED' as any },
+    });
+
+    res.json({
+      totalProducts: products.length,
+      results,
+      dbUpdated: true,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
