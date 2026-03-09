@@ -838,18 +838,18 @@ router.get('/cleanup/list-joom-products', async (req: Request, res: Response) =>
     let data: any;
     try { data = JSON.parse(body); } catch { data = body; }
 
+    const items = Array.isArray(data?.data?.items) ? data.data.items : (Array.isArray(data?.data) ? data.data : []);
     res.json({
       status: resp.status,
-      productCount: Array.isArray(data?.data) ? data.data.length : 'unknown',
-      products: Array.isArray(data?.data)
-        ? data.data.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            sku: p.sku,
-            enabled: p.enabled,
-            hasActiveVersion: p.hasActiveVersion,
-          }))
-        : data,
+      productCount: items.length,
+      products: items.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        sku: p.sku,
+        enabled: p.enabled,
+        hasActiveVersion: p.hasActiveVersion,
+      })),
+      raw: items.length === 0 ? data : undefined,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -876,7 +876,7 @@ router.post('/cleanup/remove-joom-products', async (req: Request, res: Response)
       headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' },
     });
     const listData = await listResp.json() as any;
-    const products = Array.isArray(listData?.data) ? listData.data : [];
+    const products = Array.isArray(listData?.data?.items) ? listData.data.items : (Array.isArray(listData?.data) ? listData.data : []);
 
     const results: any[] = [];
     for (const product of products) {
