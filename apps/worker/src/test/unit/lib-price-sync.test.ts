@@ -25,7 +25,7 @@ vi.mock('../../lib/pricing', () => ({
   })),
 }));
 
-vi.mock('../../lib/joom-api', () => ({
+vi.mock('../../lib/joom/compat', () => ({
   joomApi: {
     updatePrice: mockJoomUpdatePrice,
   },

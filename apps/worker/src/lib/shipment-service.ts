@@ -10,10 +10,11 @@
 
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
-import { joomApi } from './joom-api';
+import { JoomOrdersClient } from './joom';
 import { alertManager } from './slack-alert';
 
 const log = logger.child({ module: 'shipment-service' });
+const joomOrders = new JoomOrdersClient();
 
 // 配送業者マッピング
 const CARRIER_MAPPING: Record<string, { joom: string; ebay: string }> = {
@@ -115,26 +116,16 @@ export async function processShipment(input: ShipmentInput): Promise<ShipmentRes
     // 2. マーケットプレイスAPIに発送通知を送信
     try {
       if (order.marketplace === 'JOOM') {
-        const apiResult = await joomApi.shipOrder(order.marketplaceOrderId, {
+        await joomOrders.fulfillOrder({ id: order.marketplaceOrderId }, {
           trackingNumber,
-          carrier: carrierMapping.joom,
+          provider: carrierMapping.joom,
         });
-
-        if (apiResult.success) {
-          result.apiSynced = true;
-          log.info({
-            type: 'joom_shipment_synced',
-            orderId,
-            marketplaceOrderId: order.marketplaceOrderId,
-          });
-        } else {
-          result.errors.push(`Joom API error: ${apiResult.error?.message}`);
-          log.error({
-            type: 'joom_shipment_sync_failed',
-            orderId,
-            error: apiResult.error,
-          });
-        }
+        result.apiSynced = true;
+        log.info({
+          type: 'joom_shipment_synced',
+          orderId,
+          marketplaceOrderId: order.marketplaceOrderId,
+        });
       } else if (order.marketplace === 'EBAY') {
         // eBay API連携（既存のebay-api.tsを使用）
         const { ebayApi, isEbayConfigured } = await import('./ebay-api');

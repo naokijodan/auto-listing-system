@@ -3,7 +3,7 @@ import { logger } from '@rakuda/logger';
 import { ebayOrderSyncService } from './ebay-publish-service';
 import { shopifyOrderSyncService } from './shopify-publish-service';
 import { etsyApi } from './etsy-api';
-import { joomApi } from './joom-api';
+import { JoomOrdersClient } from './joom';
 import { inventoryManager } from './inventory-manager';
 
 const log = logger.child({ module: 'order-sync-manager' });
@@ -41,9 +41,9 @@ export class OrderSyncManager {
 
     try {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const res = await joomApi.getOrders({ since, limit: 50 });
-      if (!res.success || !res.data) return { synced, errors: errors + 1 };
-      const orders = res.data.orders || [];
+      const joomOrders = new JoomOrdersClient();
+      const res = await joomOrders.retrieveOrders({ updatedFrom: since, limit: 50 });
+      const orders = (res.data.items || []) as any[];
 
       for (const order of orders) {
         try {

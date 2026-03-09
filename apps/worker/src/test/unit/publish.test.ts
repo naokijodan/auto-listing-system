@@ -72,7 +72,7 @@ vi.mock('@rakuda/config', () => ({
   },
 }));
 
-vi.mock('../../lib/joom-api', () => ({
+vi.mock('../../lib/joom/compat', () => ({
   joomApi: mockJoomApi,
   isJoomConfigured: mockIsJoomConfigured,
 }));

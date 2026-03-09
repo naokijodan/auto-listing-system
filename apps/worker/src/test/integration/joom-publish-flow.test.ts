@@ -50,11 +50,12 @@ vi.mock('../../lib/enrichment-service', () => ({
 }));
 
 // Joom API クライアントをスタブ化（実API呼び出しを防止）
-vi.mock('../../lib/joom-api', () => ({
-  JoomApiClient: vi.fn().mockImplementation(() => ({
+vi.mock('../../lib/joom/products', () => ({
+  JoomProductsClient: vi.fn().mockImplementation(() => ({
     createProduct: vi.fn().mockResolvedValue({ success: true, data: { id: 'joom-prod-123' } }),
     getProduct: vi.fn().mockResolvedValue({ success: true }),
     updateProduct: vi.fn().mockResolvedValue({ success: true }),
+    removeProduct: vi.fn().mockResolvedValue({ success: true }),
   })),
 }));
 

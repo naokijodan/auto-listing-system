@@ -8,7 +8,7 @@ vi.mock('../../lib/ebay-api', () => ({
     getProduct: vi.fn(),
   },
 }));
-vi.mock('../../lib/joom-api', () => ({
+vi.mock('../../lib/joom/compat', () => ({
   joomApi: {
     updateInventory: vi.fn().mockResolvedValue({ success: true }),
   },
@@ -29,7 +29,7 @@ vi.mock('../../lib/shopify-api', () => ({
 import { InventoryManager } from '../../lib/inventory-manager';
 import { MarketplaceRouter } from '../../lib/marketplace-router';
 import { ebayApi } from '../../lib/ebay-api';
-import { joomApi } from '../../lib/joom-api';
+import { joomApi } from '../../lib/joom/compat';
 import { etsyApi } from '../../lib/etsy-api';
 import { shopifyApi } from '../../lib/shopify-api';
 

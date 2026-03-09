@@ -44,7 +44,7 @@ describe('refreshJoomToken (Phase 48)', () => {
   });
 
   it('should return error when credentials not configured', async () => {
-    const { refreshJoomToken } = await import('../../lib/joom-api');
+    const { refreshJoomToken } = await import('../../lib/joom/compat');
 
     vi.mocked(prisma.marketplaceCredential.findFirst).mockResolvedValue(null);
 
@@ -55,7 +55,7 @@ describe('refreshJoomToken (Phase 48)', () => {
   });
 
   it('should return error when refresh token is missing', async () => {
-    const { refreshJoomToken } = await import('../../lib/joom-api');
+    const { refreshJoomToken } = await import('../../lib/joom/compat');
 
     vi.mocked(prisma.marketplaceCredential.findFirst).mockResolvedValue({
       id: '1',
@@ -76,7 +76,7 @@ describe('refreshJoomToken (Phase 48)', () => {
   });
 
   it('should return error when clientId or clientSecret is missing', async () => {
-    const { refreshJoomToken } = await import('../../lib/joom-api');
+    const { refreshJoomToken } = await import('../../lib/joom/compat');
 
     vi.mocked(prisma.marketplaceCredential.findFirst).mockResolvedValue({
       id: '1',
@@ -96,7 +96,7 @@ describe('refreshJoomToken (Phase 48)', () => {
   });
 
   it('should refresh token successfully', async () => {
-    const { refreshJoomToken } = await import('../../lib/joom-api');
+    const { refreshJoomToken } = await import('../../lib/joom/compat');
 
     vi.mocked(prisma.marketplaceCredential.findFirst).mockResolvedValue({
       id: '1',
@@ -136,7 +136,7 @@ describe('refreshJoomToken (Phase 48)', () => {
   });
 
   it('should handle API error response', async () => {
-    const { refreshJoomToken } = await import('../../lib/joom-api');
+    const { refreshJoomToken } = await import('../../lib/joom/compat');
 
     vi.mocked(prisma.marketplaceCredential.findFirst).mockResolvedValue({
       id: '1',
@@ -162,7 +162,7 @@ describe('refreshJoomToken (Phase 48)', () => {
   });
 
   it('should handle network errors', async () => {
-    const { refreshJoomToken } = await import('../../lib/joom-api');
+    const { refreshJoomToken } = await import('../../lib/joom/compat');
 
     vi.mocked(prisma.marketplaceCredential.findFirst).mockResolvedValue({
       id: '1',
@@ -185,7 +185,7 @@ describe('refreshJoomToken (Phase 48)', () => {
   });
 
   it('should preserve existing refresh token if new one not provided', async () => {
-    const { refreshJoomToken } = await import('../../lib/joom-api');
+    const { refreshJoomToken } = await import('../../lib/joom/compat');
 
     vi.mocked(prisma.marketplaceCredential.findFirst).mockResolvedValue({
       id: '1',

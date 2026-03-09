@@ -9,7 +9,7 @@ import {
   BatchProgressInfo,
   MARKETPLACE_PRICE_LIMITS,
 } from '@rakuda/config';
-import { isJoomConfigured } from '../lib/joom-api';
+import { isJoomConfigured } from '../lib/joom/compat';
 import { JoomProductsClient } from '../lib/joom/products';
 import type { CreateProductInput } from '../lib/joom/products';
 import type { Money } from '../lib/joom/shared-types';

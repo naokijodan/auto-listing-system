@@ -59,7 +59,7 @@ vi.mock('../../lib/ebay-api', () => ({
   isEbayConfigured: mockIsEbayConfigured,
 }));
 
-vi.mock('../../lib/joom-api', () => ({
+vi.mock('../../lib/joom/compat', () => ({
   joomApi: mockJoomApi,
   isJoomConfigured: mockIsJoomConfigured,
 }));

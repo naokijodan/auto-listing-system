@@ -40,6 +40,7 @@ export const mockPrisma = {
     findUnique: vi.fn(),
     findFirst: vi.fn(),
     create: vi.fn(),
+    delete: vi.fn(),
   },
   jobLog: {
     findMany: vi.fn(),
@@ -80,6 +81,12 @@ export const mockPrisma = {
     update: vi.fn(),
     upsert: vi.fn(),
   },
+  translationPrompt: {
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    upsert: vi.fn(),
+    delete: vi.fn(),
+  },
   webhookEvent: {
     findMany: vi.fn(),
     findUnique: vi.fn(),
@@ -105,6 +112,10 @@ export const mockPrisma = {
     update: vi.fn(),
     delete: vi.fn(),
     aggregate: vi.fn(),
+  },
+  enrichmentTask: {
+    create: vi.fn(),
+    delete: vi.fn(),
   },
   notificationChannel: {
     findMany: vi.fn(),
@@ -316,6 +327,13 @@ export const mockPrisma = {
   ),
 };
 
+// Simple in-memory store for worker integration tests
+let __mem: {
+  lastProduct: any | null;
+  lastTask: any | null;
+  lastListing: any | null;
+} = { lastProduct: null, lastTask: null, lastListing: null };
+
 // Prisma モジュールをモック
 vi.mock('@rakuda/database', () => ({
   prisma: mockPrisma,
@@ -384,12 +402,229 @@ vi.mock('ioredis', () => ({
   })),
 }));
 
+// Mock @prisma/client used by enrichment package
+vi.mock('@prisma/client', () => {
+  class FakePrismaClient {
+    itemSpecificsField = {
+      findMany: vi.fn(async (args?: any) => {
+        const category = args?.where?.category;
+        if (!category || category === 'Watches') {
+          return [
+            { category: 'Watches', fieldName: 'Brand', fieldType: 'required', priority: 1, notes: '', tagJp: '腕時計, 時計' },
+            { category: 'Watches', fieldName: 'Movement', fieldType: 'required', priority: 2, notes: '', tagJp: '腕時計, 時計' },
+            { category: 'Watches', fieldName: 'Dial Color', fieldType: 'recommended', priority: 3, notes: '', tagJp: '腕時計, 時計' },
+            { category: 'Watches', fieldName: 'Case Size', fieldType: 'recommended', priority: 4, notes: '', tagJp: '腕時計, 時計' },
+          ];
+        }
+        return [];
+      }),
+    };
+    brand = {
+      findMany: vi.fn(async () => [
+        {
+          name: 'Seiko',
+          jpNames: ['セイコー'],
+          categories: ['Watches'],
+          isMaterial: false,
+          parentBrand: null,
+          country: 'Japan',
+        },
+      ]),
+    };
+  }
+  return { PrismaClient: FakePrismaClient };
+});
+
 // デフォルト値を設定
 export function setupDefaultMocks() {
+  // reset memory
+  __mem = { lastProduct: null, lastTask: null, lastListing: null };
   mockPrisma.product.findMany.mockResolvedValue([]);
   mockPrisma.product.count.mockResolvedValue(0);
   mockPrisma.listing.findMany.mockResolvedValue([]);
   mockPrisma.listing.count.mockResolvedValue(0);
+
+  // marketplaceCredential.upsert
+  mockPrisma.marketplaceCredential.upsert.mockResolvedValue({
+    id: '1',
+    marketplace: 'EBAY',
+    name: 'default',
+    isActive: true,
+    credentials: {
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+      refreshToken: 'test-refresh-token',
+    },
+  });
+  mockPrisma.marketplaceCredential.findFirst.mockResolvedValue({
+    id: '1',
+    marketplace: 'EBAY',
+    isActive: true,
+    credentials: {
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+      refreshToken: 'test-refresh-token',
+    },
+  });
+
+  // ebayCategoryMapping.upsert
+  mockPrisma.ebayCategoryMapping.upsert.mockResolvedValue({
+    id: '1',
+    sourceCategory: 'Watches',
+    ebayCategoryId: '31387',
+    ebayCategoryName: 'Wristwatches',
+    itemSpecifics: {},
+    isActive: true,
+  });
+  mockPrisma.ebayCategoryMapping.findUnique.mockImplementation(async (args: any) => {
+    const where = args?.where || {};
+    if (where.sourceCategory === 'Watches') {
+      return {
+        id: '1',
+        sourceCategory: 'Watches',
+        ebayCategoryId: '31387',
+        ebayCategoryName: 'Wristwatches',
+        itemSpecifics: {},
+        isActive: true,
+      } as any;
+    }
+    return null;
+  });
+
+  // translationPrompt defaults
+  mockPrisma.translationPrompt.upsert.mockImplementation(async (args: any) => {
+    const data = args?.create || args?.data || {};
+    return { id: `prompt-${Date.now()}`, ...data };
+  });
+  mockPrisma.translationPrompt.findFirst.mockImplementation(async (args: any) => {
+    const where = args?.where || {};
+    if (where.category === 'Watches' && where.isActive === true) {
+      return {
+        id: 'prompt-1',
+        name: 'TEST-時計専用V2',
+        category: 'Watches',
+        marketplace: null,
+        systemPrompt: 'WATCH-PROMPT-V2',
+        userPrompt: 'タイトル: {{title}}\n説明: {{description}}\nカテゴリ: {{category}}',
+        extractAttributes: ['brand', 'model'],
+        priority: 100,
+        isActive: true,
+        isDefault: false,
+      } as any;
+    }
+    if (where.isDefault === true && where.isActive === true) {
+      return {
+        id: 'prompt-2',
+        name: 'TEST-一般・汎用',
+        category: null,
+        marketplace: null,
+        systemPrompt: 'DEFAULT-PROMPT',
+        userPrompt: 'タイトル: {{title}}\n説明: {{description}}\nカテゴリ: {{category}}',
+        extractAttributes: ['brand', 'model'],
+        priority: 1,
+        isActive: true,
+        isDefault: true,
+      } as any;
+    }
+    return null;
+  });
+  mockPrisma.translationPrompt.delete.mockResolvedValue({ id: '1' });
+
+  // delete mocks for cleanup
+  mockPrisma.listing.delete.mockResolvedValue({ id: '1' });
+  mockPrisma.enrichmentTask.delete.mockResolvedValue({ id: '1' });
+  mockPrisma.product.delete.mockResolvedValue({ id: '1' });
+  mockPrisma.source.delete.mockResolvedValue({ id: '1' });
+
+  // Source
+  mockPrisma.source.create.mockImplementation(async (args: any) => {
+    const data = args?.data || {};
+    return { id: `src-${Date.now()}`, ...data };
+  });
+
+  // EnrichmentTask
+  mockPrisma.enrichmentTask.create.mockImplementation(async (args: any) => {
+    const data = args?.data || {};
+    const task = { id: `task-${Date.now()}`, ...data };
+    __mem.lastTask = task;
+    return task;
+  });
+  mockPrisma.enrichmentTask.findUnique = vi.fn(async (args: any) => {
+    const where = args?.where || {};
+    const include = args?.include || {};
+    if (
+      __mem.lastTask &&
+      ((__mem.lastTask as any).id === where.id || (__mem.lastTask as any).productId === where.productId)
+    ) {
+      const task = { ...(__mem.lastTask as any) };
+      if (include.product) {
+        task.product = __mem.lastProduct && (__mem.lastProduct as any).id === task.productId
+          ? __mem.lastProduct
+          : (__mem.lastProduct || { id: task.productId });
+      }
+      return task;
+    }
+    return null;
+  });
+  mockPrisma.enrichmentTask.update = vi.fn(async (args: any) => {
+    const where = args?.where || {};
+    const data = args?.data || {};
+    if (__mem.lastTask && (__mem.lastTask as any).id === where.id) {
+      __mem.lastTask = { ...(__mem.lastTask as any), ...data };
+      return __mem.lastTask;
+    }
+    return { id: where.id, ...data };
+  });
+
+  // Product.create
+  mockPrisma.product.create.mockImplementation(async (args: any) => {
+    const data = args?.data || {};
+    const prod = { id: `prod-${Date.now()}`, processedImages: [], ...data };
+    __mem.lastProduct = prod;
+    return prod;
+  });
+
+  // Listing (stateful minimal)
+  mockPrisma.listing.updateMany.mockResolvedValue({ count: 0 });
+  mockPrisma.listing.create.mockImplementation(async (args: any) => {
+    const data = args?.data || {};
+    const listing = { id: `lst-${Date.now()}`, ...data };
+    __mem.lastListing = listing;
+    return listing;
+  });
+  mockPrisma.listing.findUnique.mockImplementation(async (args: any) => {
+    const id = args?.where?.id;
+    if (__mem.lastListing && (__mem.lastListing as any).id === id) {
+      if (args?.include?.product) {
+        return { ...(__mem.lastListing as any), product: __mem.lastProduct };
+      }
+      if (args?.select?.marketplaceData) {
+        const md = (__mem.lastListing as any).marketplaceData || {};
+        return { marketplaceData: md };
+      }
+      return __mem.lastListing;
+    }
+    return null;
+  });
+  mockPrisma.listing.findFirst.mockImplementation(async (args: any) => {
+    const where = args?.where || {};
+    if (
+      __mem.lastListing &&
+      (__mem.lastListing as any).productId === where.productId &&
+      (__mem.lastListing as any).marketplace === where.marketplace &&
+      ((__mem.lastListing as any).credentialId ?? null) === (where.credentialId ?? null)
+    ) {
+      return __mem.lastListing;
+    }
+    return null;
+  });
+  mockPrisma.listing.update.mockImplementation(async (args: any) => {
+    if (__mem.lastListing && (__mem.lastListing as any).id === args?.where?.id) {
+      __mem.lastListing = { ...(__mem.lastListing as any), ...args.data };
+      return __mem.lastListing;
+    }
+    return { id: args?.where?.id, ...(args?.data || {}) };
+  });
 }
 
 // モックをリセット

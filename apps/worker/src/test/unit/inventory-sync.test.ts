@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockPrisma } from '../setup';
 
 // Mock API clients
-vi.mock('../../lib/joom-api', () => ({
+vi.mock('../../lib/joom/compat', () => ({
   JoomApiClient: vi.fn().mockImplementation(() => ({
     updateInventory: vi.fn(),
   })),
@@ -15,7 +15,7 @@ vi.mock('../../lib/ebay-api', () => ({
 }));
 
 import { processInventorySyncJob, syncListingInventory } from '../../processors/inventory-sync';
-import { JoomApiClient } from '../../lib/joom-api';
+import { JoomApiClient } from '../../lib/joom/compat';
 import { EbayApiClient } from '../../lib/ebay-api';
 
 describe('Inventory Sync Processor', () => {

@@ -4,7 +4,7 @@ import { logger } from '@rakuda/logger';
 import { InventoryJobPayload, InventoryJobResult } from '@rakuda/schema';
 import { checkSingleProductInventory } from '../lib/inventory-checker';
 import { ebayApi, isEbayConfigured } from '../lib/ebay-api';
-import { isJoomConfigured } from '../lib/joom-api';
+import { isJoomConfigured } from '../lib/joom/compat';
 import { JoomProductsClient } from '../lib/joom/products';
 
 // JoomProductsClient singleton

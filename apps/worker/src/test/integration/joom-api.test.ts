@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mockPrisma } from '../setup';
-import { JoomApiClient, isJoomConfigured, calculateJoomPrice } from '../../lib/joom-api';
+import { JoomApiClient, isJoomConfigured, calculateJoomPrice } from '../../lib/joom/compat';
 
 describe('Joom API', () => {
   beforeEach(() => {

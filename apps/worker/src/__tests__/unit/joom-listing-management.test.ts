@@ -50,9 +50,9 @@ vi.mock('../../lib/joom-publish-service', () => ({
   },
 }));
 
-// Mock Joom API client constructed inside the processor
-vi.mock('../../lib/joom-api', () => ({
-  JoomApiClient: vi.fn().mockImplementation(() => mockJoomClient),
+// Mock Joom Products client constructed inside the processor
+vi.mock('../../lib/joom/products', () => ({
+  JoomProductsClient: vi.fn().mockImplementation(() => mockJoomClient),
 }));
 
 // Import target under test after mocks

@@ -10,7 +10,7 @@ const { mockEbayApi, mockJoomApi, mockEtsyApi, mockShopifyApi } = vi.hoisted(() 
 }));
 
 vi.mock('../../lib/ebay-api', () => ({ ebayApi: mockEbayApi }));
-vi.mock('../../lib/joom-api', () => ({ joomApi: mockJoomApi }));
+vi.mock('../../lib/joom/compat', () => ({ joomApi: mockJoomApi }));
 vi.mock('../../lib/etsy-api', () => ({ etsyApi: mockEtsyApi }));
 vi.mock('../../lib/shopify-api', () => ({ shopifyApi: mockShopifyApi }));
 

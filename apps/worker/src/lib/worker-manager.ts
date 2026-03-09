@@ -29,7 +29,6 @@ import { processOrderJob, processDeadlineCheckJob } from '../processors/order';
 // Phase 52: 発送処理
 import { processShipmentJob } from '../processors/shipment';
 import { runActiveInventoryCheck } from './scheduler';
-import { JoomApiClient } from './joom-api';
 import { EbayApiClient } from './ebay-api';
 import { alertManager } from './alert-manager';
 import { updateExchangeRate } from './exchange-rate';
@@ -391,7 +390,7 @@ async function handlePriceSync(job: any): Promise<any> {
     // 単一出品の直接価格更新（APIからの推奨価格適用）
     if (listingId && externalId && newPrice !== undefined) {
       const { ebayApi, isEbayConfigured } = await import('./ebay-api');
-      const { joomApi, isJoomConfigured } = await import('./joom-api');
+      const { joomApi, isJoomConfigured } = await import('./joom/compat');
 
       let apiUpdated = false;
       let error: string | undefined;
@@ -691,29 +690,26 @@ async function handleShipToMarketplace(job: any): Promise<any> {
 
   try {
     if (marketplace === 'JOOM') {
-      const joomClient = new JoomApiClient();
-      const result = await joomClient.shipOrder(marketplaceOrderId, {
+      const { JoomOrdersClient } = await import('./joom');
+      const joomClient = new JoomOrdersClient();
+      await joomClient.fulfillOrder({ id: marketplaceOrderId }, {
         trackingNumber,
-        carrier: trackingCarrier,
+        provider: trackingCarrier,
       });
 
-      if (result.success) {
-        log.info({
-          type: 'ship_to_marketplace_success',
-          orderId,
-          marketplace: 'JOOM',
-        });
+      log.info({
+        type: 'ship_to_marketplace_success',
+        orderId,
+        marketplace: 'JOOM',
+      });
 
-        return {
-          success: true,
-          orderId,
-          marketplace,
-          synced: true,
-          timestamp: new Date().toISOString(),
-        };
-      } else {
-        throw new Error(result.error?.message || 'Failed to sync shipment to Joom');
-      }
+      return {
+        success: true,
+        orderId,
+        marketplace,
+        synced: true,
+        timestamp: new Date().toISOString(),
+      };
     }
 
     if (marketplace === 'EBAY') {

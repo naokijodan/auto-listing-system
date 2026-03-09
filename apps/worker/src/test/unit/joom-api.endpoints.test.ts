@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockPrisma } from '../setup';
-import { JoomApiClient } from '../../lib/joom-api';
+import { JoomApiClient } from '../../lib/joom/compat';
 
 describe('JoomApiClient endpoints', () => {
   let client: JoomApiClient;
@@ -44,4 +44,3 @@ describe('JoomApiClient endpoints', () => {
     expect(endpoint).toBe('/orders?id=ORDER-123');
   });
 });
-

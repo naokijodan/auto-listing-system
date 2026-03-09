@@ -1607,7 +1607,7 @@ export async function checkTokenExpiry(options: {
       } else if (cred.marketplace === 'JOOM') {
         try {
           // Phase 48: Joomもリフレッシュトークンで自動更新
-          const { refreshJoomToken } = await import('./joom-api');
+          const { refreshJoomToken } = await import('./joom/compat');
           const refreshResult = await refreshJoomToken();
 
           if (refreshResult.success) {

@@ -12,9 +12,10 @@ import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { sendNotification } from './notification-service';
 import { alertManager } from './slack-alert';
-import { joomApi } from './joom-api';
+import { JoomProductsClient } from './joom';
 
 const log = logger.child({ module: 'order-processor' });
+const joomProducts = new JoomProductsClient();
 
 // 発送期限（日数）
 const SHIPMENT_DEADLINE_DAYS = {
@@ -192,10 +193,10 @@ async function pauseListingsForProduct(productId: string): Promise<void> {
       data: { status: 'PAUSED' },
     });
 
-    // Joomの場合、APIで無効化
+    // Joomの場合、APIで無効化（v3）
     if (listing.marketplace === 'JOOM' && listing.marketplaceListingId) {
       try {
-        await joomApi.disableProduct(listing.marketplaceListingId);
+        await joomProducts.updateProduct({ id: listing.marketplaceListingId }, { enabled: false });
         log.info({
           type: 'joom_listing_disabled',
           listingId: listing.id,

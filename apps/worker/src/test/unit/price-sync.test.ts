@@ -8,7 +8,7 @@ vi.mock('../../lib/pricing', () => ({
   })),
 }));
 
-vi.mock('../../lib/joom-api', () => ({
+vi.mock('../../lib/joom/compat', () => ({
   JoomApiClient: vi.fn().mockImplementation(() => ({
     updatePrice: vi.fn(),
   })),
@@ -22,7 +22,7 @@ vi.mock('../../lib/ebay-api', () => ({
 
 import { processPriceSyncJob, recalculateListingPrice } from '../../processors/price-sync';
 import { PricingPipeline } from '../../lib/pricing';
-import { JoomApiClient } from '../../lib/joom-api';
+import { JoomApiClient } from '../../lib/joom/compat';
 import { EbayApiClient } from '../../lib/ebay-api';
 
 describe('Price Sync Processor', () => {

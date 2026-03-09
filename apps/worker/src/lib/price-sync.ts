@@ -3,10 +3,12 @@ import { logger } from '@rakuda/logger';
 import { PricingPipeline } from './pricing';
 import { Marketplace } from '@rakuda/database';
 import { getLatestExchangeRate } from './exchange-rate';
-import { joomApi, isJoomConfigured } from './joom-api';
+import { isJoomConfigured } from './joom/compat';
+import { JoomProductsClient } from './joom';
 import { ebayApi, isEbayConfigured } from './ebay-api';
 
 const log = logger.child({ module: 'price-sync' });
+const joomProducts = new JoomProductsClient();
 
 /**
  * 価格同期結果
@@ -102,13 +104,11 @@ export async function syncListingPrice(listingId: string): Promise<PriceSyncResu
     if (listing.status === 'ACTIVE' && listing.marketplaceListingId) {
       try {
         if (listing.marketplace === 'JOOM' && await isJoomConfigured()) {
-          // Joom updatePrice takes (productId, sku, price)
           const marketplaceDataJoom = listing.marketplaceData as { sku?: string };
           if (marketplaceDataJoom.sku) {
-            await joomApi.updatePrice(
-              listing.marketplaceListingId,
-              marketplaceDataJoom.sku,
-              newPrice
+            await joomProducts.updateProduct(
+              { id: listing.marketplaceListingId },
+              { variants: [{ sku: marketplaceDataJoom.sku, price: String(newPrice) }] }
             );
             apiUpdated = true;
           }

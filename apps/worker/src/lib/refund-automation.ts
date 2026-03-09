@@ -226,7 +226,7 @@ async function executeRefund(
   try {
     if (marketplace === 'JOOM') {
       // Joom返金API呼び出し
-      const { joomApi } = await import('./joom-api');
+      const { joomApi } = await import('./joom/compat');
       // 注: 実際のJoom返金APIは未実装のため、ここではシミュレーション
       log.info({ type: 'joom_refund_simulated', orderId: order.externalOrderId, amount });
 

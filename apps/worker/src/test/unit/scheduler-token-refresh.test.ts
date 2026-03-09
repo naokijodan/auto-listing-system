@@ -21,7 +21,7 @@ vi.mock('./ebay-api', () => ({
   },
 }));
 
-vi.mock('./joom-api', () => ({
+vi.mock('./joom/compat', () => ({
   refreshJoomToken: vi.fn().mockResolvedValue({
     success: true,
     expiresAt: new Date(Date.now() + 3600000),
