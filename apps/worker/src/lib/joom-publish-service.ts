@@ -117,9 +117,11 @@ export class ImagePipelineService {
       throw new Error('No valid image URLs');
     }
 
-    // 一時ディレクトリ
+    // 一時ディレクトリ（ダウンロード先）と最適化先を分離
     const tempDir = path.join(os.tmpdir(), `rakuda-images-${productId}`);
+    const optimizeDir = path.join(tempDir, 'optimized');
     await fs.mkdir(tempDir, { recursive: true });
+    await fs.mkdir(optimizeDir, { recursive: true });
 
     try {
       // 1. ダウンロード
@@ -148,7 +150,7 @@ export class ImagePipelineService {
 
       const optimizeResults = await optimizeImagesParallel(
         downloadedPaths,
-        tempDir,
+        optimizeDir,
         {
           maxWidth: 1200,
           maxHeight: 1200,
@@ -184,6 +186,25 @@ export class ImagePipelineService {
 
       for (let i = 0; i < optimizedPaths.length; i++) {
         const optimizedPath = optimizedPaths[i];
+
+        // デバッグ: アップロード前のファイル情報をログ
+        try {
+          const sharp = (await import('sharp')).default;
+          const fileStats = await fs.stat(optimizedPath);
+          const imgMeta = await sharp(optimizedPath).metadata();
+          log.info({
+            type: 'pre_upload_check',
+            productId,
+            index: i,
+            filePath: optimizedPath,
+            fileSize: fileStats.size,
+            width: imgMeta.width,
+            height: imgMeta.height,
+            isSquare: (imgMeta.width || 0) === (imgMeta.height || 0),
+          });
+        } catch (e: any) {
+          log.warn({ type: 'pre_upload_check_failed', productId, index: i, error: e?.message });
+        }
 
         // Cloudinaryが設定されていればCloudinaryにアップロード（Joom対応）
         if (isCloudinaryConfigured()) {

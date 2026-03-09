@@ -113,15 +113,16 @@ export async function optimizeImage(
       finalFormat = 'webp';
     }
 
-    // 拡張子を適切に設定
+    // 拡張子を適切に設定（拡張子が無い場合も考慮）
+    const hasExtension = /\.[^.]+$/.test(outputPath);
     if (finalFormat === 'webp') {
-      finalOutputPath = outputPath.replace(/\.[^.]+$/, '.webp');
+      finalOutputPath = hasExtension ? outputPath.replace(/\.[^.]+$/, '.webp') : `${outputPath}.webp`;
       image = image.webp({ quality: opts.quality, effort: 4 });
     } else if (finalFormat === 'png') {
-      finalOutputPath = outputPath.replace(/\.[^.]+$/, '.png');
+      finalOutputPath = hasExtension ? outputPath.replace(/\.[^.]+$/, '.png') : `${outputPath}.png`;
       image = image.png({ compressionLevel: 9 });
     } else {
-      finalOutputPath = outputPath.replace(/\.[^.]+$/, '.jpg');
+      finalOutputPath = hasExtension ? outputPath.replace(/\.[^.]+$/, '.jpg') : `${outputPath}.jpg`;
       image = image.jpeg({ quality: opts.quality, progressive: true });
     }
 
@@ -143,6 +144,17 @@ export async function optimizeImage(
       compressionRatio: compressionRatio.toFixed(2),
       dimensions: `${outputInfo.width}x${outputInfo.height}`,
     });
+
+    // 正方形パディングが有効な場合の検証ログ
+    if (opts.squarePadding && outputInfo.width !== outputInfo.height) {
+      log.error({
+        type: 'square_padding_verification_failed',
+        inputPath,
+        outputPath: finalOutputPath,
+        expectedSquare: true,
+        actualDimensions: `${outputInfo.width}x${outputInfo.height}`,
+      });
+    }
 
     return {
       success: true,
