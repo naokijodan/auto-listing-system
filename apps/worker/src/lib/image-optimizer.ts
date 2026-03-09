@@ -94,8 +94,8 @@ export async function optimizeImage(
       });
     }
 
-    // 白背景処理
-    if (opts.background === 'white') {
+    // 白背景処理（squarePadding時はresize(fit:contain)が既に白背景でパディングするのでスキップ）
+    if (opts.background === 'white' && !opts.squarePadding) {
       image = await addWhiteBackground(image);
     }
 
