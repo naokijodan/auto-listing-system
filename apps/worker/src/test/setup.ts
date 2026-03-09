@@ -18,9 +18,18 @@ export const mockPrisma = {
   marketplaceCredential: {
     findFirst: vi.fn(),
     updateMany: vi.fn(),
+    upsert: vi.fn(),
   },
   ebayCategoryMapping: {
     findUnique: vi.fn(),
+    upsert: vi.fn(),
+    create: vi.fn(),
+  },
+  translationPrompt: {
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    upsert: vi.fn(),
+    delete: vi.fn(),
   },
   product: {
     findFirst: vi.fn(),
@@ -30,11 +39,13 @@ export const mockPrisma = {
     update: vi.fn(),
     count: vi.fn(),
     groupBy: vi.fn(),
+    delete: vi.fn(),
   },
   source: {
     findFirst: vi.fn(),
     findUnique: vi.fn(),
     create: vi.fn(),
+    delete: vi.fn(),
   },
   listing: {
     findFirst: vi.fn(),
@@ -45,6 +56,7 @@ export const mockPrisma = {
     updateMany: vi.fn(),
     upsert: vi.fn(),
     groupBy: vi.fn(),
+    delete: vi.fn(),
   },
   shopifyProduct: {
     findFirst: vi.fn(),
@@ -60,6 +72,7 @@ export const mockPrisma = {
     create: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),
+    delete: vi.fn(),
   },
   webhookEvent: {
     findFirst: vi.fn(),
@@ -157,6 +170,36 @@ export function setupDefaultMocks() {
       refreshToken: 'test-refresh-token',
     },
   });
+  // marketplaceCredential.upsert
+  mockPrisma.marketplaceCredential.upsert.mockResolvedValue({
+    id: '1',
+    marketplace: 'EBAY',
+    name: 'default',
+    isActive: true,
+    credentials: {
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+      refreshToken: 'test-refresh-token',
+    },
+  });
+
+  // ebayCategoryMapping.upsert
+  mockPrisma.ebayCategoryMapping.upsert.mockResolvedValue({
+    id: '1',
+    sourceCategory: 'Watches',
+    ebayCategoryId: '31387',
+    ebayCategoryName: 'Wristwatches',
+    itemSpecifics: {},
+    isActive: true,
+  });
+
+  // translationPrompt defaults
+  mockPrisma.translationPrompt.upsert.mockImplementation(async (args: any) => {
+    const data = args?.create || args?.data || {};
+    return { id: `prompt-${Date.now()}`, ...data };
+  });
+  mockPrisma.translationPrompt.findFirst.mockResolvedValue(null);
+  mockPrisma.translationPrompt.delete.mockResolvedValue({ id: '1' });
 
   // Listing
   mockPrisma.listing.updateMany.mockResolvedValue({ count: 0 });
@@ -188,6 +231,29 @@ export function setupDefaultMocks() {
     return lastListing;
   });
   mockPrisma.listing.upsert.mockResolvedValue({ id: '1' });
+  // delete mocks for cleanup
+  mockPrisma.listing.delete.mockResolvedValue({ id: '1' });
+
+  // Source
+  mockPrisma.source.create.mockImplementation(async (args: any) => {
+    const data = args?.data || {};
+    return { id: `src-${Date.now()}`, ...data };
+  });
+  mockPrisma.source.delete.mockResolvedValue({ id: '1' });
+
+  // EnrichmentTask
+  mockPrisma.enrichmentTask.create.mockImplementation(async (args: any) => {
+    const data = args?.data || {};
+    return { id: `task-${Date.now()}`, ...data };
+  });
+  mockPrisma.enrichmentTask.delete.mockResolvedValue({ id: '1' });
+
+  // Product.create
+  mockPrisma.product.create.mockImplementation(async (args: any) => {
+    const data = args?.data || {};
+    return { id: `prod-${Date.now()}`, ...data };
+  });
+  mockPrisma.product.delete.mockResolvedValue({ id: '1' });
 
   // ShopifyProduct
   mockPrisma.shopifyProduct.findUnique.mockResolvedValue(null);
