@@ -11,7 +11,7 @@ import {
   batchPublishService,
   imagePipelineService,
 } from '../lib/joom-publish-service';
-import { JoomApiClient } from '../lib/joom-api';
+import { JoomProductsClient } from '../lib/joom/products';
 
 const log = logger.child({ module: 'joom-publish-processor' });
 
@@ -19,10 +19,10 @@ const log = logger.child({ module: 'joom-publish-processor' });
 export type { JoomPublishJobType, JoomPublishJobData };
 
 // APIクライアントのシングルトン
-let joomClient: JoomApiClient | null = null;
-function getJoomClient(): JoomApiClient {
+let joomClient: JoomProductsClient | null = null;
+function getJoomClient(): JoomProductsClient {
   if (!joomClient) {
-    joomClient = new JoomApiClient();
+    joomClient = new JoomProductsClient();
   }
   return joomClient;
 }
@@ -175,31 +175,34 @@ async function processPublish(joomListingId: string): Promise<any> {
  */
 async function processDeleteProduct(joomProductId: string, joomListingId?: string): Promise<any> {
   const client = getJoomClient();
-  const resp = await client.deleteProduct(joomProductId);
-
-  if (resp.success) {
+  try {
+    await client.removeProduct({ id: joomProductId });
     log.info({
       type: 'delete_product_complete',
       joomProductId,
       joomListingId,
       success: true,
     });
-  } else {
+    return {
+      joomProductId,
+      joomListingId,
+      success: true,
+    };
+  } catch (error: any) {
     log.error({
       type: 'delete_product_failed',
       joomProductId,
       joomListingId,
       success: false,
-      error: resp.error?.message,
+      error: error.message,
     });
+    return {
+      joomProductId,
+      joomListingId,
+      success: false,
+      error: error.message,
+    };
   }
-
-  return {
-    joomProductId,
-    joomListingId,
-    success: resp.success,
-    error: resp.error?.message,
-  };
 }
 
 /**
@@ -207,9 +210,8 @@ async function processDeleteProduct(joomProductId: string, joomListingId?: strin
  */
 async function processEnableProduct(listingId: string, joomProductId: string): Promise<void> {
   const client = getJoomClient();
-  const result = await client.enableProduct(joomProductId);
-
-  if (result.success) {
+  try {
+    await client.updateProduct({ id: joomProductId }, { enabled: true });
     await prisma.listing.update({
       where: { id: listingId },
       data: {
@@ -219,9 +221,9 @@ async function processEnableProduct(listingId: string, joomProductId: string): P
       },
     });
     log.info({ type: 'joom_enable_success', listingId, joomProductId });
-  } else {
-    log.error({ type: 'joom_enable_failed', listingId, joomProductId, error: result.error });
-    throw new Error(`Failed to enable product: ${result.error?.message}`);
+  } catch (error: any) {
+    log.error({ type: 'joom_enable_failed', listingId, joomProductId, error: error.message });
+    throw new Error(`Failed to enable product: ${error.message}`);
   }
 }
 
@@ -230,17 +232,16 @@ async function processEnableProduct(listingId: string, joomProductId: string): P
  */
 async function processDisableProduct(listingId: string, joomProductId: string): Promise<void> {
   const client = getJoomClient();
-  const result = await client.disableProduct(joomProductId);
-
-  if (result.success) {
+  try {
+    await client.updateProduct({ id: joomProductId }, { enabled: false });
     await prisma.listing.update({
       where: { id: listingId },
       data: { status: 'PAUSED' },
     });
     log.info({ type: 'joom_disable_success', listingId, joomProductId });
-  } else {
-    log.error({ type: 'joom_disable_failed', listingId, joomProductId, error: result.error });
-    throw new Error(`Failed to disable product: ${result.error?.message}`);
+  } catch (error: any) {
+    log.error({ type: 'joom_disable_failed', listingId, joomProductId, error: error.message });
+    throw new Error(`Failed to disable product: ${error.message}`);
   }
 }
 
@@ -308,43 +309,20 @@ async function processSyncStatus(joomListingId: string): Promise<any> {
 
   try {
     const client = getJoomClient();
-    const resp = await client.getProduct(joomProductId);
+    const resp = await client.getProduct({ id: joomProductId });
+    const product = resp.data;
 
     let updateData: any = { updatedAt: new Date() };
     let resolvedStatus: string | undefined;
-    let notFound = false;
 
-    if (resp.success && resp.data) {
-      const data: any = resp.data as any;
+    if (product.enabled === true) {
+      resolvedStatus = 'ACTIVE';
+    } else if (product.enabled === false) {
+      resolvedStatus = 'PAUSED';
+    }
 
-      // Joom側のステータスに応じて更新
-      const enabled = data?.enabled ?? (typeof data?.status === 'string' ? ['enabled', 'ENABLED', 'active', 'ACTIVE'].includes(data.status) : undefined);
-      const disabled = data?.disabled ?? (typeof data?.status === 'string' ? ['disabled', 'DISABLED', 'paused', 'PAUSED'].includes(data.status) : undefined);
-
-      if (enabled === true) {
-        resolvedStatus = 'ACTIVE';
-      } else if (disabled === true || enabled === false) {
-        resolvedStatus = 'PAUSED';
-      }
-
-      if (resolvedStatus) {
-        updateData.status = resolvedStatus as any;
-      }
-    } else {
-      // 404 Not Found → ENDED
-      const msg = resp.error?.message?.toLowerCase() || '';
-      if (msg.includes('not found') || msg.includes('404')) {
-        notFound = true;
-        updateData.status = 'ENDED';
-      } else {
-        // それ以外のエラーは記録のみ（marketplaceDataにマージ）
-        const cur = (listing.marketplaceData as any) || {};
-        updateData.marketplaceData = {
-          ...cur,
-          errorCount: (cur.errorCount || 0) + 1,
-          lastError: resp.error?.message || 'Unknown error from Joom API',
-        };
-      }
+    if (resolvedStatus) {
+      updateData.status = resolvedStatus as any;
     }
 
     await prisma.listing.update({
@@ -357,7 +335,7 @@ async function processSyncStatus(joomListingId: string): Promise<any> {
       joomListingId,
       joomProductId,
       status: updateData.status,
-      notFound,
+      notFound: false,
       success: true,
     });
 
@@ -365,10 +343,33 @@ async function processSyncStatus(joomListingId: string): Promise<any> {
       joomListingId,
       synced: true,
       status: updateData.status,
-      notFound,
+      notFound: false,
     };
   } catch (error: any) {
-    // エラー時はerrorCount++, lastError, updatedAtを記録
+    // 404 Not Found → ENDED
+    const statusCode = error.statusCode || 0;
+    const msg = error.message?.toLowerCase() || '';
+    const notFound = statusCode === 404 || msg.includes('not found');
+
+    if (notFound) {
+      await prisma.listing.update({
+        where: { id: joomListingId },
+        data: { updatedAt: new Date(), status: 'ENDED' as any },
+      });
+
+      log.info({
+        type: 'sync_status_complete',
+        joomListingId,
+        joomProductId,
+        status: 'ENDED',
+        notFound: true,
+        success: true,
+      });
+
+      return { joomListingId, synced: true, status: 'ENDED', notFound: true };
+    }
+
+    // その他のエラーは記録のみ
     const cur = (listing?.marketplaceData as any) || {};
     await prisma.listing.update({
       where: { id: joomListingId },

@@ -9,13 +9,25 @@ import {
   BatchProgressInfo,
   MARKETPLACE_PRICE_LIMITS,
 } from '@rakuda/config';
-import { joomApi, isJoomConfigured } from '../lib/joom-api';
+import { isJoomConfigured } from '../lib/joom-api';
+import { JoomProductsClient } from '../lib/joom/products';
+import type { CreateProductInput } from '../lib/joom/products';
+import type { Money } from '../lib/joom/shared-types';
 import { ebayApi, isEbayConfigured, mapConditionToEbay } from '../lib/ebay-api';
 import { PricingPipeline } from '../lib/pricing';
 import { Marketplace } from '@rakuda/database';
 import { alertManager } from '../lib/alert-manager';
 import { eventBus } from '../lib/event-bus';
 import { RateLimiter } from '../lib/api-utils';
+
+// JoomProductsClient singleton
+let joomProductsClient: JoomProductsClient | null = null;
+function getJoomProductsClient(): JoomProductsClient {
+  if (!joomProductsClient) {
+    joomProductsClient = new JoomProductsClient();
+  }
+  return joomProductsClient;
+}
 
 /**
  * 出品ジョブプロセッサー
@@ -319,28 +331,35 @@ async function publishToJoom(
     price: priceResult.finalPrice,
   });
 
-  // Joom商品作成
-  const result = await joomApi.createProduct({
+  // Joom商品作成（API v3）
+  const client = getJoomProductsClient();
+  const input: CreateProductInput = {
     name: title,
     description: description,
     mainImage: mainImage,
     extraImages: extraImages,
-    price: priceResult.finalPrice,
-    currency: 'USD',
-    quantity: 1,
     sku: parentSku,
-    parentSku: parentSku,
     tags: tags,
-    shipping: {
-      price: priceResult.breakdown.shippingCostUsd,
-      time: '15-30',
-    },
-  });
+    enabled: true,
+    variants: [
+      {
+        sku: parentSku,
+        price: String(priceResult.finalPrice) as Money,
+        currency: 'USD',
+        inventory: 1,
+        shippingPrice: String(priceResult.breakdown.shippingCostUsd) as Money,
+      },
+    ],
+  };
 
-  if (!result.success) {
+  let createResult;
+  try {
+    createResult = await client.createProduct(input);
+  } catch (error: any) {
     // 既に存在する場合はエラーではなく既存IDを返す
-    if (result.error?.message?.includes('already_exists')) {
-      const match = result.error.message.match(/productID=([a-f0-9]+)/);
+    const errorMsg = error.message || '';
+    if (errorMsg.includes('already_exists')) {
+      const match = errorMsg.match(/productID=([a-f0-9]+)/);
       if (match) {
         log.info({
           type: 'joom_product_already_exists',
@@ -352,15 +371,15 @@ async function publishToJoom(
         };
       }
     }
-    throw new Error(`Joom API error: ${result.error?.message}`);
+    throw new Error(`Joom API error: ${errorMsg}`);
   }
 
-  const joomProductId = result.data?.id;
+  const joomProductId = createResult.data?.id;
 
   // 商品を有効化
   if (joomProductId) {
     try {
-      await joomApi.enableProduct(joomProductId);
+      await client.updateProduct({ id: joomProductId }, { enabled: true });
       log.info({ type: 'joom_product_enabled', joomProductId });
     } catch (enableError: any) {
       log.warn({

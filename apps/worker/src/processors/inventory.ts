@@ -4,7 +4,17 @@ import { logger } from '@rakuda/logger';
 import { InventoryJobPayload, InventoryJobResult } from '@rakuda/schema';
 import { checkSingleProductInventory } from '../lib/inventory-checker';
 import { ebayApi, isEbayConfigured } from '../lib/ebay-api';
-import { joomApi, isJoomConfigured } from '../lib/joom-api';
+import { isJoomConfigured } from '../lib/joom-api';
+import { JoomProductsClient } from '../lib/joom/products';
+
+// JoomProductsClient singleton
+let joomProductsClient: JoomProductsClient | null = null;
+function getJoomProductsClient(): JoomProductsClient {
+  if (!joomProductsClient) {
+    joomProductsClient = new JoomProductsClient();
+  }
+  return joomProductsClient;
+}
 
 /**
  * 在庫監視ジョブプロセッサー
@@ -300,13 +310,27 @@ export async function processSyncListingStatus(
         }
       }
     } else if (marketplace === 'JOOM' && await isJoomConfigured()) {
-      const response = await joomApi.getProduct(externalId);
-      if (response.success && response.data) {
-        marketplaceStatus = {
-          status: response.data.quantity > 0 ? 'ACTIVE' : 'INACTIVE',
-          price: response.data.price,
-          quantity: response.data.quantity,
-        };
+      try {
+        const resp = await getJoomProductsClient().getProduct({ id: externalId });
+        if (resp && resp.data) {
+          const variants = resp.data.variants || [];
+          const totalQty = variants.reduce((sum, v) => sum + (v.inventory ?? 0), 0);
+          const priceStr = variants[0]?.price || variants[0]?.salesPrice || variants[0]?.averageSalesPrice;
+          const price = priceStr !== undefined ? parseFloat(String(priceStr)) : undefined;
+
+          marketplaceStatus = {
+            status: resp.data.enabled && totalQty > 0 ? 'ACTIVE' : 'INACTIVE',
+            price,
+            quantity: totalQty,
+          };
+        }
+      } catch (e: any) {
+        log.warn({
+          type: 'joom_get_product_failed',
+          listingId,
+          externalId,
+          error: e?.message,
+        });
       }
     }
 
