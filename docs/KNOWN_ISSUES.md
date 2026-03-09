@@ -178,3 +178,15 @@
 - **症状**: image-queue DLQに12件蓄積（socket timeout）
 - **修正**: socketTimeout 30s→120s、uploadFile()に3回リトライ+exponential backoff、Cloudinaryフォールバック追加
 - **解決済み**: commit 4aad8679
+
+### 7-10: eBay画像パイプラインの設計ギャップ
+- **症状**: eBay出品時にmarketplaceDataに画像URLが含まれない。processCreateInventoryItemがEnrichmentTask.optimizedImagesを参照しない
+- **原因**: ebay-publish-service.tsのprocessImagesForListingがEnrichmentTaskにのみ画像保存し、Listing.marketplaceDataに保存していなかった。またebay-publish.tsがProduct.processedImagesのみ参照
+- **修正**: (1) processImagesForListingでListing.marketplaceData.ebayImagesに保存追加 (2) processCreateInventoryItemでEnrichmentTask.optimizedImagesを最優先で参照
+- **解決済み**: commit e8a4a860
+
+### 7-11: listing-pipeline.test.ts 統合テスト失敗
+- **症状**: ensureEbayCredential()でprisma.marketplaceCredential.upsertがundefined返却
+- **原因**: 統合テストがテスト用DBを前提としているが、テスト実行時に接続先DBが未設定（ローカルDBを直接使用）
+- **影響**: このテストファイルのみ。他の2,502テストは全通過
+- **ステータス**: 未修正（テスト環境設定の問題。本番コードには影響なし）
