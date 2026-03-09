@@ -941,4 +941,77 @@ router.post('/cleanup/remove-joom-products', async (req: Request, res: Response)
   }
 });
 
+/**
+ * TEMPORARY: 指定IDのJoom商品を直接削除
+ * bodyにproductIds配列を渡す
+ */
+router.post('/cleanup/remove-by-ids', async (req: Request, res: Response) => {
+  try {
+    const { productIds } = req.body;
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({ error: 'productIds array required' });
+    }
+
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: { marketplace: 'JOOM', isActive: true },
+    });
+    if (!credential) {
+      return res.status(400).json({ error: 'Joom credentials not found' });
+    }
+    const creds = (credential.credentials || credential) as any;
+    const accessToken = creds.accessToken || (credential as any).accessToken;
+    if (!accessToken) {
+      return res.status(400).json({ error: 'No access token' });
+    }
+
+    const results: any[] = [];
+    for (const id of productIds) {
+      try {
+        const removeResp = await fetch(
+          `https://api-merchant.joom.com/api/v3/products/remove?id=${id}`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ reason: 'stopSelling' }),
+          }
+        );
+        const removeBody = await removeResp.text();
+        if (removeResp.ok) {
+          results.push({ id, action: 'removed', status: removeResp.status });
+        } else {
+          // Fallback: disable
+          const disableResp = await fetch(
+            `https://api-merchant.joom.com/api/v3/products/update?id=${id}`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify({ enabled: false }),
+            }
+          );
+          results.push({
+            id,
+            action: disableResp.ok ? 'disabled' : 'failed',
+            removeError: removeBody.substring(0, 200),
+            disableStatus: disableResp.status,
+          });
+        }
+      } catch (err: any) {
+        results.push({ id, action: 'error', error: err.message });
+      }
+    }
+
+    res.json({ totalProcessed: results.length, results });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
