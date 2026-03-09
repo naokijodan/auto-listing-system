@@ -190,3 +190,16 @@
 - **原因**: Worker test/setup.tsのmockPrismaにupsert/delete等のメソッドが未定義。API側のsetup.tsには存在していたがWorker側に漏れていた
 - **修正**: marketplaceCredential.upsert、ebayCategoryMapping.upsert、translationPrompt全体、各モデルのdelete、source/enrichmentTask/productのcreateデフォルト値を追加
 - **解決済み**: commit b1dc825c（Session 23）
+
+### 7-12: JoomBaseClient.getCredentials()がDB行全体をキャスト
+- **症状**: Joom v3出品で「Joom access token not configured」エラー
+- **原因**: `getCredentials()`がPrismaのMarketplaceCredential行を`JoomApiConfig`に`as unknown as`でキャスト。`accessToken`は`row.credentials`JSON内にあるのに、`row.accessToken`を参照していた
+- **修正**: `row.credentials`からフィールドを個別抽出、`row.tokenExpiresAt`も返却
+- **教訓**: Prisma行をインターフェースにキャストする際、JSONカラム(`credentials`)の展開を忘れない
+- **解決済み**: commit e4441598
+
+### 7-13: Joom Merchant Tier: Unverified
+- **症状**: 出品した商品がJoomモデレーションでRejectedになる
+- **原因**: マーチャントがUnverified Tierのため、商品審査が厳しい
+- **対応**: Joom Merchant PortalでTrusted Tier取得を申請する必要がある
+- **ステータス**: 未対応
