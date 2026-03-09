@@ -1,6 +1,6 @@
 # RAKUDA 既知の問題と再発防止策
 
-最終更新: 2026-03-09 (Session 22)
+最終更新: 2026-03-09 (Session 23)
 
 ## 使い方
 新しいセッション開始時に必ずこのファイルを確認すること。
@@ -187,6 +187,6 @@
 
 ### 7-11: listing-pipeline.test.ts 統合テスト失敗
 - **症状**: ensureEbayCredential()でprisma.marketplaceCredential.upsertがundefined返却
-- **原因**: 統合テストがテスト用DBを前提としているが、テスト実行時に接続先DBが未設定（ローカルDBを直接使用）
-- **影響**: このテストファイルのみ。他の2,502テストは全通過
-- **ステータス**: 未修正（テスト環境設定の問題。本番コードには影響なし）
+- **原因**: Worker test/setup.tsのmockPrismaにupsert/delete等のメソッドが未定義。API側のsetup.tsには存在していたがWorker側に漏れていた
+- **修正**: marketplaceCredential.upsert、ebayCategoryMapping.upsert、translationPrompt全体、各モデルのdelete、source/enrichmentTask/productのcreateデフォルト値を追加
+- **解決済み**: commit b1dc825c（Session 23）
