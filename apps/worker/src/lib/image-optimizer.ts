@@ -18,6 +18,7 @@ export interface OptimizationOptions {
   quality?: number;
   background?: 'white' | 'transparent' | 'original';
   stripMetadata?: boolean;
+  squarePadding?: boolean;  // trueの場合、正方形にパディング（白背景）
 }
 
 const DEFAULT_OPTIONS: Required<OptimizationOptions> = {
@@ -27,6 +28,7 @@ const DEFAULT_OPTIONS: Required<OptimizationOptions> = {
   quality: 85,
   background: 'white',     // Joom推奨: 白背景
   stripMetadata: true,
+  squarePadding: false,
 };
 
 /**
@@ -73,11 +75,24 @@ export async function optimizeImage(
       throw new Error('Could not determine image dimensions');
     }
 
-    // リサイズ（アスペクト比維持）
-    image = image.resize(opts.maxWidth, opts.maxHeight, {
-      fit: 'inside',
-      withoutEnlargement: true,
-    });
+    // リサイズ
+    if (opts.squarePadding) {
+      // 正方形パディング: 長辺に合わせて白背景でパディング
+      const maxDim = Math.max(metadata.width, metadata.height);
+      const targetSize = Math.min(maxDim, opts.maxWidth || 1200);
+      // targetSizeが550未満の場合は550にする（Joom最小要件）
+      const finalSize = Math.max(targetSize, 550);
+      image = image.resize(finalSize, finalSize, {
+        fit: 'contain',
+        background: { r: 255, g: 255, b: 255, alpha: 1 },
+        withoutEnlargement: false,
+      });
+    } else {
+      image = image.resize(opts.maxWidth, opts.maxHeight, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      });
+    }
 
     // 白背景処理
     if (opts.background === 'white') {
@@ -230,10 +245,10 @@ export function validateForJoom(
     issues.push(`File too large: ${(size / 1024 / 1024).toFixed(2)}MB (maximum 10MB)`);
   }
 
-  // アスペクト比: 1:3以内
+  // アスペクト比: Joomは "square or almost square" を要求（1.2:1以内推奨）
   const aspectRatio = Math.max(width, height) / Math.min(width, height);
-  if (aspectRatio > 3) {
-    issues.push(`Aspect ratio too extreme: ${aspectRatio.toFixed(2)} (maximum 3:1)`);
+  if (aspectRatio > 1.2) {
+    issues.push(`Aspect ratio not square enough for Joom: ${aspectRatio.toFixed(2)}:1 (maximum ~1:1)`);
   }
 
   return {

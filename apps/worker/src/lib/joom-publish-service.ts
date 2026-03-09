@@ -155,6 +155,7 @@ export class ImagePipelineService {
           format: 'jpeg',
           quality: 85,
           background: 'white',
+          squarePadding: true,
           concurrency: 4,  // 同時処理数
           onProgress: (completed, total) => {
             log.debug({

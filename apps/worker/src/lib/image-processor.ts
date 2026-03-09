@@ -322,6 +322,7 @@ export async function processImageForJoom(
       format: 'jpeg',
       quality: 85,
       background: 'white',
+      squarePadding: true,  // Joom requires "square or almost square"
     });
 
     if (!optimizeResult.success || !optimizeResult.outputPath) {
