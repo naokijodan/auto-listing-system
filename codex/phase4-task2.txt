@@ -1,0 +1,161 @@
+以下の3ファイルを作成してください。既存の apps/worker/src/lib/joom/products/ のパターンに従います。
+
+## 1. apps/worker/src/lib/joom/shipping-destinations/types.ts
+
+```typescript
+import type { Money } from '../shared-types';
+
+export interface VariantShippingDestination {
+  country: string;
+  currency?: string;
+  disabled?: boolean;
+  shippingPrice?: Money;
+  variantId?: string;
+  variantSku?: string;
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+export interface ProductShippingDestination {
+  country: string;
+  currency?: string;
+  disabled?: boolean;
+  shippingPrice?: Money;
+  tierType?: 'default' | 'fast';
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+export interface UpdateVariantDestinationItem {
+  country: string;
+  currency?: string;
+  disabled?: boolean;
+  shippingPrice?: Money;
+  variantId?: string;
+  variantSku?: string;
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+export interface UpdateProductDestinationItem {
+  country: string;
+  currency?: string;
+  disabled?: boolean;
+  shippingPrice?: Money;
+  tierType?: 'default' | 'fast';
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+export interface RemoveVariantDestinationItem {
+  country: string;
+  variantId?: string;
+  variantSku?: string;
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+export interface RemoveProductDestinationItem {
+  country: string;
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+```
+
+## 2. apps/worker/src/lib/joom/shipping-destinations/client.ts
+
+```typescript
+import { JoomBaseClient } from '../base-client';
+import { JoomApiListResponse, JoomApiEmptyResponse } from '../shared-types';
+import {
+  VariantShippingDestination,
+  ProductShippingDestination,
+  UpdateVariantDestinationItem,
+  UpdateProductDestinationItem,
+  RemoveVariantDestinationItem,
+  RemoveProductDestinationItem,
+} from './types';
+
+export class JoomShippingDestinationsClient extends JoomBaseClient {
+  async getVariantDestinations(params: {
+    id?: string;
+    sku?: string;
+    limit?: number;
+  }): Promise<JoomApiListResponse<VariantShippingDestination>> {
+    return this.request<JoomApiListResponse<VariantShippingDestination>>({
+      method: 'GET',
+      path: '/products/destinations',
+      query: { id: params.id, sku: params.sku, limit: params.limit },
+    });
+  }
+
+  async getProductDestinations(params: {
+    id?: string;
+    sku?: string;
+    limit?: number;
+  }): Promise<JoomApiListResponse<ProductShippingDestination>> {
+    return this.request<JoomApiListResponse<ProductShippingDestination>>({
+      method: 'GET',
+      path: '/products/destinations/defaults',
+      query: { id: params.id, sku: params.sku, limit: params.limit },
+    });
+  }
+
+  async updateVariantDestinations(
+    params: { id?: string; sku?: string },
+    input: { items: UpdateVariantDestinationItem[] }
+  ): Promise<JoomApiEmptyResponse> {
+    return this.request<JoomApiEmptyResponse>({
+      method: 'POST',
+      path: '/products/destinations/update',
+      query: { id: params.id, sku: params.sku },
+      body: input,
+    });
+  }
+
+  async updateProductDestinations(
+    params: { id?: string; sku?: string },
+    input: { items: UpdateProductDestinationItem[] }
+  ): Promise<JoomApiEmptyResponse> {
+    return this.request<JoomApiEmptyResponse>({
+      method: 'POST',
+      path: '/products/destinations/defaults/update',
+      query: { id: params.id, sku: params.sku },
+      body: input,
+    });
+  }
+
+  async removeVariantDestinations(
+    params: { id?: string; sku?: string },
+    input: { items: RemoveVariantDestinationItem[] }
+  ): Promise<JoomApiEmptyResponse> {
+    return this.request<JoomApiEmptyResponse>({
+      method: 'POST',
+      path: '/products/destinations/remove',
+      query: { id: params.id, sku: params.sku },
+      body: input,
+    });
+  }
+
+  async removeProductDestinations(
+    params: { id?: string; sku?: string },
+    input: { items: RemoveProductDestinationItem[] }
+  ): Promise<JoomApiEmptyResponse> {
+    return this.request<JoomApiEmptyResponse>({
+      method: 'POST',
+      path: '/products/destinations/defaults/remove',
+      query: { id: params.id, sku: params.sku },
+      body: input,
+    });
+  }
+}
+```
+
+## 3. apps/worker/src/lib/joom/shipping-destinations/index.ts
+
+```typescript
+export { JoomShippingDestinationsClient } from './client';
+export * from './types';
+```
+
+ファイルをそのまま作成してください。コードの変更や省略は不要です。

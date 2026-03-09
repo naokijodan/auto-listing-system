@@ -2,4 +2,9 @@ export { JoomBaseClient } from './base-client';
 export { JoomProductsClient } from './products';
 export * from './shared-types';
 export * from './products/types';
-
+export { JoomOrdersClient } from './orders';
+export * from './orders/types';
+export { JoomShippingDestinationsClient } from './shipping-destinations';
+export * from './shipping-destinations/types';
+export { JoomWarehousesClient } from './warehouses';
+export * from './warehouses/types';

@@ -1,0 +1,259 @@
+以下の3ファイルを作成してください。既存の apps/worker/src/lib/joom/products/ のパターンに従います。
+
+## 1. apps/worker/src/lib/joom/orders/types.ts
+
+```typescript
+import type { Money } from '../shared-types';
+
+export interface OrderPriceInfo {
+  cost: Money;
+  costBeforeDiscount?: Money;
+  insuranceFee?: Money;
+  price: Money;
+  productPriceBeforeDiscount?: Money;
+  shipping: Money;
+  shippingBeforeDiscount?: Money;
+  taxAmount?: Money;
+  totalCost: Money;
+}
+
+export interface OrderShippingAddress {
+  city?: string;
+  country?: string;
+  name?: string;
+  phone?: string;
+  postalCode?: string;
+  state?: string;
+  streetAddress1?: string;
+  streetAddress2?: string;
+  zipCode?: string;
+}
+
+export interface OrderProduct {
+  id: string;
+  name: string;
+  sku?: string;
+  mainImage?: string;
+  variantId?: string;
+  variantSku?: string;
+  color?: string;
+  size?: string;
+}
+
+export interface OrderShipment {
+  provider?: string;
+  providerId?: string;
+  trackingNumber?: string;
+  shipperName?: string;
+  shippingOrderNumber?: string;
+}
+
+export interface OrderShippingOption {
+  name?: string;
+  id?: string;
+}
+
+export interface OrderRefund {
+  reason?: string;
+  note?: string;
+  amount?: Money;
+}
+
+export interface OrderReturn {
+  status?: string;
+  reason?: string;
+}
+
+export interface OrderGiftProduct {
+  id?: string;
+  name?: string;
+  quantity?: number;
+}
+
+export interface Order {
+  id: string;
+  currency: string;
+  daysToFulfill?: number;
+  fulfillTimeHours?: number;
+  hoursToFulfill?: number;
+  allowedShippingTypes?: 'offlineOnly' | 'offlineOrOnline' | 'onlineOnly';
+  onlineShippingRequirement?: string;
+  orderTimestamp: string;
+  priceInfo: OrderPriceInfo;
+  product: OrderProduct;
+  giftProduct?: OrderGiftProduct;
+  quantity: number;
+  refund?: OrderRefund;
+  return?: OrderReturn;
+  reviewRating?: number;
+  shipment?: OrderShipment;
+  shippingAddress: OrderShippingAddress;
+  shippingAddressNative: OrderShippingAddress;
+  shippingAddressHash: string;
+  shippingOption?: OrderShippingOption;
+  status: 'approved' | 'cancelled' | 'fulfilledOnline' | 'paidByJoomRefund' | 'refunded' |
+          'returnArrived' | 'returnCompleted' | 'returnDeclined' | 'returnExpired' |
+          'returnInitiated' | 'shipped';
+  isFbj?: boolean;
+  storeId: string;
+  transactionId?: string;
+  updateTimestamp: string;
+  canBeConsolidated?: boolean;
+  isFulfillmentAllowed?: boolean;
+  fulfillmentAllowedTimestamp?: string;
+}
+
+export interface CancelOrderInput {
+  reason?: 'outOfStock' | 'unableToFulfill';
+  note?: string;
+}
+
+export interface FulfillOrderInput {
+  provider?: string;
+  providerId?: string;
+  trackingNumber: string;
+}
+
+export interface FulfillOnlineOrderParam {
+  id?: string;
+  imeis?: string[];
+}
+
+export interface FulfillOnlineInvoiceInfo {
+  date: string;
+  link: string;
+  number: string;
+}
+
+export interface FulfillOnlineInput {
+  ids: string[];
+  onlineInvoiceInfo?: FulfillOnlineInvoiceInfo;
+  orderParams?: FulfillOnlineOrderParam[];
+  pickup?: boolean;
+  pickupAddressId?: string;
+}
+
+export interface FulfillOnlineResult {
+  shipperName: string;
+  shippingOrderNumber: string;
+  trackingNumber: string;
+}
+
+export interface ModifyTrackingInput {
+  provider?: string;
+  providerId?: string;
+  trackingNumber: string;
+}
+
+export interface ShippingProvider {
+  id?: string;
+  name?: string;
+}
+```
+
+## 2. apps/worker/src/lib/joom/orders/client.ts
+
+```typescript
+import { JoomBaseClient } from '../base-client';
+import { JoomApiResponse, JoomApiListResponse, JoomApiEmptyResponse } from '../shared-types';
+import {
+  Order, CancelOrderInput, FulfillOrderInput,
+  FulfillOnlineInput, FulfillOnlineResult,
+  ModifyTrackingInput, ShippingProvider
+} from './types';
+
+export class JoomOrdersClient extends JoomBaseClient {
+  async getOrder(params: { id: string }): Promise<JoomApiResponse<Order>> {
+    return this.request<JoomApiResponse<Order>>({
+      method: 'GET',
+      path: '/orders',
+      query: { id: params.id },
+    });
+  }
+
+  async retrieveOrders(params?: { limit?: number; updatedFrom?: string }): Promise<JoomApiListResponse<Order>> {
+    return this.request<JoomApiListResponse<Order>>({
+      method: 'GET',
+      path: '/orders/multi',
+      query: { limit: params?.limit, updatedFrom: params?.updatedFrom },
+    });
+  }
+
+  async cancelOrder(params: { id: string }, input: CancelOrderInput): Promise<JoomApiResponse<Order>> {
+    return this.request<JoomApiResponse<Order>>({
+      method: 'POST',
+      path: '/orders/cancel',
+      query: { id: params.id },
+      body: input,
+    });
+  }
+
+  async fulfillOrder(params: { id: string }, input: FulfillOrderInput): Promise<JoomApiResponse<Order>> {
+    return this.request<JoomApiResponse<Order>>({
+      method: 'POST',
+      path: '/orders/fulfill',
+      query: { id: params.id },
+      body: input,
+    });
+  }
+
+  async getUnfulfilledOrders(params?: { limit?: number; updatedFrom?: string }): Promise<JoomApiListResponse<Order>> {
+    return this.request<JoomApiListResponse<Order>>({
+      method: 'GET',
+      path: '/orders/unfulfilled',
+      query: { limit: params?.limit, updatedFrom: params?.updatedFrom },
+    });
+  }
+
+  async fulfillOnline(input: FulfillOnlineInput): Promise<JoomApiResponse<FulfillOnlineResult>> {
+    return this.request<JoomApiResponse<FulfillOnlineResult>>({
+      method: 'POST',
+      path: '/orders/fulfillOnline',
+      body: input,
+    });
+  }
+
+  async modifyTracking(params: { id: string }, input: ModifyTrackingInput): Promise<JoomApiResponse<Order>> {
+    return this.request<JoomApiResponse<Order>>({
+      method: 'POST',
+      path: '/orders/modifyTracking',
+      query: { id: params.id },
+      body: input,
+    });
+  }
+
+  async getShippingLabel(params: { id: string }): Promise<Buffer> {
+    return this.request<Buffer>({
+      method: 'GET',
+      path: '/orders/shippingLabel',
+      query: { id: params.id },
+      accept: 'application/pdf',
+    });
+  }
+
+  async generateEuLabels(params: { id: string }): Promise<Buffer> {
+    return this.request<Buffer>({
+      method: 'GET',
+      path: '/orders/generateEuLabels',
+      query: { id: params.id },
+      accept: 'application/pdf',
+    });
+  }
+
+  async getShippingProviders(): Promise<JoomApiListResponse<ShippingProvider>> {
+    return this.request<JoomApiListResponse<ShippingProvider>>({
+      method: 'GET',
+      path: '/shippers',
+    });
+  }
+}
+```
+
+## 3. apps/worker/src/lib/joom/orders/index.ts
+
+```typescript
+export { JoomOrdersClient } from './client';
+export * from './types';
+```
+
+ファイルをそのまま作成してください。コードの変更や省略は不要です。

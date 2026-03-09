@@ -1,0 +1,190 @@
+## Phase 4 Task 2: Shipping Destinations クライアント実装（6エンドポイント）
+
+### ディレクトリ
+apps/worker/src/lib/joom/shipping-destinations/
+
+### 作成するファイル
+1. types.ts — 型定義
+2. client.ts — 6エンドポイント
+3. index.ts — バレルエクスポート
+
+### 参考ファイル（パターンを踏襲）
+- apps/worker/src/lib/joom/products/types.ts
+- apps/worker/src/lib/joom/products/client.ts
+- apps/worker/src/lib/joom/base-client.ts
+- apps/worker/src/lib/joom/shared-types.ts
+
+### types.ts の型定義
+
+```typescript
+import type { Money } from '../shared-types';
+
+// Variant-level shipping destination
+export interface VariantShippingDestination {
+  country: string; // ISO 2-letter code, e.g. "RU"
+  currency?: string; // ISO 3-letter code, e.g. "USD"
+  disabled?: boolean;
+  shippingPrice?: Money;
+  variantId?: string;
+  variantSku?: string;
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+// Product-level shipping destination (defaults)
+export interface ProductShippingDestination {
+  country: string;
+  currency?: string;
+  disabled?: boolean;
+  shippingPrice?: Money;
+  tierType?: 'default' | 'fast';
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+// Update variant destinations input item
+export interface UpdateVariantDestinationItem {
+  country: string; // required
+  currency?: string;
+  disabled?: boolean;
+  shippingPrice?: Money;
+  variantId?: string;
+  variantSku?: string;
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+// Update product defaults destination input item
+export interface UpdateProductDestinationItem {
+  country: string; // required
+  currency?: string;
+  disabled?: boolean;
+  shippingPrice?: Money;
+  tierType?: 'default' | 'fast';
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+// Remove variant destinations input item
+export interface RemoveVariantDestinationItem {
+  country: string; // required
+  variantId?: string;
+  variantSku?: string;
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+// Remove product defaults destination input item
+export interface RemoveProductDestinationItem {
+  country: string; // required
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+```
+
+### client.ts の実装
+
+```typescript
+import { JoomBaseClient } from '../base-client';
+import { JoomApiListResponse, JoomApiEmptyResponse } from '../shared-types';
+import {
+  VariantShippingDestination,
+  ProductShippingDestination,
+  UpdateVariantDestinationItem,
+  UpdateProductDestinationItem,
+  RemoveVariantDestinationItem,
+  RemoveProductDestinationItem,
+} from './types';
+
+export class JoomShippingDestinationsClient extends JoomBaseClient {
+  // #30 Get Custom Shipping Destinations for Product's Variants
+  async getVariantDestinations(params: {
+    id?: string;
+    sku?: string;
+    limit?: number;
+  }): Promise<JoomApiListResponse<VariantShippingDestination>> {
+    return this.request<JoomApiListResponse<VariantShippingDestination>>({
+      method: 'GET',
+      path: '/products/destinations',
+      query: { id: params.id, sku: params.sku, limit: params.limit },
+    });
+  }
+
+  // #31 Get Custom Shipping Destinations for Product (defaults)
+  async getProductDestinations(params: {
+    id?: string;
+    sku?: string;
+    limit?: number;
+  }): Promise<JoomApiListResponse<ProductShippingDestination>> {
+    return this.request<JoomApiListResponse<ProductShippingDestination>>({
+      method: 'GET',
+      path: '/products/destinations/defaults',
+      query: { id: params.id, sku: params.sku, limit: params.limit },
+    });
+  }
+
+  // #32 Update Custom Shipping Destinations for Product's Variants
+  async updateVariantDestinations(
+    params: { id?: string; sku?: string },
+    input: { items: UpdateVariantDestinationItem[] }
+  ): Promise<JoomApiEmptyResponse> {
+    return this.request<JoomApiEmptyResponse>({
+      method: 'POST',
+      path: '/products/destinations/update',
+      query: { id: params.id, sku: params.sku },
+      body: input,
+    });
+  }
+
+  // #33 Update Custom Shipping Destinations for Product (defaults)
+  async updateProductDestinations(
+    params: { id?: string; sku?: string },
+    input: { items: UpdateProductDestinationItem[] }
+  ): Promise<JoomApiEmptyResponse> {
+    return this.request<JoomApiEmptyResponse>({
+      method: 'POST',
+      path: '/products/destinations/defaults/update',
+      query: { id: params.id, sku: params.sku },
+      body: input,
+    });
+  }
+
+  // #34 Remove Custom Shipping Destinations for Product's Variants
+  async removeVariantDestinations(
+    params: { id?: string; sku?: string },
+    input: { items: RemoveVariantDestinationItem[] }
+  ): Promise<JoomApiEmptyResponse> {
+    return this.request<JoomApiEmptyResponse>({
+      method: 'POST',
+      path: '/products/destinations/remove',
+      query: { id: params.id, sku: params.sku },
+      body: input,
+    });
+  }
+
+  // #35 Remove Custom Shipping Destinations for Product (defaults)
+  async removeProductDestinations(
+    params: { id?: string; sku?: string },
+    input: { items: RemoveProductDestinationItem[] }
+  ): Promise<JoomApiEmptyResponse> {
+    return this.request<JoomApiEmptyResponse>({
+      method: 'POST',
+      path: '/products/destinations/defaults/remove',
+      query: { id: params.id, sku: params.sku },
+      body: input,
+    });
+  }
+}
+```
+
+### index.ts
+```typescript
+export { JoomShippingDestinationsClient } from './client';
+export * from './types';
+```
+
+### 重要ルール
+- camelCase厳守
+- Money型はstring（shared-typesからimport）
+- shippingPriceはMoney型（string）
+- TypeScriptコンパイルエラーがないことを確認: `npx tsc --noEmit --project apps/worker/tsconfig.json`

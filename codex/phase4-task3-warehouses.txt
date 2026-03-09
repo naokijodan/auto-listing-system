@@ -1,0 +1,176 @@
+## Phase 4 Task 3: Warehouses クライアント実装（6エンドポイント）
+
+### ディレクトリ
+apps/worker/src/lib/joom/warehouses/
+
+### 作成するファイル
+1. types.ts — 型定義
+2. client.ts — 6エンドポイント
+3. index.ts — バレルエクスポート
+
+### 参考ファイル（パターンを踏襲）
+- apps/worker/src/lib/joom/products/types.ts
+- apps/worker/src/lib/joom/products/client.ts
+- apps/worker/src/lib/joom/base-client.ts
+- apps/worker/src/lib/joom/shared-types.ts
+
+### types.ts の型定義
+
+```typescript
+import type { Money } from '../shared-types';
+
+// Warehouse型
+export interface Warehouse {
+  id: string;
+  country: string; // ISO 2-letter code
+  destinationCountries?: string[];
+  enabled: boolean;
+  label: string; // pattern: ^[a-z\d]+$
+  name: string;
+  state?: 'archived' | 'blocked' | 'disabled' | 'enabled';
+  tierInfo?: {
+    warrantyDurationDays?: number;
+  };
+  type: 'fulfillmentService' | 'physical' | 'standardShipping';
+}
+
+// Create Warehouse Input
+export interface CreateWarehouseInput {
+  country: string; // required
+  destinationCountries?: string[];
+  enabled: boolean; // required
+  label: string; // required
+  name: string; // required
+}
+
+// Update Warehouse Input
+export interface UpdateWarehouseInput {
+  country?: string;
+  destinationCountries?: string[];
+  enabled?: boolean;
+  label?: string;
+  name?: string;
+}
+
+// Warehouse Availability (product variant stock at warehouse)
+export interface WarehouseAvailability {
+  currency?: string;
+  inventory?: number;
+  shippingPrice?: Money;
+  variantId?: string;
+  variantSku?: string;
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+
+// Update availability input item
+export interface UpdateAvailabilityItem {
+  currency?: string;
+  inventory?: number; // >= 0
+  shippingPrice?: Money;
+  variantId?: string;
+  variantSku?: string;
+  warehouseId?: string;
+  warehouseLabel?: string;
+}
+```
+
+### client.ts の実装
+
+```typescript
+import { JoomBaseClient } from '../base-client';
+import { JoomApiResponse, JoomApiListResponse, JoomApiEmptyResponse } from '../shared-types';
+import {
+  Warehouse, CreateWarehouseInput, UpdateWarehouseInput,
+  WarehouseAvailability, UpdateAvailabilityItem,
+} from './types';
+
+export class JoomWarehousesClient extends JoomBaseClient {
+  // #36 Retrieve Product's Availability at Warehouses
+  async getProductAvailability(params: {
+    id?: string;
+    sku?: string;
+    limit?: number;
+    warehouseId?: string[];
+    warehouseLabel?: string[];
+  }): Promise<JoomApiListResponse<WarehouseAvailability>> {
+    return this.request<JoomApiListResponse<WarehouseAvailability>>({
+      method: 'GET',
+      path: '/products/warehouses',
+      query: {
+        id: params.id,
+        sku: params.sku,
+        limit: params.limit,
+        warehouseId: params.warehouseId,
+        warehouseLabel: params.warehouseLabel,
+      },
+    });
+  }
+
+  // #37 Update Product's Availability at Warehouses
+  async updateProductAvailability(
+    params: { id?: string; sku?: string },
+    input: { items: UpdateAvailabilityItem[] }
+  ): Promise<JoomApiEmptyResponse> {
+    return this.request<JoomApiEmptyResponse>({
+      method: 'POST',
+      path: '/products/warehouses/update',
+      query: { id: params.id, sku: params.sku },
+      body: input,
+    });
+  }
+
+  // #38 Get Warehouse
+  async getWarehouse(params: { id: string }): Promise<JoomApiResponse<Warehouse>> {
+    return this.request<JoomApiResponse<Warehouse>>({
+      method: 'GET',
+      path: '/warehouses',
+      query: { id: params.id },
+    });
+  }
+
+  // #39 Retrieve Warehouses
+  async retrieveWarehouses(params?: { limit?: number }): Promise<JoomApiListResponse<Warehouse>> {
+    return this.request<JoomApiListResponse<Warehouse>>({
+      method: 'GET',
+      path: '/warehouses/multi',
+      query: { limit: params?.limit },
+    });
+  }
+
+  // #40 Create Warehouse
+  async createWarehouse(input: CreateWarehouseInput): Promise<JoomApiResponse<Warehouse>> {
+    return this.request<JoomApiResponse<Warehouse>>({
+      method: 'POST',
+      path: '/warehouses/create',
+      body: input,
+    });
+  }
+
+  // #41 Update Warehouse
+  async updateWarehouse(
+    params: { id: string },
+    input: UpdateWarehouseInput
+  ): Promise<JoomApiResponse<Warehouse>> {
+    return this.request<JoomApiResponse<Warehouse>>({
+      method: 'POST',
+      path: '/warehouses/update',
+      query: { id: params.id },
+      body: input,
+    });
+  }
+}
+```
+
+### index.ts
+```typescript
+export { JoomWarehousesClient } from './client';
+export * from './types';
+```
+
+### 重要ルール
+- camelCase厳守
+- Money型はstring（shared-typesからimport）
+- shippingPriceはMoney型（string）— numberへの変換禁止
+- inventory は integer型（number）— これは数量なのでnumberでOK
+- TypeScriptコンパイルエラーがないことを確認: `npx tsc --noEmit --project apps/worker/tsconfig.json`
