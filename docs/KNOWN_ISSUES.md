@@ -1,6 +1,6 @@
 # RAKUDA 既知の問題と再発防止策
 
-最終更新: 2026-03-10 (Session 24)
+最終更新: 2026-03-10 (Session 26)
 
 ## 使い方
 新しいセッション開始時に必ずこのファイルを確認すること。
@@ -221,5 +221,5 @@
 ### 7-16: Joom商品重複作成エラー (product_already_exists)
 - **症状**: 同じSKUで再出品しようとすると400エラー
 - **原因**: publishToJoomがcreateProduct固定で、既存商品のupdateに対応していない
-- **対応**: publishToJoom内でproduct_already_existsエラー時にupdateProductにフォールバックする修正が必要
-- **ステータス**: 未対応（テスト出品では手動で旧商品を削除して回避）
+- **修正**: publishToJoom内でproduct_already_existsエラー時にupdateProduct()でJoom API側の商品情報も更新するフォールバック処理を追加
+- **解決済み**: commit 5de26d51（Session 26）
