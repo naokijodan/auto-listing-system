@@ -405,6 +405,7 @@ export class JoomPublishService {
    * Joomに出品
    */
   async publishToJoom(listingId: string): Promise<JoomPublishResult> {
+    let joomProduct: CreateProductInput | undefined; // hoist for catch fallback (updateProduct)
     let listing = await prisma.listing.findUnique({
       where: { id: listingId },
       include: { product: true },
@@ -572,7 +573,7 @@ export class JoomPublishService {
         );
       }
 
-      const joomProduct: CreateProductInput = {
+      joomProduct = {
         name: translations.en.title,
         description: translations.en.description,
         mainImage: imageUrls[0] || '',
@@ -670,6 +671,21 @@ export class JoomPublishService {
         const existingProductId = existingIdMatch?.[1];
 
         if (existingProductId) {
+          // Fallback: try updateProduct with the same payload we built for create
+          try {
+            log.info({ type: 'joom_update_product_fallback', listingId, productId: existingProductId });
+            if (joomProduct) {
+              // UpdateProductInput accepts a subset; omit sku to satisfy type expectations
+              const { sku: _omitSku, ...rest } = joomProduct as any;
+              const updateInput = rest as import('./joom/products/types').UpdateProductInput;
+              const updateResp = await this.joomClient.updateProduct({ id: existingProductId }, updateInput);
+              log.info({ type: 'joom_update_product_success', productId: existingProductId, updated: !!updateResp.data?.id });
+            } else {
+              log.warn({ type: 'joom_update_product_failed', productId: existingProductId, error: 'joomProduct undefined' });
+            }
+          } catch (updErr: any) {
+            log.warn({ type: 'joom_update_product_failed', productId: existingProductId, error: updErr?.message });
+          }
           const existing = await prisma.listing.findUnique({ where: { id: listingId } });
           const currentData = (existing?.marketplaceData as any) || {};
           await prisma.listing.update({
