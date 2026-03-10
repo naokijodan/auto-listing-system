@@ -1,46 +1,31 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-11 (Session 28: RAKUDA Chrome拡張作成・キュー自動投入)
+## 最終更新: 2026-03-11 (Session 29: Joom修正・Chrome拡張改善)
 
 ---
 
 RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 
-■ 前回のセッション（Session 28）でやったこと
-- **RAKUDA とりこみ君 Chrome拡張を作成**
-  - とりこみ君をコピーし、出力先を「Google Sheets / RAKUDA API / 両方」で切り替え可能に
-  - 全8プラットフォーム対応のスクレイピングロジックはそのまま維持
-  - 設定画面でモード切替、RAKUDA API URL設定、接続テスト機能
-  - 配置: `extensions/chrome/`
-- **CSVバリデーション falsyバグ修正**（commit 0dd7ad4e）
-  - `!headerMapping.title` で index 0 が falsy → `headerMapping.title === undefined` に修正
-  - priceも同様に修正
-- **CSVインポート時のキュー自動投入**（commit df497fb0）
-  - `POST /api/products/import` で商品新規作成時に `addFullWorkflowJob` を自動呼び出し
-  - 翻訳→画像処理→READY_TO_REVIEW まで自動で流れる
-- **API + Worker デプロイ完了**（Coolify経由）
+■ 前回のセッション（Session 29）でやったこと
+- **Joomテスト出品4件を取り下げ**（API経由で全件削除完了）
+- **Joomブランド設定問題の修正**（デフォルト値 'Unbranded' 設定）
+- **ABSOLUM商品名重複問題の修正**（翻訳プロンプトにブランド名重複防止ルール追加）
+- **Chrome拡張CSVヘッダー順序を正規に復元**（title先頭に戻す）
+- **Chrome拡張アイコンをRAKUDA独自デザインに差し替え**（ラクダアイコン生成・配置）
+- API + Worker デプロイ開始（20-30分で完了見込み）
 
 ■ 現在のステータス
-- commit: df497fb0 (main)、push済み、API+Workerデプロイ済み
-- Chrome拡張 → RAKUDA API 直接送信: 動作確認済み（LONGINES Conquest テスト成功）
-- LONGINES商品（cmmkqpfnm0001wt3mte4zol2g）: 手動でキュー投入済み、翻訳・画像処理中
-- Joomテスト出品4件: まだ取り下げていない（要対応）
-  - 69afd12245c6d4018cec14ee (スプラトゥン)
-  - 69afd12445c6d4018cec14f2 (ドラゴンクエスト11 S)
-  - 69afd13016248e0119ca95d8 (ABSOLUM)
-  - 69afd12ea9cb14017cabcdcf (ポケモンスカーレット)
+- commit: 21f9b671 (main)、push済み
+- API + Worker: デプロイ中（Coolify経由）
+- Joomテスト出品: 全件取り下げ済み（アカウントリスク解消）
+- LONGINES商品（cmmkqpfnm0001wt3mte4zol2g）: 翻訳・画像処理結果を確認中
 
 ■ 次にやること
-1. **Joomテスト出品4件を取り下げる**（放置するとアカウントリスク）
-2. **Joomブランド設定問題の修正**（最優先）
-   - "Your product does not have a Brand" エラー対応
-   - AIブランド抽出精度向上 or デフォルト値("Unbranded")設定
-   - Joom Merchant PortalのBrand Authorization要件も確認が必要
-3. **ABSOLUM商品名重複問題の修正**（「アブソラム ABSOLUM」→「ABSOLUM ABSOLUM」になる）
-4. **Chrome拡張のCSVヘッダー順序を元に戻す**
-   - background.jsで暫定的にpriceを先頭にしている（falsyバグ回避）
-   - APIデプロイ済みなので `['title','price',...]` に戻してOK
-5. Chrome拡張のアイコンをRAKUDA独自のものに差し替え（現在はとりこみ君のアイコンを復元しただけ）
+1. **デプロイ完了確認**（API + Worker）
+2. **Joom再出品テスト**（ブランド修正 'Unbranded' の動作確認）
+3. **翻訳品質確認**（ABSOLUM重複修正が正しく機能するかテスト）
+4. **LONGINES商品の処理結果確認**（翻訳・画像処理完了しているか）
+5. **Etsy/Shopify OAuth認証実行**（次のマイルストーン）
 
 ■ 開発ワークフロー（必須）
 - コード生成はCodex CLI（/opt/homebrew/bin/codex）に委託する。Claudeが直接コードを書くとコンテキストを大量消費し、Weekly Limitが早く枯渇するため（約70-80%削減効果）
@@ -48,8 +33,7 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 - 設定ファイル・ドキュメントの編集のみ例外として直接可
 
 ■ 注意事項
-- テスト出品は審査完了後に必ず取り下げること（放置するとアカウントリスク）
-- Joom Category Requirements で Electronics にオレンジドットあり（追加要件あり）
+- テスト出品は必ず取り下げること（放置するとアカウントリスク）
 - eBayに対するブラウザ操作は全面禁止（永久サスペンドリスク）
 - Coolifyデプロイは20-30分かかる。API経由: `GET http://45.32.28.61:8000/api/v1/deploy?uuid={app_uuid}&force=true`
 
