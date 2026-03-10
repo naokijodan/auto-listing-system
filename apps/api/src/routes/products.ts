@@ -4,6 +4,7 @@ import IORedis from 'ioredis';
 import { prisma } from '@rakuda/database';
 import { logger } from '@rakuda/logger';
 import { QUEUE_NAMES, EXCHANGE_RATE_DEFAULTS } from '@rakuda/config';
+import { addFullWorkflowJob } from '@rakuda/queue';
 import {
   ScrapedProductSchema,
   parseScrapedProduct,
@@ -947,7 +948,7 @@ router.post('/import', async (req, res, next) => {
           results.updated++;
         } else {
           // 新規作成
-          await prisma.product.create({
+          const product = await prisma.product.create({
             data: {
               sourceId: source.id,
               sourceItemId,
@@ -965,6 +966,17 @@ router.post('/import', async (req, res, next) => {
             },
           });
           results.created++;
+
+          // 翻訳・画像処理のワークフローキューに自動投入
+          try {
+            await addFullWorkflowJob(product.id, false);
+          } catch (queueError: any) {
+            logger.warn({
+              type: 'auto_enrich_failed',
+              productId: product.id,
+              error: queueError.message,
+            });
+          }
         }
       } catch (error: any) {
         results.failed++;
