@@ -1098,22 +1098,30 @@ router.get('/performance', async (req: Request, res: Response, next: NextFunctio
 router.post('/performance/circuit-breaker/:name/reset', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name } = req.params;
-    const key = `rakuda:circuit:${name}`;
 
-    await redis.hset(key, {
+    // レガシーサーキットブレーカーをリセット
+    const legacyKey = `rakuda:circuit:${name}`;
+    await redis.hset(legacyKey, {
       state: 'CLOSED',
       failureCount: '0',
       lastStateChange: new Date().toISOString(),
     });
 
+    // スクレイピング用サーキットブレーカーをリセット
+    const scrapeCircuitKey = `rakuda:scrape:circuit:${name}`;
+    const scrapeHalfOpenKey = `rakuda:scrape:circuit:${name}:half_open_token`;
+    await redis.del(scrapeCircuitKey);
+    await redis.del(scrapeHalfOpenKey);
+
     log.info({
       type: 'circuit_breaker_manual_reset',
       name,
+      keysReset: [legacyKey, scrapeCircuitKey, scrapeHalfOpenKey],
     });
 
     res.json({
       success: true,
-      message: `Circuit breaker "${name}" has been reset to CLOSED`,
+      message: `Circuit breaker "${name}" has been reset to CLOSED (legacy + scrape)`,
     });
   } catch (error) {
     next(error);
