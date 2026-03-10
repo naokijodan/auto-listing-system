@@ -28,6 +28,10 @@ describe('attribute-extractor', () => {
     it('should return undefined for unknown brand', () => {
       expect(extractBrand('ノーブランド 腕時計')).toBeUndefined();
     });
+
+    it('should extract LONGINES as Longines', () => {
+      expect(extractBrand('LONGINES Conquest クォーツ 腕時計')).toBe('Longines');
+    });
   });
 
   describe('extractColor', () => {

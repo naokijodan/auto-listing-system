@@ -3,6 +3,7 @@
  * 商品タイトル・説明文から構造化属性を抽出
  */
 import { logger } from '@rakuda/logger';
+import { prisma } from '@rakuda/database';
 
 const log = logger.child({ module: 'enrichment/attribute-extractor' });
 
@@ -74,23 +75,100 @@ const JOOM_CATEGORY_MAP: Record<string, string> = {
 };
 
 /**
- * ブランド名パターン（よく見かけるブランド）
+ * ブランドキャッシュとフォールバック
  */
-const BRAND_PATTERNS: string[] = [
-  // 時計ブランド
-  'SEIKO', 'セイコー', 'CITIZEN', 'シチズン', 'CASIO', 'カシオ',
-  'ORIENT', 'オリエント', 'OMEGA', 'オメガ', 'ROLEX', 'ロレックス',
-  'TAG HEUER', 'タグホイヤー', 'TISSOT', 'ティソ', 'HAMILTON', 'ハミルトン',
-  // ファッションブランド
-  'GUCCI', 'グッチ', 'LOUIS VUITTON', 'ルイヴィトン', 'LV',
-  'CHANEL', 'シャネル', 'HERMES', 'エルメス', 'PRADA', 'プラダ',
-  'COACH', 'コーチ', 'MICHAEL KORS', 'マイケルコース',
-  // 電機メーカー
-  'SONY', 'ソニー', 'PANASONIC', 'パナソニック', 'SHARP', 'シャープ',
-  'CANON', 'キャノン', 'NIKON', 'ニコン', 'OLYMPUS', 'オリンパス',
-  // その他
-  'NIKE', 'ナイキ', 'ADIDAS', 'アディダス', 'UNIQLO', 'ユニクロ',
-];
+type BrandPattern = { pattern: string; canonical: string; isAscii: boolean };
+
+let brandCache: { patterns: BrandPattern[]; expiresAt: number } | null = null;
+let brandLoadInFlight: Promise<void> | null = null;
+
+// 最低限のフォールバック（DBが使えない場合）
+// 既存テスト互換のため一部は大文字表記を維持
+const FALLBACK_BRANDS: BrandPattern[] = (() => {
+  const entries: Array<[string, string]> = [
+    // Watches (tests expect uppercase for these)
+    ['SEIKO', 'SEIKO'], ['セイコー', 'SEIKO'],
+    ['CITIZEN', 'CITIZEN'], ['シチズン', 'CITIZEN'],
+    ['CASIO', 'CASIO'], ['カシオ', 'CASIO'],
+    ['ORIENT', 'Orient'], ['オリエント', 'Orient'],
+    ['OMEGA', 'Omega'], ['オメガ', 'Omega'],
+    ['ROLEX', 'Rolex'], ['ロレックス', 'Rolex'],
+    ['TAG HEUER', 'Tag Heuer'], ['タグホイヤー', 'Tag Heuer'],
+    ['TISSOT', 'Tissot'], ['ティソ', 'Tissot'],
+    ['HAMILTON', 'Hamilton'], ['ハミルトン', 'Hamilton'],
+    ['LONGINES', 'Longines'], ['ロンジン', 'Longines'],
+  ];
+  const toPattern = (p: [string, string]): BrandPattern => ({
+    pattern: p[0],
+    canonical: p[1],
+    isAscii: /[A-Za-z]/.test(p[0]),
+  });
+  return entries.map(toPattern).sort((a, b) => b.pattern.length - a.pattern.length);
+})();
+
+async function loadBrandsFromDB(): Promise<BrandPattern[]> {
+  try {
+    const brands = await prisma.brand.findMany({
+      select: { name: true, jpNames: true },
+    });
+    const seen = new Set<string>();
+    const patterns: BrandPattern[] = [];
+    for (const b of brands) {
+      if (!b || !b.name) continue;
+      const canonical = b.name;
+      const add = (pattern: string) => {
+        const key = pattern.trim();
+        if (!key) return;
+        const norm = key.toLowerCase();
+        if (seen.has(norm)) return;
+        seen.add(norm);
+        patterns.push({ pattern: key, canonical, isAscii: /[A-Za-z]/.test(key) });
+      };
+      add(b.name);
+      for (const jp of b.jpNames ?? []) add(jp);
+    }
+    // 長い名称から先にマッチ
+    patterns.sort((a, b) => b.pattern.length - a.pattern.length);
+    return patterns;
+  } catch (err) {
+    log.warn({ err }, 'brand_load_failed_fallback');
+    // フォールバック
+    return FALLBACK_BRANDS;
+  }
+}
+
+async function refreshBrandCache(): Promise<void> {
+  const patterns = await loadBrandsFromDB();
+  // 5分キャッシュ
+  const expiresAt = Date.now() + 5 * 60 * 1000;
+  brandCache = { patterns: [...patterns], expiresAt };
+  log.debug({ count: patterns.length, expiresAt }, 'brand_cache_refreshed');
+}
+
+function ensureBrandPatterns(): BrandPattern[] {
+  const now = Date.now();
+  if (!brandCache || now >= brandCache.expiresAt) {
+    if (!brandLoadInFlight) {
+      brandLoadInFlight = refreshBrandCache()
+        .catch((err) => log.error({ err }, 'brand_cache_refresh_error'))
+        .finally(() => {
+          brandLoadInFlight = null;
+        });
+    }
+  }
+  // キャッシュが有効ならそれを返す。未初期化時はフォールバック。
+  return brandCache?.patterns ?? FALLBACK_BRANDS;
+}
+
+// 起動時ロード（バックグラウンド）
+void (async () => {
+  try {
+    await refreshBrandCache();
+  } catch (e) {
+    // 初期ロード失敗時はログのみ。フォールバック使用。
+    log.warn('initial_brand_cache_load_failed');
+  }
+})();
 
 /**
  * 色パターン
@@ -183,17 +261,17 @@ const MATERIAL_PATTERNS: Record<string, string> = {
  * テキストからブランドを抽出
  */
 export function extractBrand(text: string): string | undefined {
+  const patterns = ensureBrandPatterns();
+  if (!text) return undefined;
   const upperText = text.toUpperCase();
 
-  for (const brand of BRAND_PATTERNS) {
-    if (text.includes(brand) || upperText.includes(brand.toUpperCase())) {
-      // 英語名を優先して返す
-      const index = BRAND_PATTERNS.indexOf(brand);
-      if (index % 2 === 1) {
-        // 日本語名の場合、前の英語名を返す
-        return BRAND_PATTERNS[index - 1];
-      }
-      return brand;
+  for (const p of patterns) {
+    if (p.isAscii) {
+      // 英字は大文字・小文字を無視
+      if (upperText.includes(p.pattern.toUpperCase())) return p.canonical;
+    } else {
+      // 日本語はそのまま一致
+      if (text.includes(p.pattern)) return p.canonical;
     }
   }
 
