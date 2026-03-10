@@ -198,11 +198,15 @@
 - **教訓**: Prisma行をインターフェースにキャストする際、JSONカラム(`credentials`)の展開を忘れない
 - **解決済み**: commit e4441598
 
-### 7-13: Joom Merchant Tier: Unverified
+### 7-13: Joom出品データの品質問題によるReject
 - **症状**: 出品した商品がJoomモデレーションでRejectedになる
-- **原因**: マーチャントがUnverified Tierのため、商品審査が厳しい
-- **対応**: Joom Merchant PortalでTrusted Tier取得を申請する必要がある
-- **ステータス**: 未対応
+- **原因**: 出品データの品質問題（複合的）
+  1. ブランド名が日本語のまま送信されていた（例: 「任天堂」→ 正しくは「Nintendo」）— translator.tsのプロンプトが「ブランド名は原文のまま維持」と指示していた
+  2. 画像のアスペクト比が不正（KNOWN_ISSUES 7-14で修正済み）
+  3. タイトルの品質問題（不自然な文字列が含まれるケースあり）
+- **修正**: translator.tsのプロンプトを「ブランド名は必ず英語で返す」に変更
+- **誤記の経緯**: 当初「Unverified Tierが原因」と推測で記載していたが、実際はデータ品質が原因だった
+- **ステータス**: 修正済み（ブランド名英語化）。デプロイ後に再テスト必要
 
 ### 7-14: Joom画像 "Invalid aspect ratio" エラー
 - **症状**: Joom Merchant Portalで画像にエラーアイコン表示。"Invalid aspect ratio"
