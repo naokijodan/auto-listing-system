@@ -115,7 +115,7 @@ export function validateAndParseCsv(
   const headerMapping = normalizeHeaders(rawHeaders);
 
   // 必須フィールドのチェック
-  if (!headerMapping.title) {
+  if (headerMapping.title === undefined) {
     errors.push({
       row: 1,
       column: 'title',
@@ -123,7 +123,7 @@ export function validateAndParseCsv(
     });
   }
 
-  if (!headerMapping.price) {
+  if (headerMapping.price === undefined) {
     warnings.push('価格列が見つかりません。価格は0として処理されます');
   }
 
