@@ -1,58 +1,89 @@
 {
   "manifest_version": 3,
-  "name": "RAKUDA - 越境EC商品登録",
-  "version": "1.1.0",
-  "description": "ヤフオク・メルカリ・Amazonの商品をワンクリックでRAKUDAに登録",
+  "name": "RAKUDA とりこみ君",
+  "short_name": "とりこみ君",
+  "version": "1.2.8",
+  "description": "EC/フリマの商品情報を取得し、RAKUDAに直接送信、またはスプレッドシートにエクスポートできます。",
   "permissions": [
-    "activeTab",
-    "storage",
-    "contextMenus",
-    "notifications",
-    "scripting"
+    "clipboardWrite",
+    "storage"
   ],
-  "host_permissions": [
-    "http://localhost:3000/*",
-    "https://*.rakuda.dev/*",
-    "*://*.yahoo.co.jp/*",
-    "*://*.mercari.com/*",
-    "*://*.amazon.co.jp/*"
-  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; style-src 'self' 'unsafe-inline'; object-src 'self'"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
-      "32": "icons/icon32.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
   },
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.ebay.com/*",
+        "https://*.ebay.co.jp/*",
+        "https://*.ebay.co.uk/*",
+        "https://*.ebay.de/*",
+        "https://*.ebay.fr/*",
+        "https://*.ebay.it/*",
+        "https://*.ebay.es/*",
+        "https://*.ebay.ca/*",
+        "https://*.ebay.com.au/*",
+        "https://*.rakuten.co.jp/*",
+        "https://www.amazon.co.jp/*",
+        "https://*.mercari.com/*",
+        "https://jp.mercari.com/*",
+        "https://auctions.yahoo.co.jp/*",
+        "https://page.auctions.yahoo.co.jp/*",
+        "https://paypayfleamarket.yahoo.co.jp/*",
+        "https://shopping.yahoo.co.jp/*",
+        "https://store.shopping.yahoo.co.jp/*",
+        "https://*.fril.jp/*",
+        "https://fril.jp/*",
+        "https://item.fril.jp/*"
+      ],
+      "js": ["default_setting_json.js", "external-links.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "background": {
-    "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "*://*.yahoo.co.jp/*",
-        "*://*.mercari.com/*",
-        "*://*.amazon.co.jp/*"
-      ],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ],
-  "commands": {
-    "register-product": {
-      "suggested_key": {
-        "default": "Alt+R",
-        "mac": "Alt+R"
-      },
-      "description": "現在のページの商品をRAKUDAに登録"
-    }
-  }
+  "host_permissions": [
+    "https://*.ebay.com/*",
+    "https://*.ebay.co.jp/*",
+    "https://*.ebay.co.uk/*",
+    "https://*.ebay.de/*",
+    "https://*.ebay.fr/*",
+    "https://*.ebay.it/*",
+    "https://*.ebay.es/*",
+    "https://*.ebay.ca/*",
+    "https://*.ebay.com.au/*",
+    "https://*.rakuten.co.jp/*",
+    "https://www.amazon.co.jp/*",
+    "https://*.mercari.com/*",
+    "https://jp.mercari.com/*",
+    "https://auctions.yahoo.co.jp/*",
+    "https://page.auctions.yahoo.co.jp/*",
+    "https://paypayfleamarket.yahoo.co.jp/*",
+    "https://shopping.yahoo.co.jp/*",
+    "https://store.shopping.yahoo.co.jp/*",
+    "https://*.fril.jp/*",
+    "https://fril.jp/*",
+    "https://item.fril.jp/*",
+    "https://script.google.com/*",
+    "https://script.googleusercontent.com/*",
+    "https://api.rakuda.dev/*",
+    "http://localhost:3000/*",
+    "http://localhost:3010/*"
+  ]
 }

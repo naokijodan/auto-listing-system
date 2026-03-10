@@ -1,132 +1,104 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RAKUDA</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>RAKUDA とりこみ君</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      width: 300px;
+      font-size: 14px;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 16px 0;
+      color: #333;
+      border-bottom: 2px solid #4CAF50;
+      padding-bottom: 8px;
+    }
+    .info {
+      line-height: 1.6;
+      color: #666;
+      margin-bottom: 16px;
+    }
+    .supported-sites {
+      background: #f5f5f5;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .supported-sites h2 {
+      font-size: 14px;
+      margin: 0 0 8px 0;
+      color: #555;
+    }
+    .site-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .site-list li {
+      padding: 4px 0;
+      color: #666;
+    }
+    .site-list li:before {
+      content: "✓ ";
+      color: #4CAF50;
+      font-weight: bold;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    .footer {
+      font-size: 12px;
+      color: #999;
+      text-align: center;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <!-- ヘッダー -->
-    <header class="header">
-      <div class="logo">
-        <span class="logo-icon">🦙</span>
-        <span class="logo-text">RAKUDA</span>
-      </div>
-      <button id="settingsBtn" class="icon-btn" title="設定">⚙️</button>
-    </header>
+  <h1>📦 RAKUDA とりこみ君</h1>
 
-    <!-- 接続状態 -->
-    <div id="connectionStatus" class="status">
-      <span class="status-dot"></span>
-      <span class="status-text">確認中...</span>
-    </div>
-
-    <!-- メイン画面 -->
-    <main id="mainView">
-      <!-- 現在のページ情報 -->
-      <div id="pageInfo" class="page-info">
-        <div class="page-site">
-          <span id="siteIcon" class="site-icon">📦</span>
-          <span id="siteName" class="site-name">-</span>
-        </div>
-        <div id="pageTitle" class="page-title">ページを読み込み中...</div>
-      </div>
-
-      <!-- 商品プレビュー（対応サイトの場合） -->
-      <div id="productPreview" class="product-preview hidden">
-        <img id="previewImage" class="preview-image" src="" alt="">
-        <div class="preview-info">
-          <div id="previewTitle" class="preview-title"></div>
-          <div id="previewPrice" class="preview-price"></div>
-        </div>
-      </div>
-
-      <!-- Shipping & Profit Simulator (visible when product detected) -->
-      <div id="shippingSection" class="shipping-section hidden">
-        <h3 class="section-title">Shipping & Profit</h3>
-
-        <!-- Shipping Method Dropdown -->
-        <div class="form-group">
-          <label for="shippingMethod">Shipping Method</label>
-          <select id="shippingMethod" class="shipping-select">
-            <option value="">Auto (recommended)</option>
-            <option value="EP">ePacket (EP)</option>
-            <option value="CF">Cpass Flat (CF)</option>
-            <option value="CD">Cpass DDP (CD)</option>
-            <option value="CE">Cpass Economy (CE)</option>
-            <option value="EL">ePacket Light (EL)</option>
-            <option value="EMS">EMS</option>
-          </select>
-        </div>
-
-        <!-- DDP/DDU Toggle (eBay only) -->
-        <div id="ddpToggle" class="ddp-toggle hidden">
-          <label class="toggle-label">
-            <input type="checkbox" id="ddpMode" checked>
-            <span class="toggle-text">DDP Mode (include duties)</span>
-          </label>
-        </div>
-
-        <!-- Profit Simulator Cards -->
-        <div id="profitCards" class="profit-cards">
-          <div class="profit-card" id="profitLoading">
-            <span class="profit-loading">Calculating...</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- アクションボタン -->
-      <div class="actions">
-        <button id="registerBtn" class="btn btn-primary" disabled>
-          <span class="btn-icon">📥</span>
-          <span class="btn-text">RAKUDAに登録</span>
-        </button>
-      </div>
-
-      <!-- 最近の登録 -->
-      <div id="recentSection" class="recent-section hidden">
-        <h3 class="section-title">最近の登録</h3>
-        <ul id="recentList" class="recent-list"></ul>
-      </div>
-    </main>
-
-    <!-- 設定画面 -->
-    <div id="settingsView" class="settings-view hidden">
-      <h3 class="section-title">設定</h3>
-
-      <div class="form-group">
-        <label for="apiUrl">API URL</label>
-        <input type="url" id="apiUrl" placeholder="http://localhost:3000">
-      </div>
-
-      <div class="form-group">
-        <label for="apiKey">API Key（任意）</label>
-        <input type="password" id="apiKey" placeholder="sk-...">
-      </div>
-
-      <div class="form-actions">
-        <button id="testConnectionBtn" class="btn btn-secondary">
-          接続テスト
-        </button>
-        <button id="saveSettingsBtn" class="btn btn-primary">
-          保存
-        </button>
-      </div>
-
-      <button id="backBtn" class="btn btn-link">← 戻る</button>
-    </div>
-
-    <!-- ローディング -->
-    <div id="loading" class="loading hidden">
-      <div class="spinner"></div>
-      <span>処理中...</span>
-    </div>
-
-    <!-- 通知 -->
-    <div id="toast" class="toast hidden"></div>
+  <div class="info">
+    商品ページを開くと、「📋 商品情報コピー」ボタンが表示されます。
   </div>
+
+  <div id="connectionStatus" class="info" style="background:#f5f5f5; padding:10px; border-radius:6px;">
+    接続状態を読み込み中...
+  </div>
+
+  <div class="supported-sites">
+    <h2>対応サイト</h2>
+    <ul class="site-list">
+      <li>eBay（全ドメイン）</li>
+      <li>楽天市場</li>
+      <li>Amazon.co.jp</li>
+      <li>メルカリ</li>
+      <li>ヤフオク</li>
+      <li>ラクマ</li>
+    </ul>
+  </div>
+
+  <button id="openOptions">⚙️ 設定を開く</button>
+
+  <div class="footer">Version 1.0.0</div>
 
   <script src="popup.js"></script>
 </body>
