@@ -393,6 +393,180 @@ router.delete('/listings/:id', async (req: Request, res: Response) => {
   }
 });
 
+// ========================================
+// Joomリモート商品操作（恒久エンドポイント）
+// ========================================
+
+// Joom API base URL (v3)
+const JOOM_API_BASE = 'https://api-merchant.joom.com/api/v3';
+
+/**
+ * Joom API側の全商品一覧取得
+ */
+router.get('/products/remote', async (req: Request, res: Response) => {
+  try {
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: { marketplace: 'JOOM' },
+    });
+    if (!credential) {
+      return res.status(400).json({ error: 'Joom credentials not found' });
+    }
+    const creds = credential.credentials as any;
+    const accessToken = creds.accessToken as string | undefined;
+
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Joom access token missing' });
+    }
+
+    // Use products/multi to retrieve list
+    const response = await fetch(`${JOOM_API_BASE}/products/multi`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const data = (await response.json().catch(() => ({}))) as any;
+
+    const items = data?.data?.items || [];
+    const summary = items.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      enabled: p.enabled,
+      status: p.moderationStatus || 'unknown',
+    }));
+
+    res.json({ total: items.length, products: summary, raw: data });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Joom product IDで直接削除
+ */
+router.delete('/products/remote/:joomProductId', async (req: Request, res: Response) => {
+  try {
+    const { joomProductId } = req.params;
+
+    if (!joomProductId) {
+      return res.status(400).json({ error: 'joomProductId is required' });
+    }
+
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: { marketplace: 'JOOM' },
+    });
+    if (!credential) {
+      return res.status(400).json({ error: 'Joom credentials not found' });
+    }
+    const creds = credential.credentials as any;
+    const accessToken = creds.accessToken as string | undefined;
+
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Joom access token missing' });
+    }
+
+    const response = await fetch(`${JOOM_API_BASE}/products/remove?id=${encodeURIComponent(joomProductId)}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ reason: 'stopSelling' }),
+    });
+    const data = (await response.json().catch(() => ({}))) as any;
+
+    if (response.ok || data?.code === 0) {
+      // DB側のリスティングも削除（存在する場合）
+      const listing = await prisma.listing.findFirst({
+        where: {
+          marketplace: 'JOOM' as any,
+          marketplaceListingId: joomProductId,
+        },
+      });
+      if (listing) {
+        await prisma.listing.delete({ where: { id: listing.id } });
+      }
+
+      res.json({ success: true, joomProductId, message: 'Product removed from Joom' });
+    } else {
+      res.status(response.status).json({
+        success: false,
+        joomProductId,
+        error: data,
+      });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Joom側の全商品一括削除
+ */
+router.post('/products/remote/remove-all', async (req: Request, res: Response) => {
+  try {
+    const credential = await prisma.marketplaceCredential.findFirst({
+      where: { marketplace: 'JOOM' },
+    });
+    if (!credential) {
+      return res.status(400).json({ error: 'Joom credentials not found' });
+    }
+    const creds = credential.credentials as any;
+    const accessToken = creds.accessToken as string | undefined;
+
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Joom access token missing' });
+    }
+
+    // 全商品取得
+    const listResponse = await fetch(`${JOOM_API_BASE}/products/multi`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const listData = (await listResponse.json().catch(() => ({}))) as any;
+    const items = listData?.data?.items || [];
+
+    if (items.length === 0) {
+      return res.json({ success: true, message: 'No products to remove', removed: 0 });
+    }
+
+    // 全削除
+    const results: Array<{ id: string; name?: string; success: boolean; error?: any }> = [];
+    for (const item of items) {
+      try {
+        const removeResponse = await fetch(`${JOOM_API_BASE}/products/remove?id=${encodeURIComponent(item.id)}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ reason: 'stopSelling' }),
+        });
+        const removeData = (await removeResponse.json().catch(() => ({}))) as any;
+        results.push({ id: item.id, name: item.name, success: removeResponse.ok || removeData?.code === 0 });
+      } catch (err: any) {
+        results.push({ id: item.id, name: item.name, success: false, error: err.message });
+      }
+    }
+
+    // DB側のリスティングも削除
+    const joomIds = items.map((i: any) => i.id);
+    await prisma.listing.deleteMany({
+      where: {
+        marketplace: 'JOOM' as any,
+        marketplaceListingId: { in: joomIds },
+      },
+    });
+
+    res.json({
+      success: true,
+      total: items.length,
+      removed: results.filter((r) => r.success).length,
+      results,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 /**
  * 出品統計
  */
