@@ -580,7 +580,7 @@ export class JoomPublishService {
         extraImages: imageUrls.slice(1),
         sku: `RAKUDA-${task.productId}`,
         tags: joomCategory ? [joomCategory] : [],
-        brand: attributes?.brand || (listing!.product as any).brand || undefined,
+        brand: attributes?.brand || (listing!.product as any).brand || 'Unbranded',
         categoryId: md.joomCategory || undefined,
         variants: [
           {

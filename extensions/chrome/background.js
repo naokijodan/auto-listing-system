@@ -186,10 +186,8 @@ async function handleExportToRakuda(request, sender) {
     images = data.imageUrl.split(',').map(s => s.trim()).filter(Boolean).join(';');
   }
 
-  // titleを先頭(index 0)に置くと本番APIの !headerMapping.title バグ(!0===true)に引っかかるため
-  // priceを先頭にしてtitleを2番目にする（API修正デプロイ後に元に戻してよい）
-  const headers = ['price','title','description','sourceUrl','condition','images'];
-  const row = [price, title, description, sourceUrl, condition, images];
+  const headers = ['title','price','description','sourceUrl','condition','images'];
+  const row = [title, price, description, sourceUrl, condition, images];
   const csv = headers.map(csvEscape).join(',') + "\n" + row.map(csvEscape).join(',');
 
   console.log('📤 RAKUDA CSV送信:', { csv, sourceType, title, price, sourceUrl });
