@@ -57,50 +57,50 @@ const navigation = [
   { name: 'エンリッチメント', href: '/enrichment', icon: Sparkles },
   { name: 'バッチ処理', href: '/batch', icon: Layers },
   { name: 'Joom管理', href: '/joom', icon: Store },
-  { name: 'eBay管理', href: '/ebay', icon: Store },
-  { name: '出品パフォーマンス', href: '/listing-performance', icon: TrendingDown },
-  { name: '改善提案', href: '/listing-improvement', icon: Lightbulb },
-  { name: '自動アクション', href: '/automation-rules', icon: Zap },
-  { name: '利益計算', href: '/profit-calculation', icon: DollarSign },
+  /* hidden: UI not yet implemented { name: 'eBay管理', href: '/ebay', icon: Store }, */
+  /* hidden: UI not yet implemented { name: '出品パフォーマンス', href: '/listing-performance', icon: TrendingDown }, */
+  /* hidden: UI not yet implemented { name: '改善提案', href: '/listing-improvement', icon: Lightbulb }, */
+  /* hidden: UI not yet implemented { name: '自動アクション', href: '/automation-rules', icon: Zap }, */
+  /* hidden: UI not yet implemented { name: '利益計算', href: '/profit-calculation', icon: DollarSign }, */
   { name: '出品管理', href: '/listings', icon: ShoppingCart },
   { name: '注文管理', href: '/orders', icon: Truck },
-  { name: '仕入れ管理', href: '/sourcing', icon: ShoppingBag },
-  { name: 'サプライヤー', href: '/suppliers', icon: Building2 },
-  { name: '在庫予測', href: '/inventory-forecast', icon: Calculator },
-  { name: '発送管理', href: '/shipments', icon: PackageCheck },
+  /* hidden: UI not yet implemented { name: '仕入れ管理', href: '/sourcing', icon: ShoppingBag }, */
+  /* hidden: UI not yet implemented { name: 'サプライヤー', href: '/suppliers', icon: Building2 }, */
+  /* hidden: UI not yet implemented { name: '在庫予測', href: '/inventory-forecast', icon: Calculator }, */
+  /* hidden: UI not yet implemented { name: '発送管理', href: '/shipments', icon: PackageCheck }, */
   { name: 'ジョブ監視', href: '/jobs', icon: Activity },
-  { name: 'レポート', href: '/reports', icon: BarChart3 },
-  { name: 'レポート生成', href: '/report-generator', icon: FileText },
-  { name: '売上予測', href: '/sales-forecast', icon: TrendingUp },
-  { name: '分析', href: '/analytics', icon: LineChart },
-  { name: 'カスタマーサクセス', href: '/customer-success', icon: HeartHandshake },
-  { name: 'カスタムレポート', href: '/custom-reports', icon: FileBarChart },
+  /* hidden: UI not yet implemented { name: 'レポート', href: '/reports', icon: BarChart3 }, */
+  /* hidden: UI not yet implemented { name: 'レポート生成', href: '/report-generator', icon: FileText }, */
+  /* hidden: UI not yet implemented { name: '売上予測', href: '/sales-forecast', icon: TrendingUp }, */
+  /* hidden: UI not yet implemented { name: '分析', href: '/analytics', icon: LineChart }, */
+  /* hidden: UI not yet implemented { name: 'カスタマーサクセス', href: '/customer-success', icon: HeartHandshake }, */
+  /* hidden: UI not yet implemented { name: 'カスタムレポート', href: '/custom-reports', icon: FileBarChart }, */
   { name: '通知', href: '/notifications', icon: Bell },
-  { name: '通知設定', href: '/notification-settings', icon: Bell },
+  /* hidden: UI not yet implemented { name: '通知設定', href: '/notification-settings', icon: Bell }, */
   { name: '設定', href: '/settings', icon: Settings },
 ];
 
 const adminNavigation = [
-  { name: '組織管理', href: '/organizations', icon: Users },
   { name: '外部連携', href: '/integrations', icon: Link2 },
-  { name: 'セキュリティ', href: '/security', icon: Lock },
-  { name: 'SSO設定', href: '/sso', icon: KeyRound },
-  { name: 'システム性能', href: '/system-performance', icon: Server },
-  { name: '多通貨管理', href: '/multi-currency', icon: Coins },
-  { name: 'コンプライアンス', href: '/compliance', icon: Scale },
-  { name: '高度な検索', href: '/advanced-search', icon: Search },
-  { name: 'データ転送', href: '/data-transfer', icon: ArrowUpDown },
-  { name: 'Webhook', href: '/webhooks', icon: Webhook },
-  { name: 'API利用統計', href: '/api-usage', icon: Key },
-  { name: 'バックアップ', href: '/backup-recovery', icon: HardDrive },
-  { name: '監視アラート', href: '/monitoring-alerts', icon: AlertTriangle },
-  { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid },
-  { name: 'A/Bテスト', href: '/ab-tests', icon: FlaskConical },
-  { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch },
-  { name: 'チャットボット', href: '/chatbot', icon: MessageCircle },
-  { name: 'パフォーマンス', href: '/admin/performance', icon: Gauge },
-  { name: 'システム監視', href: '/admin/monitoring', icon: Shield },
-  { name: 'ログビューア', href: '/admin/logs', icon: FileText },
+  /* hidden: UI not yet implemented { name: '組織管理', href: '/organizations', icon: Users }, */
+  /* hidden: UI not yet implemented { name: 'セキュリティ', href: '/security', icon: Lock }, */
+  /* hidden: UI not yet implemented { name: 'SSO設定', href: '/sso', icon: KeyRound }, */
+  /* hidden: UI not yet implemented { name: 'システム性能', href: '/system-performance', icon: Server }, */
+  /* hidden: UI not yet implemented { name: '多通貨管理', href: '/multi-currency', icon: Coins }, */
+  /* hidden: UI not yet implemented { name: 'コンプライアンス', href: '/compliance', icon: Scale }, */
+  /* hidden: UI not yet implemented { name: '高度な検索', href: '/advanced-search', icon: Search }, */
+  /* hidden: UI not yet implemented { name: 'データ転送', href: '/data-transfer', icon: ArrowUpDown }, */
+  /* hidden: UI not yet implemented { name: 'Webhook', href: '/webhooks', icon: Webhook }, */
+  /* hidden: UI not yet implemented { name: 'API利用統計', href: '/api-usage', icon: Key }, */
+  /* hidden: UI not yet implemented { name: 'バックアップ', href: '/backup-recovery', icon: HardDrive }, */
+  /* hidden: UI not yet implemented { name: '監視アラート', href: '/monitoring-alerts', icon: AlertTriangle }, */
+  /* hidden: UI not yet implemented { name: 'ウィジェット設定', href: '/dashboard-widgets', icon: LayoutGrid }, */
+  /* hidden: UI not yet implemented { name: 'A/Bテスト', href: '/ab-tests', icon: FlaskConical }, */
+  /* hidden: UI not yet implemented { name: 'ワークフロー', href: '/workflow-rules', icon: GitBranch }, */
+  /* hidden: UI not yet implemented { name: 'チャットボット', href: '/chatbot', icon: MessageCircle }, */
+  /* hidden: UI not yet implemented { name: 'パフォーマンス', href: '/admin/performance', icon: Gauge }, */
+  /* hidden: UI not yet implemented { name: 'システム監視', href: '/admin/monitoring', icon: Shield }, */
+  /* hidden: UI not yet implemented { name: 'ログビューア', href: '/admin/logs', icon: FileText }, */
 ];
 
 export function Sidebar() {

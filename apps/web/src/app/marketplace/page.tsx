@@ -1,6 +1,10 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
+import { Save, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { addToast } from '@/components/ui/toast'
+import { postApi, putApi } from '@/lib/api'
 
 type PlatformKey = 'ebay' | 'joom' | 'etsy' | 'shopify' | 'instagram_shop' | 'tiktok_shop'
 
@@ -49,11 +53,12 @@ export default function MarketplacePage() {
   const [error, setError] = useState<string | null>(null)
   const [opLoading, setOpLoading] = useState<Record<string, boolean>>({})
 
-  // Routing settings (local UI state)
+  // Routing settings state
   const [routePriceRule, setRoutePriceRule] = useState(false)
   const [routeVintageRule, setRouteVintageRule] = useState(false)
   const [routeBrandRule, setRouteBrandRule] = useState(false)
   const [defaultDest, setDefaultDest] = useState<PlatformKey[]>([])
+  const [savingRouting, setSavingRouting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -129,6 +134,66 @@ export default function MarketplacePage() {
       cancelled = true
     }
   }, [])
+
+  // Load routing settings on mount
+  useEffect(() => {
+    const loadRoutingSettings = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/system-settings/category/MARKETPLACE`
+        )
+        const json = await res.json()
+        if (json.success && json.data) {
+          if (json.data['marketplace.route.price_rule'] !== undefined)
+            setRoutePriceRule(json.data['marketplace.route.price_rule'])
+          if (json.data['marketplace.route.vintage_rule'] !== undefined)
+            setRouteVintageRule(json.data['marketplace.route.vintage_rule'])
+          if (json.data['marketplace.route.brand_rule'] !== undefined)
+            setRouteBrandRule(json.data['marketplace.route.brand_rule'])
+          if (json.data['marketplace.route.default_dest'] !== undefined)
+            setDefaultDest(json.data['marketplace.route.default_dest'])
+        }
+      } catch (e) {
+        console.error('Failed to load routing settings:', e)
+      }
+    }
+    loadRoutingSettings()
+  }, [])
+
+  const handleSaveRouting = async () => {
+    setSavingRouting(true)
+    try {
+      const settings = {
+        'marketplace.route.price_rule': routePriceRule,
+        'marketplace.route.vintage_rule': routeVintageRule,
+        'marketplace.route.brand_rule': routeBrandRule,
+        'marketplace.route.default_dest': defaultDest,
+      }
+
+      const result = await putApi<any>('/api/system-settings', { settings, reason: 'Marketplace routing update' })
+
+      if (result?.data?.results) {
+        for (const r of result.data.results) {
+          if (!r.success && r.error === 'Not found') {
+            const val = settings[r.key as keyof typeof settings]
+            await postApi('/api/system-settings', {
+              key: r.key,
+              value: val,
+              category: 'MARKETPLACE',
+              valueType: typeof val === 'boolean' ? 'BOOLEAN' : 'JSON',
+              label: r.key,
+            })
+          }
+        }
+      }
+
+      addToast('ルーティング設定を保存しました', 'success')
+    } catch (error) {
+      addToast('保存に失敗しました', 'error')
+    } finally {
+      setSavingRouting(false)
+    }
+  }
 
   const handleConnect = async (platform: PlatformKey) => {
     setOpLoading((s) => ({ ...s, [platform]: true }))
@@ -362,7 +427,7 @@ export default function MarketplacePage() {
           {/* Platforms */}
           <section className="mb-8 space-y-4">{platformCards}</section>
 
-          {/* Routing rules */}
+          {/* Routing Settings */}
           <section className="mb-8 rounded-lg border bg-white shadow-sm">
             <div className="border-b p-4">
               <h2 className="text-lg font-semibold">出品ルーティング設定</h2>
@@ -418,6 +483,21 @@ export default function MarketplacePage() {
                 <p className="text-xs text-gray-500">ルールと重複する場合は個別ルールを優先します。</p>
               </div>
             </div>
+            <div className="flex items-center justify-end border-t p-4">
+              <Button onClick={handleSaveRouting} disabled={savingRouting}>
+                {savingRouting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    保存中...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    保存
+                  </>
+                )}
+              </Button>
+            </div>
           </section>
 
           {/* Recent orders */}
@@ -462,4 +542,3 @@ export default function MarketplacePage() {
     </div>
   )
 }
-

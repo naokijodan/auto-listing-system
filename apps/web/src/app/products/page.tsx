@@ -893,13 +893,17 @@ export default function ProductsPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* hidden: not yet implemented
           <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
             <Edit className="h-4 w-4" />
             一括編集
           </Button>
+          */}
+          {/* hidden: not yet implemented
           <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
             価格一括変更
           </Button>
+          */}
           <Button
             variant="outline"
             size="sm"

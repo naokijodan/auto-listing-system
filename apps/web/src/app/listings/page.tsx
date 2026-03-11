@@ -728,10 +728,12 @@ export default function ListingsPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {/* hidden: not yet implemented
           <Button variant="outline" size="sm" disabled={selectedIds.size === 0 || isProcessing}>
             <DollarSign className="h-4 w-4" />
             価格一括変更
           </Button>
+          */}
           <Button variant="outline" size="sm" onClick={handleBulkPublish} disabled={selectedIds.size === 0 || isProcessing}>
             <Play className="h-4 w-4" />
             再出品

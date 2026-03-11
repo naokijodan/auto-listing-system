@@ -95,6 +95,69 @@ export default function SettingsPage() {
 }
 
 function PriceSettings() {
+  // Local state
+  const [ebayProfitRate, setEbayProfitRate] = useState<number>(30);
+  const [ebayMinProfit, setEbayMinProfit] = useState<number>(10);
+  const [ebayShipping, setEbayShipping] = useState<number>(15);
+  const [ebayFeeRate, setEbayFeeRate] = useState<number>(13);
+  const [joomProfitRate, setJoomProfitRate] = useState<number>(25);
+  const [joomMinProfit, setJoomMinProfit] = useState<number>(8);
+  const [saving, setSaving] = useState(false);
+
+  // Load PRICING settings
+  const { data: pricingRes, mutate } = useSWR<{ success: boolean; data: Record<string, any> }>(
+    '/api/system-settings/category/PRICING',
+    fetcher
+  );
+
+  useEffect(() => {
+    const data = pricingRes?.data;
+    if (!data) return;
+    if (data['pricing.ebay.profit_rate'] !== undefined) setEbayProfitRate(Number(data['pricing.ebay.profit_rate']));
+    if (data['pricing.ebay.min_profit'] !== undefined) setEbayMinProfit(Number(data['pricing.ebay.min_profit']));
+    if (data['pricing.ebay.shipping'] !== undefined) setEbayShipping(Number(data['pricing.ebay.shipping']));
+    if (data['pricing.ebay.fee_rate'] !== undefined) setEbayFeeRate(Number(data['pricing.ebay.fee_rate']));
+    if (data['pricing.joom.profit_rate'] !== undefined) setJoomProfitRate(Number(data['pricing.joom.profit_rate']));
+    if (data['pricing.joom.min_profit'] !== undefined) setJoomMinProfit(Number(data['pricing.joom.min_profit']));
+  }, [pricingRes?.data]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const settings = {
+        'pricing.ebay.profit_rate': ebayProfitRate,
+        'pricing.ebay.min_profit': ebayMinProfit,
+        'pricing.ebay.shipping': ebayShipping,
+        'pricing.ebay.fee_rate': ebayFeeRate,
+        'pricing.joom.profit_rate': joomProfitRate,
+        'pricing.joom.min_profit': joomMinProfit,
+      } as const;
+
+      const result = await putApi<any>('/api/system-settings', { settings, reason: 'UI update' });
+
+      if (result?.data?.results) {
+        for (const r of result.data.results) {
+          if (!r.success && r.error === 'Not found') {
+            await postApi('/api/system-settings', {
+              key: r.key,
+              value: settings[r.key as keyof typeof settings],
+              category: 'PRICING',
+              valueType: 'NUMBER',
+              label: r.key,
+            });
+          }
+        }
+      }
+
+      addToast('保存しました', 'success');
+      mutate();
+    } catch (error) {
+      addToast('保存に失敗しました', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -109,7 +172,8 @@ function PriceSettings() {
               </label>
               <input
                 type="number"
-                defaultValue={30}
+                value={Number.isNaN(ebayProfitRate) ? 0 : ebayProfitRate}
+                onChange={(e) => setEbayProfitRate(Number(e.target.value))}
                 className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
               />
             </div>
@@ -119,7 +183,8 @@ function PriceSettings() {
               </label>
               <input
                 type="number"
-                defaultValue={10}
+                value={Number.isNaN(ebayMinProfit) ? 0 : ebayMinProfit}
+                onChange={(e) => setEbayMinProfit(Number(e.target.value))}
                 className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
               />
             </div>
@@ -129,7 +194,8 @@ function PriceSettings() {
               </label>
               <input
                 type="number"
-                defaultValue={15}
+                value={Number.isNaN(ebayShipping) ? 0 : ebayShipping}
+                onChange={(e) => setEbayShipping(Number(e.target.value))}
                 className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
               />
             </div>
@@ -139,7 +205,8 @@ function PriceSettings() {
               </label>
               <input
                 type="number"
-                defaultValue={13}
+                value={Number.isNaN(ebayFeeRate) ? 0 : ebayFeeRate}
+                onChange={(e) => setEbayFeeRate(Number(e.target.value))}
                 className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
               />
             </div>
@@ -159,7 +226,8 @@ function PriceSettings() {
               </label>
               <input
                 type="number"
-                defaultValue={25}
+                value={Number.isNaN(joomProfitRate) ? 0 : joomProfitRate}
+                onChange={(e) => setJoomProfitRate(Number(e.target.value))}
                 className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
               />
             </div>
@@ -169,7 +237,8 @@ function PriceSettings() {
               </label>
               <input
                 type="number"
-                defaultValue={8}
+                value={Number.isNaN(joomMinProfit) ? 0 : joomMinProfit}
+                onChange={(e) => setJoomMinProfit(Number(e.target.value))}
                 className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
               />
             </div>
@@ -178,8 +247,12 @@ function PriceSettings() {
       </Card>
 
       <div className="flex justify-end">
-        <Button>
-          <Save className="h-4 w-4" />
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
           保存
         </Button>
       </div>
