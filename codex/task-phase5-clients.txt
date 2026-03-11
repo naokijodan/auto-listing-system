@@ -1,0 +1,261 @@
+## Task: Phase 5 — Implement remaining Joom v3 API clients
+
+Create new v3 client modules under `apps/worker/src/lib/joom/` for the following API groups.
+Follow the EXACT same patterns as existing clients (orders/client.ts, products/client.ts, etc.).
+
+### Pattern to follow:
+- Each module gets its own directory: `{module-name}/client.ts`, `{module-name}/types.ts`, `{module-name}/index.ts`
+- Client class extends `JoomBaseClient` from `../base-client`
+- Import shared types from `../shared-types` (JoomApiResponse, JoomApiListResponse, JoomApiEmptyResponse, JoomId, Money)
+- Use `this.request<T>({ method, path, query, body, accept })` pattern
+- Export from module's index.ts
+- Add re-exports in `apps/worker/src/lib/joom/index.ts`
+
+### Module 1: pickup-addresses
+Directory: `apps/worker/src/lib/joom/pickup-addresses/`
+Class: `JoomPickupAddressesClient`
+
+Types (types.ts):
+```typescript
+import { JoomId } from '../shared-types';
+
+export interface PickupAddressContact {
+  name?: string;
+  phone?: string;
+}
+
+export interface PickupAddress {
+  id: JoomId;
+  country?: string;
+  city?: string;
+  streetAddress1?: string;
+  streetAddress2?: string;
+  zipcode?: string;
+  state?: string;
+  contact?: PickupAddressContact;
+}
+
+export interface CreatePickupAddressInput {
+  country?: string;
+  city?: string;
+  streetAddress1?: string;
+  streetAddress2?: string;
+  zipcode?: string;
+  state?: string;
+  contact?: PickupAddressContact;
+}
+
+export interface UpdatePickupAddressInput {
+  country?: string;
+  city?: string;
+  streetAddress1?: string;
+  streetAddress2?: string;
+  zipcode?: string;
+  state?: string;
+  contact?: PickupAddressContact;
+}
+```
+
+Endpoints (client.ts):
+- GET /pickupAddresses?id={id} → getPickupAddress(params: { id: string }): Promise<JoomApiResponse<PickupAddress>>
+- GET /pickupAddresses/all → getAllPickupAddresses(): Promise<JoomApiListResponse<PickupAddress>>
+- POST /pickupAddresses/create → createPickupAddress(input: CreatePickupAddressInput): Promise<JoomApiResponse<PickupAddress>>
+- POST /pickupAddresses/update?id={id} → updatePickupAddress(params: { id: string }, input: UpdatePickupAddressInput): Promise<JoomApiResponse<PickupAddress>>
+- POST /pickupAddresses/remove?id={id} → removePickupAddress(params: { id: string }): Promise<JoomApiEmptyResponse>
+
+### Module 2: pickup-requests
+Directory: `apps/worker/src/lib/joom/pickup-requests/`
+Class: `JoomPickupRequestsClient`
+
+Types (types.ts):
+```typescript
+import { JoomId } from '../shared-types';
+
+export interface PickupRequestPayload {
+  boxesCount: number;
+  boxesTotalWeight: number;
+  pickupAddressId: JoomId;
+}
+
+export interface CreatePickupRequestInput {
+  type: 'default' | 'fbj';
+  payload: PickupRequestPayload;
+}
+
+export interface PickupRequest {
+  id: JoomId;
+  type?: string;
+  status?: string;
+  payload?: PickupRequestPayload;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PickupBox {
+  id: JoomId;
+  barcode?: string;
+  status?: string;
+}
+```
+
+Endpoints (client.ts):
+- POST /pickups/requests/create → createPickupRequest(input: CreatePickupRequestInput): Promise<JoomApiResponse<PickupRequest>>
+- GET /pickups/requests/multi → retrievePickupRequests(params?: { limit?: number; updatedFrom?: string }): Promise<JoomApiListResponse<PickupRequest>>
+- GET /pickups/requests?id={id} → getPickupRequest(params: { id: string }): Promise<JoomApiResponse<PickupRequest>>
+- POST /pickups/requests/cancel?id={id} → cancelPickupRequest(params: { id: string }): Promise<JoomApiEmptyResponse>
+- POST /pickups/requests/generateBoxLabels?id={id} → generateBoxLabels(params: { id: string }): Promise<Buffer> (accept: application/pdf)
+- GET /pickups/requests/boxes/multi?requestId={requestId} → retrievePickupBoxes(params: { requestId: string }): Promise<JoomApiListResponse<PickupBox>>
+
+### Module 3: fbj (Fulfilled by Joom)
+Directory: `apps/worker/src/lib/joom/fbj/`
+Class: `JoomFbjClient`
+
+Types (types.ts):
+```typescript
+import { JoomId } from '../shared-types';
+
+export interface FbjReplenishment {
+  id: JoomId;
+  status?: string;
+  forecastCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UpdateForecastCountInput {
+  id: JoomId;
+  items: Array<{ variantId: JoomId; forecastCount: number }>;
+}
+
+export interface FbjInbound {
+  id: JoomId;
+  status?: string;
+  pickupRequestId?: JoomId;
+  pickupBoxBarcode?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateInboundInput {
+  replenishmentId: JoomId;
+  items: Array<{ variantId: JoomId; quantity: number }>;
+}
+
+export interface SplitReplenishmentInput {
+  id: JoomId;
+  items: Array<{ variantId: JoomId; count: number }>;
+}
+```
+
+Endpoints (client.ts):
+- GET /fbj/replenishments/multi → retrieveReplenishments(params?: { limit?: number; updatedFrom?: string }): Promise<JoomApiListResponse<FbjReplenishment>>
+- POST /fbj/replenishments/updateForecastCount → updateForecastCount(input: UpdateForecastCountInput): Promise<JoomApiResponse<FbjReplenishment>>
+- POST /fbj/replenishments/accept?id={id} → acceptReplenishment(params: { id: string }): Promise<JoomApiEmptyResponse>
+- POST /fbj/replenishments/cancel?id={id} → cancelReplenishment(params: { id: string }): Promise<JoomApiEmptyResponse>
+- POST /fbj/replenishments/review?id={id} → reviewReplenishment(params: { id: string }): Promise<JoomApiEmptyResponse>
+- POST /fbj/replenishments/complete?id={id} → completeReplenishment(params: { id: string }): Promise<JoomApiEmptyResponse>
+- POST /fbj/replenishments/generateLabel?id={id} → generateReplenishmentLabel(params: { id: string }): Promise<Buffer> (accept: application/pdf)
+- POST /fbj/replenishments/split → splitReplenishment(input: SplitReplenishmentInput): Promise<JoomApiResponse<FbjReplenishment>>
+- GET /fbj/inbounds/multi → retrieveInbounds(params?: { limit?: number; updatedFrom?: string }): Promise<JoomApiListResponse<FbjInbound>>
+- POST /fbj/inbounds/create → createInbound(input: CreateInboundInput): Promise<JoomApiResponse<FbjInbound>>
+- POST /fbj/inbounds/remove?id={id} → removeInbound(params: { id: string }): Promise<JoomApiEmptyResponse>
+- POST /fbj/inbounds/generateConsignmentNote?id={id} → generateConsignmentNote(params: { id: string }): Promise<Buffer> (accept: application/pdf)
+
+### Module 4: documents
+Directory: `apps/worker/src/lib/joom/documents/`
+Class: `JoomDocumentsClient`
+
+Types (types.ts):
+```typescript
+import { JoomId } from '../shared-types';
+
+export interface Document {
+  id: JoomId;
+  type?: string;
+  status?: string;
+  url?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LinkProductsInput {
+  documentId: JoomId;
+  productIds: JoomId[];
+}
+
+export interface UnlinkProductsInput {
+  documentId: JoomId;
+  productIds: JoomId[];
+}
+
+export interface DocumentLink {
+  documentId: JoomId;
+  productId?: JoomId;
+  productSku?: string;
+  status?: string;
+}
+```
+
+Endpoints (client.ts):
+- GET /documents?id={id} → getDocument(params: { id: string }): Promise<JoomApiResponse<Document>>
+- GET /documents/multi → retrieveDocuments(params?: { limit?: number; updatedFrom?: string }): Promise<JoomApiListResponse<Document>>
+- POST /documents/linkProducts → linkProducts(input: LinkProductsInput): Promise<JoomApiEmptyResponse>
+- POST /documents/unlinkProducts → unlinkProducts(input: UnlinkProductsInput): Promise<JoomApiEmptyResponse>
+- GET /documents/links?productId={productId}&productSku={productSku} → getDocumentLinks(params: { productId?: string; productSku?: string }): Promise<JoomApiListResponse<DocumentLink>>
+
+### Module 5: sandbox
+Directory: `apps/worker/src/lib/joom/sandbox/`
+Class: `JoomSandboxClient`
+
+Types (types.ts):
+```typescript
+import { JoomId, Money } from '../shared-types';
+
+export interface CreateSandboxOrderInput {
+  productId: JoomId;
+  variantId: JoomId;
+  quantity?: number;
+  price?: Money;
+  shippingPrice?: Money;
+}
+
+export interface ApproveSandboxProductInput {
+  id: JoomId;
+}
+
+export interface CategorizeSandboxProductInput {
+  id: JoomId;
+  categoryId: JoomId;
+}
+
+export interface SandboxOrder {
+  id: JoomId;
+  [key: string]: unknown;
+}
+
+export interface SandboxProductResult {
+  id: JoomId;
+  [key: string]: unknown;
+}
+```
+
+Endpoints (client.ts):
+- POST /sandbox/orders/create → createOrder(input: CreateSandboxOrderInput): Promise<JoomApiResponse<SandboxOrder>>
+- POST /sandbox/products/approve → approveProduct(input: ApproveSandboxProductInput): Promise<JoomApiEmptyResponse>
+- POST /sandbox/products/categorize → categorizeProduct(input: CategorizeSandboxProductInput): Promise<JoomApiEmptyResponse>
+
+### Update index.ts
+After creating all modules, update `apps/worker/src/lib/joom/index.ts` to export all new clients and types:
+```typescript
+// Add these exports:
+export { JoomPickupAddressesClient } from './pickup-addresses';
+export * from './pickup-addresses/types';
+export { JoomPickupRequestsClient } from './pickup-requests';
+export * from './pickup-requests/types';
+export { JoomFbjClient } from './fbj';
+export * from './fbj/types';
+export { JoomDocumentsClient } from './documents';
+export * from './documents/types';
+export { JoomSandboxClient } from './sandbox';
+export * from './sandbox/types';
+```

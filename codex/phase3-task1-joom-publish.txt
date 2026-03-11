@@ -1,0 +1,235 @@
+## Phase 3 Task 1: joom-publish.ts を新 JoomProductsClient に移行
+
+### ファイル
+apps/worker/src/processors/joom-publish.ts
+
+### 変更内容
+
+1. import変更:
+   - 削除: `import { JoomApiClient } from '../lib/joom-api';`
+   - 追加: `import { JoomProductsClient } from '../lib/joom/products';`
+
+2. シングルトン変更:
+   - `let joomClient: JoomApiClient | null = null;` → `let joomClient: JoomProductsClient | null = null;`
+   - `function getJoomClient(): JoomApiClient {` → `function getJoomClient(): JoomProductsClient {`
+   - `joomClient = new JoomApiClient();` → `joomClient = new JoomProductsClient();`
+
+3. processDeleteProduct関数 (line 176-203):
+   旧: `const resp = await client.deleteProduct(joomProductId);`
+   → 新クライアントでは removeProduct を使い、try/catch で成功/失敗を判定。
+   新クライアントは成功時にデータを返し、失敗時に JoomApiError を throw する。
+
+   変更後:
+   ```typescript
+   async function processDeleteProduct(joomProductId: string, joomListingId?: string): Promise<any> {
+     const client = getJoomClient();
+     try {
+       await client.removeProduct({ id: joomProductId });
+       log.info({
+         type: 'delete_product_complete',
+         joomProductId,
+         joomListingId,
+         success: true,
+       });
+       return {
+         joomProductId,
+         joomListingId,
+         success: true,
+       };
+     } catch (error: any) {
+       log.error({
+         type: 'delete_product_failed',
+         joomProductId,
+         joomListingId,
+         success: false,
+         error: error.message,
+       });
+       return {
+         joomProductId,
+         joomListingId,
+         success: false,
+         error: error.message,
+       };
+     }
+   }
+   ```
+
+4. processEnableProduct関数 (line 208-226):
+   旧: `const result = await client.enableProduct(joomProductId);` + `if (result.success)` チェック
+   → 新: `await client.updateProduct({ id: joomProductId }, { enabled: true });` + try/catch
+
+   変更後:
+   ```typescript
+   async function processEnableProduct(listingId: string, joomProductId: string): Promise<void> {
+     const client = getJoomClient();
+     try {
+       await client.updateProduct({ id: joomProductId }, { enabled: true });
+       await prisma.listing.update({
+         where: { id: listingId },
+         data: {
+           status: 'ACTIVE',
+           listedAt: new Date(),
+           errorMessage: null,
+         },
+       });
+       log.info({ type: 'joom_enable_success', listingId, joomProductId });
+     } catch (error: any) {
+       log.error({ type: 'joom_enable_failed', listingId, joomProductId, error: error.message });
+       throw new Error(`Failed to enable product: ${error.message}`);
+     }
+   }
+   ```
+
+5. processDisableProduct関数 (line 231-245):
+   旧: `const result = await client.disableProduct(joomProductId);` + `if (result.success)` チェック
+   → 新: `await client.updateProduct({ id: joomProductId }, { enabled: false });` + try/catch
+
+   変更後:
+   ```typescript
+   async function processDisableProduct(listingId: string, joomProductId: string): Promise<void> {
+     const client = getJoomClient();
+     try {
+       await client.updateProduct({ id: joomProductId }, { enabled: false });
+       await prisma.listing.update({
+         where: { id: listingId },
+         data: { status: 'PAUSED' },
+       });
+       log.info({ type: 'joom_disable_success', listingId, joomProductId });
+     } catch (error: any) {
+       log.error({ type: 'joom_disable_failed', listingId, joomProductId, error: error.message });
+       throw new Error(`Failed to disable product: ${error.message}`);
+     }
+   }
+   ```
+
+6. processSyncStatus関数 (line 297-398):
+   旧: `const resp = await client.getProduct(joomProductId);` + `if (resp.success && resp.data)` チェック
+   → 新: `const resp = await client.getProduct({ id: joomProductId });` + try/catch
+
+   新クライアントのgetProductは JoomApiResponse<Product> を返す（= { data: Product }）。
+   成功時は resp.data にProductオブジェクトが入る。
+   失敗時は JoomApiError を throw する。
+
+   processSyncStatus内の変更:
+   - try ブロック内で:
+     ```typescript
+     const resp = await client.getProduct({ id: joomProductId });
+     const product = resp.data;
+     ```
+   - `resp.success && resp.data` の条件分岐を削除し、try/catch で分ける
+   - 404 Not Found の検出: catch ブロック内で `error.statusCode === 404` または `error.message` で判定
+   - enabled/disabled の判定: v3では `product.enabled` (boolean) を直接参照。旧コードのような複雑なフォールバックは不要。
+
+   変更後の processSyncStatus:
+   ```typescript
+   async function processSyncStatus(joomListingId: string): Promise<any> {
+     const listing = await prisma.listing.findUnique({
+       where: { id: joomListingId },
+     });
+
+     const currentData = (listing?.marketplaceData as any) || {};
+     const joomProductId = currentData?.joomProductId as string | undefined;
+
+     if (!listing || !joomProductId) {
+       return { joomListingId, synced: false, reason: 'No Joom product ID' };
+     }
+
+     try {
+       const client = getJoomClient();
+       const resp = await client.getProduct({ id: joomProductId });
+       const product = resp.data;
+
+       let updateData: any = { updatedAt: new Date() };
+       let resolvedStatus: string | undefined;
+
+       if (product.enabled === true) {
+         resolvedStatus = 'ACTIVE';
+       } else if (product.enabled === false) {
+         resolvedStatus = 'PAUSED';
+       }
+
+       if (resolvedStatus) {
+         updateData.status = resolvedStatus as any;
+       }
+
+       await prisma.listing.update({
+         where: { id: joomListingId },
+         data: updateData,
+       });
+
+       log.info({
+         type: 'sync_status_complete',
+         joomListingId,
+         joomProductId,
+         status: updateData.status,
+         notFound: false,
+         success: true,
+       });
+
+       return {
+         joomListingId,
+         synced: true,
+         status: updateData.status,
+         notFound: false,
+       };
+     } catch (error: any) {
+       // 404 Not Found → ENDED
+       const statusCode = error.statusCode || 0;
+       const msg = error.message?.toLowerCase() || '';
+       const notFound = statusCode === 404 || msg.includes('not found');
+
+       if (notFound) {
+         await prisma.listing.update({
+           where: { id: joomListingId },
+           data: { updatedAt: new Date(), status: 'ENDED' as any },
+         });
+
+         log.info({
+           type: 'sync_status_complete',
+           joomListingId,
+           joomProductId,
+           status: 'ENDED',
+           notFound: true,
+           success: true,
+         });
+
+         return { joomListingId, synced: true, status: 'ENDED', notFound: true };
+       }
+
+       // その他のエラーは記録のみ
+       const cur = (listing?.marketplaceData as any) || {};
+       await prisma.listing.update({
+         where: { id: joomListingId },
+         data: {
+           updatedAt: new Date(),
+           marketplaceData: {
+             ...cur,
+             errorCount: (cur.errorCount || 0) + 1,
+             lastError: error.message || String(error),
+           },
+         },
+       });
+
+       log.error({
+         type: 'sync_status_error',
+         joomListingId,
+         joomProductId,
+         error: error.message,
+       });
+
+       return {
+         joomListingId,
+         synced: false,
+         error: error.message,
+       };
+     }
+   }
+   ```
+
+### 重要な注意
+- `import { prisma } from '@rakuda/database';` はそのまま維持
+- `import { logger } from '@rakuda/logger';` はそのまま維持
+- `import type { JoomPublishJobData, JoomPublishJobType } from '@rakuda/queue';` はそのまま維持
+- `import { joomPublishService, batchPublishService, imagePipelineService } from '../lib/joom-publish-service';` はそのまま維持（Phase 2で既に移行済み）
+- 価格は全て string 型（Money型）。numberへの変換禁止
+- 既存のログ出力フォーマットはそのまま維持

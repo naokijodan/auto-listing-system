@@ -1,0 +1,121 @@
+Create file: apps/worker/src/lib/joom/shared-types.ts
+
+This file defines shared TypeScript types for the Joom API v3 client.
+All types must use camelCase (matching v3 API spec). Money values are ALWAYS string type (e.g. "4.52"), NEVER number.
+
+## Types to define:
+
+### Money (string type alias)
+```typescript
+export type Money = string; // e.g. "4.52" - NEVER use number for prices
+```
+
+### JoomId (string type alias)
+```typescript
+export type JoomId = string; // Pattern: ^\d+\-\d+\-\d+\-\d+\-\d+|[a-f\d]{24}
+```
+
+### ImageProcessed
+```typescript
+export interface ImageProcessed {
+  height: number;
+  url: string;
+  width: number;
+}
+```
+
+### ImageBundleWithState
+```typescript
+export interface ImageBundleWithState {
+  imageState?: string; // e.g. "blockedImages"
+  origUrl?: string;
+  processed?: ImageProcessed[];
+}
+```
+
+### Paging
+```typescript
+export interface Paging {
+  next?: string; // URL for next page
+}
+```
+
+### JoomApiResponse<T> (single item response)
+```typescript
+export interface JoomApiResponse<T> {
+  data: T;
+}
+```
+
+### JoomApiListResponse<T> (list response with paging)
+```typescript
+export interface JoomApiListResponse<T> {
+  paging?: Paging;
+  data: {
+    items: T[];
+  };
+}
+```
+
+### JoomApiCountResponse
+```typescript
+export interface JoomApiCountResponse {
+  data: {
+    count: number;
+  };
+}
+```
+
+### JoomApiEmptyResponse
+```typescript
+export interface JoomApiEmptyResponse {
+  // Empty response for delete/approve/cancel operations
+}
+```
+
+### JoomApiError
+```typescript
+export class JoomApiError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: number,
+    public readonly code?: string,
+    public readonly details?: unknown
+  ) {
+    super(message);
+    this.name = 'JoomApiError';
+  }
+}
+```
+
+### JoomApiConfig
+```typescript
+export interface JoomApiConfig {
+  clientId: string;
+  clientSecret: string;
+  accessToken?: string;
+  refreshToken?: string;
+  baseUrl?: string; // default: https://api-merchant.joom.com/api/v3
+}
+```
+
+### HttpMethod
+```typescript
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+```
+
+### RequestOptions
+```typescript
+export interface RequestOptions {
+  method: HttpMethod;
+  path: string;
+  query?: Record<string, string | number | string[] | undefined>;
+  body?: unknown;
+  headers?: Record<string, string>;
+  accept?: string; // default: application/json, can be application/pdf
+}
+```
+
+Export all types. Do NOT import from any project files. This is a standalone types file.
+Do NOT add any comments except where necessary for clarity.
+File should be under 120 lines.

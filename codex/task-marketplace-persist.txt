@@ -1,0 +1,102 @@
+## Task: Implement Marketplace routing settings persistence
+
+### Context
+The marketplace page at apps/web/src/app/marketplace/page.tsx had a "出品ルーティング設定" section that was commented out because it only used local state. We need to restore it WITH backend persistence.
+
+The backend has a SystemSetting API at `/api/system-settings` that supports:
+- POST / → create a setting (key, value, category, valueType, label)
+- PUT /:key → update existing setting (value, reason)
+- GET /category/:category → get all settings by category
+- PUT / → bulk update (settings object with key:value pairs)
+
+### What to implement
+
+1. **Uncomment the routing settings section** in marketplace/page.tsx (currently wrapped in {/* hidden: not yet implemented ... */})
+
+2. **Uncomment the useState declarations** for:
+   - routePriceRule (boolean)
+   - routeVintageRule (boolean)
+   - routeBrandRule (boolean)
+   - defaultDest (PlatformKey[])
+
+3. **Add load-on-mount logic** using useEffect:
+   ```typescript
+   useEffect(() => {
+     const loadRoutingSettings = async () => {
+       try {
+         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/system-settings/category/MARKETPLACE`);
+         const json = await res.json();
+         if (json.success && json.data) {
+           if (json.data['marketplace.route.price_rule'] !== undefined)
+             setRoutePriceRule(json.data['marketplace.route.price_rule']);
+           if (json.data['marketplace.route.vintage_rule'] !== undefined)
+             setRouteVintageRule(json.data['marketplace.route.vintage_rule']);
+           if (json.data['marketplace.route.brand_rule'] !== undefined)
+             setRouteBrandRule(json.data['marketplace.route.brand_rule']);
+           if (json.data['marketplace.route.default_dest'] !== undefined)
+             setDefaultDest(json.data['marketplace.route.default_dest']);
+         }
+       } catch (e) {
+         console.error('Failed to load routing settings:', e);
+       }
+     };
+     loadRoutingSettings();
+   }, []);
+   ```
+
+4. **Add a save button** at the bottom of the routing section:
+   - Use Button component with Save icon
+   - On click, save all routing settings via the SystemSetting API
+   - Use the same upsert pattern: PUT bulk first, then POST for any that don't exist
+
+5. **Save handler**:
+   ```typescript
+   const handleSaveRouting = async () => {
+     setSavingRouting(true);
+     try {
+       const settings = {
+         'marketplace.route.price_rule': routePriceRule,
+         'marketplace.route.vintage_rule': routeVintageRule,
+         'marketplace.route.brand_rule': routeBrandRule,
+         'marketplace.route.default_dest': defaultDest,
+       };
+
+       const result = await putApi<any>('/api/system-settings', { settings, reason: 'Marketplace routing update' });
+
+       if (result?.data?.results) {
+         for (const r of result.data.results) {
+           if (!r.success && r.error === 'Not found') {
+             const val = settings[r.key as keyof typeof settings];
+             await postApi('/api/system-settings', {
+               key: r.key,
+               value: val,
+               category: 'MARKETPLACE',
+               valueType: typeof val === 'boolean' ? 'BOOLEAN' : 'JSON',
+               label: r.key,
+             });
+           }
+         }
+       }
+
+       addToast({ title: 'ルーティング設定を保存しました', type: 'success' });
+     } catch (error) {
+       addToast({ title: '保存に失敗しました', type: 'error' });
+     } finally {
+       setSavingRouting(false);
+     }
+   };
+   ```
+
+6. **Add required state**: `savingRouting` boolean
+
+7. **Imports needed** (check if already imported):
+   - Save, Loader2 from lucide-react
+   - Button from @/components/ui/button
+   - addToast from @/components/ui/toast
+   - putApi, postApi from @/lib/api
+
+### Important
+- Keep the existing Card/section structure
+- Make sure the checkboxes still work with onChange handlers
+- Add the save button inside the section, at the bottom
+- Show loading state on save button while saving

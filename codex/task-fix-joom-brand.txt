@@ -1,0 +1,30 @@
+## タスク: Joomブランド設定問題の修正
+
+### 問題
+Joom出品時に "Your product does not have a Brand" エラーが発生。
+brand フィールドが undefined のまま送信されている。
+
+### 修正箇所
+
+#### 1. apps/worker/src/lib/joom-publish-service.ts
+brand フィールドに "Unbranded" デフォルト値を設定。
+
+現在のコード（約583行目付近）:
+```typescript
+brand: attributes?.brand || (listing!.product as any).brand || undefined,
+```
+
+修正後:
+```typescript
+brand: attributes?.brand || (listing!.product as any).brand || 'Unbranded',
+```
+
+#### 2. packages/enrichment/src/attribute-extractor.ts
+extractBrand() 関数の戻り値でも、undefinedの場合のフォールバックを追加。
+ただし関数自体はundefinedを返す設計なので、呼び出し側でフォールバックする方が望ましい。
+修正は1のjoom-publish-service.tsのデフォルト値設定のみで十分。
+
+### 注意
+- undefinedをnullに変えるのではなく、文字列 'Unbranded' にする
+- 既存のテストがある場合は壊さないこと
+- brand値が空文字の場合も 'Unbranded' にフォールバックすること

@@ -1,0 +1,23 @@
+## Task: Hide non-functional buttons and sections
+
+### 1. /listings page (apps/web/src/app/listings/page.tsx)
+Remove or comment out the "価格一括変更" button that has no onClick handler.
+It's in the bottom action bar area. Look for a Button with text "価格一括変更" and a DollarSign icon that does NOT have an onClick handler.
+
+### 2. /products page (apps/web/src/app/products/page.tsx)
+Remove or comment out TWO buttons in the bottom action bar:
+- "一括編集" button (has Edit icon, no onClick)
+- "価格一括変更" button (no onClick)
+
+### 3. /marketplace page (apps/web/src/app/marketplace/page.tsx)
+Remove or comment out the entire "出品ルーティング設定" section.
+This is a <section> with h2 text "出品ルーティング設定" containing checkboxes for routePriceRule, routeVintageRule, routeBrandRule, and defaultDest.
+Also remove the related useState declarations if they become unused:
+- routePriceRule
+- routeVintageRule
+- routeBrandRule
+- defaultDest
+
+Use {/* hidden: not yet implemented */} comments so we can restore later.
+
+IMPORTANT: Do NOT remove any functional buttons. Only remove buttons/sections that have NO onClick handler or only use local state with no persistence.

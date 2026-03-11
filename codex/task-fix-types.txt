@@ -1,0 +1,97 @@
+## Task: Fix TypeScript compilation errors after Joom v3 migration
+
+There are several TypeScript errors to fix. Here are the specific issues:
+
+### Issue 1: FulfillOrderInput type mismatch
+Files: `apps/worker/src/lib/joom/compat.ts` and `apps/worker/src/lib/shipment-service.ts`
+
+The `FulfillOrderInput` type in `apps/worker/src/lib/joom/orders/types.ts` has these fields:
+```typescript
+export interface FulfillOrderInput {
+  provider?: string;
+  providerId?: string;
+  trackingNumber: string;
+}
+```
+
+But the code is passing `trackingProvider` and `shippingProvider` which don't exist. Fix by:
+- In `compat.ts`: Change `trackingProvider` to `provider` and remove `shippingProvider`
+- In `shipment-service.ts`: Change `trackingProvider` to `provider` and remove `shippingProvider`
+
+### Issue 2: order-sync-manager.ts Order type too strict
+File: `apps/worker/src/lib/order-sync-manager.ts`
+
+The `retrieveOrders` returns typed `Order[]` but the sync code accesses many untyped fields like `orderId`, `order_id`, `subtotal`, `totalPrice`, `shippingPrice`, `buyer`, `tax`, `paymentStatus`, `createdAt`, `created_at`, `items`, `lineItems`.
+
+Fix: Cast the items to `any[]` after retrieving:
+```typescript
+const orders = (res.data.items || []) as any[];
+```
+
+### Issue 3: worker-manager.ts still uses old JoomApiClient at line 693
+File: `apps/worker/src/lib/worker-manager.ts` around line 690-716
+
+Replace:
+```typescript
+const joomClient = new JoomApiClient();
+const result = await joomClient.shipOrder(marketplaceOrderId, {
+  trackingNumber,
+  carrier: trackingCarrier,
+});
+
+if (result.success) {
+  ... success handling ...
+} else {
+  throw new Error(result.error?.message || 'Failed to sync shipment to Joom');
+}
+```
+
+With:
+```typescript
+const { JoomOrdersClient } = await import('./joom');
+const joomClient = new JoomOrdersClient();
+await joomClient.fulfillOrder({ id: marketplaceOrderId }, {
+  trackingNumber,
+  provider: trackingCarrier,
+});
+
+log.info({
+  type: 'ship_to_marketplace_success',
+  orderId,
+  marketplace: 'JOOM',
+});
+
+return {
+  success: true,
+  orderId,
+  marketplace,
+  synced: true,
+  timestamp: new Date().toISOString(),
+};
+```
+
+### Issue 4: processors still import from '../lib/joom-api'
+Files:
+- `apps/worker/src/processors/publish.ts` line 12: `import { isJoomConfigured } from '../lib/joom-api';`
+- `apps/worker/src/processors/inventory.ts` line 7: `import { isJoomConfigured } from '../lib/joom-api';`
+
+Fix both: Change to `import { isJoomConfigured } from '../lib/joom/compat';`
+
+### Issue 5: Test files still import from '../../lib/joom-api'
+Files:
+- `apps/worker/src/test/unit/inventory-sync.test.ts` line 18
+- `apps/worker/src/test/integration/joom-api.test.ts` line 3
+- `apps/worker/src/test/unit/price-sync.test.ts` line 25
+- `apps/worker/src/test/unit/order-sync.test.ts` line 18
+- `apps/worker/src/test/unit/multi-channel-inventory.test.ts` line 32
+- `apps/worker/src/test/unit/joom-api.endpoints.test.ts` line 3
+
+For ALL test files:
+- Replace `from '../../lib/joom-api'` with `from '../../lib/joom/compat'`
+- `JoomApiClient` in tests should be imported from `../../lib/joom/compat` (the `joomApi` facade provides backward-compatible methods)
+- If tests use `new JoomApiClient()`, replace with either the appropriate v3 client from `../../lib/joom` or the `joomApi` facade from `../../lib/joom/compat`
+- For mocking patterns like `vi.mock('../../lib/joom-api', ...)`, update to `vi.mock('../../lib/joom/compat', ...)` or `vi.mock('../../lib/joom', ...)` as appropriate
+
+### Verification
+After all fixes, run: `npx tsc --noEmit --project apps/worker/tsconfig.json`
+Ensure zero errors.

@@ -1,0 +1,49 @@
+## Task: Clean up sidebar navigation to show only working pages
+
+File: apps/web/src/components/layout/sidebar.tsx
+
+### Main navigation array - KEEP only these items:
+1. ダッシュボード (/)
+2. 商品管理 (/products)
+3. 商品レビュー (/products/review)
+4. エンリッチメント (/enrichment)
+5. バッチ処理 (/batch)
+6. Joom管理 (/joom)
+7. 出品管理 (/listings)
+8. 注文管理 (/orders)
+9. 在庫管理 (/inventory) - if it exists in the nav
+10. AI価格設定 (/pricing-ai) - if it exists in the nav
+11. マーケットプレイス (/marketplace) - if it exists in the nav
+12. ジョブ監視 (/jobs)
+13. 通知 (/notifications)
+14. 設定 (/settings)
+
+### REMOVE from main navigation (comment out, don't delete):
+- eBay管理 (/ebay) - 35% implemented, not ready
+- 出品パフォーマンス (/listing-performance)
+- 改善提案 (/listing-improvement)
+- 自動アクション (/automation-rules)
+- 利益計算 (/profit-calculation)
+- 仕入れ管理 (/sourcing)
+- サプライヤー (/suppliers)
+- 在庫予測 (/inventory-forecast)
+- 発送管理 (/shipments)
+- レポート (/reports)
+- レポート生成 (/report-generator)
+- 売上予測 (/sales-forecast)
+- 分析 (/analytics)
+- カスタマーサクセス (/customer-success)
+- カスタムレポート (/custom-reports)
+- 通知設定 (/notification-settings)
+
+### Admin navigation - KEEP only:
+1. 外部連携 (/integrations)
+2. ジョブ監視 - only if not already in main nav
+
+### REMOVE from admin navigation (comment out):
+- All other admin items (組織管理, セキュリティ, SSO, システム性能, 多通貨管理, コンプライアンス, etc.)
+
+### Implementation:
+- Comment out removed items with /* hidden: UI not yet implemented */
+- Do NOT delete the code, just comment it out
+- Keep the imports for icons even if temporarily unused (to avoid build errors)

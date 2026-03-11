@@ -1,0 +1,420 @@
+Create file: apps/worker/src/lib/joom/products/types.ts
+
+TypeScript types for Joom API v3 Products domain (19 endpoints).
+All types must match the v3 spec exactly. camelCase only. Money = string type.
+
+## Imports
+- Import { Money, JoomId, ImageBundleWithState } from '../shared-types'
+
+## Types to define:
+
+### ProductAttribute
+```typescript
+export interface ProductAttribute {
+  key: string;
+  value: string;
+}
+```
+
+### ProductCategory
+```typescript
+export interface ProductCategory {
+  id?: string;
+  name?: string;
+  parentId?: string;
+  path?: string;
+}
+```
+
+### CategoryWithTakeRate (for Get Categories endpoint)
+```typescript
+export interface CategoryWithTakeRate {
+  id?: string;
+  name?: string;
+  parentId?: string;
+  path?: string;
+  takeRate?: number;
+}
+```
+
+### ProductDangerInfo
+```typescript
+export type DangerKind = 'adult' | 'aerosoleAndGases' | 'battery' | 'dangerousChemicals' | 'flammable' | 'hair' | 'highDensity' | 'liquid' | 'lookAlikeWeapon' | 'magnets' | 'perfumes' | 'plants' | 'powder' | 'semiLiquid' | 'sharp' | 'teaLeafs' | 'weaponAccessories' | 'withBattery';
+
+export interface ProductDangerInfo {
+  isDangerous: boolean;
+  dangerKinds?: DangerKind[];
+}
+```
+
+### ProductParsedAttribute
+```typescript
+export interface ProductParsedAttribute {
+  key?: string;
+  values?: Array<{ text?: string }>;
+}
+```
+
+### ProductPriceRange
+```typescript
+export interface ProductPriceRange {
+  min?: Money;
+  max?: Money;
+}
+```
+
+### ProductShipmentScoreInfo
+```typescript
+export interface ProductShipmentScoreInfo {
+  score?: number;
+  scoreType?: 'slow';
+}
+```
+
+### ProductCustomisation
+```typescript
+export interface ProductCustomisationPosition {
+  x: number;
+  y: number;
+  height: number;
+  width: number;
+}
+
+export interface ProductCustomisation {
+  type: 'image' | 'text';
+  image?: ImageBundleWithState;
+  position?: ProductCustomisationPosition;
+}
+```
+
+### ProductTakeRates
+```typescript
+export interface ProductTakeRates {
+  default?: number;
+  fbj?: number;
+  increased?: number;
+}
+```
+
+### ClusterTierMetricScores
+```typescript
+export interface ClusterTierMetricScores {
+  priceScore?: number;
+  fftimeScore?: number;
+  qualityScore?: number;
+  cancelRateScore?: number;
+}
+```
+
+### ClusterTierInfo
+```typescript
+export interface ClusterTierInfo {
+  score?: number;
+  metricScores?: ClusterTierMetricScores;
+  worstMetricName?: 'price';
+}
+```
+
+### ProductRating
+```typescript
+export interface ProductRating {
+  average?: number;
+  count?: number;
+}
+```
+
+### ProductReviewInfraction
+```typescript
+export interface ProductReviewInfraction {
+  brandId?: string;
+  code?: string;
+  dangerInfoByJoom?: unknown;
+  description?: string;
+  diagnoseTimestamp?: string;
+  duplicateProductId?: string;
+  index?: string;
+  indexEnd?: number;
+  isPermanent?: boolean;
+  kind?: 'blocker';
+  merchantPromotionId?: string;
+  metric?: number;
+  note?: string;
+  platformPromotionId?: string;
+  variantId?: string;
+  variantSku?: string;
+  where?: string;
+}
+```
+
+### ProductReview
+```typescript
+export interface ProductReview {
+  infractions?: ProductReviewInfraction[];
+}
+```
+
+### ProductRichContentItem
+```typescript
+export interface ProductRichContentItem {
+  images?: ImageBundleWithState[];
+  language?: string;
+}
+```
+
+### ProductState
+```typescript
+export type ProductState = 'active' | 'archived' | 'disabledByJoom' | 'disabledByMerchant' | 'locked' | 'pending' | 'rejected' | 'warning';
+```
+
+### ProductContentScore
+```typescript
+export type ProductContentScore = 'full' | 'fair' | 'poor';
+```
+
+### ProductFlag
+```typescript
+export type ProductFlag = 'edlp' | 'edlpCompetitivePrice' | 'edlpFavorablePrice';
+```
+
+### ProductVariant
+```typescript
+export interface ProductVariant {
+  id?: string;
+  attributes?: ProductAttribute[];
+  colors?: string;
+  currency?: 'USD';
+  declaredValue?: Money;
+  gtin?: string;
+  hsCode?: string;
+  mainImage?: ImageBundleWithState;
+  msrPrice?: Money;
+  parsedAttributes?: ProductParsedAttribute[];
+  price?: Money;
+  averageSalesPrice?: Money;
+  salesPrice?: Money;
+  productId?: string;
+  shippingHeight?: number;
+  shippingLength?: number;
+  shippingWeight?: number;
+  shippingWidth?: number;
+  size?: string;
+  sku?: string;
+  committedFulfillmentDays?: number;
+  effectiveStock?: number;
+  enabled?: boolean;
+  inventory?: number;
+  salePrice?: Money;
+  shippingPrice?: Money;
+  joomSelectPrice?: Money;
+  joomSelectTargetPrice?: Money;
+}
+```
+
+### Product (the main response type)
+```typescript
+export interface Product {
+  id: string;
+  attributes?: ProductAttribute[];
+  category?: ProductCategory;
+  categoryByJoom?: ProductCategory;
+  dangerInfo?: ProductDangerInfo;
+  dangerKind?: string; // deprecated
+  description?: string;
+  extraImages?: ImageBundleWithState[];
+  landingPageUrl?: string;
+  mainImage: ImageBundleWithState;
+  name: string;
+  parsedAttributes?: ProductParsedAttribute[];
+  sku: string;
+  storeId?: string;
+  takeRate?: number;
+  takeRates?: ProductTakeRates;
+  tags?: string[];
+  contentScore?: ProductContentScore;
+  shipmentScoreInfo?: ProductShipmentScoreInfo;
+  customisation?: ProductCustomisation;
+  brand?: string;
+  enabled: boolean;
+  flags?: ProductFlag[];
+  hasActiveVersion: boolean;
+  isInCluster?: boolean;
+  joomSelectPrice?: ProductPriceRange;
+  joomSelectTargetPrice?: ProductPriceRange;
+  clusterTierInfo?: ClusterTierInfo;
+  isPromoted?: boolean;
+  rating?: ProductRating;
+  review: ProductReview;
+  richContent?: ProductRichContentItem[];
+  saleEndDate?: string;
+  saleStartDate?: string;
+  state: ProductState;
+  updateTimestamp: string;
+  uploadTimestamp: string;
+  variants: ProductVariant[];
+}
+```
+
+### Request types:
+
+#### CreateProductVariantInput
+```typescript
+export interface CreateProductVariantInput {
+  attributes?: ProductAttribute[];
+  color?: string;
+  currency?: 'USD';
+  declaredValue?: Money;
+  gtin?: string;
+  hsCode?: string;
+  inventory?: number;
+  mainImage?: string; // URL string for create
+  msrPrice?: Money;
+  price: Money; // required
+  salePrice?: Money;
+  shippingHeight?: number;
+  shippingLength?: number;
+  shippingPrice?: Money;
+  shippingWeight?: number;
+  shippingWidth?: number;
+  size?: string;
+  sku: string; // required
+  committedFulfillmentDays?: number;
+}
+```
+
+#### CreateProductInput
+```typescript
+export interface CreateProductInput {
+  attributes?: ProductAttribute[];
+  categoryId?: string;
+  customisation?: { type: 'image' | 'text'; imageUrl: string; imageWidth: number; imageHeight: number; position: ProductCustomisationPosition };
+  dangerInfo?: ProductDangerInfo;
+  description?: string;
+  enabled?: boolean;
+  extraImages?: string[];
+  landingPageUrl?: string;
+  mainImage: string; // required URL
+  name: string; // required
+  richContent?: Array<{ imageUrls: string[]; language: string }>;
+  saleEndDate?: string;
+  saleStartDate?: string;
+  sku: string; // required
+  storeId?: string;
+  tags?: string[];
+  variants: CreateProductVariantInput[]; // required
+  brand?: string;
+}
+```
+
+#### UpdateProductVariantInput
+```typescript
+export interface UpdateProductVariantInput {
+  attributes?: ProductAttribute[];
+  color?: string;
+  currency?: 'USD';
+  declaredValue?: Money;
+  gtin?: string;
+  hsCode?: string;
+  inventory?: number;
+  mainImage?: string;
+  msrPrice?: Money;
+  price: Money; // required
+  salePrice?: Money;
+  shippingHeight?: number;
+  shippingLength?: number;
+  shippingPrice?: Money;
+  shippingWeight?: number;
+  shippingWidth?: number;
+  size?: string;
+  sku: string; // required
+  committedFulfillmentDays?: number;
+}
+```
+
+#### UpdateProductInput
+```typescript
+export interface UpdateProductInput {
+  attributes?: ProductAttribute[];
+  categoryId?: string;
+  customisation?: { type: 'image' | 'text'; imageUrl?: string; imageWidth?: number; imageHeight?: number; position?: ProductCustomisationPosition };
+  dangerInfo?: ProductDangerInfo;
+  description?: string;
+  enabled?: boolean;
+  extraImages?: string[];
+  landingPageUrl?: string;
+  mainImage?: string;
+  name?: string;
+  richContent?: Array<{ imageUrls: string[]; language: string }>;
+  saleEndDate?: string;
+  saleStartDate?: string;
+  storeId?: string;
+  tags?: string[];
+  variants?: UpdateProductVariantInput[];
+  brand?: string;
+}
+```
+
+#### RemoveProductInput
+```typescript
+export interface RemoveProductInput {
+  reason?: 'legalRequirement' | 'stopSelling';
+}
+```
+
+#### RemoveVariantsInput
+```typescript
+export interface RemoveVariantsInput {
+  variants: Array<{ id?: string; sku?: string }>;
+}
+```
+
+#### GenerateEuLabelsInput
+```typescript
+export interface GenerateEuLabelsInput {
+  productId: string;
+  variantIds?: string[];
+}
+```
+
+#### ColorWithName
+```typescript
+export interface ColorWithName {
+  name?: string;
+  rgb?: string;
+}
+```
+
+#### CategoryRequirements
+```typescript
+export interface CategoryAttributeRequirement {
+  attributeId?: string;
+  attributeName?: string;
+  badDescriptionSamples?: string[];
+  goodDescriptionSamples?: string[];
+  severity?: 'optional' | string;
+  supportedKeys?: string[];
+  supportedSources?: string[];
+}
+
+export interface CategoryRequirements {
+  attributeRequirements?: CategoryAttributeRequirement[];
+  id: string;
+}
+```
+
+#### CategoryAttributeValues
+```typescript
+export interface CategoryAttributeValues {
+  attributeName: string;
+  attributeValues: string[];
+}
+```
+
+#### JoomSelectProposal (shared for approved/pending/removed)
+```typescript
+export interface JoomSelectProposal {
+  // Contains full Product structure
+  [key: string]: unknown;
+}
+```
+
+Export ALL types. Do not add runtime code. Types only file.

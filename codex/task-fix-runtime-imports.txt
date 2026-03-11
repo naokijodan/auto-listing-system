@@ -1,0 +1,25 @@
+## Task: Fix remaining runtime imports from old joom-api.ts
+
+Two runtime files still dynamically import from './joom-api'. Update them to use './joom/compat' instead.
+
+### File 1: apps/worker/src/lib/scheduler.ts line ~1610
+Current: `const { refreshJoomToken } = await import('./joom-api');`
+Change to: `const { refreshJoomToken } = await import('./joom/compat');`
+
+### File 2: apps/worker/src/lib/refund-automation.ts line ~229
+Current: `const { joomApi } = await import('./joom-api');`
+Change to: `const { joomApi } = await import('./joom/compat');`
+
+### Also fix all remaining test files that still import from joom-api:
+Search for `joom-api` in all .ts files under apps/worker/src/test/ and apps/worker/src/__tests__/ and update:
+- `from '../../lib/joom-api'` → `from '../../lib/joom/compat'`
+- `vi.mock('../../lib/joom-api'` → `vi.mock('../../lib/joom/compat'`
+- `await import('../../lib/joom-api')` → `await import('../../lib/joom/compat')`
+- `vi.mock('./joom-api'` → `vi.mock('./joom/compat'`
+
+NOTE: The compat module exports: joomApi (facade), refreshJoomToken, isJoomConfigured, calculateJoomPrice, joomProducts, joomOrders, joomShippingDestinations, joomWarehouses.
+For tests that import JoomApiClient (the class), replace with the appropriate import:
+- If they use `new JoomApiClient()` for products, use `JoomProductsClient` from `../../lib/joom`
+- If they use `JoomApiClient` just for mocking, use `joomApi` facade from `../../lib/joom/compat`
+
+After changes, verify: `npx tsc --noEmit --project apps/worker/tsconfig.json`

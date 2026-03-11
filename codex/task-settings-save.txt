@@ -1,0 +1,100 @@
+## Task: Implement Price Settings save functionality
+
+### Context
+The settings page at apps/web/src/app/settings/page.tsx has a PriceSettings component (lines 97-188) with inputs for eBay and Joom price settings. Currently these inputs use `defaultValue` and have no save functionality.
+
+The backend has a SystemSetting API at `/api/system-settings` that supports:
+- POST / → create a setting (key, value, category, valueType, label)
+- PUT /:key → update a setting (value, reason)
+- GET /category/:category → get all settings by category
+- PUT / → bulk update (settings object with key:value pairs)
+
+The API uses upsert pattern: POST to create, PUT to update. PUT returns 404 if setting doesn't exist.
+
+### What to implement
+
+Modify the `PriceSettings` function in apps/web/src/app/settings/page.tsx to:
+
+1. **Add state management** for each field:
+   - `ebayProfitRate` (default: 30)
+   - `ebayMinProfit` (default: 10)
+   - `ebayShipping` (default: 15)
+   - `ebayFeeRate` (default: 13)
+   - `joomProfitRate` (default: 25)
+   - `joomMinProfit` (default: 8)
+
+2. **Load settings on mount** from `/api/system-settings/category/PRICING`
+   - Use the `fetcher` function already imported at top of file
+   - Use useSWR or useEffect to load
+   - Map API response keys to state
+
+3. **Save button handler** that:
+   - First tries PUT / (bulk update) with all settings
+   - If a key doesn't exist (returns "Not found" in results), creates it via POST /
+   - Shows success/error toast using the `addToast` function already imported
+
+4. **Setting keys to use**:
+   - `pricing.ebay.profit_rate` → category: PRICING, valueType: NUMBER
+   - `pricing.ebay.min_profit` → category: PRICING, valueType: NUMBER
+   - `pricing.ebay.shipping` → category: PRICING, valueType: NUMBER
+   - `pricing.ebay.fee_rate` → category: PRICING, valueType: NUMBER
+   - `pricing.joom.profit_rate` → category: PRICING, valueType: NUMBER
+   - `pricing.joom.min_profit` → category: PRICING, valueType: NUMBER
+
+5. **Add saving state** with Loader2 spinner on save button (already imported)
+
+### API helper functions
+Use the existing helpers from '@/lib/api':
+- `fetcher` - for SWR
+- `putApi` - for PUT requests
+- `postApi` - for POST requests
+
+API base URL is automatically handled by these helpers (they prepend the API URL).
+
+### Important
+- Change `defaultValue` to `value` on inputs and connect to state
+- Add `onChange` handlers to update state
+- Keep the existing Card/CardHeader/CardContent structure
+- Add a `saving` state boolean for the save button
+- Handle the case where settings don't exist yet (first save creates them)
+
+### Implementation approach for save
+```typescript
+const handleSave = async () => {
+  setSaving(true);
+  try {
+    const settings = {
+      'pricing.ebay.profit_rate': ebayProfitRate,
+      'pricing.ebay.min_profit': ebayMinProfit,
+      'pricing.ebay.shipping': ebayShipping,
+      'pricing.ebay.fee_rate': ebayFeeRate,
+      'pricing.joom.profit_rate': joomProfitRate,
+      'pricing.joom.min_profit': joomMinProfit,
+    };
+
+    // Try bulk update first
+    const result = await putApi<any>('/api/system-settings', { settings, reason: 'UI update' });
+
+    // Create any settings that didn't exist
+    if (result?.data?.results) {
+      for (const r of result.data.results) {
+        if (!r.success && r.error === 'Not found') {
+          await postApi('/api/system-settings', {
+            key: r.key,
+            value: settings[r.key as keyof typeof settings],
+            category: 'PRICING',
+            valueType: 'NUMBER',
+            label: r.key,
+          });
+        }
+      }
+    }
+
+    addToast({ title: '保存しました', type: 'success' });
+  } catch (error) {
+    addToast({ title: '保存に失敗しました', type: 'error' });
+  } finally {
+    setSaving(false);
+  }
+};
+```

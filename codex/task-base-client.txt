@@ -1,0 +1,89 @@
+Create file: apps/worker/src/lib/joom/base-client.ts
+
+This is the base HTTP client for Joom API v3. It handles authentication, rate limiting, retry, and error normalization.
+
+## Imports
+- Import { prisma } from '@rakuda/database'
+- Import { logger } from '@rakuda/logger'
+- Import types from './shared-types' (JoomApiConfig, JoomApiError, RequestOptions, HttpMethod)
+
+## Constants
+```typescript
+const JOOM_API_BASE = 'https://api-merchant.joom.com/api/v3';
+const MAX_RETRIES = 3;
+const INITIAL_RETRY_DELAY = 1000;
+const MAX_RETRY_DELAY = 30000;
+const RATE_LIMIT_PER_SECOND = 10;
+```
+
+## Class: JoomBaseClient
+
+### Constructor
+```typescript
+constructor() {
+  // Initialize rate limiter state
+}
+```
+
+### Private methods:
+
+#### getCredentials(): Promise<JoomApiConfig>
+- Query prisma.marketplaceCredential.findFirst where marketplace='JOOM' and isActive=true
+- Return credentials as JoomApiConfig
+- Throw JoomApiError if not found
+
+#### ensureAccessToken(): Promise<string>
+- Cache token in instance variable with expiry check
+- Get credentials, use accessToken if available
+- If no token, throw JoomApiError('Joom access token not configured')
+
+#### waitForRateLimit(): Promise<void>
+- Simple token bucket: track request timestamps in a sliding window
+- If 10+ requests in last 1000ms, wait until slot opens
+- Use an array of timestamps, filter old ones, calculate delay
+
+#### sleep(ms: number): Promise<void>
+- Simple Promise-based delay
+
+#### shouldRetry(statusCode: number, attempt: number): boolean
+- Return true if attempt < MAX_RETRIES AND statusCode is 429, 502, 503, or 504
+
+#### calculateRetryDelay(attempt: number): number
+- Exponential backoff: INITIAL_RETRY_DELAY * 2^attempt
+- Add jitter: multiply by (0.5 + Math.random())
+- Cap at MAX_RETRY_DELAY
+
+#### logApiCall(method, endpoint, requestBody, statusCode, responseBody, success, errorMessage, duration, joomProductId?, productId?): Promise<void>
+- Create prisma.joomApiLog record
+- Catch and log errors silently (don't throw)
+
+### Protected method:
+
+#### request<T>(options: RequestOptions): Promise<T>
+This is the core method that domain clients will call.
+
+1. await waitForRateLimit()
+2. await ensureAccessToken()
+3. Build URL: baseUrl + options.path + querystring
+4. Set headers: Authorization: Bearer {token}, Accept: application/json (or options.accept), Content-Type: application/json (if body)
+5. Loop for retries:
+   a. const startTime = Date.now()
+   b. fetch(url, { method, headers, body: JSON.stringify if present })
+   c. const duration = Date.now() - startTime
+   d. If response.ok: parse JSON, log success, return parsed data as T
+   e. If shouldRetry: log warning, sleep(calculateRetryDelay), continue
+   f. Otherwise: parse error body, log failure, throw JoomApiError
+6. After loop exhausted: throw JoomApiError for max retries exceeded
+
+### Query string helper:
+- Filter out undefined values
+- For array values, join with comma
+- Use URLSearchParams
+
+## IMPORTANT rules:
+- Do NOT import from ./api-utils or any other existing joom files
+- Do NOT add business logic
+- All prices/money values remain as strings - no conversion
+- Export the class as default AND named export
+- Keep file under 200 lines
+- Use const log = logger.child({ module: 'joom-base-client' })

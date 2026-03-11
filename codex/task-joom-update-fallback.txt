@@ -1,0 +1,53 @@
+## タスク: Joom product_already_exists エラー時にupdateProductへフォールバック
+
+### 修正対象ファイル
+apps/worker/src/lib/joom-publish-service.ts
+
+### 現在の問題
+publishToJoom()メソッド内（行662-699あたり）で、createProduct()がproduct_already_existsエラーを返した場合、
+DB側のListingを更新するだけで、Joom API側の商品情報はアップデートしていない。
+つまり、再出品時に価格やタイトルが変更されても、Joom側には反映されない。
+
+### 修正内容
+
+1. catchブロック内（行662-699あたり）で、product_already_existsエラーを検出した後:
+   - 既存商品IDを取得（既存ロジック: `errMsg.match(/productID=([a-f0-9]+)/)` ）
+   - **追加**: `this.joomClient.updateProduct({ id: existingProductId }, joomProduct)` を呼び出す
+   - updateProductの結果をログに記録する
+   - updateProductが失敗した場合もエラーをキャッチして、最低限DB更新（既存ロジック）は維持する
+
+2. updateProductに渡すjoomProductは、createProduct用に構築したものと同じ `joomProduct` 変数を使う
+   - ただしupdateProductの型 `UpdateProductInput` に合わせる必要があるかもしれないので型を確認する
+
+3. ログ追加:
+   - `log or logger` で `joom_update_product_fallback` タイプのINFOログ
+   - updateProduct成功時: `{ type: 'joom_update_product_success', productId: existingProductId }`
+   - updateProduct失敗時: `{ type: 'joom_update_product_failed', productId: existingProductId, error }`
+
+### 参考情報
+- updateProduct APIは既に実装済み: apps/worker/src/lib/joom/products/client.ts 行54-64
+  ```typescript
+  async updateProduct(
+    params: { id?: string; sku?: string },
+    input: UpdateProductInput
+  ): Promise<JoomApiResponse<Product>> {
+    return this.request<JoomApiResponse<Product>>({
+      method: 'POST',
+      path: '/products/update',
+      query: { id: params.id, sku: params.sku },
+      body: input,
+    });
+  }
+  ```
+- UpdateProductInput型: apps/worker/src/lib/joom/products/types.ts 行314-339（全フィールドオプション）
+
+### テスト
+修正後、既存のテストが通ることを確認する:
+```bash
+cd ~/Desktop/rakuda && npx vitest run apps/worker/src/lib/joom-publish-service.test.ts --reporter=verbose 2>/dev/null || echo "Test file may not exist"
+```
+
+### 注意事項
+- `this.joomClient` でupdateProductを呼ぶ（publishToJoomはクラスメソッド）
+- joomProductの構築は行580-620あたりで既に行われているので、そのまま使える
+- エラーハンドリングは堅牢に: updateProduct失敗でもDB更新は必ず行う

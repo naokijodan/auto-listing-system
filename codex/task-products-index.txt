@@ -1,0 +1,21 @@
+Create file: apps/worker/src/lib/joom/products/index.ts
+
+Simple barrel export file:
+
+```typescript
+export { JoomProductsClient } from './client';
+export * from './types';
+```
+
+Also create file: apps/worker/src/lib/joom/index.ts
+
+Unified entry point for the Joom API v3 client:
+
+```typescript
+export { JoomBaseClient } from './base-client';
+export { JoomProductsClient } from './products';
+export * from './shared-types';
+export * from './products/types';
+```
+
+Create BOTH files. Each file should be very short (under 10 lines).

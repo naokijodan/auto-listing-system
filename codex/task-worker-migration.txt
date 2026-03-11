@@ -1,0 +1,77 @@
+## Task: Migrate remaining 5 worker files from old joom-api.ts to new v3 clients
+
+Migrate the following 5 files that still import from `./joom-api` to use the new v3 clients from `./joom/`.
+
+### Important context:
+- New v3 clients location: `apps/worker/src/lib/joom/`
+- Available v3 clients: JoomProductsClient, JoomOrdersClient, JoomShippingDestinationsClient, JoomWarehousesClient
+- Each v3 client extends JoomBaseClient and is instantiated with `new XxxClient()`
+- v3 response format: `{ data: T }` for single, `{ data: { items: T[] } }` for lists (NO `.success` field)
+- Old API used `{ success: boolean, data?: T, error?: { code, message } }` pattern
+- The old joom-api.ts also exports: `joomApi` (singleton), `refreshJoomToken()`, `isJoomConfigured()`, `calculateJoomPrice()`
+- `refreshJoomToken()` and `calculateJoomPrice()` and `isJoomConfigured()` are standalone functions that use prisma directly — they should remain available. Move them to a new file or keep them accessible.
+
+### Migration strategy:
+1. Create a compatibility/facade file at `apps/worker/src/lib/joom/compat.ts` that:
+   - Instantiates v3 clients as singletons
+   - Re-exports `refreshJoomToken`, `isJoomConfigured`, `calculateJoomPrice` (copy from old joom-api.ts)
+   - Provides a `joomApi` facade object that delegates to v3 clients for backward-compatible usage
+
+2. Update each file to import from `./joom` or `./joom/compat` instead of `./joom-api`
+
+### File 1: apps/worker/src/lib/worker-manager.ts
+Current import: `import { JoomApiClient } from './joom-api';`
+Usage: Line 32 imports JoomApiClient but check if it's actually used in the file (may just be for type or initialization).
+Migration: Replace with import from `./joom` (JoomProductsClient or whatever is actually needed). If JoomApiClient is only used for type checking or initialization, just remove it or replace with appropriate v3 client.
+
+### File 2: apps/worker/src/lib/order-processor.ts
+Current import: `import { joomApi } from './joom-api';`
+Usage: `joomApi.disableProduct(productId)` — used to disable products when orders are cancelled/problematic.
+Migration:
+- Import JoomProductsClient from `./joom`
+- Create instance: `const joomProducts = new JoomProductsClient()`
+- Replace `joomApi.disableProduct(id)` with `joomProducts.updateProduct({ id }, { enabled: false })`
+- The old disableProduct returned `JoomApiResponse<void>` with `.success` field. New v3 returns `JoomApiResponse<Product>` without `.success`. Adjust error handling accordingly (v3 throws on error instead of returning success: false).
+
+### File 3: apps/worker/src/lib/shipment-service.ts
+Current import: `import { joomApi } from './joom-api';`
+Usage: `joomApi.shipOrder(orderId, trackingInfo)` — sends tracking info to Joom.
+Migration:
+- Import JoomOrdersClient from `./joom`
+- Create instance: `const joomOrders = new JoomOrdersClient()`
+- Replace `joomApi.shipOrder(orderId, { trackingNumber, carrier, shippingProvider })` with:
+  `joomOrders.fulfillOrder({ id: orderId }, { trackingNumber, trackingProvider: carrier, shippingProvider: shippingProvider || carrier })`
+- Old returned `{ success, data, error }`. New v3 throws on error. Wrap in try/catch if needed.
+
+### File 4: apps/worker/src/lib/order-sync-manager.ts
+Current import: `import { joomApi } from './joom-api';`
+Usage: `joomApi.getOrders({ since, limit })` — fetches recent orders for sync.
+Migration:
+- Import JoomOrdersClient from `./joom`
+- Create instance: `const joomOrders = new JoomOrdersClient()`
+- Replace `joomApi.getOrders({ since, limit: 50 })` with:
+  `joomOrders.retrieveOrders({ updatedFrom: since, limit: 50 })`
+- Old returned `{ success: boolean, data: { orders: any[], total: number } }`.
+  New v3 returns `{ data: { items: Order[] } }`.
+  Update the data extraction:
+  - Old: `if (!res.success || !res.data) return ...; const orders = res.data.orders || [];`
+  - New: `const orders = res.data.items || [];` (v3 throws on error, so wrap the whole block in try/catch)
+
+### File 5: apps/worker/src/lib/price-sync.ts
+Current imports: `import { joomApi, isJoomConfigured } from './joom-api';`
+Usage:
+- `isJoomConfigured()` — checks if Joom credentials exist
+- `joomApi.updatePrice(marketplaceListingId, sku, newPrice)` — updates price on Joom
+Migration:
+- Import JoomProductsClient from `./joom`
+- Move `isJoomConfigured` to `./joom/compat.ts` and import from there
+- Create instance: `const joomProducts = new JoomProductsClient()`
+- Replace `joomApi.updatePrice(listingId, sku, price)` with:
+  `joomProducts.updateProduct({ id: listingId }, { variants: [{ sku, price: String(price) }] })`
+  Note: The v3 products client's updateProduct can update variant prices.
+
+### Important notes:
+- Do NOT delete the old `joom-api.ts` yet — that will happen in Phase 6
+- Make sure TypeScript compiles without errors after migration
+- Handle the response format difference: old API returns `{ success, data, error }`, new v3 returns data directly and throws on error
+- For `isJoomConfigured` and `refreshJoomToken` and `calculateJoomPrice`, create `apps/worker/src/lib/joom/compat.ts` that re-exports these functions (copy the implementation from joom-api.ts since it uses prisma directly and is independent of the API client class)

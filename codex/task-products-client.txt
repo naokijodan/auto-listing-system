@@ -1,0 +1,121 @@
+Create file: apps/worker/src/lib/joom/products/client.ts
+
+This is the Products domain client for Joom API v3. It implements all 19 product endpoints.
+It extends JoomBaseClient and uses the request() method for all API calls.
+
+## Imports
+```typescript
+import { JoomBaseClient } from '../base-client';
+import { JoomApiResponse, JoomApiListResponse, JoomApiCountResponse, JoomApiEmptyResponse } from '../shared-types';
+import {
+  Product, CreateProductInput, UpdateProductInput, RemoveProductInput,
+  RemoveVariantsInput, GenerateEuLabelsInput, ColorWithName,
+  CategoryWithTakeRate, CategoryRequirements, CategoryAttributeValues,
+  JoomSelectProposal
+} from './types';
+```
+
+## Class: JoomProductsClient extends JoomBaseClient
+
+### Methods (19 endpoints):
+
+1. **getProduct(params: { id?: string; sku?: string }): Promise<JoomApiResponse<Product>>**
+   GET /products
+   Query: id, sku
+
+2. **retrieveProducts(params?: { limit?: number; updatedFrom?: string }): Promise<JoomApiListResponse<Product>>**
+   GET /products/multi
+   Query: limit, updatedFrom
+
+3. **retrieveProductCount(params?: { updatedFrom?: string }): Promise<JoomApiCountResponse>**
+   GET /products/multi/count
+   Query: updatedFrom
+
+4. **getPublishedProducts(params: { ids: string[] }): Promise<JoomApiListResponse<Product>>**
+   GET /products/published
+   Query: ids (array)
+
+5. **createProduct(input: CreateProductInput): Promise<JoomApiResponse<Product>>**
+   POST /products/create
+   Body: input
+
+6. **updateProduct(params: { id?: string; sku?: string }, input: UpdateProductInput): Promise<JoomApiResponse<Product>>**
+   POST /products/update
+   Query: id, sku
+   Body: input
+
+7. **changeProductStore(params: { id?: string; sku?: string }, storeId: string): Promise<JoomApiResponse<Product>>**
+   POST /products/changeStore
+   Query: id, sku
+   Body: { storeId }
+
+8. **removeProduct(params: { id?: string; sku?: string }, input?: RemoveProductInput): Promise<JoomApiEmptyResponse>**
+   POST /products/remove
+   Query: id, sku
+   Body: input
+
+9. **removeProductVariants(params: { id?: string; sku?: string }, input: RemoveVariantsInput): Promise<JoomApiResponse<Product>>**
+   POST /products/removeVariants
+   Query: id, sku
+   Body: input
+
+10. **generateEuLabels(input: GenerateEuLabelsInput): Promise<Buffer>**
+    POST /products/generateEuLabels
+    Body: input
+    Accept: application/pdf
+    Returns binary data (Buffer)
+
+11. **getProductColors(): Promise<JoomApiListResponse<ColorWithName>>**
+    GET /productColors
+
+12. **getCategories(): Promise<JoomApiListResponse<CategoryWithTakeRate>>**
+    GET /productCategories
+
+13. **getCategoryRequirements(params: { id?: string; locale?: string }): Promise<JoomApiResponse<CategoryRequirements>>**
+    GET /productCategories/requirements
+    Query: id, locale
+
+14. **getCategoryAttributeValues(params: { id?: string }): Promise<CategoryAttributeValues[]>**
+    GET /productCategories/attributeValues
+    Query: id
+    Note: Response is { data: CategoryAttributeValues[] } - return data directly
+
+15. **getApprovedJoomSelectProposals(params?: { limit?: number; updatedFrom?: string }): Promise<JoomApiListResponse<JoomSelectProposal>>**
+    GET /products/joomSelectProposals/approved/multi
+    Query: limit, updatedFrom
+
+16. **getPendingJoomSelectProposals(params?: { limit?: number; updatedFrom?: string }): Promise<JoomApiListResponse<JoomSelectProposal>>**
+    GET /products/joomSelectProposals/pending/multi
+    Query: limit, updatedFrom
+
+17. **getRemovedJoomSelectProposals(params?: { limit?: number; updatedFrom?: string }): Promise<JoomApiListResponse<JoomSelectProposal>>**
+    GET /products/joomSelectProposals/removed/multi
+    Query: limit, updatedFrom
+
+18. **approveJoomSelectProposal(id: string): Promise<JoomApiEmptyResponse>**
+    POST /products/joomSelectProposals/approve
+    Body: { id }
+
+19. **cancelJoomSelectProposal(id: string): Promise<JoomApiEmptyResponse>**
+    POST /products/joomSelectProposals/cancel
+    Body: { id }
+
+## Implementation pattern for each method:
+```typescript
+async getProduct(params: { id?: string; sku?: string }): Promise<JoomApiResponse<Product>> {
+  return this.request<JoomApiResponse<Product>>({
+    method: 'GET',
+    path: '/products',
+    query: { id: params.id, sku: params.sku },
+  });
+}
+```
+
+## Rules:
+- Each method is simple: build RequestOptions and call this.request()
+- No business logic in this file
+- No data transformation - pass through exactly as API returns
+- For generateEuLabels, set accept: 'application/pdf' in options
+- Export class as named and default export
+- Keep file under 200 lines
+- No comments except JSDoc for the class itself

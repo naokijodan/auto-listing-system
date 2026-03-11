@@ -1,0 +1,44 @@
+## Phase 3 Task 2: inventory.ts の Joom getProduct 呼び出しを新 JoomProductsClient に移行
+
+### ファイル
+apps/worker/src/processors/inventory.ts
+
+### 変更内容
+
+1. import変更:
+   - 旧: `import { joomApi, isJoomConfigured } from '../lib/joom-api';`
+   - 新: `import { isJoomConfigured } from '../lib/joom-api';` (isJoomConfiguredは旧のまま残す)
+   - 追加: `import { JoomProductsClient } from '../lib/joom/products';`
+
+2. JoomProductsClientのシングルトン追加:
+   ```typescript
+   let joomProductsClient: JoomProductsClient | null = null;
+   function getJoomProductsClient(): JoomProductsClient {
+     if (!joomProductsClient) {
+       joomProductsClient = new JoomProductsClient();
+     }
+     return joomProductsClient;
+   }
+   ```
+
+3. line 303付近の getProduct 呼び出し変更:
+   旧:
+   ```typescript
+   const response = await joomApi.getProduct(externalId);
+   ```
+
+   このコードの周辺コンテキストを確認して、response.success や response.data の使われ方に合わせて変更。
+
+   新クライアントの getProduct は JoomApiResponse<Product> = { data: Product } を返す。
+   失敗時は JoomApiError を throw する。
+
+   以下のように変更:
+   - `joomApi.getProduct(externalId)` を `getJoomProductsClient().getProduct({ id: externalId })` に変更
+   - 旧コードが `response.success` をチェックしている場合、try/catch パターンに変更
+   - 旧コードが `response.data` を参照している場合、新コードでは `resp.data` で直接アクセス
+
+### 重要な注意
+- isJoomConfigured は旧 joom-api.ts からのimportを維持（新clientにはこの関数がない）
+- ebay関連のimportはそのまま維持
+- 他のJoomメソッド呼び出しがないことを確認済み（getProductのみ）
+- 変更後、TypeScriptコンパイルエラーがないことを確認: `npx tsc --noEmit --project apps/worker/tsconfig.json`

@@ -1,0 +1,128 @@
+## Phase 3 Task 3: publish.ts の Joom API呼び出しを新 JoomProductsClient に移行
+
+### ファイル
+apps/worker/src/processors/publish.ts
+
+### 変更内容
+
+1. import変更:
+   - 旧: `import { joomApi, isJoomConfigured } from '../lib/joom-api';`
+   - 新: `import { isJoomConfigured } from '../lib/joom-api';` (isJoomConfiguredは旧のまま残す)
+   - 追加: `import { JoomProductsClient } from '../lib/joom/products';`
+   - 追加: `import type { CreateProductInput, Money } from '../lib/joom/products/types';`
+
+2. JoomProductsClientのシングルトン追加:
+   ```typescript
+   let joomProductsClient: JoomProductsClient | null = null;
+   function getJoomProductsClient(): JoomProductsClient {
+     if (!joomProductsClient) {
+       joomProductsClient = new JoomProductsClient();
+     }
+     return joomProductsClient;
+   }
+   ```
+
+3. publishToJoom関数内のcreateProduct呼び出し変更 (line 323-338):
+   旧:
+   ```typescript
+   const result = await joomApi.createProduct({
+     name: title,
+     description: description,
+     mainImage: mainImage,
+     extraImages: extraImages,
+     price: priceResult.finalPrice,
+     currency: 'USD',
+     quantity: 1,
+     sku: parentSku,
+     parentSku: parentSku,
+     tags: tags,
+     shipping: {
+       price: priceResult.breakdown.shippingCostUsd,
+       time: '15-30',
+     },
+   });
+   ```
+
+   新（v3 CreateProductInput形式）:
+   ```typescript
+   const client = getJoomProductsClient();
+   const input: CreateProductInput = {
+     name: title,
+     description: description,
+     mainImage: mainImage,
+     extraImages: extraImages,
+     sku: parentSku,
+     tags: tags,
+     enabled: true,
+     variants: [
+       {
+         sku: parentSku,
+         price: String(priceResult.finalPrice) as Money,
+         currency: 'USD',
+         inventory: 1,
+         shippingPrice: String(priceResult.breakdown.shippingCostUsd) as Money,
+       },
+     ],
+   };
+   ```
+
+   IMPORTANT: Money型はstring。priceResult.finalPriceがnumberの場合はString()で変換。
+
+4. createProduct の呼び出しとレスポンス処理の変更 (line 340-358):
+   旧:
+   ```typescript
+   if (!result.success) {
+     if (result.error?.message?.includes('already_exists')) {
+       ...
+     }
+     throw new Error(`Joom API error: ${result.error?.message}`);
+   }
+   const joomProductId = result.data?.id;
+   ```
+
+   新（try/catch パターン）:
+   ```typescript
+   let createResult;
+   try {
+     createResult = await client.createProduct(input);
+   } catch (error: any) {
+     // 既に存在する場合はエラーではなく既存IDを返す
+     const errorMsg = error.message || '';
+     if (errorMsg.includes('already_exists')) {
+       const match = errorMsg.match(/productID=([a-f0-9]+)/);
+       if (match) {
+         log.info({
+           type: 'joom_product_already_exists',
+           existingProductId: match[1],
+         });
+         return {
+           id: match[1],
+           url: `https://www.joom.com/en/products/${match[1]}`,
+         };
+       }
+     }
+     throw new Error(`Joom API error: ${errorMsg}`);
+   }
+   const joomProductId = createResult.data?.id;
+   ```
+
+5. enableProduct の呼び出し変更 (line 361-371):
+   旧:
+   ```typescript
+   await joomApi.enableProduct(joomProductId);
+   ```
+
+   新:
+   ```typescript
+   await client.updateProduct({ id: joomProductId }, { enabled: true });
+   ```
+
+   注: この呼び出しは既にtry/catchで囲まれているので、エラーハンドリングの変更は不要。
+
+### 重要な注意
+- isJoomConfigured は旧 joom-api.ts からのimportを維持
+- ebay関連のimport・コードはそのまま維持
+- PricingPipeline, processBatch 等のimportはそのまま維持
+- 価格は全て string 型（Money型）。String()で変換すること
+- publishToJoom関数以外のコードは変更しない
+- 変更後、TypeScriptコンパイルエラーがないことを確認: `npx tsc --noEmit --project apps/worker/tsconfig.json`

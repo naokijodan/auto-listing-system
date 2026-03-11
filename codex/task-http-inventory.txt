@@ -1,0 +1,82 @@
+# Task: Puppeteer→軽量HTTP在庫監視への移行
+
+## 背景
+現在のsource site在庫チェック（Mercari, Yahoo Auctions, Amazon JP, PayPay Flea, Rakuma, Rakuten）は
+Puppeteerベースで非常に重い（CPU + メモリ消費大）。
+サーバーのCPU steal timeが66%で、Puppeteerベースのチェックは実質機能していない。
+
+Session 30で全5サイトのcurlベース在庫確認の実現可能性が検証済み:
+- メルカリ: curlでHTMLを取得し、sold outステータスをDOMから判定可能
+- ヤフオク: curlでHTMLを取得し、オークション終了ステータスを判定可能
+- Amazon: curlでHTMLを取得し、在庫状況を判定可能
+- PayPayフリマ: curlでHTMLを取得し、販売状況を判定可能
+- ラクマ: curlでHTMLを取得し、販売状況を判定可能
+
+## 作業内容
+
+### 1. 新しい軽量HTTPスクレイパーを作成
+ファイル: `apps/worker/src/lib/scrapers/http/` ディレクトリを新規作成
+
+各サイト用のHTTPスクレイパーを作成:
+- `mercari-http.ts` - fetch()でHTMLを取得、正規表現/cheerioで在庫判定
+- `yahoo-auction-http.ts` - 同上
+- `amazon-http.ts` - 同上
+- `paypay-flea-http.ts` - 同上
+- `rakuma-http.ts` - 同上
+- `index.ts` - 統合エクスポート
+
+各スクレイパーのインターフェース:
+```typescript
+interface HttpInventoryResult {
+  available: boolean;       // 在庫あり/なし
+  price?: number;           // 現在価格
+  title?: string;           // タイトル
+  status: 'available' | 'sold' | 'ended' | 'deleted' | 'unknown';
+  checkedAt: Date;
+  method: 'http';           // Puppeteerと区別
+}
+
+export async function checkMercariHttp(url: string): Promise<HttpInventoryResult>
+```
+
+### 2. 実装ルール
+- Puppeteerは使わない。Node.js標準のfetch()のみ使用
+- User-Agentヘッダーを設定（ブラウザっぽいもの）
+- レスポンスのHTMLをパースして在庫判定
+- cheerioが使えれば使う（package.jsonに追加必要なら追加）。なければ正規表現でパース
+- タイムアウト: 10秒
+- エラーハンドリング: ネットワークエラー→{available: true, status: 'unknown'}（安全側に倒す）
+
+### 3. メルカリの判定ロジック例
+```
+- URL: https://jp.mercari.com/item/{itemId}
+- 売り切れ: HTMLに "sold-out" または "この商品は売り切れです" が含まれる
+- 削除済み: 404レスポンス
+- 在庫あり: 上記に該当しない
+```
+
+### 4. inventory-checker.tsの修正
+`apps/worker/src/lib/inventory-checker.ts` の `checkSingleProductInventory()` を修正:
+- 新しいHTTPスクレイパーをデフォルトとして使用
+- Puppeteerスクレイパーはフォールバックとして残す（env: USE_PUPPETEER_FALLBACK=true で有効化）
+- HTTP結果の `status` フィールドを使ってDB更新ロジックに反映
+
+### 5. 既存のimport/exportとの互換性
+- 既存の `ScraperResult` 型との互換性を維持
+- 既存のprocessorコード（processors/inventory.ts）は変更最小限
+
+## ファイル構成
+- 新規: apps/worker/src/lib/scrapers/http/mercari-http.ts
+- 新規: apps/worker/src/lib/scrapers/http/yahoo-auction-http.ts
+- 新規: apps/worker/src/lib/scrapers/http/amazon-http.ts
+- 新規: apps/worker/src/lib/scrapers/http/paypay-flea-http.ts
+- 新規: apps/worker/src/lib/scrapers/http/rakuma-http.ts
+- 新規: apps/worker/src/lib/scrapers/http/index.ts
+- 変更: apps/worker/src/lib/inventory-checker.ts（HTTPスクレイパーをデフォルトに）
+- 変更: apps/worker/package.json（cheerioを追加 if needed）
+
+## 重要な注意
+- 既存のPuppeteerスクレイパーは削除しない（フォールバック用に残す）
+- テストは書かない（今回はスキップ）
+- TypeScriptの型安全性を維持
+- immutableパターンを使用（オブジェクトのmutationはしない）
