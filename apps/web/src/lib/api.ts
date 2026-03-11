@@ -332,6 +332,9 @@ export async function deleteApi<T>(url: string, data?: unknown): Promise<T> {
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
   }
+  if (res.status === 204) {
+    return {} as T;
+  }
   return res.json();
 }
 
