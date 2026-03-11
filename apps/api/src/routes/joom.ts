@@ -368,25 +368,43 @@ router.delete('/listings/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Listing not found' });
     }
 
-    // Joom APIから削除（出品済みの場合）- 非同期でWorkerに委託
+    // Get Joom product ID
     const marketplaceData = (listing.marketplaceData as Record<string, unknown>) || {};
-    const joomProductId = marketplaceData.joomProductId as string | undefined;
+    const joomProductId = (marketplaceData.joomProductId || (listing as any).marketplaceListingId) as string | undefined;
+
+    // Delete from Joom API directly (not via queue)
     if (joomProductId) {
-      try {
-        await joomPublishQueue.add('delete-product', {
-          type: 'delete-product' as any,
-          joomProductId,
-          joomListingId: listing.id,
-        });
-        console.log('Queued Joom product deletion:', joomProductId);
-      } catch (queueErr: any) {
-        console.error('Failed to queue Joom product deletion:', queueErr?.message);
+      const credential = await prisma.marketplaceCredential.findFirst({
+        where: { marketplace: 'JOOM' },
+      });
+      if (credential) {
+        const creds = credential.credentials as any;
+        const accessToken = (creds?.accessToken as string) || undefined;
+        if (accessToken) {
+          const response = await fetch(
+            `${JOOM_API_BASE}/products/remove?id=${encodeURIComponent(joomProductId)}`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ reason: 'stopSelling' }),
+            }
+          );
+          const data = (await response.json().catch(() => ({}))) as any;
+          if (!response.ok && data?.code !== 0) {
+            console.error('Joom API delete failed:', data);
+            return res.status(502).json({ error: 'Failed to delete from Joom', details: data });
+          }
+        }
       }
     }
 
+    // Only delete from DB after successful Joom deletion
     await prisma.listing.delete({ where: { id } });
 
-    res.status(204).send();
+    res.json({ success: true, message: 'Listing deleted from Joom and DB' });
   } catch (error) {
     console.error('Failed to delete Joom listing:', error);
     res.status(500).json({ error: 'Failed to delete Joom listing' });
