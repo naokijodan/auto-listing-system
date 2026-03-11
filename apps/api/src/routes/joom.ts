@@ -312,14 +312,30 @@ router.post('/listings/:id/enable', async (req: Request, res: Response) => {
     const joomProductId = (marketplaceData.joomProductId || (listing as any).marketplaceListingId) as string;
     if (!joomProductId) return res.status(400).json({ error: 'No Joom product ID found' });
 
-    // Queue enable job
-    await joomPublishQueue.add('enable-product', {
-      type: 'enable-product',
-      listingId: id,
-      joomProductId,
+    // Call Joom API directly
+    const credential = await prisma.marketplaceCredential.findFirst({ where: { marketplace: 'JOOM' } });
+    if (!credential) return res.status(400).json({ error: 'Joom credentials not found' });
+    const creds = credential.credentials as any;
+    const accessToken = creds?.accessToken as string | undefined;
+    if (!accessToken) return res.status(400).json({ error: 'Joom access token missing' });
+
+    const response = await fetch(`${JOOM_API_BASE}/products/update?id=${encodeURIComponent(joomProductId)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: true }),
+    });
+    const data = (await response.json().catch(() => ({}))) as any;
+    if (!response.ok && data?.code !== 0) {
+      return res.status(502).json({ error: 'Failed to enable on Joom', details: data });
+    }
+
+    // Update DB only after Joom API success
+    await prisma.listing.update({
+      where: { id },
+      data: { status: 'ACTIVE', listedAt: new Date(), errorMessage: null },
     });
 
-    res.json({ message: 'Enable job queued', listingId: id, joomProductId });
+    res.json({ success: true, message: 'Listing enabled on Joom', listingId: id, joomProductId });
   } catch (error) {
     console.error('Failed to enable Joom listing:', error);
     res.status(500).json({ error: 'Failed to enable Joom listing' });
@@ -341,14 +357,30 @@ router.post('/listings/:id/disable', async (req: Request, res: Response) => {
     const joomProductId = (marketplaceData.joomProductId || (listing as any).marketplaceListingId) as string;
     if (!joomProductId) return res.status(400).json({ error: 'No Joom product ID found' });
 
-    // Queue disable job
-    await joomPublishQueue.add('disable-product', {
-      type: 'disable-product',
-      listingId: id,
-      joomProductId,
+    // Call Joom API directly
+    const credential = await prisma.marketplaceCredential.findFirst({ where: { marketplace: 'JOOM' } });
+    if (!credential) return res.status(400).json({ error: 'Joom credentials not found' });
+    const creds = credential.credentials as any;
+    const accessToken = creds?.accessToken as string | undefined;
+    if (!accessToken) return res.status(400).json({ error: 'Joom access token missing' });
+
+    const response = await fetch(`${JOOM_API_BASE}/products/update?id=${encodeURIComponent(joomProductId)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: false }),
+    });
+    const data = (await response.json().catch(() => ({}))) as any;
+    if (!response.ok && data?.code !== 0) {
+      return res.status(502).json({ error: 'Failed to disable on Joom', details: data });
+    }
+
+    // Update DB only after Joom API success
+    await prisma.listing.update({
+      where: { id },
+      data: { status: 'PAUSED' },
     });
 
-    res.json({ message: 'Disable job queued', listingId: id, joomProductId });
+    res.json({ success: true, message: 'Listing disabled on Joom', listingId: id, joomProductId });
   } catch (error) {
     console.error('Failed to disable Joom listing:', error);
     res.status(500).json({ error: 'Failed to disable Joom listing' });
