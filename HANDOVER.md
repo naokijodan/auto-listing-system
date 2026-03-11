@@ -1,6 +1,6 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-11 (Session 30: Joom本番出品13件完了)
+## 最終更新: 2026-03-11 (Session 30: Joom本番出品13件 + Vultr CPU障害対応)
 
 ---
 
@@ -9,19 +9,29 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 ■ 前回のセッション（Session 30）でやったこと
 - **ブランド抽出をDB連携に改修**（ハードコード51→DB 505ブランド動的ロード、commit 3308afb6）
 - **既存商品のブランド一括修正**（17件のbrand=None/日本語ブランドを英語に修正）
-- **Joom本番出品13件を完了**（全件ACTIVEステータス）
+- **Joom本番出品13件を完了**（全件ACTIVEステータス → 障害後PAUSEDに変化）
   - 時計2件: LONGINES Conquest、セイコー プロスペックス SBDC081
   - ゲーム11件: マリオカート、スプラトゥーン3、ドラクエVII、あつ森、SPY×FAMILY等
-- **API + Worker デプロイ確認済み**（正常稼働中）
+- **Vultr CPU障害対応**
+  - Vultrからレート制限メール → Docker buildキャッシュ122GB + 未使用イメージ75GBでディスク100%
+  - `docker builder prune -a -f` + `docker image prune -a -f` でディスク100%→12%に回復
+  - SSHキー認証を設定（rootパスワード: Rakuda2026）
+  - Vultrサポートチケット NPY-96HMK を提出（CPU制限解除依頼）
+- **軽量HTTP在庫監視の実現可能性を検証**
+  - メルカリ・ヤフオク・Amazon・PayPayフリマ・ラクマの5サイトすべてでcurlベースの在庫確認が可能と確認
+  - Puppeteer不要でCPU負荷を大幅削減可能
+- **API + Worker デプロイ確認済み**（APIは正常稼働、WorkerはCPU制限下でビルド中）
 
 ■ 現在のステータス
-- commit: 3308afb6 (main)、push済み
+- commit: 14b7025c (main)、push済み
 - API: running (api.rakuda.dev) — DB: ok, Redis: ok
-- Worker: running
-- Joom出品: **13件ACTIVE**（初の本番出品成功）
+- Worker: **exited:unhealthy**（CPU制限下でビルド再試行中）
+- Joom出品: **13件PAUSED**（サーバーダウン中にPAUSEDに変化。Worker復旧後に再有効化が必要）
 - autoPublish scheduler: enabled（毎時0分に新PENDING_PUBLISHを自動出品）
+- ディスク: 12%使用（203GB空き）
+- SSH: `ssh root@45.32.28.61`（鍵認証設定済み）
 
-■ Joom出品一覧（全13件ACTIVE）
+■ Joom出品一覧（全13件・現在PAUSED）
 | 商品 | Brand | Joom Product ID |
 |------|-------|----------------|
 | LONGINES Conquest | Longines | 69b059cfdb3e4f015c6ab489 |
@@ -41,19 +51,28 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 ■ 3者協議の結論（Session 29で確定・引き続き有効）
 全AI一致で「作る→売る」へのマインドセット転換が最大の成功要因と結論。
 
+### 緊急タスク（最優先）
+1. **Worker復旧確認**
+   - `curl -s -H "Authorization: Bearer 14|85gWstw2p1iv6OtnQxwwP67NEWOqRV3xr1Uz0s4n7fafa115" "http://45.32.28.61:8000/api/v1/applications/g0s4ws488008g88ww4s4kkog"` でステータス確認
+   - exited:unhealthyのままならCoolifyで再デプロイ
+2. **Joom 13件をPAUSED→ACTIVEに復帰**
+   - Worker復旧後、Joom APIでenable/re-publishする
+3. **Vultrチケット NPY-96HMK のフォローアップ**
+   - CPU制限が解除されたか確認
+
 ### 残タスク（優先順位順）
-1. ~~**ブランド抽出の強化**~~ → ✅ 完了（DB 505ブランド連携）
-2. **簡易在庫死活監視**（守り）
-   - 仕入れ元URLのHTTP 404/売り切れ文言を1日1回チェック
-   - 既存のPuppeteerベース在庫チェックあり（scheduler.ts）が重い
-   - 軽量HTTP GETベースの簡易版を検討
-3. ~~**Joom本番出品10件**~~ → ✅ 完了（13件ACTIVE）
-4. **eBay本番出品1-2件**（並行・保険）
-5. **Etsy/Shopify OAuth認証**（低コスト）
-6. **計画書の実態更新**
+1. **Puppeteer→軽量HTTP在庫監視に移行**（CPU負荷の根本対策）
+   - 5サイトすべてでcurlベースが実現可能と検証済み
+   - scheduler.tsのPuppeteerベース在庫チェックをHTTP GETベースに置換
+2. **Docker buildキャッシュ自動クリーンアップ**（cronで定期実行）
+3. **スケジューラ頻度の削減**（CPU負荷軽減）
+4. **簡易在庫死活監視**（守り）
+5. **eBay本番出品1-2件**（並行・保険）
+6. **Etsy/Shopify OAuth認証**（低コスト）
+7. **計画書の実態更新**
    - https://naokijodan.github.io/auto-listing-system-plan/ → Phase 1-3をDoneに
    - https://naokijodan.github.io/resale-automation-design/ → Phase 0完了、Phase 1方針変更を反映
-7. **Joom出品の売上モニタリング** — 「売れる→発送→入金」のサイクル完結
+8. **Joom出品の売上モニタリング** — 「売れる→発送→入金」のサイクル完結
 
 ■ 開発ワークフロー（必須）
 - コード生成はCodex CLI（/opt/homebrew/bin/codex）に委託する。Claudeが直接コードを書くとコンテキストを大量消費し、Weekly Limitが早く枯渇するため（約70-80%削減効果）
@@ -65,6 +84,7 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 - eBayに対するブラウザ操作は全面禁止（永久サスペンドリスク）
 - Coolifyデプロイ確認: API uuid=acg8g884ck4woc480cgcg8kk / Worker uuid=g0s4ws488008g88ww4s4kkog
 - Coolify API Token: 14|85gWstw2p1iv6OtnQxwwP67NEWOqRV3xr1Uz0s4n7fafa115
+- Vultr rootパスワード: Rakuda2026（VNC用）
 
 ■ 現在の出品フロー（自動化済み）
 Chrome拡張ボタン → RAKUDA API登録 → 翻訳（自動） → 画像処理（自動） → READY_TO_REVIEW → 手動レビュー → bulk/publish → Worker自動出品
