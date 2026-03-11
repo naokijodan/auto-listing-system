@@ -52,12 +52,16 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 全AI一致で「作る→売る」へのマインドセット転換が最大の成功要因と結論。
 
 ### 緊急タスク（最優先）
-1. **Worker復旧確認**
+1. **ディスク再クリーンアップ**（再び100%に到達）
+   - Workerビルド再試行がキャッシュを再生成してディスクを埋めた
+   - `ssh root@45.32.28.61` → `docker builder prune -a -f && docker image prune -a -f`
+   - Workerの自動再デプロイを一時停止してからクリーンアップすること
+2. **Worker復旧確認**
    - `curl -s -H "Authorization: Bearer 14|85gWstw2p1iv6OtnQxwwP67NEWOqRV3xr1Uz0s4n7fafa115" "http://45.32.28.61:8000/api/v1/applications/g0s4ws488008g88ww4s4kkog"` でステータス確認
    - exited:unhealthyのままならCoolifyで再デプロイ
-2. **Joom 13件をPAUSED→ACTIVEに復帰**
+3. **Joom 13件をPAUSED→ACTIVEに復帰**
    - Worker復旧後、Joom APIでenable/re-publishする
-3. **Vultrチケット NPY-96HMK のフォローアップ**
+4. **Vultrチケット NPY-96HMK のフォローアップ**
    - CPU制限が解除されたか確認
 
 ### 残タスク（優先順位順）
