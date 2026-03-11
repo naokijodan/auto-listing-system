@@ -1,80 +1,55 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-11 (Session 32: Joom削除フロー修正・UI監査)
+## 最終更新: 2026-03-11 (Session 33: UI整理・Settings永続化)
 
 ---
 
 RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 
-■ 前回のセッション（Session 32）でやったこと
-- **Joom全13件を削除**（Joom API側もDB側も0件にクリーンアップ）
-- **Joom削除フローを修正**（commit 66d7e10b）
-  - DELETE /api/joom/listings/:id がBullMQキュー経由→Joom API直接呼び出しに変更
-  - Joom API成功後にDB削除する順序に修正
-  - JSONレスポンス返却（204廃止）
-- **Joom enable/disableも同期化**（commit 68acef4c）
-  - 同様にキュー経由→直接API呼び出しに変更
-- **deleteApi関数の204対応**（commit a9d71dad）
-  - apps/web/src/lib/api.ts: 204 No Contentの場合は空オブジェクト返却
-- **商品管理ページ（/listings）のボタン接続**（commit bb66ad98）
-  - 削除・一括停止・再出品・エクスポートのonClickハンドラー実装
-  - ステータスフィルターのバグ修正（PUBLISHED→ACTIVE）
-- **Web UI全タブの機能監査を実施**
-- **3者協議でUI整理方針を決定**
+■ 前回のセッション（Session 33）でやったこと
+- **非機能ボタンの非表示**（commit a0416955）
+  - /listings: 「価格一括変更」ボタンをコメントアウト
+  - /products: 「一括編集」「価格一括変更」ボタンをコメントアウト
+- **サイドバーナビゲーション整理**（commit a0416955）
+  - メイン26→14項目、管理20→1項目（外部連携のみ）
+  - eBay管理、レポート系、分析系、管理系をコメントアウト（コード保持）
+- **価格設定の保存機能実装**（commit a0416955）
+  - PriceSettingsにstate管理追加、SystemSetting API経由でDB永続化
+  - キー: pricing.ebay.*, pricing.joom.*
+- **マーケットプレイスルーティング設定の永続化**（commit a0416955）
+  - 出品ルーティング設定セクションを保存機能付きで復活
+  - キー: marketplace.route.*
+- **Coolifyデプロイ済み**（web）
 
-■ 次にやること【最優先：UI整理】
-3者協議の結論に基づき、「動くものだけ見せる」整理を実施する。
-
-### タスク1: 未実装ボタンの非表示
-以下のボタンはonClickハンドラーがなく、クリックしても何も起きないため非表示にする：
-- /listings: 「価格一括変更」ボタン
-- /products: 「一括編集」「価格一括変更」ボタン
-- /settings: 保存機能のない設定セクション全体（入力しても保存されない）
-- /marketplace: ルーティング設定セクション（ローカルstateのみ、リロードで消える）
-
-### タスク2: 未使用eBayページをナビから除外
-eBay専用40+ページのうち、実運用で使うのはコア3ページのみ：
-- ✅ 残す: eBay認証、eBay出品、eBay注文
-- ❌ ナビから外す: レビュー管理、財務、SEO、多言語、テンプレート等（コードは削除せずルートから除外）
-
-### タスク3: Settings保存機能の実装
-- 価格設定・同期スケジュールのDB永続化
-- バックエンドAPIは /api/settings/* で一部実装済み
-
-### タスク4: Marketplace永続化
-- ルーティング設定（価格ルール等）のDB保存
-
-### 調査の実施方法
-まず以下を確認してから作業開始すること：
-1. ナビゲーション/サイドバーコンポーネントの場所を特定
-2. 各ページのボタン一覧と実装状況を再確認
-3. eBayページの一覧とナビへの登録状況を確認
+■ 次にやること
+1. **Joom再出品** — UI整理が完了したので、Joomに商品を再出品する
+   - 現在Joom出品: 0件（Session 32で全削除済み）
+   - 商品レビュー → Joom出品のフローを確認・実行
+2. **Settings保存の動作確認** — 本番UIで価格設定・ルーティング設定の保存が正常に動くか確認
+3. **通知設定の閾値保存**（低優先）— 現在UIのみ、永続化なし
 
 ■ 現在のステータス
-- commit: bb66ad98 (main)、push済み
-- API: running (api.rakuda.dev) — 最新コードデプロイ済み
+- commit: a0416955 (main)、push済み
+- Web: デプロイ中（Coolifyキュー投入済み）
+- API: running (api.rakuda.dev)
 - Worker: running
-- Web: デプロイ済み（listings修正含む）
-- ディスク: 15%使用
-- CPU: 66% steal time（Vultr制限まだ有効）
-- Joom出品: 0件（全削除済み・整理後に再出品予定）
-- eBay出品: 0件（Session 31で取り下げ済み）
+- Joom出品: 0件（全削除済み・再出品予定）
+- eBay出品: 0件
 - Shopify: 1件 ACTIVE
 
-■ UI監査結果サマリー（Session 32で実施）
-| ページ | 実装度 | 主な問題 |
-|--------|--------|----------|
+■ UI監査結果（Session 33更新）
+| ページ | 実装度 | 備考 |
+|--------|--------|------|
 | /joom | 95% | ほぼ完成 |
-| /batch | 95% | SSEリアルタイム監視含む |
+| /batch | 95% | SSEリアルタイム監視 |
 | /inventory | 95% | ほぼ完成 |
-| /products/review | 95% | キーボードショートカット含む |
+| /products/review | 95% | キーボードショートカット |
 | /pricing-ai | 90% | ほぼ完成 |
 | /orders | 90% | 追跡入力UIがPrompt() |
-| /marketplace | 85% | ルーティング設定の永続化なし |
-| /listings | 80% | 価格一括変更のみ未実装 |
-| /products | 75% | 一括編集・価格変更未実装 |
-| /settings | 30% | 保存機能ほぼ未実装 |
-| eBay専用40+ページ | 35% | UIのみ、API連携が途中 |
+| /marketplace | 90% | ルーティング永続化完了 |
+| /listings | 85% | 非機能ボタン非表示済み |
+| /products | 80% | 非機能ボタン非表示済み |
+| /settings | 60% | 価格設定Save実装済み、通知閾値は未 |
 
 ■ 開発ワークフロー（必須）
 - コード生成はCodex CLI（/opt/homebrew/bin/codex）に委託する
