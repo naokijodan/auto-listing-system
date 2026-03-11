@@ -15,6 +15,14 @@ import { scrapePayPayFlea } from './scrapers/paypay-flea';
 import { scrapeRakuma } from './scrapers/rakuma';
 import { scrapeRakuten } from './scrapers/rakuten';
 import { scrapeAmazon } from './scrapers/amazon';
+import {
+  checkMercariHttp,
+  checkYahooAuctionHttp,
+  checkAmazonHttp,
+  checkPayPayFleaHttp,
+  checkRakumaHttp,
+  HttpInventoryResult,
+} from './scrapers/http';
 import { notifyOutOfStock, notifyPriceChanged } from './notifications';
 import { alertManager } from './alert-manager';
 import { eventBus } from './event-bus';
@@ -153,27 +161,38 @@ export async function checkSingleProductInventory(
   }
 
   try {
-    // ソースタイプに応じたスクレイピング（指数バックオフ付きリトライ）
-    // 未対応はクラッシュさせずスキップ（楽観的に在庫あり）
-    let scrapeFn: ((url: string) => Promise<{ success: boolean; product?: any; error?: string }>) | null = null;
+    // HTTP-first inventory check with optional Puppeteer fallback
+    const usePuppeteerFallback = process.env.USE_PUPPETEER_FALLBACK === 'true';
+
+    let httpCheck: (() => Promise<HttpInventoryResult>) | null = null;
+    let puppeteerScrape:
+      | ((url: string) => Promise<{ success: boolean; product?: any; error?: string }>)
+      | null = null;
+
     switch (product.source.type) {
       case 'MERCARI':
-        scrapeFn = scrapeMercari;
+        httpCheck = () => checkMercariHttp(product.sourceUrl);
+        puppeteerScrape = scrapeMercari;
         break;
       case 'YAHOO_AUCTION':
-        scrapeFn = scrapeYahooAuction;
+        httpCheck = () => checkYahooAuctionHttp(product.sourceUrl);
+        puppeteerScrape = scrapeYahooAuction;
         break;
       case 'YAHOO_FLEA':
-        scrapeFn = scrapePayPayFlea;
+        httpCheck = () => checkPayPayFleaHttp(product.sourceUrl);
+        puppeteerScrape = scrapePayPayFlea;
         break;
       case 'RAKUMA':
-        scrapeFn = scrapeRakuma;
-        break;
-      case 'RAKUTEN':
-        scrapeFn = scrapeRakuten;
+        httpCheck = () => checkRakumaHttp(product.sourceUrl);
+        puppeteerScrape = scrapeRakuma;
         break;
       case 'AMAZON':
-        scrapeFn = scrapeAmazon;
+        httpCheck = () => checkAmazonHttp(product.sourceUrl);
+        puppeteerScrape = scrapeAmazon;
+        break;
+      case 'RAKUTEN':
+        // No HTTP scraper defined yet; keep Puppeteer only
+        puppeteerScrape = scrapeRakuten;
         break;
       case 'TAKAYAMA':
       case 'JOSHIN':
@@ -203,40 +222,109 @@ export async function checkSingleProductInventory(
         };
     }
 
-    const scrapeResult = await withExponentialBackoff(
-      async () => {
-        return await scrapeFn!(product.sourceUrl);
-      },
-      settings.maxRetries,
-      settings.retryDelayMs
-    );
+    let statusForLog: string | undefined;
+    let isAvailable: boolean = true;
+    let currentPrice: number | null = product.price ?? null;
+    let titleForHash: string | undefined;
 
-    if (!scrapeResult.success) {
-      log.error({ type: 'scrape_failed', productId, error: scrapeResult.error });
-      return {
-        productId,
-        isAvailable: false,
-        currentPrice: null,
-        priceChanged: false,
-        hashChanged: false,
-        newHash: null,
-        action: 'none',
-        error: scrapeResult.error,
-      };
+    if (httpCheck) {
+      try {
+        const httpResult = await withExponentialBackoff(
+          async () => await httpCheck!(),
+          settings.maxRetries,
+          settings.retryDelayMs
+        );
+        statusForLog = httpResult.status;
+        isAvailable = httpResult.status === 'available' || httpResult.status === 'unknown' ? true : false;
+        if (typeof httpResult.price === 'number') {
+          currentPrice = httpResult.price;
+        }
+        titleForHash = httpResult.title;
+
+        // Optional fallback if HTTP status is unknown and fallback enabled
+        if (usePuppeteerFallback && httpResult.status === 'unknown' && puppeteerScrape) {
+          const scrapeResult = await withExponentialBackoff(
+            async () => await puppeteerScrape!(product.sourceUrl),
+            settings.maxRetries,
+            settings.retryDelayMs
+          );
+          if (scrapeResult.success && scrapeResult.product) {
+            isAvailable = scrapeResult.product.isAvailable ?? isAvailable;
+            if (typeof scrapeResult.product.price === 'number') {
+              currentPrice = scrapeResult.product.price;
+            }
+            titleForHash = scrapeResult.product.title || titleForHash;
+            statusForLog = statusForLog || (isAvailable ? 'available' : 'sold');
+          }
+        }
+      } catch (e: any) {
+        // HTTP flow failed; try Puppeteer only if enabled
+        log.warn({ type: 'http_check_failed', productId, error: e?.message });
+        if (usePuppeteerFallback && puppeteerScrape) {
+          const scrapeResult = await withExponentialBackoff(
+            async () => await puppeteerScrape!(product.sourceUrl),
+            settings.maxRetries,
+            settings.retryDelayMs
+          );
+          if (!scrapeResult.success) {
+            log.error({ type: 'scrape_failed', productId, error: scrapeResult.error });
+            return {
+              productId,
+              isAvailable: false,
+              currentPrice: null,
+              priceChanged: false,
+              hashChanged: false,
+              newHash: null,
+              action: 'none',
+              error: scrapeResult.error,
+            };
+          }
+          const scrapedProduct = scrapeResult.product!;
+          isAvailable = scrapedProduct.isAvailable ?? true;
+          currentPrice = scrapedProduct.price;
+          titleForHash = scrapedProduct.title;
+          statusForLog = isAvailable ? 'available' : 'sold';
+        } else {
+          // Safe-side default
+          isAvailable = true;
+          statusForLog = 'unknown';
+        }
+      }
+    } else if (puppeteerScrape) {
+      // HTTP not available for this type; use Puppeteer directly
+      const scrapeResult = await withExponentialBackoff(
+        async () => await puppeteerScrape!(product.sourceUrl),
+        settings.maxRetries,
+        settings.retryDelayMs
+      );
+      if (!scrapeResult.success) {
+        log.error({ type: 'scrape_failed', productId, error: scrapeResult.error });
+        return {
+          productId,
+          isAvailable: false,
+          currentPrice: null,
+          priceChanged: false,
+          hashChanged: false,
+          newHash: null,
+          action: 'none',
+          error: scrapeResult.error,
+        };
+      }
+      const scrapedProduct = scrapeResult.product!;
+      isAvailable = scrapedProduct.isAvailable ?? true;
+      currentPrice = scrapedProduct.price;
+      titleForHash = scrapedProduct.title;
+      statusForLog = isAvailable ? 'available' : 'sold';
     }
-
-    const scrapedProduct = scrapeResult.product!;
-    const isAvailable = scrapedProduct.isAvailable ?? true;
-    const currentPrice = scrapedProduct.price;
     const priceChanged = currentPrice !== product.price;
 
     // 価格変動率の計算
-    const priceChangePercent = product.price > 0
+    const priceChangePercent = product.price > 0 && currentPrice !== null
       ? ((currentPrice - product.price) / product.price) * 100
       : 0;
 
     // ハッシュ計算（タイトル、説明、価格、在庫状況）
-    const contentForHash = `${scrapedProduct.title}|${scrapedProduct.description}|${currentPrice}|${isAvailable}`;
+    const contentForHash = `${titleForHash || ''}|${currentPrice ?? ''}|${statusForLog || ''}|${isAvailable}`;
     const newHash = crypto.createHash('md5').update(contentForHash).digest('hex');
     const hashChanged = newHash !== product.sourceHash;
 
@@ -253,7 +341,7 @@ export async function checkSingleProductInventory(
       where: { id: productId },
       data: {
         sourceHash: newHash,
-        price: currentPrice,
+        price: currentPrice ?? undefined,
         status: isAvailable ? product.status : 'OUT_OF_STOCK',
         updatedAt: new Date(),
       },
@@ -375,7 +463,12 @@ export async function checkSingleProductInventory(
       });
 
       // 外部通知
-      await notifyPriceChanged(product.title, product.price, currentPrice, priceChangePercent);
+      await notifyPriceChanged(
+        product.title,
+        product.price,
+        currentPrice ?? product.price,
+        priceChangePercent
+      );
 
       // Phase 26: AlertManager経由のアラート発火（20%以上の変動）
       if (Math.abs(priceChangePercent) >= 20) {
