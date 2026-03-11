@@ -140,7 +140,7 @@ router.post('/listings', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Enrichment task not found' });
     }
 
-    if (task.status !== 'APPROVED') {
+    if (!['APPROVED', 'PUBLISHED'].includes(task.status)) {
       return res.status(400).json({ error: `Task not approved: ${task.status}` });
     }
 
@@ -892,7 +892,7 @@ router.post('/workflow/full', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    if (task.status !== 'APPROVED') {
+    if (!['APPROVED', 'PUBLISHED'].includes(task.status)) {
       return res.status(400).json({ error: `Task not approved: ${task.status}` });
     }
 

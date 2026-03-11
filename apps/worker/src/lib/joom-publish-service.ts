@@ -274,7 +274,7 @@ export class JoomPublishService {
       throw new Error(`Task not found: ${taskId}`);
     }
 
-    if (task.status !== 'APPROVED') {
+    if (!['APPROVED', 'PUBLISHED'].includes(task.status)) {
       throw new Error(`Task not approved: ${task.status}`);
     }
 
@@ -883,7 +883,7 @@ export class BatchPublishService {
               return { productId, success: false, error: 'No enrichment task' };
             }
 
-            if (task.status !== 'APPROVED') {
+            if (!['APPROVED', 'PUBLISHED'].includes(task.status)) {
               skippedCount++;
               return { productId, success: false, error: `Not approved: ${task.status}` };
             }
