@@ -1,19 +1,18 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-12 (Session 33: UI大掃除完了)
+## 最終更新: 2026-03-12 (Session 34: Joom再出品完了)
 
 ---
 
 RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 
-■ 前回のセッション（Session 33）でやったこと
-- **eBay配下681ページを全削除**（UIのみ・バックエンド未接続、142,138行削除）
-- **UIのみの非eBayページ39個を全削除**（26,722行削除）
-- **サイドバーを完全整理**（746ページ → 21ページ、サイドバー11項目+管理1項目）
-- **非機能ボタンの非表示**（listings・productsの動かないボタン）
-- **価格設定の保存機能実装**（SystemSetting API経由でDB永続化）
-- **マーケットプレイスルーティング設定の永続化**
-- **本番デプロイ完了**（ビルド時間46秒→10秒に短縮）
+■ 前回のセッション（Session 34）でやったこと
+- **サーバー負荷緊急対応**: MinIO(94%→8%), Coolify(349%→27%), coolify-redis(95%→8%)を再起動
+- **Joomバッチ出品のバグ修正**: EnrichmentTask PUBLISHEDステータスも受け入れるよう4箇所修正
+- **Joom 13商品の再出品完了**: 全13商品ACTIVEステータスで出品成功
+  - 時計2件: Longines $1,224.99, Seiko $859.12
+  - ゲーム11件: $26.79 - $117.88
+- **API + Worker デプロイ完了**（ペナルティ下でAPI 18分、Worker 30分）
 
 ■ 現在残っている全21ページ
 | パス | 内容 | 実装度 |
@@ -40,24 +39,18 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 | `/settings/rate-limits` | レート制限 | 50% |
 | `/settings/templates` | 出品テンプレート | 50% |
 
-■ 次にやること【Joom最優先】
-
-### 最優先: Joom完成 → 再出品
-1. Joomページ（/joom）の残り5%を確認・完成
-2. 商品レビュー → Joom出品フローの動作確認
-3. Joomに商品を再出品（現在0件、Session 32で全削除済み）
-4. 出品後の管理機能（enable/disable/削除）が正常動作するか確認
-
-### その後: 各ページの100%完成
-各ページを順に確認し、足りない機能を実装して完成させる。
-優先順：Joom → 商品管理 → 出品管理 → 注文管理 → 設定 → その他
+■ 次にやること
+1. Joom出品の管理機能確認（enable/disable/削除が正常動作するか）
+2. 画像未処理の9商品の画像処理→出品
+3. 各ページを順に100%完成
+   - 優先順：商品管理 → 出品管理 → 注文管理 → 設定 → その他
 
 ■ 現在のステータス
-- commit: 190be6e8 (main)、push済み
+- commit: b8ffeb9b (main)、push済み
 - Web: デプロイ済み（https://rakuda.dev）
-- API: running (api.rakuda.dev)
-- Worker: running
-- Joom出品: 0件（全削除済み・再出品待ち）
+- API: running (api.rakuda.dev) - デプロイ済み
+- Worker: running - デプロイ済み
+- **Joom出品: 13件 ACTIVE**
 - eBay出品: 0件
 - Shopify: 1件 ACTIVE
 
@@ -72,7 +65,8 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 - セッション開始時にサーバー負荷を必ず確認:
   ssh root@45.32.28.61 "top -bn1 | head -4; docker stats --no-stream"
 - MinIOのCPU異常（50%超）→即再起動: docker restart minio-qo4s4o04w0c8wckwk0soc44c
-- デプロイは必要最小限、短時間に連続デプロイしない
+- coolify-redis/coolify-realtimeもCPU暴走時は再起動
+- デプロイは必要最小限、短時間に連続デプロイしない（ペナルティ下で30分/回）
 - coolify-sentinelは300秒間隔に変更済み（元は60秒）
 
 ■ 注意事項
@@ -83,6 +77,6 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
   - Web: zoo8cgswg4ssc84kgcog8cg0
   - Worker: g0s4ws488008g88ww4s4kkog
 - Coolify API Token: 14|85gWstw2p1iv6OtnQxwwP67NEWOqRV3xr1Uz0s4n7fafa115
-- サーバーCPU steal time 66%のためデプロイに約15分かかる
+- サーバーCPU steal timeペナルティ中のためデプロイに約30分かかる
 
 確認不要で自律実行してほしい。
