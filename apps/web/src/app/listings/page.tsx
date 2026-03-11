@@ -7,7 +7,8 @@ import { StatusBadge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { useListings, useExchangeRate } from '@/lib/hooks';
-import { Listing } from '@/lib/api';
+import { Listing, postApi } from '@/lib/api';
+import { addToast } from '@/components/ui/toast';
 import {
   Search,
   Filter,
@@ -57,6 +58,7 @@ export default function ListingsPage() {
   const [marketplaceFilter, setMarketplaceFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('overview');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Ref for virtual scroll container
   const parentRef = useRef<HTMLDivElement>(null);
@@ -174,6 +176,84 @@ export default function ListingsPage() {
     ended: listings.filter((l) => l.status === 'ENDED').length,
   }), [listings]);
 
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`${selectedIds.size}件の出品を削除しますか？アクティブな出品は先に停止してください。`)) return;
+    setIsProcessing(true);
+    try {
+      await postApi('/api/listings/bulk/delete', {
+        listingIds: Array.from(selectedIds),
+        confirm: true,
+      });
+      addToast({ type: 'success', message: '削除リクエストを送信しました' });
+      setSelectedIds(new Set());
+      mutate();
+    } catch (error: any) {
+      addToast({ type: 'error', message: error?.message || '削除に失敗しました' });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [selectedIds, mutate]);
+
+  const handleBulkPause = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    setIsProcessing(true);
+    try {
+      await postApi('/api/listings/bulk/update-status', {
+        listingIds: Array.from(selectedIds),
+        status: 'PAUSED',
+      });
+      addToast({ type: 'success', message: '一括停止しました' });
+      setSelectedIds(new Set());
+      mutate();
+    } catch (error: any) {
+      addToast({ type: 'error', message: error?.message || '一括停止に失敗しました' });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [selectedIds, mutate]);
+
+  const handleBulkPublish = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    setIsProcessing(true);
+    try {
+      await postApi('/api/listings/bulk/publish', {
+        listingIds: Array.from(selectedIds),
+      });
+      addToast({ type: 'success', message: '再出品リクエストを送信しました' });
+      setSelectedIds(new Set());
+      mutate();
+    } catch (error: any) {
+      addToast({ type: 'error', message: error?.message || '再出品に失敗しました' });
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [selectedIds, mutate]);
+
+  const handleExport = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const selected = listings.filter(l => selectedIds.has(l.id));
+    const csv = [
+      ['ID', 'Title', 'Marketplace', 'Status', 'Price', 'Currency'].join(','),
+      ...selected.map(l => [
+        l.id,
+        `"${(l.product?.title || '').replace(/"/g, '""')}"`,
+        l.marketplace,
+        l.status,
+        l.listingPrice,
+        l.currency,
+      ].join(','))
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `listings-export-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addToast({ type: 'success', message: 'CSVをエクスポートしました' });
+  }, [selectedIds, listings]);
+
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
       {/* Header */}
@@ -232,7 +312,9 @@ export default function ListingsPage() {
           <option value="">すべてのステータス</option>
           <option value="DRAFT">下書き</option>
           <option value="PUBLISHING">出品処理中</option>
-          <option value="PUBLISHED">出品中</option>
+          <option value="ACTIVE">出品中</option>
+          <option value="PAUSED">一時停止</option>
+          <option value="PENDING_PUBLISH">出品待ち</option>
           <option value="SOLD">売却済</option>
           <option value="ENDED">終了</option>
           <option value="ERROR">エラー</option>
@@ -646,23 +728,23 @@ export default function ListingsPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
+          <Button variant="outline" size="sm" disabled={selectedIds.size === 0 || isProcessing}>
             <DollarSign className="h-4 w-4" />
             価格一括変更
           </Button>
-          <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
+          <Button variant="outline" size="sm" onClick={handleBulkPublish} disabled={selectedIds.size === 0 || isProcessing}>
             <Play className="h-4 w-4" />
             再出品
           </Button>
-          <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
+          <Button variant="outline" size="sm" onClick={handleBulkPause} disabled={selectedIds.size === 0 || isProcessing}>
             <Pause className="h-4 w-4" />
             一括停止
           </Button>
-          <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={selectedIds.size === 0 || isProcessing}>
             <Download className="h-4 w-4" />
             エクスポート
           </Button>
-          <Button variant="danger" size="sm" disabled={selectedIds.size === 0}>
+          <Button variant="danger" size="sm" onClick={handleBulkDelete} disabled={selectedIds.size === 0 || isProcessing}>
             <Trash2 className="h-4 w-4" />
             削除
           </Button>
