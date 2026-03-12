@@ -1,18 +1,19 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-12 (Session 38)
+## 最終更新: 2026-03-12 (Session 38b)
 
 RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 
 ■ ミッション
-**21ページを100%完成させる。（3/21完了）**
+**21ページを100%完成させる。（4/21完了）**
 
 ■ 開始方法
 `rakuda-dev` Skillを実行する（`~/Desktop/rakuda/.claude/skills/rakuda-dev/SKILL.md`）
 
-■ 前回（Session 38）の結果
-- `/products/review` を100%完成（レスポンシブ対応、エラー表示統一、Zodバリデーション、型分離、テスト18件）
-- 次の対象: `/batch`（95%→100%）または `/inventory`（95%→100%）
+■ 前回（Session 38b）の結果
+- `/products/review` を100%完成（レスポンシブ、エラー表示、Zod、型分離、テスト18件）
+- `/batch` を100%完成（レスポンシブ、エラー表示toast化、SSE Zodバリデーション、型分離、テスト22件）
+- 次の対象: `/inventory`（95%→100%）
 
 ■ ページ優先順
 | # | パス | 実装度 |
@@ -28,7 +29,7 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 | 9 | `/enrichment` | 90% |
 | 10 | `/marketplace` | 90% |
 | 11 | `/pricing-ai` | 90% |
-| 12 | `/batch` | 95% |
+| 12 | `/batch` | ✅ 100% |
 | 13 | `/inventory` | 95% |
 | 14 | `/jobs` | 85% |
 | 15 | `/integrations` | 70% |
@@ -40,7 +41,7 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 | 21 | `/settings/templates` | 50% |
 
 ■ 現在のステータス
-- commit: ba12c5e1 (main)、push済み
+- commit: a77e457e (main)、push済み
 - Web: https://rakuda.dev / API: https://api.rakuda.dev
 
 ■ 開発ワークフロー（必須）
