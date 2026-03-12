@@ -1,41 +1,17 @@
 'use client'
 
 import React, { useEffect, useMemo, useState } from 'react'
-
-type PlatformKey = 'ebay' | 'joom' | 'etsy' | 'shopify' | 'instagram_shop' | 'tiktok_shop'
-
-type PlatformSummary = {
-  name: string
-  listings: number
-  synced: number
-  errors: number
-  connected: boolean
-}
-
-type InventorySummary = {
-  totalProducts: number
-  inStock: number
-  outOfStock: number
-  syncErrors: number
-  platforms: Record<PlatformKey, PlatformSummary>
-}
-
-type Product = {
-  id: string
-  name: string
-  stock: number
-  status: Partial<Record<PlatformKey, 'listed' | 'paused' | 'unlisted' | 'error'>>
-  lastSyncedAt?: string | null
-}
-
-type InventoryEvent = {
-  id: string
-  timestamp: string
-  productName: string
-  type: string
-  diff: number
-  source: string
-}
+import { addToast } from '@/components/ui/toast'
+import {
+  type PlatformKey,
+  type PlatformSummary,
+  type InventorySummary,
+  type Product,
+  type InventoryEvent,
+  InventorySummarySchema,
+  ProductSchema,
+  InventoryEventSchema,
+} from './types'
 
 const platforms: { key: PlatformKey; label: string }[] = [
   { key: 'ebay', label: 'eBay' },
@@ -60,7 +36,10 @@ function StatusBadge({ status }: { status?: 'listed' | 'paused' | 'unlisted' | '
   const icon = status === 'listed' ? '✅' : status === 'paused' ? '⏸' : status === 'unlisted' ? '❌' : status === 'error' ? '⚠' : '—'
   const cfg = status ? map[status] : { text: '—', color: 'bg-gray-100 text-gray-600 border-gray-200' }
   return (
-    <span className={classNames('inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs', cfg.color)}>
+    <span
+      className={classNames('inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs', cfg.color)}
+      aria-label={cfg.text}
+    >
       <span>{icon}</span>
       <span>{cfg.text}</span>
     </span>
@@ -91,28 +70,54 @@ export default function InventoryDashboardPage() {
         if (!pRes.ok) throw new Error('商品リスト取得に失敗しました')
         if (!eRes.ok) throw new Error('在庫ログ取得に失敗しました')
 
-        const sData = (await sRes.json()) as Partial<InventorySummary>
-        const pData = (await pRes.json()) as { items?: Product[] } | Product[]
-        const eData = (await eRes.json()) as InventoryEvent[]
+        // T9: Zod safeParse for API responses
+        const sRaw = await sRes.json()
+        const sParsed = InventorySummarySchema.safeParse(sRaw)
+        const s = sParsed.success ? sParsed.data : null
+
+        const pRaw = await pRes.json()
+        const pItems = Array.isArray(pRaw) ? pRaw : pRaw?.items ?? []
+        const validProducts = pItems
+          .filter((item: unknown) => ProductSchema.safeParse(item).success)
+          .map((item: unknown) => ProductSchema.parse(item))
+
+        const eRaw = await eRes.json()
+        const eItems = Array.isArray(eRaw) ? eRaw : []
+        const validEvents = eItems
+          .filter((item: unknown) => InventoryEventSchema.safeParse(item).success)
+          .map((item: unknown) => InventoryEventSchema.parse(item))
 
         if (!cancelled) {
           setSummary({
-            totalProducts: sData.totalProducts ?? 0,
-            inStock: sData.inStock ?? 0,
-            outOfStock: sData.outOfStock ?? 0,
-            syncErrors: sData.syncErrors ?? 0,
+            totalProducts: s?.totalProducts ?? 0,
+            inStock: s?.inStock ?? 0,
+            outOfStock: s?.outOfStock ?? 0,
+            syncErrors: s?.syncErrors ?? 0,
             platforms: {
-              ebay: sData.platforms?.ebay ?? { name: 'eBay', listings: 0, synced: 0, errors: 0, connected: false },
-              joom: sData.platforms?.joom ?? { name: 'Joom', listings: 0, synced: 0, errors: 0, connected: false },
-              etsy: sData.platforms?.etsy ?? { name: 'Etsy', listings: 0, synced: 0, errors: 0, connected: false },
-              shopify: sData.platforms?.shopify ?? { name: 'Shopify', listings: 0, synced: 0, errors: 0, connected: false },
-              instagram_shop: sData.platforms?.instagram_shop ?? { name: 'Instagram Shop', listings: 0, synced: 0, errors: 0, connected: false },
-              tiktok_shop: sData.platforms?.tiktok_shop ?? { name: 'TikTok Shop', listings: 0, synced: 0, errors: 0, connected: false },
+              ebay: s?.platforms?.ebay ?? { name: 'eBay', listings: 0, synced: 0, errors: 0, connected: false },
+              joom: s?.platforms?.joom ?? { name: 'Joom', listings: 0, synced: 0, errors: 0, connected: false },
+              etsy: s?.platforms?.etsy ?? { name: 'Etsy', listings: 0, synced: 0, errors: 0, connected: false },
+              shopify: s?.platforms?.shopify ?? { name: 'Shopify', listings: 0, synced: 0, errors: 0, connected: false },
+              instagram_shop:
+                s?.platforms?.instagram_shop ?? {
+                  name: 'Instagram Shop',
+                  listings: 0,
+                  synced: 0,
+                  errors: 0,
+                  connected: false,
+                },
+              tiktok_shop:
+                s?.platforms?.tiktok_shop ?? {
+                  name: 'TikTok Shop',
+                  listings: 0,
+                  synced: 0,
+                  errors: 0,
+                  connected: false,
+                },
             },
           })
-          const items = Array.isArray(pData) ? pData : pData.items ?? []
-          setProducts(items)
-          setEvents(Array.isArray(eData) ? eData : [])
+          setProducts(validProducts)
+          setEvents(validEvents)
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? '不明なエラー')
@@ -131,9 +136,11 @@ export default function InventoryDashboardPage() {
     try {
       const res = await fetch(`/api/inventory/sync/${id}`, { method: 'POST' })
       if (!res.ok) throw new Error('同期に失敗しました')
+      // T2: Success toast
+      addToast({ type: 'success', message: '在庫を同期しました' })
     } catch (e) {
-      console.error(e)
-      alert('同期に失敗しました。')
+      // T2: Error toast
+      addToast({ type: 'error', message: '同期に失敗しました' })
     } finally {
       setSyncing((s) => ({ ...s, [id]: false }))
     }
@@ -181,15 +188,15 @@ export default function InventoryDashboardPage() {
   }, [summary])
 
   return (
-    <div className="mx-auto max-w-[1200px] p-4 md:p-6 lg:p-8">
+    <div className="mx-auto max-w-[1200px] p-4 md:p-6 lg:p-8" aria-label="在庫一元管理">
       <header className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-indigo-600">在庫一元管理</h1>
       </header>
 
       {loading ? (
-        <div className="rounded-md border border-indigo-100 bg-indigo-50 p-4 text-indigo-700">読み込み中...</div>
+        <div role="status" className="rounded-md border border-indigo-100 bg-indigo-50 p-4 text-indigo-700">読み込み中...</div>
       ) : error ? (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>
+        <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>
       ) : (
         <>
           {/* Summary Cards */}
@@ -213,32 +220,36 @@ export default function InventoryDashboardPage() {
           </section>
 
           {/* Platform Cards */}
-          <section className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">{platformCards}</section>
+          <section aria-label="プラットフォーム別統計" className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">{platformCards}</section>
 
           {/* Products Table */}
-          <section className="mb-8 rounded-lg border bg-white shadow-sm">
+          <section aria-label="商品一覧" className="mb-8 rounded-lg border bg-white shadow-sm">
             <div className="border-b p-4">
               <h2 className="text-lg font-semibold text-indigo-700">商品一覧</h2>
             </div>
             <div className="w-full overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-600">商品名</th>
-                    <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-600">在庫数</th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-600">商品名</th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-600">在庫数</th>
                     {platforms.map((p) => (
-                      <th key={p.key} className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-600">
+                      <th
+                        key={p.key}
+                        scope="col"
+                        className="hidden whitespace-nowrap px-4 py-2 text-left font-medium text-gray-600 md:table-cell"
+                      >
                         {p.label}
                       </th>
                     ))}
-                    <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-600">最終同期</th>
-                    <th className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-600">アクション</th>
+                    <th scope="col" className="hidden whitespace-nowrap px-4 py-2 text-left font-medium text-gray-600 sm:table-cell">最終同期</th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-2 text-left font-medium text-gray-600">アクション</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {products.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan={10} className="px-4 py-6 text-center text-gray-500">
                         商品がありません
                       </td>
                     </tr>
@@ -248,11 +259,11 @@ export default function InventoryDashboardPage() {
                       <td className="px-4 py-2 font-medium text-gray-900">{prod.name}</td>
                       <td className="px-4 py-2">{prod.stock}</td>
                       {platforms.map((p) => (
-                        <td key={p.key} className="px-4 py-2">
+                        <td key={p.key} className="hidden px-4 py-2 md:table-cell">
                           <StatusBadge status={prod.status?.[p.key]} />
                         </td>
                       ))}
-                      <td className="px-4 py-2">
+                      <td className="hidden px-4 py-2 sm:table-cell">
                         {prod.lastSyncedAt ? new Date(prod.lastSyncedAt).toLocaleString() : '—'}
                       </td>
                       <td className="px-4 py-2">
@@ -260,6 +271,8 @@ export default function InventoryDashboardPage() {
                           <button
                             onClick={() => handleSync(prod.id)}
                             disabled={!!syncing[prod.id]}
+                            aria-label="同期"
+                            aria-busy={!!syncing[prod.id]}
                             className={classNames(
                               'rounded-md border px-3 py-1 text-xs font-medium',
                               syncing[prod.id]
@@ -270,7 +283,8 @@ export default function InventoryDashboardPage() {
                             {syncing[prod.id] ? '同期中…' : '全同期'}
                           </button>
                           <button
-                            onClick={() => alert('出品先変更ダイアログ（未実装）')}
+                            onClick={() => addToast({ type: 'info', message: 'この機能は今後実装予定です' })}
+                            aria-label="出品先変更"
                             className="rounded-md border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
                           >
                             出品先変更
@@ -285,19 +299,19 @@ export default function InventoryDashboardPage() {
           </section>
 
           {/* Inventory Events */}
-          <section className="mb-16 rounded-lg border bg-white shadow-sm">
+          <section aria-label="在庫変動ログ" className="mb-16 rounded-lg border bg-white shadow-sm">
             <div className="border-b p-4">
               <h2 className="text-lg font-semibold text-indigo-700">在庫変動ログ</h2>
             </div>
             <div className="w-full overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left font-medium text-gray-600">日時</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-600">商品名</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-600">イベント種別</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-600">変動数</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-600">発生元</th>
+                    <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">日時</th>
+                    <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">商品名</th>
+                    <th scope="col" className="hidden px-4 py-2 text-left font-medium text-gray-600 md:table-cell">イベント種別</th>
+                    <th scope="col" className="px-4 py-2 text-left font-medium text-gray-600">変動数</th>
+                    <th scope="col" className="hidden px-4 py-2 text-left font-medium text-gray-600 sm:table-cell">発生元</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
@@ -312,11 +326,11 @@ export default function InventoryDashboardPage() {
                     <tr key={ev.id} className="hover:bg-gray-50/60">
                       <td className="px-4 py-2">{new Date(ev.timestamp).toLocaleString()}</td>
                       <td className="px-4 py-2 font-medium">{ev.productName}</td>
-                      <td className="px-4 py-2">{ev.type}</td>
+                      <td className="hidden px-4 py-2 md:table-cell">{ev.type}</td>
                       <td className={classNames('px-4 py-2', ev.diff >= 0 ? 'text-green-600' : 'text-rose-600')}>
                         {ev.diff > 0 ? `+${ev.diff}` : ev.diff}
                       </td>
-                      <td className="px-4 py-2">{ev.source}</td>
+                      <td className="hidden px-4 py-2 sm:table-cell">{ev.source}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -328,4 +342,3 @@ export default function InventoryDashboardPage() {
     </div>
   )
 }
-
