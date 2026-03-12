@@ -1,25 +1,25 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-12 (Session 37)
+## 最終更新: 2026-03-12 (Session 38)
 
 RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 
 ■ ミッション
-**21ページを100%完成させる。（2/21完了）**
+**21ページを100%完成させる。（3/21完了）**
 
 ■ 開始方法
 `rakuda-dev` Skillを実行する（`~/Desktop/rakuda/.claude/skills/rakuda-dev/SKILL.md`）
 
-■ 前回（Session 37）の結果
-- `/joom` を100%完成（ファイル分割、Zodバリデーション、ページネーション、レスポンシブ、テスト23件、エラーレスポンス統一）
-- 次の対象: `/products/review`（95%→100%）
+■ 前回（Session 38）の結果
+- `/products/review` を100%完成（レスポンシブ対応、エラー表示統一、Zodバリデーション、型分離、テスト18件）
+- 次の対象: `/batch`（95%→100%）または `/inventory`（95%→100%）
 
 ■ ページ優先順
 | # | パス | 実装度 |
 |---|------|--------|
 | 1 | `/joom/categories` | ✅ 100% |
 | 2 | `/joom` | ✅ 100% |
-| 3 | `/products/review` | 95% |
+| 3 | `/products/review` | ✅ 100% |
 | 4 | `/products` | 80% |
 | 5 | `/listings` | 85% |
 | 6 | `/orders` | 90% |
@@ -40,7 +40,7 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 | 21 | `/settings/templates` | 50% |
 
 ■ 現在のステータス
-- commit: acd8ee73 (main)、push済み
+- commit: ba12c5e1 (main)、push済み
 - Web: https://rakuda.dev / API: https://api.rakuda.dev
 
 ■ 開発ワークフロー（必須）
@@ -50,6 +50,7 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 
 ■ 注意事項
 - Vultrペナルティ中：デプロイは必要最小限
-- /joomの残タスク（次回）: T7アクセシビリティ、T9 as any改善
+- /joomの残タスク: T7アクセシビリティ、T9 as any改善
+- /products/reviewの残タスク: a11y（ARIA）、無限スクロール（将来的に必要時）
 
 確認不要で自律実行してほしい。
