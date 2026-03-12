@@ -41,7 +41,7 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 | 21 | `/settings/templates` | 50% |
 
 ■ 現在のステータス
-- commit: 9f00136d (main)、push済み
+- commit: b933528a (main)、push済み
 - Web: https://rakuda.dev / API: https://api.rakuda.dev
 
 ■ 開発ワークフロー（必須）
