@@ -17,37 +17,10 @@ import {
   WifiOff,
   Radio,
 } from 'lucide-react';
+import { addToast } from '@/components/ui/toast';
+import { QueueStatsSchema, SSEQueueStatsMessageSchema, type QueueStats, type FailedJob, type RecoveryStats } from './types';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
-interface QueueStats {
-  waiting: number;
-  active: number;
-  completed: number;
-  failed: number;
-  delayed: number;
-}
-
-interface FailedJob {
-  id: string;
-  queueName: string;
-  jobId: string;
-  jobName: string;
-  error: string;
-  attemptsMade: number;
-  maxAttempts: number;
-  canRetry: boolean;
-  retryAfter?: string;
-  createdAt: string;
-  status: 'PENDING' | 'RETRIED' | 'ABANDONED';
-}
-
-interface RecoveryStats {
-  pending: number;
-  retried: number;
-  abandoned: number;
-  byQueue: Record<string, { pending: number; retried: number }>;
-}
 
 // Phase 46: SSE接続フック
 function useQueueSSE(enabled: boolean) {
@@ -75,13 +48,14 @@ function useQueueSSE(enabled: boolean) {
 
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'queue-stats' && data.data) {
-          setStats(data.data);
+        const raw = JSON.parse(event.data);
+        const parsed = SSEQueueStatsMessageSchema.safeParse(raw);
+        if (parsed.success) {
+          setStats(parsed.data.data);
           setLastUpdate(new Date());
         }
-      } catch (error) {
-        console.error('SSE parse error:', error);
+      } catch {
+        // JSON parse failure - ignore malformed SSE data
       }
     };
 
@@ -148,8 +122,13 @@ export default function BatchDashboardPage() {
     try {
       const response = await fetch('/api/jobs/retry-batch', { method: 'POST' });
       if (response.ok) {
+        addToast({ type: 'success', message: '失敗ジョブの再試行を開始しました' });
         refreshAll();
+      } else {
+        addToast({ type: 'error', message: '再試行の開始に失敗しました' });
       }
+    } catch {
+      addToast({ type: 'error', message: '再試行の開始に失敗しました' });
     } finally {
       setIsRetrying(false);
     }
@@ -159,11 +138,14 @@ export default function BatchDashboardPage() {
     try {
       const response = await fetch(`/api/jobs/retry/${jobId}`, { method: 'POST' });
       if (response.ok) {
+        addToast({ type: 'success', message: 'ジョブを再試行しました' });
         mutateFailedJobs();
         mutateRecoveryStats();
+      } else {
+        addToast({ type: 'error', message: 'ジョブの再試行に失敗しました' });
       }
-    } catch (error) {
-      console.error('Retry failed:', error);
+    } catch {
+      addToast({ type: 'error', message: 'ジョブの再試行に失敗しました' });
     }
   };
 
@@ -171,11 +153,14 @@ export default function BatchDashboardPage() {
     try {
       const response = await fetch(`/api/jobs/abandon/${jobId}`, { method: 'POST' });
       if (response.ok) {
+        addToast({ type: 'success', message: 'ジョブを放棄しました' });
         mutateFailedJobs();
         mutateRecoveryStats();
+      } else {
+        addToast({ type: 'error', message: 'ジョブの放棄に失敗しました' });
       }
-    } catch (error) {
-      console.error('Abandon failed:', error);
+    } catch {
+      addToast({ type: 'error', message: 'ジョブの放棄に失敗しました' });
     }
   };
 
@@ -187,7 +172,7 @@ export default function BatchDashboardPage() {
     <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <h3 className={`text-lg font-semibold ${color}`}>{title}</h3>
       {stats ? (
-        <div className="mt-4 grid grid-cols-5 gap-4">
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <div className="text-center">
             <div className="text-2xl font-bold text-blue-600">{stats.waiting}</div>
             <div className="text-xs text-zinc-500">待機中</div>
@@ -246,7 +231,7 @@ export default function BatchDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
             バッチ処理ダッシュボード
@@ -255,7 +240,7 @@ export default function BatchDashboardPage() {
             ジョブキューの状態監視とリカバリー管理
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           {/* Phase 46: リアルタイム接続状態 */}
           <div className="flex items-center gap-2">
             <button
@@ -317,7 +302,7 @@ export default function BatchDashboardPage() {
       </div>
 
       {/* Queue Stats */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {renderStatCard('Enrichment Queue', enrichmentQueueStats, 'text-blue-600 dark:text-blue-400')}
         {renderStatCard('Joom Publish Queue', joomQueueStats, 'text-purple-600 dark:text-purple-400')}
       </div>
@@ -331,7 +316,7 @@ export default function BatchDashboardPage() {
           </h3>
         </div>
         {recoveryStats ? (
-          <div className="mt-4 grid grid-cols-3 gap-6">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
             <div className="rounded-lg bg-amber-50 p-4 dark:bg-amber-900/20">
               <div className="text-3xl font-bold text-amber-600">{recoveryStats.pending}</div>
               <div className="mt-1 text-sm text-amber-700 dark:text-amber-400">
@@ -392,7 +377,7 @@ export default function BatchDashboardPage() {
               .map((job) => (
                 <div
                   key={job.id}
-                  className="flex items-center justify-between p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
