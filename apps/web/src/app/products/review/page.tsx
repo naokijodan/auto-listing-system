@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useProducts } from '@/lib/hooks';
 import { Product, productApi } from '@/lib/api';
 import { addToast } from '@/components/ui/toast';
+import { JoomPreviewDataSchema, type JoomPreviewData } from './types';
 import {
   Check,
   X,
@@ -21,47 +22,7 @@ import {
   Info,
 } from 'lucide-react';
 
-interface JoomPreviewData {
-  product: {
-    id: string;
-    title: string;
-    titleEn?: string;
-    price: number;
-    status: string;
-  };
-  joomPreview: {
-    id: string;
-    name: string;
-    description: string;
-    mainImage: string;
-    extraImages: string[];
-    price: number;
-    currency: string;
-    quantity: number;
-    shipping: { price: number; time: string };
-    tags: string[];
-    parentSku: string;
-    sku: string;
-  };
-  pricing: {
-    originalPriceJpy: number;
-    costUsd: number;
-    shippingCost: number;
-    platformFee: number;
-    paymentFee: number;
-    profit: number;
-    finalPriceUsd: number;
-    exchangeRate: number;
-  };
-  validation: {
-    passed: boolean;
-    warnings: string[];
-  };
-  seo: {
-    score: number;
-    estimatedVisibility: 'high' | 'medium' | 'low';
-  };
-}
+// Types moved to ./types
 
 export default function ProductReviewPage() {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -91,9 +52,15 @@ export default function ProductReviewPage() {
       setIsLoadingPreview(true);
       try {
         const result = await productApi.previewJoom(currentProduct.id);
-        setPreviewData(result.data);
+        const parsed = JoomPreviewDataSchema.safeParse(result.data);
+        if (parsed.success) {
+          setPreviewData(parsed.data);
+        } else {
+          addToast({ type: 'error', message: 'プレビューデータの形式が不正です' });
+          setPreviewData(null);
+        }
       } catch (error) {
-        console.error('Failed to load preview:', error);
+        addToast({ type: 'error', message: 'プレビューの読み込みに失敗しました' });
         setPreviewData(null);
       } finally {
         setIsLoadingPreview(false);
@@ -221,7 +188,7 @@ export default function ProductReviewPage() {
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">商品レビュー</h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -244,9 +211,9 @@ export default function ProductReviewPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-1 gap-4 overflow-hidden">
+      <div className="flex flex-1 flex-col gap-4 overflow-hidden md:flex-row">
         {/* Left: Product List */}
-        <div className="w-72 flex-shrink-0 overflow-y-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="max-h-48 w-full flex-shrink-0 overflow-y-auto rounded-lg border border-zinc-200 bg-white md:max-h-none md:w-72 dark:border-zinc-800 dark:bg-zinc-900">
           {isLoading && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
@@ -324,7 +291,7 @@ export default function ProductReviewPage() {
               </div>
 
               {/* Joom Preview */}
-              {previewData && (
+              {previewData ? (
                 <div className="space-y-6">
                   {/* Images */}
                   <div className="grid grid-cols-5 gap-2">
@@ -428,13 +395,17 @@ export default function ProductReviewPage() {
                     </p>
                   </div>
                 </div>
+              ) : (
+                <div className="flex h-[60vh] items-center justify-center text-sm text-zinc-500 dark:text-zinc-400">
+                  プレビューの取得に失敗しました。再読み込みしてください
+                </div>
               )}
             </div>
           )}
         </div>
 
         {/* Right: Actions */}
-        <div className="w-64 flex-shrink-0 space-y-4">
+        <div className="w-full flex-shrink-0 space-y-4 md:w-64">
           {/* Action Buttons */}
           <Card className="p-4">
             <h3 className="mb-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">アクション</h3>

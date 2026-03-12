@@ -1,143 +1,179 @@
-Fix: Connect all action buttons in apps/web/src/app/listings/page.tsx to their backend APIs.
+## Task: /products/review のユニットテストを作成（T5）
 
-Currently all buttons (削除, 一括停止, 再出品, 価格一括変更, エクスポート) have no onClick handlers despite backend APIs being fully implemented.
+### 対象
+- テスト対象: `apps/web/src/app/products/review/types.ts`（Zodスキーマ）
+- テスト対象: `apps/web/src/app/products/review/page.tsx`（ハンドラーロジック）
+- 作成するファイル: `apps/web/src/app/products/review/__tests__/types.test.ts`
+- 作成するファイル: `apps/web/src/app/products/review/__tests__/review-logic.test.ts`
 
-## Context
+### テストフレームワーク
+- Vitest（プロジェクトで使用中）
+- import { describe, it, expect, vi } from 'vitest';
 
-- File to modify: apps/web/src/app/listings/page.tsx
-- Also need to add API methods in: apps/web/src/lib/api.ts
-- Reference implementation: apps/web/src/app/joom/page.tsx (has working handlers)
-- The page uses `selectedIds` (Set<string>) to track selected listings
-- The page has `mutate` from SWR to refresh data after operations
-- Import `postApi` and `deleteApi` from '@/lib/api' (already available)
-
-## Backend APIs (all implemented and working)
-
-1. **Bulk Delete**: `POST /api/listings/bulk/delete`
-   - Body: `{ listingIds: string[], confirm: true }`
-   - Constraint: Cannot delete ACTIVE listings (must pause first)
-   - Response: `{ success: true, data: { deletedCount: number } }`
-
-2. **Bulk Status Update**: `POST /api/listings/bulk/update-status`
-   - Body: `{ listingIds: string[], status: 'DRAFT' | 'PAUSED' | 'ACTIVE' | 'ENDED' }`
-   - Response: `{ success: true, data: { updatedCount: number } }`
-
-3. **Bulk Publish**: `POST /api/listings/bulk/publish`
-   - Body: `{ listingIds: string[] }`
-   - Only works on DRAFT/ERROR listings
-   - Response: `{ success: true, data: { queuedCount: number } }`
-
-4. **Bulk Price Update**: `POST /api/listings/bulk/update-price`
-   - Body: `{ listingIds: string[], adjustment: { type: 'percent' | 'amount' | 'fixed', value: number } }`
-
-## Tasks
-
-### 1. Add toast notification support
-Import or create a simple toast hook. Check if there's an existing addToast or useToast in the project (the joom/page.tsx uses addToast from '@/lib/hooks').
-
-### 2. Add handler functions (inside the component, before the return statement)
+### types.test.ts に書くテスト（5件以上）
 
 ```typescript
-const [isProcessing, setIsProcessing] = useState(false);
+import { describe, it, expect } from 'vitest';
+import { JoomPreviewDataSchema } from '../types';
 
-const handleBulkDelete = useCallback(async () => {
-  if (selectedIds.size === 0) return;
-  if (!window.confirm(`${selectedIds.size}件の出品を削除しますか？アクティブな出品は先に停止してください。`)) return;
-  setIsProcessing(true);
-  try {
-    await postApi('/api/listings/bulk/delete', {
-      listingIds: Array.from(selectedIds),
-      confirm: true,
-    });
-    setSelectedIds(new Set());
-    mutate();
-  } catch (error: any) {
-    alert(error.message || '削除に失敗しました');
-  } finally {
-    setIsProcessing(false);
-  }
-}, [selectedIds, mutate]);
+describe('JoomPreviewDataSchema', () => {
+  const validData = {
+    product: { id: '1', title: 'Test', price: 1000, status: 'READY_TO_REVIEW' },
+    joomPreview: {
+      id: 'j1', name: 'Test Product', description: 'desc', mainImage: 'https://example.com/img.jpg',
+      extraImages: [], price: 29.99, currency: 'USD', quantity: 1,
+      shipping: { price: 5.99, time: '7-14 days' }, tags: ['watch'], parentSku: 'PS1', sku: 'S1',
+    },
+    pricing: {
+      originalPriceJpy: 3000, costUsd: 20, shippingCost: 5.99, platformFee: 3,
+      paymentFee: 1, profit: 5, finalPriceUsd: 29.99, exchangeRate: 150,
+    },
+    validation: { passed: true, warnings: [] },
+    seo: { score: 75, estimatedVisibility: 'medium' as const },
+  };
 
-const handleBulkPause = useCallback(async () => {
-  if (selectedIds.size === 0) return;
-  setIsProcessing(true);
-  try {
-    await postApi('/api/listings/bulk/update-status', {
-      listingIds: Array.from(selectedIds),
-      status: 'PAUSED',
-    });
-    setSelectedIds(new Set());
-    mutate();
-  } catch (error: any) {
-    alert(error.message || '一括停止に失敗しました');
-  } finally {
-    setIsProcessing(false);
-  }
-}, [selectedIds, mutate]);
+  it('should accept valid data', () => {
+    const result = JoomPreviewDataSchema.safeParse(validData);
+    expect(result.success).toBe(true);
+  });
 
-const handleBulkPublish = useCallback(async () => {
-  if (selectedIds.size === 0) return;
-  setIsProcessing(true);
-  try {
-    await postApi('/api/listings/bulk/publish', {
-      listingIds: Array.from(selectedIds),
-    });
-    setSelectedIds(new Set());
-    mutate();
-  } catch (error: any) {
-    alert(error.message || '再出品に失敗しました');
-  } finally {
-    setIsProcessing(false);
-  }
-}, [selectedIds, mutate]);
+  it('should reject missing product.id', () => {
+    const invalid = { ...validData, product: { ...validData.product, id: undefined } };
+    const result = JoomPreviewDataSchema.safeParse(invalid);
+    expect(result.success).toBe(false);
+  });
 
-const handleExport = useCallback(() => {
-  if (selectedIds.size === 0) return;
-  const selected = listings.filter(l => selectedIds.has(l.id));
-  const csv = [
-    ['ID', 'Title', 'Marketplace', 'Status', 'Price', 'Currency'].join(','),
-    ...selected.map(l => [
-      l.id,
-      `"${(l.product?.title || '').replace(/"/g, '""')}"`,
-      l.marketplace,
-      l.status,
-      l.listingPrice,
-      l.currency,
-    ].join(','))
-  ].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `listings-export-${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}, [selectedIds, listings]);
+  it('should reject invalid seo.estimatedVisibility', () => {
+    const invalid = { ...validData, seo: { score: 50, estimatedVisibility: 'ultra' } };
+    const result = JoomPreviewDataSchema.safeParse(invalid);
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept optional titleEn', () => {
+    const withTitleEn = { ...validData, product: { ...validData.product, titleEn: 'Test EN' } };
+    const result = JoomPreviewDataSchema.safeParse(withTitleEn);
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject non-number price', () => {
+    const invalid = { ...validData, pricing: { ...validData.pricing, profit: 'abc' } };
+    const result = JoomPreviewDataSchema.safeParse(invalid);
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject empty object', () => {
+    const result = JoomPreviewDataSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject missing validation.warnings array', () => {
+    const invalid = { ...validData, validation: { passed: true } };
+    const result = JoomPreviewDataSchema.safeParse(invalid);
+    expect(result.success).toBe(false);
+  });
+});
 ```
 
-### 3. Connect buttons to handlers
+### review-logic.test.ts に書くテスト（5件以上）
 
-Find these buttons and add onClick:
+ページのハンドラーロジック（toggleSelect, navigatePrev, navigateNext等）をテストする。
+Reactコンポーネント全体ではなく、ロジック単体をテストする。
 
-- 削除 button: add `onClick={handleBulkDelete}`
-- 一括停止 button: add `onClick={handleBulkPause}`  
-- 再出品 button: add `onClick={handleBulkPublish}`
-- エクスポート button: add `onClick={handleExport}`
-- 価格一括変更 button: leave as-is for now (needs a modal for price input)
-
-Also add `disabled={isProcessing}` to all action buttons alongside the existing `disabled={selectedIds.size === 0}` condition: `disabled={selectedIds.size === 0 || isProcessing}`
-
-### 4. Add postApi import
-
-At the top of the file, add `postApi` to the imports from '@/lib/api':
 ```typescript
-import { Listing, postApi } from '@/lib/api';
+import { describe, it, expect } from 'vitest';
+
+// Pure logic tests (extracted from component logic patterns)
+describe('Review page logic', () => {
+  describe('toggleSelect', () => {
+    it('should add id to empty set', () => {
+      const prev = new Set<string>();
+      const next = new Set(prev);
+      next.add('product-1');
+      expect(next.has('product-1')).toBe(true);
+      expect(next.size).toBe(1);
+    });
+
+    it('should remove existing id from set', () => {
+      const prev = new Set(['product-1', 'product-2']);
+      const next = new Set(prev);
+      next.delete('product-1');
+      expect(next.has('product-1')).toBe(false);
+      expect(next.size).toBe(1);
+    });
+
+    it('should not mutate original set', () => {
+      const prev = new Set(['product-1']);
+      const next = new Set(prev);
+      next.add('product-2');
+      expect(prev.size).toBe(1);
+      expect(next.size).toBe(2);
+    });
+  });
+
+  describe('navigation logic', () => {
+    it('navigatePrev should not go below 0', () => {
+      const selectedIndex = 0;
+      const newIndex = selectedIndex > 0 ? selectedIndex - 1 : selectedIndex;
+      expect(newIndex).toBe(0);
+    });
+
+    it('navigatePrev should decrement when > 0', () => {
+      const selectedIndex = 3;
+      const newIndex = selectedIndex > 0 ? selectedIndex - 1 : selectedIndex;
+      expect(newIndex).toBe(2);
+    });
+
+    it('navigateNext should not exceed list length', () => {
+      const selectedIndex = 4;
+      const productsLength = 5;
+      const newIndex = selectedIndex < productsLength - 1 ? selectedIndex + 1 : selectedIndex;
+      expect(newIndex).toBe(4);
+    });
+
+    it('navigateNext should increment when not at end', () => {
+      const selectedIndex = 2;
+      const productsLength = 5;
+      const newIndex = selectedIndex < productsLength - 1 ? selectedIndex + 1 : selectedIndex;
+      expect(newIndex).toBe(3);
+    });
+  });
+
+  describe('getVisibilityColor', () => {
+    const getVisibilityColor = (visibility: string) => {
+      switch (visibility) {
+        case 'high':
+          return 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/30';
+        case 'medium':
+          return 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30';
+        case 'low':
+          return 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/30';
+        default:
+          return 'text-zinc-600 bg-zinc-50';
+      }
+    };
+
+    it('should return emerald for high visibility', () => {
+      expect(getVisibilityColor('high')).toContain('emerald');
+    });
+
+    it('should return amber for medium visibility', () => {
+      expect(getVisibilityColor('medium')).toContain('amber');
+    });
+
+    it('should return red for low visibility', () => {
+      expect(getVisibilityColor('low')).toContain('red');
+    });
+
+    it('should return zinc for unknown visibility', () => {
+      expect(getVisibilityColor('unknown')).toContain('zinc');
+    });
+  });
+});
 ```
 
-### 5. Fix status filter bug
-
-The status filter has "PUBLISHED" which doesn't exist in the DB. Change it:
-- Replace `<option value="PUBLISHED">出品中</option>` with `<option value="ACTIVE">出品中</option>`
-- Also add `<option value="PAUSED">一時停止</option>` and `<option value="PENDING_PUBLISH">出品待ち</option>`
-
-Do NOT add any new files. Only modify listings/page.tsx.
+### 重要な制約
+- `__tests__/` ディレクトリを作成すること
+- テストファイルに `'use client'` は不要
+- `vitest` のimportを使用（jestではない）
+- テストは実行可能であること（外部依存を最小限に）
+- types.test.ts はZodスキーマの純粋テスト、review-logic.test.tsはロジックの純粋テスト
