@@ -1,24 +1,24 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-12 (Session 36)
+## 最終更新: 2026-03-12 (Session 37)
 
 RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 
 ■ ミッション
-**21ページを100%完成させる。（1/21完了）**
+**21ページを100%完成させる。（2/21完了）**
 
 ■ 開始方法
 `rakuda-dev` Skillを実行する（`~/Desktop/rakuda/.claude/skills/rakuda-dev/SKILL.md`）
 
-■ 前回（Session 36）の結果
-- `/joom/categories` を100%完成（PUT APIバリデーション、削除確認、ページネーション、AIフォールバック、レスポンシブ、テスト）
-- 次の対象: `/joom`（95%→100%）
+■ 前回（Session 37）の結果
+- `/joom` を100%完成（ファイル分割、Zodバリデーション、ページネーション、レスポンシブ、テスト23件、エラーレスポンス統一）
+- 次の対象: `/products/review`（95%→100%）
 
 ■ ページ優先順
 | # | パス | 実装度 |
 |---|------|--------|
 | 1 | `/joom/categories` | ✅ 100% |
-| 2 | `/joom` | 95% |
+| 2 | `/joom` | ✅ 100% |
 | 3 | `/products/review` | 95% |
 | 4 | `/products` | 80% |
 | 5 | `/listings` | 85% |
@@ -40,7 +40,16 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 | 21 | `/settings/templates` | 50% |
 
 ■ 現在のステータス
-- commit: 094c465f (main)、push済み
+- commit: acd8ee73 (main)、push済み
 - Web: https://rakuda.dev / API: https://api.rakuda.dev
+
+■ 開発ワークフロー（必須）
+- コード生成はCodex CLI（/opt/homebrew/bin/codex）に委託する
+- 複数の独立タスクはCodex/Geminiを並列で立てる
+- 設定ファイル・ドキュメントの編集のみ例外として直接可
+
+■ 注意事項
+- Vultrペナルティ中：デプロイは必要最小限
+- /joomの残タスク（次回）: T7アクセシビリティ、T9 as any改善
 
 確認不要で自律実行してほしい。
