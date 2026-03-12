@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -25,14 +25,7 @@ export default function RejectModal({ isOpen, onClose, onSubmit, isProcessing }:
     return selected === 'その他' ? otherText : selected;
   }, [selected, otherText]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
+  
 
   const resetState = () => {
     setSelected('');
@@ -120,4 +113,3 @@ export default function RejectModal({ isOpen, onClose, onSubmit, isProcessing }:
     </Dialog>
   );
 }
-
