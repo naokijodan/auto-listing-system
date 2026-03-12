@@ -78,9 +78,12 @@ function confidenceColor(v: number | undefined | null) {
 
 export default function JoomCategoriesPage() {
   const [filter, setFilter] = useState<FilterTab>('all');
+  const [currentPage, setCurrentPage] = useState(0);
   const [creatingOpen, setCreatingOpen] = useState(false);
   const [editing, setEditing] = useState<MappingItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [suggestInput, setSuggestInput] = useState({
     title: '',
     description: '',
@@ -109,12 +112,14 @@ export default function JoomCategoriesPage() {
   // Build mappings URL by filter
   const mappingsUrl = useMemo(() => {
     const base = '/api/joom-categories/mappings';
-    const params = new URLSearchParams({ limit: '50', offset: '0' });
+    const PAGE_SIZE = 20;
+    const offset = String(currentPage * PAGE_SIZE);
+    const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset });
     if (filter === 'verified') params.set('verified', 'true');
     if (filter === 'ai') params.set('aiSuggested', 'true');
     // 未承認はAPIクエリがないため全件取得後にクライアントで絞り込む
     return `${base}?${params.toString()}`;
-  }, [filter]);
+  }, [filter, currentPage]);
 
   const { data: mappingsRes, mutate } = useSWR<MappingsResponse>(mappingsUrl, fetcher);
   const rawMappings = mappingsRes?.data || [];
@@ -141,6 +146,17 @@ export default function JoomCategoriesPage() {
       mutate();
     } catch (e) {
       addToast({ type: 'error', message: '削除に失敗しました' });
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTargetId) return;
+    setDeleting(true);
+    try {
+      await handleDelete(deleteTargetId);
+    } finally {
+      setDeleting(false);
+      setDeleteTargetId(null);
     }
   }
 
@@ -267,10 +283,14 @@ export default function JoomCategoriesPage() {
     ? `${stats?.data.verificationRate}%`
     : stats?.data.verificationRate || '0%';
 
+  const PAGE_SIZE = 20;
+  const totalItems = mappingsRes?.total ?? rawMappings.length;
+  const totalPages = Math.max(1, Math.ceil((totalItems || 0) / PAGE_SIZE));
+
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-amber-500 to-pink-500">
             <FolderTree className="h-5 w-5 text-white" />
@@ -301,7 +321,7 @@ export default function JoomCategoriesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30">
@@ -350,7 +370,7 @@ export default function JoomCategoriesPage() {
 
       {/* Filters */}
       <Card className="p-3">
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
           <Filter className="h-4 w-4 text-zinc-500" />
           <button
             className={cn(
@@ -359,7 +379,10 @@ export default function JoomCategoriesPage() {
                 ? 'bg-amber-500 text-white'
                 : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200'
             )}
-            onClick={() => setFilter('all')}
+            onClick={() => {
+              setFilter('all');
+              setCurrentPage(0);
+            }}
           >
             全て
           </button>
@@ -370,7 +393,10 @@ export default function JoomCategoriesPage() {
                 ? 'bg-amber-500 text-white'
                 : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200'
             )}
-            onClick={() => setFilter('verified')}
+            onClick={() => {
+              setFilter('verified');
+              setCurrentPage(0);
+            }}
           >
             承認済み
           </button>
@@ -381,7 +407,10 @@ export default function JoomCategoriesPage() {
                 ? 'bg-amber-500 text-white'
                 : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200'
             )}
-            onClick={() => setFilter('unverified')}
+            onClick={() => {
+              setFilter('unverified');
+              setCurrentPage(0);
+            }}
           >
             未承認
           </button>
@@ -392,7 +421,10 @@ export default function JoomCategoriesPage() {
                 ? 'bg-amber-500 text-white'
                 : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200'
             )}
-            onClick={() => setFilter('ai')}
+            onClick={() => {
+              setFilter('ai');
+              setCurrentPage(0);
+            }}
           >
             AI提案のみ
           </button>
@@ -400,7 +432,7 @@ export default function JoomCategoriesPage() {
       </Card>
 
       {/* Mappings Table */}
-      <Card className="p-0 overflow-hidden">
+      <Card className="p-0 overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-zinc-50 dark:bg-zinc-800/50">
@@ -466,7 +498,7 @@ export default function JoomCategoriesPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {!m.verifiedAt && (
                       <Button size="sm" variant="outline" onClick={() => handleVerify(m.id)}>
                         <ShieldCheck className="h-4 w-4" /> 承認
@@ -488,7 +520,7 @@ export default function JoomCategoriesPage() {
                         />
                       )}
                     </Dialog>
-                    <Button size="sm" variant="destructive" onClick={() => handleDelete(m.id)}>
+                    <Button size="sm" variant="destructive" onClick={() => setDeleteTargetId(m.id)}>
                       <Trash2 className="h-4 w-4" /> 削除
                     </Button>
                   </div>
@@ -504,6 +536,27 @@ export default function JoomCategoriesPage() {
             )}
           </TableBody>
         </Table>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 p-3 text-sm dark:border-zinc-800">
+          <div className="text-zinc-600 dark:text-zinc-400">{currentPage + 1} / {totalPages} ページ</div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 0}
+              onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+            >
+              前へ
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage + 1 >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+            >
+              次へ
+            </Button>
+          </div>
+        </div>
       </Card>
 
       {/* AI Suggestion Tester */}
@@ -582,6 +635,26 @@ export default function JoomCategoriesPage() {
           </div>
         )}
       </Card>
+      {/* Delete Confirm Dialog */}
+      <Dialog open={!!deleteTargetId} onOpenChange={(o) => !o && setDeleteTargetId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>削除の確認</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            このマッピングを削除しますか？この操作は取り消せません。
+          </p>
+          <DialogFooter className="mt-2">
+            <Button variant="ghost" onClick={() => setDeleteTargetId(null)} disabled={deleting}>
+              キャンセル
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              削除する
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

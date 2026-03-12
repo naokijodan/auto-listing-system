@@ -73,6 +73,19 @@ const CreateMappingSchema = z.object({
   priority: z.number().optional(),
 });
 
+// Update用のバリデーションスキーマ（許可フィールドのホワイトリスト）
+const UpdateMappingSchema = z.object({
+  sourceKeywords: z.array(z.string()).optional(),
+  sourceBrand: z.string().nullable().optional(),
+  joomCategoryId: z.string().optional(),
+  joomCategoryName: z.string().optional(),
+  joomCategoryPath: z.string().optional(),
+  requiredAttributes: z.any().optional(),
+  recommendedAttributes: z.any().optional(),
+  priority: z.number().int().optional(),
+  isActive: z.boolean().optional(),
+});
+
 // ========================================
 // ヘルパー関数
 // ========================================
@@ -203,31 +216,38 @@ router.post('/suggest', async (req: Request, res: Response) => {
     }
 
     // AIで推定
-    if (useAI) {
-      const suggestion = await suggestCategoryWithAI(productInfo);
-      if (suggestion && suggestion.confidence >= 0.7) {
-        if (saveMapping && suggestion.confidence >= 0.85) {
-          await prisma.joomCategoryMapping.create({
-            data: {
-              sourceKeywords: keywords,
-              sourceBrand: productInfo.brand?.toLowerCase(),
-              joomCategoryId: suggestion.joomCategoryId,
-              joomCategoryName: suggestion.joomCategoryName,
-              joomCategoryPath: suggestion.joomCategoryPath,
-              requiredAttributes: suggestion.requiredAttributes,
-              aiConfidence: suggestion.confidence,
-              aiSuggested: true,
-              usageCount: 1,
-              lastUsedAt: new Date(),
-            },
-          });
-        }
-        res.json({ success: true, data: { suggestion } });
-        return;
+  if (useAI) {
+    const suggestion = await suggestCategoryWithAI(productInfo);
+    if (suggestion && suggestion.confidence >= 0.7) {
+      if (saveMapping && suggestion.confidence >= 0.85) {
+        await prisma.joomCategoryMapping.create({
+          data: {
+            sourceKeywords: keywords,
+            sourceBrand: productInfo.brand?.toLowerCase(),
+            joomCategoryId: suggestion.joomCategoryId,
+            joomCategoryName: suggestion.joomCategoryName,
+            joomCategoryPath: suggestion.joomCategoryPath,
+            requiredAttributes: suggestion.requiredAttributes,
+            aiConfidence: suggestion.confidence,
+            aiSuggested: true,
+            usageCount: 1,
+            lastUsedAt: new Date(),
+          },
+        });
       }
+      res.json({ success: true, data: { suggestion } });
+      return;
+    } else if (suggestion && suggestion.confidence < 0.7) {
+      res.status(200).json({
+        suggestions: [],
+        message: 'AIによるカテゴリ提案の信頼度が十分ではありませんでした',
+        lowConfidence: true,
+      });
+      return;
     }
+  }
 
-    res.status(404).json({ success: false, error: 'No suitable category found' });
+  res.status(404).json({ success: false, error: 'No suitable category found' });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
@@ -292,13 +312,18 @@ router.get('/mappings/:id', async (req: Request, res: Response) => {
  */
 router.put('/mappings/:id', async (req: Request, res: Response) => {
   try {
+    const validated = UpdateMappingSchema.parse(req.body);
     const mapping = await prisma.joomCategoryMapping.update({
       where: { id: req.params.id },
-      data: { ...req.body, updatedAt: new Date() },
+      data: { ...validated, updatedAt: new Date() },
     });
 
     res.json({ success: true, data: mapping });
   } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ success: false, error: 'Validation error', details: error.errors });
+      return;
+    }
     res.status(500).json({ success: false, error: error.message });
   }
 });
