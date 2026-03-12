@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { addToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
-import { useOrders, useOrderStats, Order } from '@/lib/hooks';
+import { useOrders, useOrderStats } from '@/lib/hooks';
 import { patchApi } from '@/lib/api';
 import {
   Search,
@@ -27,35 +27,24 @@ import {
   Store,
   X,
 } from 'lucide-react';
-
-const statusLabels: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  PENDING: { label: '保留中', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Clock },
-  CONFIRMED: { label: '確認済', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: CheckCircle },
-  PROCESSING: { label: '処理中', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400', icon: Package },
-  SHIPPED: { label: '発送済', color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400', icon: Truck },
-  DELIVERED: { label: '配達完了', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400', icon: CheckCircle },
-  CANCELLED: { label: 'キャンセル', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: XCircle },
-  REFUNDED: { label: '返金済', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', icon: AlertCircle },
-  DISPUTE: { label: '紛争中', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: AlertCircle },
-};
-
-const paymentStatusLabels: Record<string, { label: string; color: string }> = {
-  PENDING: { label: '未払い', color: 'text-yellow-600 dark:text-yellow-400' },
-  PAID: { label: '支払済', color: 'text-emerald-600 dark:text-emerald-400' },
-  REFUNDED: { label: '返金済', color: 'text-orange-600 dark:text-orange-400' },
-  FAILED: { label: '失敗', color: 'text-red-600 dark:text-red-400' },
-};
-
-const marketplaceLabels: Record<string, { label: string; color: string }> = {
-  EBAY: { label: 'eBay', color: 'bg-blue-500' },
-  JOOM: { label: 'Joom', color: 'bg-orange-500' },
-};
+import TrackingModal from './tracking-modal';
+import {
+  statusLabels,
+  paymentStatusLabels,
+  marketplaceLabels,
+  StatCardProps,
+  OrderCardProps,
+  updateStatusSchema,
+  addTrackingSchema,
+} from './types';
+import type { Order } from '@/lib/hooks';
 
 export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [marketplaceFilter, setMarketplaceFilter] = useState('');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [trackingModalOrderId, setTrackingModalOrderId] = useState<string | null>(null);
 
   const { data: ordersResponse, isLoading, mutate } = useOrders({
     status: statusFilter || undefined,
@@ -79,36 +68,54 @@ export default function OrdersPage() {
     );
   }, [orders, searchQuery]);
 
-  const handleCopyOrderId = (orderId: string) => {
-    navigator.clipboard.writeText(orderId);
-  };
-
-  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+  const handleCopyOrderId = async (orderId: string) => {
     try {
-      await patchApi(`/api/orders/${orderId}`, { status: newStatus });
-      mutate();
+      await navigator.clipboard.writeText(orderId);
+      addToast({ type: 'success', message: '注文IDをコピーしました' });
     } catch (error) {
-      addToast({ type: 'error', message: '注文ステータスの更新に失敗しました' });
+      const message = error instanceof Error ? error.message : 'コピーに失敗しました';
+      addToast({ type: 'error', message });
     }
   };
 
-  const handleAddTracking = async (orderId: string) => {
-    const trackingNumber = prompt('追跡番号を入力してください:');
-    if (!trackingNumber) return;
-
-    const carrier = prompt('配送業者を入力してください (例: Japan Post, DHL, FedEx):');
-    if (!carrier) return;
-
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    const parsed = updateStatusSchema.safeParse({ status: newStatus });
+    if (!parsed.success) {
+      addToast({ type: 'error', message: '注文ステータスの形式が不正です' });
+      return;
+    }
     try {
-      await patchApi(`/api/orders/${orderId}`, {
-        trackingNumber,
-        trackingCarrier: carrier,
+      await patchApi(`/api/orders/${orderId}/status`, { status: parsed.data.status });
+      mutate();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '注文ステータスの更新に失敗しました';
+      addToast({ type: 'error', message });
+    }
+  };
+
+  const handleAddTracking = async (
+    orderId: string,
+    data: { trackingNumber: string; trackingCarrier: string }
+  ) => {
+    const parsed = addTrackingSchema.safeParse(data);
+    if (!parsed.success) {
+      addToast({ type: 'error', message: '追跡情報の形式が不正です' });
+      return;
+    }
+    try {
+      const { trackingNumber, trackingCarrier } = parsed.data;
+      await patchApi(`/api/orders/${orderId}/shipping`, {
+        trackingNumber: trackingNumber.trim(),
+        trackingCarrier,
+      });
+      await patchApi(`/api/orders/${orderId}/status`, {
         status: 'SHIPPED',
         fulfillmentStatus: 'FULFILLED',
       });
       mutate();
     } catch (error) {
-      addToast({ type: 'error', message: '追跡情報の追加に失敗しました' });
+      const message = error instanceof Error ? error.message : '追跡情報の追加に失敗しました';
+      addToast({ type: 'error', message });
     }
   };
 
@@ -130,7 +137,7 @@ export default function OrdersPage() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="注文統計">
           <StatCard
             title="総注文数"
             value={stats.totalOrders}
@@ -168,6 +175,7 @@ export default function OrdersPage() {
           size="sm"
           onClick={() => setMarketplaceFilter(marketplaceFilter === 'JOOM' ? '' : 'JOOM')}
           className={marketplaceFilter === 'JOOM' ? 'bg-amber-500 hover:bg-amber-600' : ''}
+          aria-pressed={marketplaceFilter === 'JOOM'}
         >
           <Store className="h-4 w-4 mr-1" />
           Joom
@@ -177,6 +185,7 @@ export default function OrdersPage() {
           size="sm"
           onClick={() => setMarketplaceFilter(marketplaceFilter === 'EBAY' ? '' : 'EBAY')}
           className={marketplaceFilter === 'EBAY' ? 'bg-blue-500 hover:bg-blue-600' : ''}
+          aria-pressed={marketplaceFilter === 'EBAY'}
         >
           <Store className="h-4 w-4 mr-1" />
           eBay
@@ -203,6 +212,7 @@ export default function OrdersPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-4 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+            aria-label="注文を検索"
           />
         </div>
 
@@ -210,6 +220,7 @@ export default function OrdersPage() {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+          aria-label="ステータスフィルター"
         >
           <option value="">すべてのステータス</option>
           {Object.entries(statusLabels).map(([key, { label }]) => (
@@ -220,19 +231,19 @@ export default function OrdersPage() {
 
       {/* Loading */}
       {isLoading && (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex items-center justify-center py-12" aria-busy={isLoading} aria-live="polite">
           <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
         </div>
       )}
 
       {/* Orders List */}
       {!isLoading && (
-        <div className="space-y-3">
+        <div className="space-y-3" role="list">
           {filteredOrders.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <Package className="h-12 w-12 text-zinc-300 dark:text-zinc-600" />
-                <p className="mt-4 text-zinc-500 dark:text-zinc-400">
+                <p className="mt-4 text-zinc-500 dark:text-zinc-400" role="status">
                   注文がありません
                 </p>
               </CardContent>
@@ -246,22 +257,24 @@ export default function OrdersPage() {
                 onToggle={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
                 onCopyOrderId={handleCopyOrderId}
                 onUpdateStatus={handleUpdateStatus}
-                onAddTracking={handleAddTracking}
+                onAddTracking={(id) => setTrackingModalOrderId(id)}
               />
             ))
           )}
         </div>
       )}
+      {trackingModalOrderId && (
+        <TrackingModal
+          open={!!trackingModalOrderId}
+          onClose={() => setTrackingModalOrderId(null)}
+          onSubmit={async ({ trackingNumber, trackingCarrier }) => {
+            if (!trackingModalOrderId) return;
+            await handleAddTracking(trackingModalOrderId, { trackingNumber, trackingCarrier });
+          }}
+        />
+      )}
     </div>
   );
-}
-
-interface StatCardProps {
-  title: string;
-  value: number | string;
-  icon: typeof Package;
-  color: 'blue' | 'amber' | 'emerald' | 'purple';
-  subtext?: string;
 }
 
 function StatCard({ title, value, icon: Icon, color, subtext }: StatCardProps) {
@@ -292,15 +305,6 @@ function StatCard({ title, value, icon: Icon, color, subtext }: StatCardProps) {
   );
 }
 
-interface OrderCardProps {
-  order: Order;
-  isExpanded: boolean;
-  onToggle: () => void;
-  onCopyOrderId: (id: string) => void;
-  onUpdateStatus: (id: string, status: string) => void;
-  onAddTracking: (id: string) => void;
-}
-
 function OrderCard({ order, isExpanded, onToggle, onCopyOrderId, onUpdateStatus, onAddTracking }: OrderCardProps) {
   const status = statusLabels[order.status] || statusLabels.PENDING;
   const paymentStatus = paymentStatusLabels[order.paymentStatus] || paymentStatusLabels.PENDING;
@@ -311,12 +315,15 @@ function OrderCard({ order, isExpanded, onToggle, onCopyOrderId, onUpdateStatus,
   const isActionRequired = order.paymentStatus === 'PAID' && order.fulfillmentStatus === 'UNFULFILLED';
 
   return (
-    <Card className={cn(isActionRequired && 'border-amber-500 dark:border-amber-400')}>
+    <Card className={cn(isActionRequired && 'border-amber-500 dark:border-amber-400')} role="listitem">
       <CardContent className="p-0">
         {/* Header Row */}
         <div
           className="flex cursor-pointer items-center justify-between p-4"
           onClick={onToggle}
+          role="button"
+          aria-expanded={isExpanded}
+          aria-label={`注文 ${order.marketplaceOrderId} の詳細を${isExpanded ? '閉じる' : '開く'}`}
         >
           <div className="flex items-center gap-4">
             {/* Marketplace Badge */}
@@ -336,6 +343,7 @@ function OrderCard({ order, isExpanded, onToggle, onCopyOrderId, onUpdateStatus,
                     onCopyOrderId(order.marketplaceOrderId);
                   }}
                   className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                  aria-label="注文IDをコピー"
                 >
                   <Copy className="h-3.5 w-3.5" />
                 </button>
