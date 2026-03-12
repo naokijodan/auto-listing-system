@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import useSWR from 'swr';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { fetcher, postApi } from '@/lib/api';
 import { addToast } from '@/components/ui/toast';
+import { z } from 'zod';
 import {
   Sparkles,
   Package,
@@ -27,92 +28,83 @@ import {
   Upload,
   Zap,
 } from 'lucide-react';
+import {
+  EnrichmentTask,
+  QueueStats,
+  EnrichmentStats,
+  statusConfig,
+  enrichmentTaskSchema,
+  enrichmentStatsSchema,
+  queueStatsSchema,
+  fullWorkflowResponseSchema,
+} from './types';
+import RejectModal from './reject-modal';
 
-// ステータス設定
-const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
-  PENDING: { label: '待機中', color: 'bg-zinc-50 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400', icon: Clock },
-  PROCESSING: { label: '処理中', color: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: Loader2 },
-  READY_TO_REVIEW: { label: 'レビュー待ち', color: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', icon: Eye },
-  APPROVED: { label: '承認済み', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', icon: CheckCircle },
-  REJECTED: { label: '却下', color: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400', icon: XCircle },
-  PUBLISHED: { label: '出品済み', color: 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400', icon: Sparkles },
-  FAILED: { label: 'エラー', color: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400', icon: AlertCircle },
-};
-
-interface EnrichmentTask {
-  id: string;
-  productId: string;
-  status: string;
-  priority: number;
-  validationResult?: string;
-  translations?: {
-    en?: { title?: string; description?: string };
-    zh?: { title?: string; description?: string };
-  };
-  pricing?: {
-    costJpy: number;
-    finalPriceUsd: number;
-    profitRate: number;
-  };
-  createdAt: string;
-  updatedAt: string;
-  product: {
-    id: string;
-    title: string;
-    price: number;
-    brand?: string;
-    images?: string[];
-  };
-}
-
-interface QueueStats {
-  queueName: string;
-  waiting: number;
-  active: number;
-  completed: number;
-  failed: number;
-  delayed: number;
-  total: number;
-}
-
-interface EnrichmentStats {
-  total: number;
-  pending: number;
-  processing: number;
-  approved: number;
-  rejected: number;
-  readyToReview: number;
-  published: number;
-  failed: number;
-}
+// 型とステータス設定は types.ts へ移動
 
 export default function EnrichmentPage() {
   const [selectedTask, setSelectedTask] = useState<EnrichmentTask | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
 
   // タスク一覧を取得
-  const { data: tasksData, error, isLoading, mutate } = useSWR<{ tasks: EnrichmentTask[]; total: number }>(
+  const { data: tasksData, error, isLoading, mutate } = useSWR<unknown>(
     `/api/enrichment/tasks?${statusFilter ? `status=${statusFilter}&` : ''}limit=100`,
     fetcher
   );
 
   // 統計情報を取得
-  const { data: statsData } = useSWR<EnrichmentStats>(
+  const { data: statsData } = useSWR<unknown>(
     '/api/enrichment/stats',
     fetcher,
     { refreshInterval: 30000 }
   );
 
   // キュー統計を取得
-  const { data: queueStats } = useSWR<QueueStats>(
+  const { data: queueStats } = useSWR<unknown>(
     '/api/enrichment/queue/stats',
     fetcher,
     { refreshInterval: 5000 }
   );
 
-  const tasks = tasksData?.tasks ?? [];
-  const stats = statsData ?? { total: 0, pending: 0, processing: 0, approved: 0, rejected: 0, readyToReview: 0, published: 0, failed: 0 };
+  // Zod parsing (safeParse with fallback)
+  const parsedTasks = useMemo(() => {
+    const schema = z.object({ tasks: z.array(enrichmentTaskSchema), total: z.number() });
+    const result = schema.safeParse(tasksData);
+    if (!result.success) {
+      if (tasksData !== undefined) {
+        console.error('Invalid tasks data', result.error);
+      }
+      return { tasks: [] as EnrichmentTask[], total: 0 };
+    }
+    return result.data;
+  }, [tasksData]);
+
+  const stats = useMemo(() => {
+    const result = enrichmentStatsSchema.safeParse(statsData);
+    if (!result.success) {
+      if (statsData !== undefined) {
+        console.error('Invalid stats data', result.error);
+      }
+      return { total: 0, pending: 0, processing: 0, approved: 0, rejected: 0, readyToReview: 0, published: 0, failed: 0 } as EnrichmentStats;
+    }
+    return result.data;
+  }, [statsData]);
+
+  const parsedQueueStats = useMemo(() => {
+    const result = queueStatsSchema.safeParse(queueStats);
+    if (!result.success) {
+      if (queueStats !== undefined) {
+        console.error('Invalid queue stats data', result.error);
+      }
+      return null as QueueStats | null;
+    }
+    return result.data;
+  }, [queueStats]);
+
+  const tasks = parsedTasks.tasks;
 
   // タスク承認
   const handleApprove = useCallback(async (taskId: string) => {
@@ -131,22 +123,31 @@ export default function EnrichmentPage() {
     }
   }, [mutate, selectedTask]);
 
-  // タスク却下
-  const handleReject = useCallback(async (taskId: string) => {
+  // モーダルを開く（実際のAPI呼び出しはhandleRejectSubmitで行う）
+  const openRejectModal = useCallback((taskId: string) => {
+    setRejectTargetId(taskId);
+    setRejectModalOpen(true);
+  }, []);
+
+  // モーダルからの送信
+  const handleRejectSubmit = useCallback(async (reason: string) => {
+    if (!rejectTargetId) return;
     setIsProcessing(true);
     try {
-      await postApi(`/api/enrichment/tasks/${taskId}/reject`, { reason: 'Manual rejection' });
+      await postApi(`/api/enrichment/tasks/${rejectTargetId}/reject`, { reason });
       addToast({ type: 'success', message: 'タスクを却下しました' });
       mutate();
-      if (selectedTask?.id === taskId) {
+      if (selectedTask?.id === rejectTargetId) {
         setSelectedTask(null);
       }
     } catch (error) {
       addToast({ type: 'error', message: '却下に失敗しました' });
     } finally {
       setIsProcessing(false);
+      setRejectModalOpen(false);
+      setRejectTargetId(null);
     }
-  }, [mutate, selectedTask]);
+  }, [rejectTargetId, mutate, selectedTask]);
 
   // タスクリトライ
   const handleRetry = useCallback(async (taskId: string) => {
@@ -166,10 +167,11 @@ export default function EnrichmentPage() {
   const handleFullWorkflow = useCallback(async (productId: string) => {
     setIsProcessing(true);
     try {
-      const response = await postApi('/api/enrichment/queue/full-workflow', {
+      const raw = await postApi('/api/enrichment/queue/full-workflow', {
         productId,
         autoPublish: false,
-      }) as { jobId: string };
+      });
+      const response = fullWorkflowResponseSchema.parse(raw);
       addToast({ type: 'success', message: `ワークフローを開始しました (Job: ${response.jobId.slice(0, 8)})` });
       mutate();
     } catch (error) {
@@ -190,12 +192,12 @@ export default function EnrichmentPage() {
           <div>
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">エンリッチメント</h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              {isLoading ? '読み込み中...' : `${tasksData?.total ?? 0} 件のタスク`}
+              {isLoading ? '読み込み中...' : `${parsedTasks.total} 件のタスク`}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => mutate()}>
+          <Button variant="ghost" size="sm" onClick={() => mutate()} aria-label="データを更新">
             <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
           </Button>
         </div>
@@ -272,29 +274,29 @@ export default function EnrichmentPage() {
       </div>
 
       {/* Queue Stats */}
-      {queueStats && (
+      {parsedQueueStats && (
         <Card className="mb-4 p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-zinc-900 dark:text-white flex items-center gap-2">
               <Activity className="h-4 w-4" />
-              キュー状況 ({queueStats.queueName})
+              キュー状況 ({parsedQueueStats.queueName})
             </h3>
             <div className="flex items-center gap-4 text-xs">
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-amber-500" />
-                待機: {queueStats.waiting}
+                待機: {parsedQueueStats.waiting}
               </span>
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                処理中: {queueStats.active}
+                処理中: {parsedQueueStats.active}
               </span>
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                完了: {queueStats.completed}
+                完了: {parsedQueueStats.completed}
               </span>
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-red-500" />
-                失敗: {queueStats.failed}
+                失敗: {parsedQueueStats.failed}
               </span>
             </div>
           </div>
@@ -303,10 +305,13 @@ export default function EnrichmentPage() {
 
       {/* Filters */}
       <div className="mb-4 flex items-center gap-3">
+        <label htmlFor="statusFilter" className="sr-only">ステータスフィルタ</label>
         <select
+          id="statusFilter"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-purple-500 dark:border-zinc-700 dark:bg-zinc-900"
+          aria-label="ステータスでフィルタ"
         >
           <option value="">すべてのステータス</option>
           <option value="PENDING">待機中</option>
@@ -374,7 +379,7 @@ export default function EnrichmentPage() {
                 >
                   <div className="w-16">
                     <div className="h-12 w-12 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
-                      <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                      <img src={imageUrl} alt={task.product?.title || '商品画像'} className="h-full w-full object-cover" />
                     </div>
                   </div>
                   <div className="flex-1 min-w-0 pr-4">
@@ -418,14 +423,16 @@ export default function EnrichmentPage() {
                           className="p-1 text-emerald-600 hover:bg-emerald-50 rounded dark:hover:bg-emerald-900/20"
                           title="承認"
                           disabled={isProcessing}
+                          aria-label="タスクを承認"
                         >
                           <ThumbsUp className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleReject(task.id); }}
+                          onClick={(e) => { e.stopPropagation(); openRejectModal(task.id); }}
                           className="p-1 text-red-600 hover:bg-red-50 rounded dark:hover:bg-red-900/20"
                           title="却下"
                           disabled={isProcessing}
+                          aria-label="タスクを却下"
                         >
                           <ThumbsDown className="h-4 w-4" />
                         </button>
@@ -437,6 +444,7 @@ export default function EnrichmentPage() {
                         className="p-1 text-blue-600 hover:bg-blue-50 rounded dark:hover:bg-blue-900/20"
                         title="リトライ"
                         disabled={isProcessing}
+                        aria-label="タスクをリトライ"
                       >
                         <RefreshCw className="h-4 w-4" />
                       </button>
@@ -447,6 +455,7 @@ export default function EnrichmentPage() {
                         className="p-1 text-purple-600 hover:bg-purple-50 rounded dark:hover:bg-purple-900/20"
                         title="Joom出品"
                         disabled={isProcessing}
+                        aria-label="Joomに出品"
                       >
                         <Upload className="h-4 w-4" />
                       </button>
@@ -467,7 +476,7 @@ export default function EnrichmentPage() {
               <div className="mb-4 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
                 <img
                   src={selectedTask.product?.images?.[0] || 'https://placehold.co/400x400/27272a/a855f7?text=No+Image'}
-                  alt={selectedTask.product?.title}
+                  alt={selectedTask.product?.title || '商品画像'}
                   className="h-48 w-full object-contain"
                 />
               </div>
@@ -488,6 +497,7 @@ export default function EnrichmentPage() {
                         size="sm"
                         onClick={() => handleApprove(selectedTask.id)}
                         disabled={isProcessing}
+                        aria-label="タスクを承認"
                       >
                         <ThumbsUp className="h-4 w-4" />
                         承認
@@ -495,8 +505,9 @@ export default function EnrichmentPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleReject(selectedTask.id)}
+                        onClick={() => openRejectModal(selectedTask.id)}
                         disabled={isProcessing}
+                        aria-label="タスクを却下"
                       >
                         <ThumbsDown className="h-4 w-4" />
                         却下
@@ -609,6 +620,12 @@ export default function EnrichmentPage() {
           )}
         </div>
       </div>
+      <RejectModal
+        isOpen={rejectModalOpen}
+        onClose={() => { setRejectModalOpen(false); setRejectTargetId(null); }}
+        onSubmit={handleRejectSubmit}
+        isProcessing={isProcessing}
+      />
     </div>
   );
 }
