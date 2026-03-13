@@ -1,19 +1,19 @@
 # RAKUDA 引継ぎ書
 
-## 最終更新: 2026-03-12 (Session 41)
+## 最終更新: 2026-03-14 (Session 42)
 
 RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 
 ■ ミッション
-**21ページを100%完成させる。（7/21完了）**
+**21ページを100%完成させる。（8/21完了）**
 
 ■ 開始方法
 `rakuda-dev` Skillを実行する（`~/Desktop/rakuda/.claude/skills/rakuda-dev/SKILL.md`）
 
-■ 前回（Session 41）の結果
-- `/enrichment` を100%完成（型外出し157行、Zodバリデーション4箇所、a11y 8箇所、リジェクトモーダル123行、テスト41件）
-- CRITICALなし（APIエンドポイント全7つ整合性確認済み）
-- 次の対象: `/marketplace`（90%→100%）
+■ 前回（Session 42）の結果
+- `/marketplace` を100%完成（型外出し65行、Zodバリデーション、a11y 15箇所、テスト17件）
+- CRITICAL: APIパス不一致修正（単数→複数、未実装エンドポイント→graceful degradation）
+- 次の対象: `/pricing-ai`（90%→100%）
 
 ■ ページ優先順
 | # | パス | 実装度 |
@@ -25,7 +25,7 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 | 5 | `/inventory` | ✅ 100% |
 | 6 | `/orders` | ✅ 100% |
 | 7 | `/enrichment` | ✅ 100% |
-| 8 | `/marketplace` | 90% |
+| 8 | `/marketplace` | ✅ 100% |
 | 9 | `/pricing-ai` | 90% |
 | 10 | `/listings` | 85% |
 | 11 | `/jobs` | 85% |
@@ -41,7 +41,7 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 | 21 | `/settings/templates` | 50% |
 
 ■ 現在のステータス
-- commit: 79a76cd2 (main)、push済み
+- commit: 402b46d5 (main)、push済み
 - Web: https://rakuda.dev / API: https://api.rakuda.dev
 
 ■ 開発ワークフロー（必須）
