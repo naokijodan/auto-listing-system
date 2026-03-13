@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,32 +11,19 @@ import {
   Trash2,
   Copy,
   ChevronLeft,
-  X,
-  Check,
-  AlertCircle,
   Sparkles,
   TestTube,
   Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { fetcher, postApi, patchApi, deleteApi } from '@/lib/api';
+import { fetcher, postApi, patchApi, deleteApi, type ApiResponse } from '@/lib/api';
 import Link from 'next/link';
+import { addToast } from '@/components/ui/toast';
+import { PromptsResponseSchema, type TranslationPrompt } from './types';
 
-interface TranslationPrompt {
-  id: string;
-  name: string;
-  category: string | null;
-  marketplace: string | null;
-  systemPrompt: string;
-  userPrompt: string;
-  extractAttributes: string[];
-  additionalInstructions: string | null;
-  seoKeywords: string[];
-  priority: number;
-  isActive: boolean;
-  isDefault: boolean;
-  createdAt: string;
-  _count?: { templates: number };
+interface TestTranslationResult {
+  titleEn: string;
+  message?: string;
 }
 
 export default function PromptsPage() {
@@ -44,7 +31,7 @@ export default function PromptsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [testInput, setTestInput] = useState({ title: '', description: '' });
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<TestTranslationResult | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -58,14 +45,22 @@ export default function PromptsPage() {
     priority: 0,
     isDefault: false,
   });
-  const [error, setError] = useState<string | null>(null);
-
-  const { data, mutate, isLoading } = useSWR<{ data: TranslationPrompt[] }>(
+  const { data, mutate, isLoading } = useSWR<unknown>(
     `/api/prompts?search=${encodeURIComponent(search)}`,
     fetcher
   );
+  useEffect(() => {
+    if (!data) return;
+    const parsed = PromptsResponseSchema.safeParse(data);
+    if (!parsed.success) {
+      addToast('プロンプト一覧の取得に失敗しました', 'error');
+    }
+  }, [data]);
 
-  const prompts = data?.data || [];
+  const prompts: TranslationPrompt[] = (() => {
+    const parsed = PromptsResponseSchema.safeParse(data);
+    return parsed.success ? parsed.data.data : [];
+  })();
 
   const resetForm = () => {
     setFormData({
@@ -83,7 +78,6 @@ export default function PromptsPage() {
   };
 
   const handleCreate = async () => {
-    setError(null);
     try {
       await postApi('/api/prompts', {
         ...formData,
@@ -96,12 +90,11 @@ export default function PromptsPage() {
       resetForm();
       mutate();
     } catch (e) {
-      setError('作成に失敗しました');
+      addToast('作成に失敗しました', 'error');
     }
   };
 
   const handleUpdate = async (id: string) => {
-    setError(null);
     try {
       await patchApi(`/api/prompts/${id}`, {
         ...formData,
@@ -113,7 +106,7 @@ export default function PromptsPage() {
       setEditingId(null);
       mutate();
     } catch (e) {
-      setError('更新に失敗しました');
+      addToast('更新に失敗しました', 'error');
     }
   };
 
@@ -123,7 +116,7 @@ export default function PromptsPage() {
       await deleteApi(`/api/prompts/${id}`);
       mutate();
     } catch (e) {
-      setError('削除に失敗しました');
+      addToast('削除に失敗しました', 'error');
     }
   };
 
@@ -132,7 +125,7 @@ export default function PromptsPage() {
       await postApi(`/api/prompts/${id}/duplicate`, {});
       mutate();
     } catch (e) {
-      setError('複製に失敗しました');
+      addToast('複製に失敗しました', 'error');
     }
   };
 
@@ -140,10 +133,13 @@ export default function PromptsPage() {
     setTestingId(id);
     setTestResult(null);
     try {
-      const result = await postApi<any>(`/api/prompts/${id}/test`, testInput);
+      const result = await postApi<ApiResponse<TestTranslationResult>>(
+        `/api/prompts/${id}/test`,
+        testInput
+      );
       setTestResult(result.data);
     } catch (e) {
-      setError('テスト翻訳に失敗しました');
+      addToast('テスト翻訳に失敗しました', 'error');
     }
   };
 
@@ -173,6 +169,7 @@ export default function PromptsPage() {
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="例: 腕時計用翻訳"
+            aria-label="プロンプト名"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -182,6 +179,7 @@ export default function PromptsPage() {
             type="number"
             value={formData.priority}
             onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
+            aria-label="優先度"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -192,6 +190,7 @@ export default function PromptsPage() {
             value={formData.category}
             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             placeholder="空欄 = 全カテゴリ"
+            aria-label="対象カテゴリ"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -200,6 +199,7 @@ export default function PromptsPage() {
           <select
             value={formData.marketplace}
             onChange={(e) => setFormData({ ...formData, marketplace: e.target.value })}
+            aria-label="対象マーケットプレイス"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           >
             <option value="">全マーケット</option>
@@ -213,6 +213,7 @@ export default function PromptsPage() {
             value={formData.systemPrompt}
             onChange={(e) => setFormData({ ...formData, systemPrompt: e.target.value })}
             rows={4}
+            aria-label="システムプロンプト"
             className="w-full rounded-lg border border-zinc-200 bg-white p-3 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -225,6 +226,7 @@ export default function PromptsPage() {
             value={formData.userPrompt}
             onChange={(e) => setFormData({ ...formData, userPrompt: e.target.value })}
             rows={6}
+            aria-label="ユーザープロンプト"
             className="w-full rounded-lg border border-zinc-200 bg-white p-3 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -238,6 +240,7 @@ export default function PromptsPage() {
             value={formData.extractAttributes}
             onChange={(e) => setFormData({ ...formData, extractAttributes: e.target.value })}
             placeholder="例: brand, model, color, material"
+            aria-label="抽出する属性"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -251,6 +254,7 @@ export default function PromptsPage() {
             value={formData.seoKeywords}
             onChange={(e) => setFormData({ ...formData, seoKeywords: e.target.value })}
             placeholder="例: vintage, rare, authentic"
+            aria-label="SEOキーワード"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -261,6 +265,7 @@ export default function PromptsPage() {
             onChange={(e) => setFormData({ ...formData, additionalInstructions: e.target.value })}
             rows={2}
             placeholder="追加の指示がある場合はここに入力"
+            aria-label="追加指示"
             className="w-full rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -285,22 +290,24 @@ export default function PromptsPage() {
             setEditingId(null);
             resetForm();
           }}
+          aria-label="キャンセル"
         >
           キャンセル
         </Button>
-        <Button onClick={onSubmit}>{submitLabel}</Button>
+        <Button onClick={onSubmit} aria-label={submitLabel}>{submitLabel}</Button>
       </div>
     </div>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy={isLoading}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
             href="/settings"
             className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            aria-label="戻る"
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
@@ -311,22 +318,11 @@ export default function PromptsPage() {
             </p>
           </div>
         </div>
-        <Button size="sm" onClick={() => setIsCreating(true)}>
+        <Button size="sm" onClick={() => setIsCreating(true)} aria-label="新規作成">
           <Plus className="mr-2 h-4 w-4" />
           新規作成
         </Button>
       </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-50 p-4 text-red-700 dark:bg-red-900/20 dark:text-red-400">
-          <AlertCircle className="h-5 w-5" />
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="ml-auto">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {/* Search */}
       <div className="relative">
@@ -336,6 +332,7 @@ export default function PromptsPage() {
           placeholder="プロンプトを検索..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="プロンプト検索"
           className="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-4 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
         />
       </div>
@@ -438,6 +435,7 @@ export default function PromptsPage() {
                               value={testInput.title}
                               onChange={(e) => setTestInput({ ...testInput, title: e.target.value })}
                               placeholder="例: セイコー プレサージュ SARX035"
+                              aria-label="テスト用タイトル"
                               className="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
                             />
                           </div>
@@ -448,11 +446,12 @@ export default function PromptsPage() {
                               value={testInput.description}
                               onChange={(e) => setTestInput({ ...testInput, description: e.target.value })}
                               placeholder="商品の説明"
+                              aria-label="テスト用説明"
                               className="h-9 w-full rounded border border-zinc-200 bg-white px-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
                             />
                           </div>
                         </div>
-                        <Button size="sm" onClick={() => handleTest(prompt.id)}>
+                        <Button size="sm" onClick={() => handleTest(prompt.id)} aria-label="翻訳テスト実行">
                           <TestTube className="mr-1 h-4 w-4" />
                           翻訳テスト実行
                         </Button>
@@ -477,6 +476,7 @@ export default function PromptsPage() {
                       <button
                         onClick={() => startEdit(prompt)}
                         className="flex-1 rounded px-2 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        aria-label="編集"
                       >
                         <Edit2 className="mr-1 inline h-4 w-4" />
                         編集
@@ -486,6 +486,7 @@ export default function PromptsPage() {
                           setTestingId(testingId === prompt.id ? null : prompt.id)
                         }
                         className="flex-1 rounded px-2 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        aria-label="テスト"
                       >
                         <TestTube className="mr-1 inline h-4 w-4" />
                         テスト
@@ -493,6 +494,7 @@ export default function PromptsPage() {
                       <button
                         onClick={() => handleDuplicate(prompt.id)}
                         className="flex-1 rounded px-2 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        aria-label="複製"
                       >
                         <Copy className="mr-1 inline h-4 w-4" />
                         複製
@@ -500,6 +502,7 @@ export default function PromptsPage() {
                       <button
                         onClick={() => handleDelete(prompt.id)}
                         className="rounded px-2 py-1.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        aria-label="削除"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

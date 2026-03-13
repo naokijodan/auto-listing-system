@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,43 +20,14 @@ import {
 import { cn } from '@/lib/utils';
 import { fetcher, postApi, patchApi, deleteApi } from '@/lib/api';
 import Link from 'next/link';
-
-interface Template {
-  id: string;
-  name: string;
-  description: string | null;
-  categoryMappingId: string | null;
-  translationPromptId: string | null;
-  profitRate: number;
-  minProfit: number;
-  titleTemplate: string | null;
-  descriptionTemplate: string | null;
-  conditionMapping: Record<string, string>;
-  defaultWeight: number | null;
-  defaultShippingDays: string | null;
-  isActive: boolean;
-  createdAt: string;
-  categoryMapping?: {
-    id: string;
-    sourceCategory: string;
-    ebayCategoryName: string;
-  } | null;
-  translationPrompt?: {
-    id: string;
-    name: string;
-  } | null;
-}
-
-interface Category {
-  id: string;
-  sourceCategory: string;
-  ebayCategoryName: string;
-}
-
-interface Prompt {
-  id: string;
-  name: string;
-}
+import { addToast } from '@/components/ui/toast';
+import {
+  type Template,
+  type Category,
+  type Prompt,
+  TemplatesResponseSchema,
+  type TemplatesResponse,
+} from './types';
 
 export default function TemplatesPage() {
   const [search, setSearch] = useState('');
@@ -75,17 +46,26 @@ export default function TemplatesPage() {
     defaultWeight: '',
     defaultShippingDays: '7-14 business days',
   });
-  const [error, setError] = useState<string | null>(null);
-
-  const { data: templatesData, mutate, isLoading } = useSWR<{ data: Template[] }>(
+  const { data: templatesRaw, mutate, isLoading } = useSWR<unknown>(
     `/api/templates?search=${encodeURIComponent(search)}`,
     fetcher
   );
-
   const { data: categoriesData } = useSWR<{ data: Category[] }>('/api/categories', fetcher);
   const { data: promptsData } = useSWR<{ data: Prompt[] }>('/api/prompts', fetcher);
 
-  const templates = templatesData?.data || [];
+  const [validated, setValidated] = useState<TemplatesResponse | null>(null);
+  useEffect(() => {
+    if (!templatesRaw) return;
+    const parsed = TemplatesResponseSchema.safeParse(templatesRaw);
+    if (parsed.success) {
+      setValidated(parsed.data);
+    } else {
+      setValidated(null);
+      addToast('テンプレートデータの形式が不正です', 'error');
+    }
+  }, [templatesRaw]);
+
+  const templates = validated?.data || [];
   const categories = categoriesData?.data || [];
   const prompts = promptsData?.data || [];
 
@@ -106,13 +86,12 @@ export default function TemplatesPage() {
   };
 
   const handleCreate = async () => {
-    setError(null);
     try {
       let conditionMapping = {};
       try {
         conditionMapping = JSON.parse(formData.conditionMapping);
       } catch {
-        setError('コンディションマッピングは有効なJSONである必要があります');
+        addToast('コンディションマッピングは有効なJSONである必要があります', 'error');
         return;
       }
 
@@ -127,18 +106,17 @@ export default function TemplatesPage() {
       resetForm();
       mutate();
     } catch (e) {
-      setError('作成に失敗しました');
+      addToast('作成に失敗しました', 'error');
     }
   };
 
   const handleUpdate = async (id: string) => {
-    setError(null);
     try {
       let conditionMapping = {};
       try {
         conditionMapping = JSON.parse(formData.conditionMapping);
       } catch {
-        setError('コンディションマッピングは有効なJSONである必要があります');
+        addToast('コンディションマッピングは有効なJSONである必要があります', 'error');
         return;
       }
 
@@ -152,7 +130,7 @@ export default function TemplatesPage() {
       setEditingId(null);
       mutate();
     } catch (e) {
-      setError('更新に失敗しました');
+      addToast('更新に失敗しました', 'error');
     }
   };
 
@@ -162,7 +140,7 @@ export default function TemplatesPage() {
       await deleteApi(`/api/templates/${id}`);
       mutate();
     } catch (e) {
-      setError('削除に失敗しました');
+      addToast('削除に失敗しました', 'error');
     }
   };
 
@@ -171,7 +149,7 @@ export default function TemplatesPage() {
       await postApi(`/api/templates/${id}/duplicate`, {});
       mutate();
     } catch (e) {
-      setError('複製に失敗しました');
+      addToast('複製に失敗しました', 'error');
     }
   };
 
@@ -202,6 +180,7 @@ export default function TemplatesPage() {
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             placeholder="例: 腕時計用テンプレート"
+            aria-label="テンプレート名"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -212,6 +191,7 @@ export default function TemplatesPage() {
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="テンプレートの説明"
+            aria-label="説明"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -220,6 +200,7 @@ export default function TemplatesPage() {
           <select
             value={formData.categoryMappingId}
             onChange={(e) => setFormData({ ...formData, categoryMappingId: e.target.value })}
+            aria-label="カテゴリマッピング"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           >
             <option value="">選択なし</option>
@@ -235,6 +216,7 @@ export default function TemplatesPage() {
           <select
             value={formData.translationPromptId}
             onChange={(e) => setFormData({ ...formData, translationPromptId: e.target.value })}
+            aria-label="翻訳プロンプト"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           >
             <option value="">選択なし</option>
@@ -251,6 +233,7 @@ export default function TemplatesPage() {
             type="number"
             value={formData.profitRate}
             onChange={(e) => setFormData({ ...formData, profitRate: parseFloat(e.target.value) })}
+            aria-label="目標利益率"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -260,6 +243,7 @@ export default function TemplatesPage() {
             type="number"
             value={formData.minProfit}
             onChange={(e) => setFormData({ ...formData, minProfit: parseFloat(e.target.value) })}
+            aria-label="最低利益額"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -270,6 +254,7 @@ export default function TemplatesPage() {
             value={formData.defaultWeight}
             onChange={(e) => setFormData({ ...formData, defaultWeight: e.target.value })}
             placeholder="例: 200"
+            aria-label="デフォルト重量"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -280,6 +265,7 @@ export default function TemplatesPage() {
             value={formData.defaultShippingDays}
             onChange={(e) => setFormData({ ...formData, defaultShippingDays: e.target.value })}
             placeholder="例: 7-14 business days"
+            aria-label="配送日数"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -292,6 +278,7 @@ export default function TemplatesPage() {
             type="text"
             value={formData.titleTemplate}
             onChange={(e) => setFormData({ ...formData, titleTemplate: e.target.value })}
+            aria-label="タイトルテンプレート"
             className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm font-mono dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -301,6 +288,7 @@ export default function TemplatesPage() {
             value={formData.descriptionTemplate}
             onChange={(e) => setFormData({ ...formData, descriptionTemplate: e.target.value })}
             rows={3}
+            aria-label="説明文テンプレート"
             className="w-full rounded-lg border border-zinc-200 bg-white p-3 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
@@ -313,12 +301,14 @@ export default function TemplatesPage() {
             value={formData.conditionMapping}
             onChange={(e) => setFormData({ ...formData, conditionMapping: e.target.value })}
             rows={3}
+            aria-label="コンディションマッピングJSON"
             className="w-full rounded-lg border border-zinc-200 bg-white p-3 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
           />
         </div>
       </div>
       <div className="flex justify-end gap-2">
         <Button
+          aria-label="キャンセル"
           variant="outline"
           onClick={() => {
             setIsCreating(false);
@@ -328,7 +318,7 @@ export default function TemplatesPage() {
         >
           キャンセル
         </Button>
-        <Button onClick={onSubmit}>{submitLabel}</Button>
+        <Button aria-label={submitLabel} onClick={onSubmit}>{submitLabel}</Button>
       </div>
     </div>
   );
@@ -341,6 +331,7 @@ export default function TemplatesPage() {
           <Link
             href="/settings"
             className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            aria-label="設定に戻る"
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
@@ -351,22 +342,11 @@ export default function TemplatesPage() {
             </p>
           </div>
         </div>
-        <Button size="sm" onClick={() => setIsCreating(true)}>
+        <Button size="sm" onClick={() => setIsCreating(true)} aria-label="新規テンプレートを作成">
           <Plus className="mr-2 h-4 w-4" />
           新規作成
         </Button>
       </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-50 p-4 text-red-700 dark:bg-red-900/20 dark:text-red-400">
-          <AlertCircle className="h-5 w-5" />
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="ml-auto">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {/* Search */}
       <div className="relative">
@@ -376,6 +356,7 @@ export default function TemplatesPage() {
           placeholder="テンプレートを検索..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="テンプレートを検索"
           className="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-4 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
         />
       </div>
@@ -394,7 +375,7 @@ export default function TemplatesPage() {
 
       {/* Templates List */}
       {isLoading ? (
-        <div className="p-8 text-center text-zinc-500">読み込み中...</div>
+        <div className="p-8 text-center text-zinc-500" aria-busy="true">読み込み中...</div>
       ) : templates.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-zinc-500">
@@ -404,9 +385,9 @@ export default function TemplatesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="list" aria-label="テンプレート一覧">
           {templates.map((template) => (
-            <Card key={template.id} className={cn(!template.isActive && 'opacity-60')}>
+            <Card key={template.id} className={cn(!template.isActive && 'opacity-60')} role="listitem">
               {editingId === template.id ? (
                 <CardContent className="pt-6">
                   <TemplateForm onSubmit={() => handleUpdate(template.id)} submitLabel="保存" />
@@ -460,6 +441,7 @@ export default function TemplatesPage() {
                       <button
                         onClick={() => startEdit(template)}
                         className="flex-1 rounded px-2 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        aria-label="編集"
                       >
                         <Edit2 className="mr-1 inline h-4 w-4" />
                         編集
@@ -467,6 +449,7 @@ export default function TemplatesPage() {
                       <button
                         onClick={() => handleDuplicate(template.id)}
                         className="flex-1 rounded px-2 py-1.5 text-sm text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        aria-label="複製"
                       >
                         <Copy className="mr-1 inline h-4 w-4" />
                         複製
@@ -474,6 +457,7 @@ export default function TemplatesPage() {
                       <button
                         onClick={() => handleDelete(template.id)}
                         className="rounded px-2 py-1.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        aria-label="削除"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

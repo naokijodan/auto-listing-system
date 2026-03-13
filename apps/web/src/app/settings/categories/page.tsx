@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,29 +14,16 @@ import {
   ChevronLeft,
   X,
   Check,
-  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { fetcher, postApi, patchApi, deleteApi } from '@/lib/api';
 import Link from 'next/link';
-
-interface CategoryMapping {
-  id: string;
-  sourceCategory: string;
-  ebayCategoryId: string;
-  ebayCategoryName: string;
-  itemSpecifics: Record<string, string>;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  _count?: { templates: number };
-}
-
-interface ApiResponse {
-  success: boolean;
-  data: CategoryMapping[];
-  pagination: { total: number; limit: number; offset: number };
-}
+import { addToast } from '@/components/ui/toast';
+import {
+  CategoriesApiResponseSchema,
+  type CategoriesApiResponseType,
+  type CategoryMapping as CategoryMapping,
+} from './types';
 
 export default function CategoriesPage() {
   const [search, setSearch] = useState('');
@@ -48,23 +35,33 @@ export default function CategoriesPage() {
     ebayCategoryName: '',
     itemSpecifics: '{}',
   });
-  const [error, setError] = useState<string | null>(null);
-
-  const { data, mutate, isLoading } = useSWR<ApiResponse>(
+  const { data, mutate, isLoading } = useSWR<unknown>(
     `/api/categories?search=${encodeURIComponent(search)}`,
     fetcher
   );
 
-  const categories = data?.data || [];
+  const [validated, setValidated] = useState<CategoriesApiResponseType | null>(null);
+
+  useEffect(() => {
+    if (!data) return;
+    const parsed = CategoriesApiResponseSchema.safeParse(data);
+    if (parsed.success) {
+      setValidated(parsed.data);
+    } else {
+      addToast('カテゴリデータの形式が不正です', 'error');
+      setValidated(null);
+    }
+  }, [data]);
+
+  const categories = validated?.data || [];
 
   const handleCreate = async () => {
-    setError(null);
     try {
       let itemSpecifics = {};
       try {
         itemSpecifics = JSON.parse(formData.itemSpecifics);
       } catch {
-        setError('Item Specificsは有効なJSONである必要があります');
+        addToast('Item Specificsは有効なJSONである必要があります', 'error');
         return;
       }
 
@@ -76,18 +73,17 @@ export default function CategoriesPage() {
       setFormData({ sourceCategory: '', ebayCategoryId: '', ebayCategoryName: '', itemSpecifics: '{}' });
       mutate();
     } catch (e) {
-      setError('作成に失敗しました');
+      addToast('作成に失敗しました', 'error');
     }
   };
 
   const handleUpdate = async (id: string) => {
-    setError(null);
     try {
       let itemSpecifics = {};
       try {
         itemSpecifics = JSON.parse(formData.itemSpecifics);
       } catch {
-        setError('Item Specificsは有効なJSONである必要があります');
+        addToast('Item Specificsは有効なJSONである必要があります', 'error');
         return;
       }
 
@@ -98,7 +94,7 @@ export default function CategoriesPage() {
       setEditingId(null);
       mutate();
     } catch (e) {
-      setError('更新に失敗しました');
+      addToast('更新に失敗しました', 'error');
     }
   };
 
@@ -108,7 +104,7 @@ export default function CategoriesPage() {
       await deleteApi(`/api/categories/${id}`);
       mutate();
     } catch (e) {
-      setError('削除に失敗しました');
+      addToast('削除に失敗しました', 'error');
     }
   };
 
@@ -135,7 +131,7 @@ export default function CategoriesPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (e) {
-      setError('エクスポートに失敗しました');
+      addToast('エクスポートに失敗しました', 'error');
     }
   };
 
@@ -169,23 +165,13 @@ export default function CategoriesPage() {
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-50 p-4 text-red-700 dark:bg-red-900/20 dark:text-red-400">
-          <AlertCircle className="h-5 w-5" />
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="ml-auto">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
         <input
           type="text"
           placeholder="カテゴリを検索..."
+          aria-label="カテゴリを検索"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="h-10 w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-4 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
@@ -236,15 +222,16 @@ export default function CategoriesPage() {
                   value={formData.itemSpecifics}
                   onChange={(e) => setFormData({ ...formData, itemSpecifics: e.target.value })}
                   rows={4}
+                  aria-label="Item Specifics JSON"
                   className="w-full rounded-lg border border-zinc-200 bg-white p-3 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
                 />
               </div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsCreating(false)}>
+              <Button aria-label="キャンセル" variant="outline" onClick={() => setIsCreating(false)}>
                 キャンセル
               </Button>
-              <Button onClick={handleCreate}>作成</Button>
+              <Button aria-label="作成" onClick={handleCreate}>作成</Button>
             </div>
           </CardContent>
         </Card>
@@ -260,9 +247,9 @@ export default function CategoriesPage() {
               カテゴリマッピングがありません
             </div>
           ) : (
-            <div className="divide-y divide-zinc-200 dark:divide-zinc-700">
+            <div className="divide-y divide-zinc-200 dark:divide-zinc-700" role="table" aria-label="カテゴリマッピング一覧">
               {categories.map((category) => (
-                <div key={category.id} className="p-4">
+                <div key={category.id} className="p-4" role="row">
                   {editingId === category.id ? (
                     <div className="space-y-4">
                       <div className="grid gap-4 sm:grid-cols-2">
@@ -299,16 +286,17 @@ export default function CategoriesPage() {
                             value={formData.itemSpecifics}
                             onChange={(e) => setFormData({ ...formData, itemSpecifics: e.target.value })}
                             rows={4}
+                            aria-label="Item Specifics JSON"
                             className="w-full rounded-lg border border-zinc-200 bg-white p-3 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
                           />
                         </div>
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setEditingId(null)}>
+                        <Button aria-label="キャンセル" variant="outline" size="sm" onClick={() => setEditingId(null)}>
                           <X className="mr-1 h-4 w-4" />
                           キャンセル
                         </Button>
-                        <Button size="sm" onClick={() => handleUpdate(category.id)}>
+                        <Button aria-label="保存" size="sm" onClick={() => handleUpdate(category.id)}>
                           <Check className="mr-1 h-4 w-4" />
                           保存
                         </Button>
@@ -348,6 +336,7 @@ export default function CategoriesPage() {
                       <div className="flex gap-1">
                         <button
                           onClick={() => startEdit(category)}
+                          aria-label="編集"
                           className="rounded p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800"
                         >
                           <Edit2 className="h-4 w-4" />

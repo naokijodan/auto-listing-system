@@ -3,10 +3,19 @@
 import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { addToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { useNotificationChannels, NotificationChannel } from '@/lib/hooks';
 import { postApi, patchApi, deleteApi, fetcher, api } from '@/lib/api';
 import useSWR from 'swr';
+import {
+  type EventType,
+  type ChannelFormModalProps,
+  type ChannelUpdatePayload,
+  type ChannelId,
+  NotificationSettingsResponseSchema,
+  EventTypesResponseSchema,
+} from './types';
 import {
   Bell,
   Plus,
@@ -24,18 +33,17 @@ import {
   Store,
 } from 'lucide-react';
 
-const channelTypes = [
+const channelTypes: ReadonlyArray<{
+  id: ChannelId;
+  label: string;
+  icon: typeof Hash;
+  color: string;
+}> = [
   { id: 'SLACK', label: 'Slack', icon: Hash, color: 'bg-[#4A154B]' },
   { id: 'DISCORD', label: 'Discord', icon: MessageSquare, color: 'bg-[#5865F2]' },
   { id: 'LINE', label: 'LINE', icon: Send, color: 'bg-[#00B900]' },
   { id: 'EMAIL', label: 'Email', icon: Mail, color: 'bg-zinc-600' },
-];
-
-interface EventType {
-  value: string;
-  label: string;
-  category: string;
-}
+] as const;
 
 export default function NotificationChannelsPage() {
   const { data: channelsResponse, isLoading, mutate } = useNotificationChannels();
@@ -49,16 +57,23 @@ export default function NotificationChannelsPage() {
   const [testingId, setTestingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const channels = channelsResponse?.data || [];
-  const eventTypes = eventTypesResponse?.data || [];
+  const parsedChannels = channelsResponse
+    ? NotificationSettingsResponseSchema.safeParse(channelsResponse)
+    : null;
+  const channels = parsedChannels?.success ? parsedChannels.data.data : [];
+
+  const parsedEventTypes = eventTypesResponse
+    ? EventTypesResponseSchema.safeParse(eventTypesResponse)
+    : null;
+  const eventTypes = parsedEventTypes?.success ? parsedEventTypes.data.data : [];
 
   const handleTest = async (id: string) => {
     setTestingId(id);
     try {
       await postApi(`/api/notification-channels/${id}/test`, {});
-      alert('テスト通知を送信しました');
+      addToast({ type: 'success', message: 'テスト通知を送信しました' });
     } catch (error) {
-      alert('テスト通知の送信に失敗しました');
+      addToast({ type: 'error', message: 'テスト通知の送信に失敗しました' });
     } finally {
       setTestingId(null);
     }
@@ -72,7 +87,7 @@ export default function NotificationChannelsPage() {
       await deleteApi(`/api/notification-channels/${id}`);
       mutate();
     } catch (error) {
-      alert('削除に失敗しました');
+      addToast({ type: 'error', message: '削除に失敗しました' });
     } finally {
       setDeletingId(null);
     }
@@ -85,7 +100,7 @@ export default function NotificationChannelsPage() {
       });
       mutate();
     } catch (error) {
-      alert('更新に失敗しました');
+      addToast({ type: 'error', message: '更新に失敗しました' });
     }
   };
 
@@ -99,7 +114,7 @@ export default function NotificationChannelsPage() {
             Slack、Discord、LINE への通知を設定
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)}>
+        <Button onClick={() => setShowAddForm(true)} aria-label="チャンネルを追加">
           <Plus className="h-4 w-4" />
           チャンネル追加
         </Button>
@@ -122,7 +137,7 @@ export default function NotificationChannelsPage() {
                 <p className="mt-4 text-zinc-500 dark:text-zinc-400">
                   通知チャンネルが設定されていません
                 </p>
-                <Button className="mt-4" onClick={() => setShowAddForm(true)}>
+                <Button className="mt-4" onClick={() => setShowAddForm(true)} aria-label="最初のチャンネルを追加">
                   <Plus className="h-4 w-4" />
                   最初のチャンネルを追加
                 </Button>
@@ -177,6 +192,7 @@ export default function NotificationChannelsPage() {
                           size="sm"
                           onClick={() => handleTest(channel.id)}
                           disabled={testingId === channel.id}
+                          aria-label={`チャンネル「${channel.name}」でテスト送信`}
                         >
                           {testingId === channel.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -189,6 +205,7 @@ export default function NotificationChannelsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => setEditingChannel(channel)}
+                          aria-label={`チャンネル「${channel.name}」を編集`}
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
@@ -196,6 +213,7 @@ export default function NotificationChannelsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleToggleActive(channel)}
+                          aria-label={`チャンネル「${channel.name}」を${channel.isActive ? '無効' : '有効'}にする`}
                         >
                           {channel.isActive ? (
                             <X className="h-4 w-4" />
@@ -209,6 +227,7 @@ export default function NotificationChannelsPage() {
                           onClick={() => handleDelete(channel.id)}
                           disabled={deletingId === channel.id}
                           className="text-red-600 hover:text-red-700"
+                          aria-label={`チャンネル「${channel.name}」を削除`}
                         >
                           {deletingId === channel.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -282,13 +301,6 @@ export default function NotificationChannelsPage() {
   );
 }
 
-interface ChannelFormModalProps {
-  channel: NotificationChannel | null;
-  eventTypes: EventType[];
-  onClose: () => void;
-  onSave: () => void;
-}
-
 function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormModalProps) {
   const isEditing = !!channel;
   const [saving, setSaving] = useState(false);
@@ -307,28 +319,39 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
     setSaving(true);
 
     try {
-      const payload: any = {
-        channel: formData.channel,
+      let payload: ChannelUpdatePayload = {
+        channel: formData.channel as ChannelId,
         name: formData.name,
         enabledTypes: formData.enabledTypes,
-        minSeverity: formData.minSeverity,
-        marketplaceFilter: formData.marketplaceFilter,
+        minSeverity: formData.minSeverity as 'INFO' | 'WARNING' | 'ERROR',
+        marketplaceFilter: formData.marketplaceFilter as ('JOOM' | 'EBAY')[],
       };
 
       if (formData.channel === 'LINE') {
-        payload.token = formData.token;
-      } else {
-        payload.webhookUrl = formData.webhookUrl;
+        if (formData.token) payload = { ...payload, token: formData.token };
+      } else if (formData.webhookUrl) {
+        payload = { ...payload, webhookUrl: formData.webhookUrl };
       }
 
       if (isEditing) {
         await patchApi(`/api/notification-channels/${channel.id}`, payload);
       } else {
+        // For create, ensure required credential is provided
+        if (formData.channel === 'LINE' && !formData.token) {
+          addToast({ type: 'error', message: 'LINEのトークンを入力してください' });
+          setSaving(false);
+          return;
+        }
+        if (formData.channel !== 'LINE' && !formData.webhookUrl) {
+          addToast({ type: 'error', message: 'Webhook URLを入力してください' });
+          setSaving(false);
+          return;
+        }
         await postApi('/api/notification-channels', payload);
       }
       onSave();
     } catch (error) {
-      alert('保存に失敗しました');
+      addToast({ type: 'error', message: '保存に失敗しました' });
     } finally {
       setSaving(false);
     }
@@ -361,7 +384,12 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 dark:bg-zinc-900">
+      <div
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 dark:bg-zinc-900"
+        role="dialog"
+        aria-modal="true"
+        aria-label={isEditing ? '通知チャンネルを編集' : '通知チャンネルを追加'}
+      >
         <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
           {isEditing ? 'チャンネル編集' : '新規チャンネル追加'}
         </h2>
@@ -378,13 +406,14 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
                   <button
                     key={type.id}
                     type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, channel: type.id as any }))}
+                    onClick={() => setFormData((prev) => ({ ...prev, channel: type.id }))}
                     className={cn(
                       'flex flex-col items-center rounded-lg border-2 p-3 transition-colors',
                       formData.channel === type.id
                         ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
                         : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700'
                     )}
+                    aria-label={`${type.label} を選択`}
                   >
                     <div className={cn('rounded p-1.5', type.color)}>
                       <type.icon className="h-4 w-4 text-white" />
@@ -408,6 +437,7 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
               placeholder="例: メイン通知チャンネル"
               className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800"
               required
+              aria-label="チャンネル名"
             />
           </div>
 
@@ -424,6 +454,7 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
                 placeholder="LINE Notify トークンを入力"
                 className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800"
                 required={!isEditing}
+                aria-label="LINE Notify トークン"
               />
               {isEditing && (
                 <p className="mt-1 text-xs text-zinc-500">
@@ -447,6 +478,7 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
                 }
                 className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-800"
                 required={!isEditing}
+                aria-label="Webhook URL"
               />
               {isEditing && (
                 <p className="mt-1 text-xs text-zinc-500">
@@ -465,6 +497,7 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
               value={formData.minSeverity}
               onChange={(e) => setFormData((prev) => ({ ...prev, minSeverity: e.target.value }))}
               className="h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-800"
+              aria-label="最低重要度"
             >
               <option value="INFO">INFO（すべて）</option>
               <option value="WARNING">WARNING以上</option>
@@ -490,6 +523,7 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
                     ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400'
                     : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400'
                 )}
+                aria-label="Joom を切り替え"
               >
                 <Store className="h-4 w-4" />
                 Joom
@@ -506,6 +540,7 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
                     ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
                     : 'border-zinc-200 text-zinc-600 hover:border-zinc-300 dark:border-zinc-700 dark:text-zinc-400'
                 )}
+                aria-label="eBay を切り替え"
               >
                 <Store className="h-4 w-4" />
                 eBay
@@ -526,7 +561,10 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
             <label className="mb-1.5 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
               通知するイベント
             </label>
-            <div className="max-h-48 space-y-3 overflow-y-auto rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+            <div
+              className="max-h-48 space-y-3 overflow-y-auto rounded-lg border border-zinc-200 p-3 dark:border-zinc-700"
+              aria-label="通知イベントの選択"
+            >
               {Object.entries(groupedEventTypes).map(([category, types]) => (
                 <div key={category}>
                   <p className="mb-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
@@ -544,6 +582,7 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
                             ? 'bg-amber-500 text-white'
                             : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
                         )}
+                        aria-label={`イベント「${et.label}」を${formData.enabledTypes.includes(et.value) ? '解除' : '選択'}`}
                       >
                         {et.label}
                       </button>
@@ -559,10 +598,10 @@ function ChannelFormModal({ channel, eventTypes, onClose, onSave }: ChannelFormM
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="outline" onClick={onClose} aria-label="キャンセルする">
               キャンセル
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving} aria-label={isEditing ? 'チャンネルを更新' : 'チャンネルを追加'}>
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {isEditing ? '更新' : '追加'}
             </Button>

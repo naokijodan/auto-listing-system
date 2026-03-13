@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { addToast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,49 +47,18 @@ import {
   ExternalLink,
   History,
 } from 'lucide-react';
+import {
+  Integration,
+  IntegrationType,
+  Stats,
+  IntegrationsResponseSchema,
+  IntegrationTypeSchema,
+  StatsSchema,
+} from '@/app/integrations/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-interface Integration {
-  id: string;
-  type: string;
-  name: string;
-  description?: string;
-  status: string;
-  syncEnabled: boolean;
-  lastSyncAt?: string;
-  lastSyncStatus?: string;
-  totalSynced: number;
-  totalErrors: number;
-  successRate: number;
-  createdAt: string;
-  _count?: {
-    syncLogs: number;
-    webhookLogs: number;
-  };
-}
-
-interface IntegrationType {
-  value: string;
-  label: string;
-  description: string;
-  features: string[];
-  authType: string;
-}
-
-interface Stats {
-  total: number;
-  active: number;
-  inactive: number;
-  byType: Record<string, number>;
-  syncSuccessRate: number;
-  recentSyncs: Array<{
-    id: string;
-    status: string;
-    startedAt: string;
-    integration: { name: string; type: string };
-  }>;
-}
+// Types moved to types.ts
 
 export default function IntegrationsPage() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -124,15 +94,37 @@ export default function IntegrationsPage() {
         fetch(`${API_URL}/api/external-integrations/stats`),
       ]);
 
-      const integrationsData = await integrationsRes.json();
-      const typesData = await typesRes.json();
-      const statsData = await statsRes.json();
+      const integrationsJson = await integrationsRes.json();
+      const typesJson = await typesRes.json();
+      const statsJson = await statsRes.json();
 
-      setIntegrations(integrationsData.data || []);
-      setTypes(typesData.types || []);
-      setStats(statsData);
+      const integrationsParsed = IntegrationsResponseSchema.safeParse(integrationsJson);
+      if (integrationsParsed.success) {
+        setIntegrations(integrationsParsed.data.data);
+      } else {
+        addToast({ type: 'error', message: '連携一覧の取得に失敗しました' });
+        setIntegrations(integrationsJson?.data ?? []);
+      }
+
+      const typesParsed = Array.isArray(typesJson?.types)
+        ? typesJson.types.map((t: unknown) => IntegrationTypeSchema.safeParse(t))
+        : null;
+      if (typesParsed && typesParsed.every((r) => r.success)) {
+        setTypes(typesJson.types as IntegrationType[]);
+      } else {
+        addToast({ type: 'error', message: '連携タイプの取得に失敗しました' });
+        setTypes(typesJson?.types ?? []);
+      }
+
+      const statsParsed = StatsSchema.safeParse(statsJson);
+      if (statsParsed.success) {
+        setStats(statsParsed.data);
+      } else {
+        addToast({ type: 'error', message: '統計情報の取得に失敗しました' });
+        setStats(statsJson);
+      }
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      addToast({ type: 'error', message: 'データの取得に失敗しました' });
     } finally {
       setLoading(false);
     }
@@ -152,7 +144,7 @@ export default function IntegrationsPage() {
         fetchData();
       }
     } catch (error) {
-      console.error('Failed to create integration:', error);
+      addToast({ type: 'error', message: '連携の作成に失敗しました' });
     }
   };
 
@@ -165,7 +157,7 @@ export default function IntegrationsPage() {
       });
       fetchData();
     } catch (error) {
-      console.error('Failed to sync:', error);
+      addToast({ type: 'error', message: '同期に失敗しました' });
     }
   };
 
@@ -181,7 +173,7 @@ export default function IntegrationsPage() {
       });
       fetchData();
     } catch (error) {
-      console.error('Failed to connect:', error);
+      addToast({ type: 'error', message: '接続に失敗しました' });
     }
   };
 
@@ -192,7 +184,7 @@ export default function IntegrationsPage() {
       });
       fetchData();
     } catch (error) {
-      console.error('Failed to disconnect:', error);
+      addToast({ type: 'error', message: '切断に失敗しました' });
     }
   };
 
@@ -205,7 +197,7 @@ export default function IntegrationsPage() {
       });
       fetchData();
     } catch (error) {
-      console.error('Failed to delete:', error);
+      addToast({ type: 'error', message: '削除に失敗しました' });
     }
   };
 
@@ -233,7 +225,7 @@ export default function IntegrationsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64" aria-busy="true" aria-live="polite">
         <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
@@ -262,6 +254,7 @@ export default function IntegrationsPage() {
               <div>
                 <Label>連携タイプ</Label>
                 <Select
+                  aria-describedby="integration-type-desc"
                   value={formData.type}
                   onValueChange={(value) => setFormData({ ...formData, type: value })}
                 >
@@ -276,30 +269,37 @@ export default function IntegrationsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p id="integration-type-desc" className="sr-only">連携する外部サービスのタイプを選択</p>
               </div>
               <div>
                 <Label>名前</Label>
                 <Input
+                  aria-describedby="integration-name-desc"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="連携の名前"
                 />
+                <p id="integration-name-desc" className="sr-only">この連携の表示名</p>
               </div>
               <div>
                 <Label>説明</Label>
                 <Input
+                  aria-describedby="integration-description-desc"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="連携の説明（任意）"
                 />
+                <p id="integration-description-desc" className="sr-only">連携の説明（任意）</p>
               </div>
               <div>
                 <Label>同期間隔（分）</Label>
                 <Input
                   type="number"
+                  aria-describedby="integration-interval-desc"
                   value={formData.syncInterval}
                   onChange={(e) => setFormData({ ...formData, syncInterval: parseInt(e.target.value) })}
                 />
+                <p id="integration-interval-desc" className="sr-only">自動同期の間隔（分）</p>
               </div>
               <Button onClick={handleCreate} className="w-full">
                 作成
@@ -312,7 +312,7 @@ export default function IntegrationsPage() {
       {/* 統計カード */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          <Card role="status" aria-live="polite">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-500">総連携数</CardTitle>
             </CardHeader>
@@ -320,7 +320,7 @@ export default function IntegrationsPage() {
               <div className="text-2xl font-bold">{stats.total}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card role="status" aria-live="polite">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-500">アクティブ</CardTitle>
             </CardHeader>
@@ -328,7 +328,7 @@ export default function IntegrationsPage() {
               <div className="text-2xl font-bold text-green-600">{stats.active}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card role="status" aria-live="polite">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-500">未接続</CardTitle>
             </CardHeader>
@@ -336,7 +336,7 @@ export default function IntegrationsPage() {
               <div className="text-2xl font-bold text-gray-500">{stats.inactive}</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card role="status" aria-live="polite">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-500">同期成功率</CardTitle>
             </CardHeader>
@@ -466,6 +466,7 @@ export default function IntegrationsPage() {
                         size="sm"
                         className="text-red-600"
                         onClick={() => handleDelete(integration.id)}
+                        aria-label="連携を削除"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -477,7 +478,7 @@ export default function IntegrationsPage() {
           </div>
 
           {integrations.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500" role="status" aria-live="polite">
               外部連携がありません
             </div>
           )}
@@ -550,7 +551,7 @@ export default function IntegrationsPage() {
               </TableBody>
             </Table>
           ) : (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500" role="status" aria-live="polite">
               同期ログがありません
             </div>
           )}

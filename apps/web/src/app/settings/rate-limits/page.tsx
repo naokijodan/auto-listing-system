@@ -16,33 +16,16 @@ import {
   CheckCircle,
   Clock,
 } from 'lucide-react';
+import {
+  RateLimitConfig,
+  RateLimitStatus,
+  ConfigsResponse,
+  StatusResponse,
+  ConfigsResponseSchema,
+  StatusResponseSchema,
+} from './types';
 
-interface RateLimitConfig {
-  domain: string;
-  requestsPerWindow: number;
-  windowMs: number;
-  minDelayMs: number;
-}
-
-interface RateLimitStatus {
-  domain: string;
-  config: RateLimitConfig;
-  currentCount: number;
-  limit: number;
-  remaining: number;
-  canRequest: boolean;
-  resetMs: number;
-}
-
-interface ConfigsResponse {
-  success: boolean;
-  data: RateLimitConfig[];
-}
-
-interface StatusResponse {
-  success: boolean;
-  data: RateLimitStatus[];
-}
+// Types and schemas are now imported from ./types
 
 const domainLabels: Record<string, string> = {
   'mercari.com': 'メルカリ',
@@ -72,14 +55,18 @@ export default function RateLimitsPage() {
   );
 
   // Fetch status
-  const { data: statusResponse, mutate: mutateStatus } = useSWR<StatusResponse>(
+  const { data: statusResponse, mutate: mutateStatus, isLoading: isStatusLoading } = useSWR<StatusResponse>(
     '/api/rate-limits/status',
     fetcher,
     { refreshInterval: 5000 }
   );
 
-  const configs = configsResponse?.data || [];
-  const statuses = statusResponse?.data || [];
+  // Zod safeParse for API responses
+  const parsedConfigs = configsResponse ? ConfigsResponseSchema.safeParse(configsResponse) : null;
+  const configs = parsedConfigs?.success ? parsedConfigs.data.data : [];
+
+  const parsedStatuses = statusResponse ? StatusResponseSchema.safeParse(statusResponse) : null;
+  const statuses = parsedStatuses?.success ? parsedStatuses.data.data : [];
 
   // Get status for a domain
   const getStatus = (domain: string): RateLimitStatus | undefined => {
@@ -172,6 +159,7 @@ export default function RateLimitsPage() {
           </p>
         </div>
         <button
+          aria-label="ステータスを更新"
           onClick={() => mutateStatus()}
           className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
         >
@@ -195,12 +183,13 @@ export default function RateLimitsPage() {
       </div>
 
       {/* Status Overview */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" aria-busy={isStatusLoading}>
         {statuses.map((status) => {
           const usagePercent = (status.currentCount / status.limit) * 100;
           return (
             <div
               key={status.domain}
+              role="status"
               className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
             >
               <div className="flex items-center justify-between">
@@ -227,6 +216,10 @@ export default function RateLimitsPage() {
                       usagePercent > 80 ? 'bg-red-500' :
                       usagePercent > 50 ? 'bg-amber-500' : 'bg-emerald-500'
                     )}
+                    role="progressbar"
+                    aria-valuenow={Math.min(100, usagePercent)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
                     style={{ width: `${Math.min(100, usagePercent)}%` }}
                   />
                 </div>
@@ -240,7 +233,7 @@ export default function RateLimitsPage() {
       </div>
 
       {/* Config List */}
-      <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900" aria-busy={isLoading}>
         <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
           <h2 className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
             <Gauge className="h-5 w-5" />
@@ -249,7 +242,7 @@ export default function RateLimitsPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex items-center justify-center py-12" aria-busy="true">
             <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
           </div>
         ) : (
@@ -276,6 +269,7 @@ export default function RateLimitsPage() {
                       {!isEditing && (
                         <>
                           <button
+                            aria-label="カウンターをリセット"
                             onClick={() => resetCounter(config.domain)}
                             className="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
                             title="カウンターをリセット"
@@ -283,6 +277,7 @@ export default function RateLimitsPage() {
                             <RotateCcw className="h-4 w-4" />
                           </button>
                           <button
+                            aria-label="設定を編集"
                             onClick={() => startEdit(config)}
                             className="rounded-lg border border-zinc-200 px-3 py-1 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                           >
@@ -306,6 +301,7 @@ export default function RateLimitsPage() {
                             onChange={(e) => setEditValues({ ...editValues, requestsPerWindow: Number(e.target.value) })}
                             min="1"
                             max="100"
+                            aria-label="リクエスト数/ウィンドウ"
                             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
                           />
                           <p className="mt-1 text-xs text-zinc-500">ウィンドウ内の最大リクエスト数</p>
@@ -321,6 +317,7 @@ export default function RateLimitsPage() {
                             min="10000"
                             max="300000"
                             step="1000"
+                            aria-label="ウィンドウサイズ (ms)"
                             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
                           />
                           <p className="mt-1 text-xs text-zinc-500">{(editValues.windowMs || 0) / 1000}秒</p>
@@ -336,6 +333,7 @@ export default function RateLimitsPage() {
                             min="500"
                             max="30000"
                             step="500"
+                            aria-label="最小遅延 (ms)"
                             className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-800"
                           />
                           <p className="mt-1 text-xs text-zinc-500">リクエスト間の最小間隔: {(editValues.minDelayMs || 0) / 1000}秒</p>
@@ -343,6 +341,7 @@ export default function RateLimitsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button
+                          aria-label="設定を保存"
                           onClick={() => saveConfig(config.domain)}
                           disabled={isSaving}
                           className="flex items-center gap-1 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
@@ -351,12 +350,14 @@ export default function RateLimitsPage() {
                           保存
                         </button>
                         <button
+                          aria-label="編集をキャンセル"
                           onClick={cancelEdit}
                           className="rounded-lg border border-zinc-200 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300"
                         >
                           キャンセル
                         </button>
                         <button
+                          aria-label="デフォルトに戻す"
                           onClick={() => resetConfig(config.domain)}
                           className="ml-auto text-sm text-red-600 hover:text-red-700"
                         >

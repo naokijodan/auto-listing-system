@@ -26,31 +26,9 @@ import { useDashboardStats, useJobLogs, useExchangeRate, useOrderStats, useMarke
 import { fetcher } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-
-interface KpiData {
-  totalProducts: number;
-  totalListings: number;
-  activeListings: number;
-  soldToday: number;
-  soldThisWeek: number;
-  soldThisMonth: number;
-  revenue: { today: number; thisWeek: number; thisMonth: number };
-  grossProfit: { today: number; thisWeek: number; thisMonth: number };
-  outOfStockCount: number;
-  staleListings30: number;
-  staleListings60: number;
-  staleRate: number;
-  healthScore: number;
-  healthScoreBreakdown: { staleScore: number; stockScore: number; profitScore: number };
-  productsByStatus: Record<string, number>;
-}
-
-interface TrendData {
-  date: string;
-  listings: number;
-  sold: number;
-  revenue: number;
-}
+import { addToast } from '@/components/ui/toast';
+import { z } from 'zod';
+import { KpiData, TrendData, KpiDataSchema, TrendDataSchema, DashboardResponseSchema } from './types';
 
 export default function Dashboard() {
   // Fetch dashboard data
@@ -58,20 +36,32 @@ export default function Dashboard() {
   const { data: jobLogsData } = useJobLogs({ limit: 10 });
 
   // Fetch KPI data
-  const { data: kpiResponse } = useSWR<{ success: boolean; data: KpiData }>(
+  const { data: kpiRaw } = useSWR(
     '/api/analytics/kpi',
     fetcher,
     { refreshInterval: 60000 }
   );
-  const kpi = kpiResponse?.data;
+  const parsedKpi = kpiRaw
+    ? DashboardResponseSchema.extend({ data: KpiDataSchema }).safeParse(kpiRaw)
+    : null;
+  if (kpiRaw && parsedKpi && !parsedKpi.success) {
+    addToast({ type: 'error', message: 'KPIデータの形式が不正です' });
+  }
+  const kpi: KpiData | undefined = parsedKpi?.success ? parsedKpi.data.data : undefined;
 
   // Fetch trend data
-  const { data: trendResponse } = useSWR<{ success: boolean; data: TrendData[] }>(
+  const { data: trendRaw } = useSWR(
     '/api/analytics/trends/sales?days=14',
     fetcher,
     { refreshInterval: 300000 }
   );
-  const trendData = trendResponse?.data || [];
+  const parsedTrend = trendRaw
+    ? DashboardResponseSchema.extend({ data: z.array(TrendDataSchema) }).safeParse(trendRaw)
+    : null;
+  if (trendRaw && parsedTrend && !parsedTrend.success) {
+    addToast({ type: 'error', message: 'トレンドデータの形式が不正です' });
+  }
+  const trendData: TrendData[] = parsedTrend?.success ? parsedTrend.data.data : [];
 
   // Fetch exchange rate
   const { data: exchangeRateData } = useExchangeRate();
@@ -133,7 +123,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy={isLoading ? true : undefined}>
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -188,34 +178,42 @@ export default function Dashboard() {
 
       {/* Main KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
+        <div role="status" aria-label="総商品数 KPI カード">
+          <StatsCard
           title="総商品数"
           value={kpi?.totalProducts ?? products}
           icon={Package}
           changeLabel={`出品中: ${kpi?.activeListings ?? listings}`}
           color="blue"
-        />
-        <StatsCard
+          />
+        </div>
+        <div role="status" aria-label="今月の販売 KPI カード">
+          <StatsCard
           title="今月の販売"
           value={kpi?.soldThisMonth ?? 0}
           icon={ShoppingCart}
           changeLabel={`今週: ${kpi?.soldThisWeek ?? 0} / 今日: ${kpi?.soldToday ?? 0}`}
           color="amber"
-        />
-        <StatsCard
+          />
+        </div>
+        <div role="status" aria-label="今月の売上 KPI カード">
+          <StatsCard
           title="今月の売上"
           value={`$${(kpi?.revenue?.thisMonth ?? 0).toLocaleString()}`}
           icon={DollarSign}
           changeLabel={`粗利: $${(kpi?.grossProfit?.thisMonth ?? 0).toLocaleString()}`}
           color="emerald"
-        />
-        <StatsCard
+          />
+        </div>
+        <div role="status" aria-label="滞留率 KPI カード">
+          <StatsCard
           title="滞留率"
           value={`${kpi?.staleRate ?? 0}%`}
           icon={Clock}
           changeLabel={`30日超: ${kpi?.staleListings30 ?? 0}件 / 60日超: ${kpi?.staleListings60 ?? 0}件`}
           color={kpi?.staleRate && kpi.staleRate > 20 ? 'red' : 'purple'}
-        />
+          />
+        </div>
       </div>
 
       {/* Alert Cards */}
@@ -225,6 +223,7 @@ export default function Dashboard() {
             <Link
               href="/inventory/stale"
               className="flex items-center gap-4 rounded-xl border border-amber-200 bg-amber-50 p-4 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/20 dark:hover:bg-amber-900/30"
+              aria-label="滞留在庫アラート"
             >
               <AlertTriangle className="h-8 w-8 text-amber-600 dark:text-amber-400" />
               <div>
@@ -241,6 +240,7 @@ export default function Dashboard() {
             <Link
               href="/products?status=OUT_OF_STOCK"
               className="flex items-center gap-4 rounded-xl border border-red-200 bg-red-50 p-4 transition-colors hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:hover:bg-red-900/30"
+              aria-label="在庫切れアラート"
             >
               <Activity className="h-8 w-8 text-red-600 dark:text-red-400" />
               <div>
@@ -261,6 +261,7 @@ export default function Dashboard() {
         <Link
           href="/orders"
           className="block rounded-xl border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          aria-label="注文管理カード"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -306,6 +307,7 @@ export default function Dashboard() {
         <Link
           href="/shipments"
           className="block rounded-xl border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          aria-label="発送管理カード"
         >
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
@@ -351,6 +353,7 @@ export default function Dashboard() {
         <Link
           href="/sourcing"
           className="block rounded-xl border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          aria-label="仕入れ管理カード"
         >
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 dark:bg-purple-900/30">
@@ -395,6 +398,7 @@ export default function Dashboard() {
           <Link
             href="/joom"
             className="block rounded-xl border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+            aria-label="Joom ストアカード"
           >
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
@@ -429,6 +433,7 @@ export default function Dashboard() {
           <Link
             href="/ebay"
             className="block rounded-xl border border-zinc-200 bg-white p-6 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+            aria-label="eBay ストアカード"
           >
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 dark:bg-blue-900/30">
@@ -463,7 +468,7 @@ export default function Dashboard() {
 
       {/* Charts and Activity */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2" aria-label="売上トレンドグラフ">
           <SalesChart data={trendData.length > 0 ? trendData : [
             { date: '---', listings: 0, sold: 0 },
           ]} />
@@ -476,10 +481,11 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Links */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="navigation" aria-label="ダッシュボード クイックリンク">
         <Link
           href="/analytics/bestsellers"
           className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          aria-label="売れ筋分析"
         >
           <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           <div>
@@ -490,6 +496,7 @@ export default function Dashboard() {
         <Link
           href="/inventory/stale"
           className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          aria-label="滞留在庫"
         >
           <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           <div>
@@ -500,6 +507,7 @@ export default function Dashboard() {
         <Link
           href="/shipments"
           className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          aria-label="発送処理"
         >
           <PackageCheck className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
           <div>
@@ -510,6 +518,7 @@ export default function Dashboard() {
         <Link
           href="/sourcing"
           className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+          aria-label="仕入れ確認"
         >
           <ShoppingBag className="h-6 w-6 text-purple-600 dark:text-purple-400" />
           <div>
@@ -520,15 +529,17 @@ export default function Dashboard() {
       </div>
 
       {/* Queue Status */}
-      <QueueStatus queues={queues.length > 0 ? queues : [
+      <div aria-label="キューステータス">
+        <QueueStatus queues={queues.length > 0 ? queues : [
         { name: 'scrape', waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
         { name: 'translate', waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
         { name: 'image', waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
         { name: 'publish', waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 },
       ]} />
+      </div>
 
       {/* Exchange Rate Card */}
-      <div className="rounded-xl border border-zinc-200 bg-gradient-to-r from-amber-50 to-orange-50 p-6 dark:border-zinc-800 dark:from-amber-900/20 dark:to-orange-900/20">
+      <div className="rounded-xl border border-zinc-200 bg-gradient-to-r from-amber-50 to-orange-50 p-6 dark:border-zinc-800 dark:from-amber-900/20 dark:to-orange-900/20" aria-label="為替レートカード">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">

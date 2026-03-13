@@ -21,30 +21,13 @@ import {
   Loader2,
   X,
 } from 'lucide-react';
-
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  severity: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS';
-  productId?: string;
-  listingId?: string;
-  isRead: boolean;
-  readAt?: string;
-  createdAt: string;
-}
-
-interface NotificationsResponse {
-  success: boolean;
-  data: Notification[];
-  pagination: {
-    total: number;
-    limit: number;
-    offset: number;
-  };
-  unreadCount: number;
-}
+import {
+  type Notification,
+  type NotificationsResponse,
+  NotificationsResponseSchema,
+  INITIAL_FILTER,
+  INITIAL_TYPE_FILTER,
+} from './types'
 
 const severityConfig = {
   INFO: {
@@ -88,8 +71,8 @@ const typeLabels: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
-  const [filter, setFilter] = useState<'all' | 'unread'>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('');
+  const [filter, setFilter] = useState<'all' | 'unread'>(INITIAL_FILTER);
+  const [typeFilter, setTypeFilter] = useState<string>(INITIAL_TYPE_FILTER);
 
   const { data, error, isLoading, mutate } = useSWR<NotificationsResponse>(
     `/api/notifications?unreadOnly=${filter === 'unread'}&limit=100${typeFilter ? `&type=${typeFilter}` : ''}`,
@@ -97,8 +80,9 @@ export default function NotificationsPage() {
     { refreshInterval: 30000 } // 30秒ごとに更新
   );
 
-  const notifications = data?.data ?? [];
-  const unreadCount = data?.unreadCount ?? 0;
+  const parsed = data ? NotificationsResponseSchema.safeParse(data) : null
+  const notifications = parsed?.success ? parsed.data.data : []
+  const unreadCount = parsed?.success ? parsed.data.unreadCount : 0
 
   // 既読にする
   const handleMarkAsRead = useCallback(
@@ -171,11 +155,17 @@ export default function NotificationsPage() {
             size="sm"
             onClick={handleMarkAllAsRead}
             disabled={unreadCount === 0}
+            aria-label="すべて既読にする"
           >
             <CheckCheck className="h-4 w-4" />
             すべて既読
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => mutate()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => mutate()}
+            aria-label="通知を更新"
+          >
             <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
           </Button>
         </div>
@@ -192,6 +182,7 @@ export default function NotificationsPage() {
                 ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
             )}
+            aria-label="すべてを表示"
           >
             すべて
           </button>
@@ -203,6 +194,7 @@ export default function NotificationsPage() {
                 ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
                 : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
             )}
+            aria-label="未読のみを表示"
           >
             未読
             {unreadCount > 0 && (
@@ -217,6 +209,7 @@ export default function NotificationsPage() {
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
           className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+          aria-label="通知の種類でフィルター"
         >
           <option value="">すべての種類</option>
           <option value="SCRAPE_COMPLETE">スクレイピング完了</option>
@@ -243,7 +236,13 @@ export default function NotificationsPage() {
             <div className="flex flex-col items-center justify-center py-12">
               <AlertCircle className="h-8 w-8 text-red-500" />
               <p className="mt-2 text-sm text-red-500">通知の取得に失敗しました</p>
-              <Button variant="outline" size="sm" className="mt-4" onClick={() => mutate()}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => mutate()}
+                aria-label="通知を更新"
+              >
                 <RefreshCw className="h-4 w-4" />
                 再試行
               </Button>
@@ -251,14 +250,14 @@ export default function NotificationsPage() {
           )}
 
           {!isLoading && !error && notifications.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12">
+            <div className="flex flex-col items-center justify-center py-12" role="status">
               <Bell className="h-12 w-12 text-zinc-300 dark:text-zinc-600" />
               <p className="mt-2 text-sm text-zinc-500">通知はありません</p>
             </div>
           )}
 
           {!isLoading && !error && notifications.length > 0 && (
-            <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800" role="list">
               {notifications.map((notification) => {
                 const config = severityConfig[notification.severity];
                 const Icon = config.icon;
@@ -271,6 +270,7 @@ export default function NotificationsPage() {
                       !notification.isRead && 'bg-amber-50/50 dark:bg-amber-900/10',
                       'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'
                     )}
+                    role="listitem"
                   >
                     <div
                       className={cn(
@@ -306,6 +306,7 @@ export default function NotificationsPage() {
                               onClick={() => handleMarkAsRead(notification.id)}
                               className="ml-2 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
                               title="既読にする"
+                              aria-label="既読にする"
                             >
                               <CheckCheck className="h-4 w-4" />
                             </button>
@@ -314,6 +315,7 @@ export default function NotificationsPage() {
                             onClick={() => handleDelete(notification.id)}
                             className="rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
                             title="削除"
+                            aria-label="通知を削除"
                           >
                             <X className="h-4 w-4" />
                           </button>
