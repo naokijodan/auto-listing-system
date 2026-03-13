@@ -8,6 +8,12 @@ import {
   PricingStrategy,
 } from '@/lib/hooks';
 import { postApi, patchApi } from '@/lib/api';
+import { addToast } from '@/components/ui/toast';
+import {
+  PricingStatsResponseSchema,
+  PriceRecommendationsResponseSchema,
+  BulkApplyResponseSchema,
+} from './types';
 
 const STRATEGIES: { value: PricingStrategy; label: string; description: string }[] = [
   { value: 'PROFIT_MAXIMIZE', label: '利益最大化', description: '利益率を最大化する価格設定' },
@@ -30,9 +36,13 @@ export default function PricingAiPage() {
     limit: 50,
   });
 
-  const stats = statsData?.data;
-  const recommendations = recsData?.data || [];
-  const summary = recsData?.summary;
+  // Zod safeParse for SWR responses
+  const parsedStats = statsData ? PricingStatsResponseSchema.safeParse(statsData) : null;
+  const stats = parsedStats?.success ? parsedStats.data.data : null;
+
+  const parsedRecs = recsData ? PriceRecommendationsResponseSchema.safeParse(recsData) : null;
+  const recommendations = parsedRecs?.success ? parsedRecs.data.data : [];
+  const summary = parsedRecs?.success ? parsedRecs.data.summary : undefined;
 
   const handleApplyPrice = async (rec: PriceRecommendation) => {
     if (applyingIds.has(rec.listingId)) return;
@@ -47,8 +57,7 @@ export default function PricingAiPage() {
       setAppliedIds((prev) => new Set(prev).add(rec.listingId));
       mutateRecs();
     } catch (error) {
-      console.error('Price apply failed:', error);
-      alert('価格適用に失敗しました');
+      addToast('価格適用に失敗しました', 'error');
     } finally {
       setApplyingIds((prev) => {
         const next = new Set(prev);
@@ -66,14 +75,14 @@ export default function PricingAiPage() {
     );
 
     if (toApply.length === 0) {
-      alert('適用対象がありません');
+      addToast('適用対象がありません', 'info');
       return;
     }
 
     if (!confirm(`${toApply.length}件の価格を一括適用しますか？`)) return;
 
     try {
-      const result = await postApi<{ success: boolean; data: { success: number; failed: number } }>(
+      const rawResult = await postApi(
         '/api/pricing-ai/bulk-apply',
         {
           adjustments: toApply.map((r) => ({
@@ -82,12 +91,18 @@ export default function PricingAiPage() {
           })),
         }
       );
-
-      alert(`成功: ${result.data.success}件, 失敗: ${result.data.failed}件`);
+      const parsed = BulkApplyResponseSchema.safeParse(rawResult);
+      if (!parsed.success) {
+        addToast('レスポンスのデータ形式が不正です', 'error');
+        return;
+      }
+      addToast(
+        `成功: ${parsed.data.data.success}件, 失敗: ${parsed.data.data.failed}件`,
+        parsed.data.data.failed > 0 ? 'info' : 'success'
+      );
       mutateRecs();
     } catch (error) {
-      console.error('Bulk apply failed:', error);
-      alert('一括適用に失敗しました');
+      addToast('一括適用に失敗しました', 'error');
     }
   };
 
@@ -155,6 +170,7 @@ export default function PricingAiPage() {
           {STRATEGIES.map((strategy) => (
             <button
               key={strategy.value}
+              aria-pressed={selectedStrategy === strategy.value}
               onClick={() => setSelectedStrategy(strategy.value)}
               className={`p-3 rounded-lg border-2 text-left transition-all ${
                 selectedStrategy === strategy.value
@@ -172,6 +188,7 @@ export default function PricingAiPage() {
       {/* Filters and Actions */}
       <div className="flex flex-wrap gap-4 mb-4">
         <select
+          aria-label="マーケットプレイスを選択"
           value={selectedMarketplace}
           onChange={(e) => setSelectedMarketplace(e.target.value)}
           className="border rounded-lg px-3 py-2"
@@ -201,24 +218,24 @@ export default function PricingAiPage() {
       {/* Recommendations Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200" aria-label="価格推奨一覧">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">商品</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">現在価格</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">推奨価格</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">価格差</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">現在マージン</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">推奨マージン</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">信頼度</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">理由</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">アクション</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">商品</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">現在価格</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">推奨価格</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">価格差</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase hidden md:table-cell">現在マージン</th>
+                <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase hidden md:table-cell">推奨マージン</th>
+                <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">信頼度</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">理由</th>
+                <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">アクション</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {recsLoading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500" role="status">
                     読み込み中...
                   </td>
                 </tr>
@@ -259,12 +276,12 @@ export default function PricingAiPage() {
                           ({priceDiffPercent >= 0 ? '+' : ''}{priceDiffPercent.toFixed(1)}%)
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right hidden md:table-cell">
                         <span className={`text-sm ${rec.currentMargin < 15 ? 'text-red-600' : 'text-gray-900'}`}>
                           {rec.currentMargin.toFixed(1)}%
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right hidden md:table-cell">
                         <span className="text-sm font-medium text-green-600">
                           {rec.recommendedMargin.toFixed(1)}%
                         </span>
@@ -274,7 +291,7 @@ export default function PricingAiPage() {
                           {rec.confidence}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 hidden md:table-cell">
                         <div className="text-xs text-gray-600 max-w-xs truncate" title={rec.reason}>
                           {rec.reason}
                         </div>
@@ -284,6 +301,7 @@ export default function PricingAiPage() {
                           <span className="text-green-600 text-sm">適用済</span>
                         ) : (
                           <button
+                            aria-label={`${rec.listingId.slice(0, 8)}の推奨価格を適用`}
                             onClick={() => handleApplyPrice(rec)}
                             disabled={isApplying || Math.abs(priceDiffPercent) < 1}
                             className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
