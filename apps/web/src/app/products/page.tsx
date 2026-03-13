@@ -3,50 +3,25 @@
 import { useState, useCallback, useEffect, useMemo, useRef, useDeferredValue } from 'react';
 import useSWR from 'swr';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Card } from '@/components/ui/card';
+ 
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/badge';
-import { formatCurrency } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
 import { useProducts, useExchangeRate } from '@/lib/hooks';
-import { Product, productApi, postApi, fetcher } from '@/lib/api';
+import { productApi, postApi, fetcher } from '@/lib/api';
 import { addToast } from '@/components/ui/toast';
-import {
-  Search,
-  Filter,
-  ChevronDown,
-  ExternalLink,
-  Edit,
-  Trash2,
-  RefreshCw,
-  Download,
-  Upload,
-  MoreHorizontal,
-  Loader2,
-  AlertCircle,
-  Package,
-  DollarSign,
-  FileText,
-  ShoppingBag,
-} from 'lucide-react';
+import { ProductDetailPanel } from './ProductDetailPanel';
+import { ImportResultModal } from './ImportResultModal';
+import { type ViewMode, type ImportResult, sourceSiteLabels, ProductsResponseSchema } from './types';
+import { Search, Filter, Trash2, RefreshCw, Download, Upload, Loader2, AlertCircle, Package, DollarSign, FileText, ShoppingBag } from 'lucide-react';
 
 const ROW_HEIGHT = 52; // Height of each row in pixels
-
-// View mode types
-type ViewMode = 'inventory' | 'price' | 'seo';
 
 const viewModes: { id: ViewMode; label: string; icon: typeof Package }[] = [
   { id: 'inventory', label: '在庫', icon: Package },
   { id: 'price', label: '価格', icon: DollarSign },
   { id: 'seo', label: 'SEO', icon: FileText },
 ];
-
-const sourceSiteLabels: Record<string, string> = {
-  mercari: 'メルカリ',
-  yahoo: 'ヤフオク',
-  rakuma: 'ラクマ',
-  ebay: 'eBay',
-};
 
 export default function ProductsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -57,13 +32,7 @@ export default function ProductsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('inventory');
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importResult, setImportResult] = useState<{
-    created: number;
-    updated: number;
-    failed: number;
-    errors: string[];
-  } | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   // eBayアカウント選択
   const [selectedEbayCredentialId, setSelectedEbayCredentialId] = useState<string>('');
@@ -87,9 +56,9 @@ export default function ProductsPage() {
     sourceType: sourceFilter || undefined,
     limit: 5000, // Request more items for virtual scroll demo
   });
-
-  const products = data?.data ?? [];
-  const totalCount = data?.pagination?.total ?? 0;
+  const parsed = data ? ProductsResponseSchema.safeParse(data) : null;
+  const products = parsed?.success ? parsed.data.data : [];
+  const totalCount = parsed?.success ? parsed.data.pagination?.total ?? 0 : 0;
 
   // Fetch exchange rate from API
   const { data: rateData } = useExchangeRate();
@@ -320,7 +289,6 @@ export default function ProductsPage() {
     let successCount = 0;
     let skipCount = 0;
     let errorCount = 0;
-
     try {
       for (const productId of Array.from(selectedIds)) {
         try {
@@ -338,7 +306,6 @@ export default function ProductsPage() {
 
       setSelectedIds(new Set());
       mutate();
-
       if (successCount > 0) {
         addToast({
           type: 'success',
@@ -373,7 +340,6 @@ export default function ProductsPage() {
 
   return (
     <div className="flex h-[calc(100vh-7rem)] flex-col">
-      {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">商品管理</h1>
@@ -417,13 +383,12 @@ export default function ProductsPage() {
           </Button>
         </div>
       </div>
-
-      {/* Search & Filters */}
       <div className="mb-4 flex items-center gap-3">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
+            aria-label="商品を検索"
             placeholder="商品を検索... (SKU, 商品名)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -431,6 +396,7 @@ export default function ProductsPage() {
           />
         </div>
         <select
+          aria-label="ステータスを選択"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
@@ -444,6 +410,7 @@ export default function ProductsPage() {
           <option value="ERROR">エラー</option>
         </select>
         <select
+          aria-label="仕入元を選択"
           value={sourceFilter}
           onChange={(e) => setSourceFilter(e.target.value)}
           className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
@@ -458,15 +425,14 @@ export default function ProductsPage() {
           <option value="OTHER">その他</option>
         </select>
         <Button variant="ghost" size="sm">
-          <Filter className="h-4 w-4" />
-          詳細
-        </Button>
-
-        {/* View Mode Toggle */}
-        <div className="flex items-center rounded-lg border border-zinc-200 bg-zinc-100 p-0.5 dark:border-zinc-700 dark:bg-zinc-800">
-          {viewModes.map((mode) => (
+        <Filter className="h-4 w-4" />
+        詳細
+      </Button>
+      <div className="flex items-center rounded-lg border border-zinc-200 bg-zinc-100 p-0.5 dark:border-zinc-700 dark:bg-zinc-800">
+        {viewModes.map((mode) => (
             <button
               key={mode.id}
+              aria-pressed={viewMode === mode.id}
               onClick={() => setViewMode(mode.id)}
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
@@ -480,17 +446,12 @@ export default function ProductsPage() {
             </button>
           ))}
         </div>
-
-        <Button variant="ghost" size="sm" onClick={() => mutate()}>
-          <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-        </Button>
+          <Button variant="ghost" size="sm" onClick={() => mutate()} aria-label="データを更新">
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+          </Button>
       </div>
-
-      {/* Main Content: Table + Detail Panel */}
       <div className="flex flex-1 gap-4 overflow-hidden">
-        {/* Left: Table */}
         <div className="flex-1 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          {/* Table Header - Changes based on view mode */}
           <div className="flex items-center border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
             <div className="w-8">
               <input
@@ -499,6 +460,7 @@ export default function ProductsPage() {
                 onChange={toggleSelectAll}
                 disabled={products.length === 0}
                 className="h-4 w-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
+                aria-label="すべて選択"
               />
             </div>
             <div className="w-12">画像</div>
@@ -510,7 +472,7 @@ export default function ProductsPage() {
               <>
                 <div className="w-24 text-right">仕入価格</div>
                 <div className="w-24 text-right">出品価格</div>
-                <div className="w-20">仕入元</div>
+                <div className="w-20 hidden md:block">仕入元</div>
                 <div className="w-24">ステータス</div>
               </>
             )}
@@ -521,7 +483,7 @@ export default function ProductsPage() {
                 <div className="w-24 text-right">仕入価格</div>
                 <div className="w-24 text-right">出品価格</div>
                 <div className="w-20 text-right">利益</div>
-                <div className="w-20 text-right">利益率</div>
+                <div className="w-20 text-right hidden md:block">利益率</div>
               </>
             )}
 
@@ -529,27 +491,22 @@ export default function ProductsPage() {
             {viewMode === 'seo' && (
               <>
                 <div className="w-32">ブランド</div>
-                <div className="w-32">カテゴリ</div>
+                <div className="w-32 hidden md:block">カテゴリ</div>
                 <div className="w-24">翻訳</div>
               </>
             )}
           </div>
-
-          {/* Table Body - Virtual Scroll */}
           <div
             ref={parentRef}
             className="overflow-y-auto"
             style={{ height: 'calc(100% - 36px)' }}
           >
-            {/* Loading State */}
             {isLoading && (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex items-center justify-center py-12" role="status">
                 <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
                 <span className="ml-2 text-sm text-zinc-500">読み込み中...</span>
               </div>
             )}
-
-            {/* Error State */}
             {error && (
               <div className="flex flex-col items-center justify-center py-12">
                 <AlertCircle className="h-8 w-8 text-red-500" />
@@ -560,15 +517,11 @@ export default function ProductsPage() {
                 </Button>
               </div>
             )}
-
-            {/* Empty State */}
             {!isLoading && !error && products.length === 0 && (
               <div className="flex flex-col items-center justify-center py-12">
                 <p className="text-sm text-zinc-500">商品がありません</p>
               </div>
             )}
-
-            {/* Virtualized Product Rows */}
             {!isLoading && !error && products.length > 0 && (
               <div
                 style={{
@@ -576,6 +529,7 @@ export default function ProductsPage() {
                   width: '100%',
                   position: 'relative',
                 }}
+                role="list"
               >
                 {virtualizer.getVirtualItems().map((virtualRow) => {
                   const product = products[virtualRow.index];
@@ -583,7 +537,6 @@ export default function ProductsPage() {
                   const isFocused = focusedId === product.id;
                   const imageUrl = product.processedImages?.[0] || product.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`;
                   const listingPrice = product.listings?.[0]?.listingPrice;
-
                   return (
                     <div
                       key={product.id}
@@ -597,6 +550,7 @@ export default function ProductsPage() {
                         !isFocused && isSelected && 'bg-zinc-50 dark:bg-zinc-800/30',
                         !isFocused && !isSelected && 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'
                       )}
+                      role="listitem"
                       style={{
                         height: `${ROW_HEIGHT}px`,
                         transform: `translateY(${virtualRow.start}px)`,
@@ -615,7 +569,7 @@ export default function ProductsPage() {
                         <div className="h-10 w-10 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-800">
                           <img
                             src={imageUrl}
-                            alt=""
+                            alt={product.title || '商品画像'}
                             className="h-full w-full object-cover"
                             loading="lazy"
                           />
@@ -634,8 +588,6 @@ export default function ProductsPage() {
                           {product.titleEn || '翻訳なし'}
                         </p>
                       </div>
-
-                      {/* View Mode: Inventory */}
                       {viewMode === 'inventory' && (
                         <>
                           <div className="w-24 text-right">
@@ -652,7 +604,7 @@ export default function ProductsPage() {
                               <span className="text-sm text-zinc-400">-</span>
                             )}
                           </div>
-                          <div className="w-20">
+                          <div className="w-20 hidden md:block">
                             <span className="text-xs text-zinc-500 dark:text-zinc-400">
                               {sourceSiteLabels[product.source?.type || ''] || product.source?.name || '-'}
                             </span>
@@ -662,15 +614,12 @@ export default function ProductsPage() {
                           </div>
                         </>
                       )}
-
-                      {/* View Mode: Price */}
                       {viewMode === 'price' && (() => {
                         const costJpy = product.price;
                         const priceUsd = listingPrice || 0;
                         const costUsd = costJpy * exchangeRate;
                         const profit = priceUsd - costUsd;
                         const profitRate = priceUsd > 0 ? (profit / priceUsd) * 100 : 0;
-
                         return (
                           <>
                             <div className="w-24 text-right">
@@ -699,7 +648,7 @@ export default function ProductsPage() {
                                 <span className="text-sm text-zinc-400">-</span>
                               )}
                             </div>
-                            <div className="w-20 text-right">
+                            <div className="w-20 text-right hidden md:block">
                               {priceUsd > 0 ? (
                                 <span className={cn(
                                   'text-sm font-medium',
@@ -716,8 +665,6 @@ export default function ProductsPage() {
                           </>
                         );
                       })()}
-
-                      {/* View Mode: SEO */}
                       {viewMode === 'seo' && (
                         <>
                           <div className="w-32">
@@ -725,7 +672,7 @@ export default function ProductsPage() {
                               {product.brand || '-'}
                             </span>
                           </div>
-                          <div className="w-32">
+                          <div className="w-32 hidden md:block">
                             <span className="text-sm text-zinc-500 dark:text-zinc-400 truncate block">
                               {product.category || '-'}
                             </span>
@@ -750,129 +697,19 @@ export default function ProductsPage() {
             )}
           </div>
         </div>
-
-        {/* Right: Detail Panel */}
         <div className="w-80 flex-shrink-0 overflow-y-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-          {selectedProduct ? (
-            <div className="p-4">
-              {/* Product Image */}
-              <div className="mb-4 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                <img
-                  src={selectedProduct.processedImages?.[0] || selectedProduct.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`}
-                  alt={selectedProduct.title}
-                  className="h-48 w-full object-contain"
-                />
-              </div>
-
-              {/* Product Info */}
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-zinc-900 dark:text-white">
-                    {selectedProduct.title}
-                  </h3>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    {selectedProduct.titleEn || '翻訳なし'}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={selectedProduct.status} />
-                  {selectedProduct.listings && selectedProduct.listings.length > 0 && (
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {selectedProduct.listings.length}件の出品
-                    </span>
-                  )}
-                </div>
-
-                {/* Specs Table */}
-                <div className="rounded-lg border border-zinc-200 dark:border-zinc-700">
-                  <div className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-medium text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800">
-                    詳細情報
-                  </div>
-                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {[
-                      { label: 'ID', value: selectedProduct.sourceItemId?.slice(0, 12) || selectedProduct.id.slice(0, 12) },
-                      { label: 'ブランド', value: selectedProduct.brand || '-' },
-                      { label: 'カテゴリ', value: selectedProduct.category || '-' },
-                      { label: 'コンディション', value: selectedProduct.condition || '-' },
-                      { label: '仕入元', value: sourceSiteLabels[selectedProduct.source?.type || ''] || selectedProduct.source?.name || '-' },
-                      { label: '仕入価格', value: formatCurrency(selectedProduct.price) },
-                      { label: '出品価格', value: selectedProduct.listings?.[0]?.listingPrice ? `$${selectedProduct.listings[0].listingPrice.toFixed(2)}` : '-' },
-                      { label: '重量', value: selectedProduct.weight ? `${selectedProduct.weight}g` : '-' },
-                    ].map((item) => (
-                      <div key={item.label} className="flex items-center justify-between px-3 py-2">
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                          {item.label}
-                        </span>
-                        <span className="text-sm font-medium text-zinc-900 dark:text-white">
-                          {item.value}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Edit className="h-4 w-4" />
-                    編集
-                  </Button>
-                  {selectedProduct.sourceUrl && (
-                    <a
-                      href={selectedProduct.sourceUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1"
-                    >
-                      <Button variant="outline" size="sm" className="w-full">
-                        <ExternalLink className="h-4 w-4" />
-                        仕入元
-                      </Button>
-                    </a>
-                  )}
-                </div>
-
-                {/* eBayアカウント選択 */}
-                {activeEbayAccounts.length > 1 && (
-                  <select
-                    value={selectedEbayCredentialId}
-                    onChange={(e) => setSelectedEbayCredentialId(e.target.value)}
-                    className="w-full rounded-md border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-800"
-                  >
-                    <option value="">デフォルトアカウント</option>
-                    {activeEbayAccounts.map(account => (
-                      <option key={account.id} value={account.id}>{account.name}</option>
-                    ))}
-                  </select>
-                )}
-
-                {/* eBay出品作成 */}
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => handleCreateEbayListing(selectedProduct.id)}
-                  disabled={isCreatingEbayListing}
-                >
-                  {isCreatingEbayListing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ShoppingBag className="h-4 w-4" />
-                  )}
-                  eBay出品作成
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-zinc-400">
-              {isLoading ? '読み込み中...' : '商品を選択してください'}
-            </div>
-          )}
+          <ProductDetailPanel
+            product={selectedProduct || null}
+            exchangeRate={exchangeRate}
+            activeEbayAccounts={activeEbayAccounts}
+            selectedEbayCredentialId={selectedEbayCredentialId}
+            onSelectEbayCredential={setSelectedEbayCredentialId}
+            onCreateEbayListing={handleCreateEbayListing}
+            isCreatingEbayListing={isCreatingEbayListing}
+            isLoading={isLoading}
+          />
         </div>
       </div>
-
-      {/* Bottom Action Bar */}
       <div
         className={cn(
           'mt-4 flex items-center justify-between rounded-lg border px-4 py-3 transition-colors',
@@ -893,17 +730,6 @@ export default function ProductsPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {/* hidden: not yet implemented
-          <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
-            <Edit className="h-4 w-4" />
-            一括編集
-          </Button>
-          */}
-          {/* hidden: not yet implemented
-          <Button variant="outline" size="sm" disabled={selectedIds.size === 0}>
-            価格一括変更
-          </Button>
-          */}
           <Button
             variant="outline"
             size="sm"
@@ -949,52 +775,13 @@ export default function ProductsPage() {
           </Button>
         </div>
       </div>
-
-      {/* Keyboard Shortcuts Hint */}
       <div className="mt-2 flex items-center justify-center gap-4 text-xs text-zinc-400">
         <span><kbd className="rounded bg-zinc-200 px-1.5 py-0.5 dark:bg-zinc-700">J</kbd> / <kbd className="rounded bg-zinc-200 px-1.5 py-0.5 dark:bg-zinc-700">K</kbd> 移動</span>
         <span><kbd className="rounded bg-zinc-200 px-1.5 py-0.5 dark:bg-zinc-700">Space</kbd> 選択</span>
         <span><kbd className="rounded bg-zinc-200 px-1.5 py-0.5 dark:bg-zinc-700">Enter</kbd> 詳細</span>
       </div>
-
-      {/* Import Result Modal */}
       {importResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-zinc-900">
-            <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">
-              インポート結果
-            </h3>
-            <div className="mb-4 space-y-2">
-              <div className="flex justify-between">
-                <span className="text-zinc-600 dark:text-zinc-400">新規作成:</span>
-                <span className="font-medium text-emerald-600">{importResult.created}件</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-600 dark:text-zinc-400">更新:</span>
-                <span className="font-medium text-blue-600">{importResult.updated}件</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-600 dark:text-zinc-400">失敗:</span>
-                <span className="font-medium text-red-600">{importResult.failed}件</span>
-              </div>
-            </div>
-            {importResult.errors.length > 0 && (
-              <div className="mb-4 max-h-32 overflow-y-auto rounded bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-400">
-                {importResult.errors.map((err, i) => (
-                  <div key={i}>{err}</div>
-                ))}
-              </div>
-            )}
-            <Button
-              variant="primary"
-              size="sm"
-              className="w-full"
-              onClick={() => setImportResult(null)}
-            >
-              閉じる
-            </Button>
-          </div>
-        </div>
+        <ImportResultModal result={importResult} onClose={() => setImportResult(null)} />
       )}
     </div>
   );
