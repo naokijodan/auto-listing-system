@@ -21,33 +21,21 @@ import {
   X,
   Store,
 } from 'lucide-react';
+import {
+  type StatusFilter,
+  type QueueFilter,
+  jobTypeLabels,
+  jobTypeColors,
+  JobLogsResponseSchema,
+  QueueStatsResponseSchema,
+} from './types'
 
-type StatusFilter = 'all' | 'completed' | 'failed' | 'active' | 'waiting';
-type QueueFilter = 'all' | string;
-
-const jobTypeLabels: Record<string, string> = {
-  scrape: 'スクレイピング',
-  translate: '翻訳',
-  image: '画像処理',
-  publish: '出品',
-  inventory: '在庫',
-  pricing: '価格',
-  joom: 'Joom',
-  ebay: 'eBay',
-  notification: '通知',
-};
-
-const jobTypeColors: Record<string, string> = {
-  scrape: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  translate: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-  image: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
-  publish: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-  inventory: 'bg-zinc-100 text-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400',
-  pricing: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400',
-  joom: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-  ebay: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  notification: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400',
-};
+function getResultMarketplace(result: unknown): string | undefined {
+  if (result && typeof result === 'object' && 'marketplace' in (result as Record<string, unknown>)) {
+    return (result as Record<string, unknown>).marketplace as string
+  }
+  return undefined
+}
 
 export default function JobsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -62,8 +50,11 @@ export default function JobsPage() {
   });
   const { data: queueStatsResponse, isLoading: statsLoading, mutate: mutateStats } = useQueueStats();
 
-  const jobs = jobLogsResponse?.data || [];
-  const queueStats = queueStatsResponse?.data || [];
+  const parsedJobs = jobLogsResponse ? JobLogsResponseSchema.safeParse(jobLogsResponse) : null
+  const jobs = parsedJobs?.success ? parsedJobs.data.data : []
+
+  const parsedStats = queueStatsResponse ? QueueStatsResponseSchema.safeParse(queueStatsResponse) : null
+  const queueStats = parsedStats?.success ? parsedStats.data.data : []
 
   // Get unique queue names from stats
   const queueNames = useMemo(() => {
@@ -75,13 +66,13 @@ export default function JobsPage() {
     if (queueFilter === 'joom') {
       return jobs.filter(j =>
         j.queueName === 'joom' ||
-        (j.result && typeof j.result === 'object' && (j.result as { marketplace?: string }).marketplace === 'JOOM')
+        (j.result && typeof j.result === 'object' && getResultMarketplace(j.result) === 'JOOM')
       );
     }
     if (queueFilter === 'ebay') {
       return jobs.filter(j =>
         j.queueName === 'ebay' ||
-        (j.result && typeof j.result === 'object' && (j.result as { marketplace?: string }).marketplace === 'EBAY')
+        (j.result && typeof j.result === 'object' && getResultMarketplace(j.result) === 'EBAY')
       );
     }
     return jobs;
@@ -130,7 +121,7 @@ export default function JobsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
+          <Button variant="outline" onClick={handleRefresh} disabled={isLoading} aria-label="データを更新">
             <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
             更新
           </Button>
@@ -217,6 +208,8 @@ export default function JobsPage() {
           <div
             key={queue.name}
             className="cursor-pointer"
+            role="button"
+            aria-pressed={queueFilter === queue.name}
             onClick={() => setQueueFilter(queueFilter === queue.name ? 'all' : queue.name)}
           >
             <Card
@@ -266,6 +259,7 @@ export default function JobsPage() {
         <Button
           variant={queueFilter === 'joom' ? 'primary' : 'outline'}
           size="sm"
+          aria-pressed={queueFilter === 'joom'}
           onClick={() => setQueueFilter(queueFilter === 'joom' ? 'all' : 'joom')}
           className={queueFilter === 'joom' ? 'bg-amber-500 hover:bg-amber-600' : ''}
         >
@@ -275,6 +269,7 @@ export default function JobsPage() {
         <Button
           variant={queueFilter === 'ebay' ? 'primary' : 'outline'}
           size="sm"
+          aria-pressed={queueFilter === 'ebay'}
           onClick={() => setQueueFilter(queueFilter === 'ebay' ? 'all' : 'ebay')}
           className={queueFilter === 'ebay' ? 'bg-blue-500 hover:bg-blue-600' : ''}
         >
@@ -301,6 +296,7 @@ export default function JobsPage() {
             key={status}
             variant={statusFilter === status ? 'primary' : 'outline'}
             size="sm"
+            aria-pressed={statusFilter === status}
             onClick={() => setStatusFilter(status)}
           >
             {status === 'all' ? '全て' :
@@ -321,33 +317,33 @@ export default function JobsPage() {
         </CardHeader>
         <CardContent>
           {filteredJobs.length === 0 ? (
-            <div className="py-12 text-center text-zinc-400">
+            <div className="py-12 text-center text-zinc-400" role="status">
               {isLoading ? 'データを読み込み中...' : 'ジョブがありません'}
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full" aria-label="ジョブ履歴">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                    <th className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                    <th scope="col" className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
                       ジョブID
                     </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                    <th scope="col" className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
                       キュー
                     </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                    <th scope="col" className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">
                       タイプ
                     </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                    <th scope="col" className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
                       ステータス
                     </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                    <th scope="col" className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">
                       試行
                     </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                    <th scope="col" className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider hidden md:table-cell">
                       作成日時
                     </th>
-                    <th className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                    <th scope="col" className="py-3 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
                       アクション
                     </th>
                   </tr>
@@ -363,16 +359,16 @@ export default function JobsPage() {
                           {jobTypeLabels[job.queueName] || job.queueName}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-sm text-zinc-900 dark:text-white">
+                      <td className="py-3 px-4 text-sm text-zinc-900 dark:text-white hidden md:table-cell">
                         {job.jobType}
                       </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={job.status.toLowerCase()} />
                       </td>
-                      <td className="py-3 px-4 text-sm text-zinc-600 dark:text-zinc-400">
+                      <td className="py-3 px-4 text-sm text-zinc-600 dark:text-zinc-400 hidden md:table-cell">
                         {job.attempts}
                       </td>
-                      <td className="py-3 px-4 text-sm text-zinc-500 dark:text-zinc-400">
+                      <td className="py-3 px-4 text-sm text-zinc-500 dark:text-zinc-400 hidden md:table-cell">
                         {getRelativeTime(job.createdAt)}
                       </td>
                       <td className="py-3 px-4">
@@ -381,7 +377,7 @@ export default function JobsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              title="リトライ"
+                              aria-label={`${job.jobId.slice(0, 8)}をリトライ`}
                               onClick={() => handleRetry(job.id)}
                               disabled={isRetrying === job.id}
                             >
@@ -403,7 +399,7 @@ export default function JobsPage() {
 
           {/* Error Panel */}
           {failedJobs.length > 0 && (
-            <div className="mt-4 rounded-lg bg-red-50 p-4 dark:bg-red-900/20">
+            <div className="mt-4 rounded-lg bg-red-50 p-4 dark:bg-red-900/20" role="alert">
               <h4 className="flex items-center gap-2 font-medium text-red-800 dark:text-red-400">
                 <AlertTriangle className="h-4 w-4" />
                 エラー詳細 ({failedJobs.length}件)
