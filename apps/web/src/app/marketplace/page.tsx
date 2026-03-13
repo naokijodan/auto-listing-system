@@ -5,42 +5,15 @@ import { Save, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { addToast } from '@/components/ui/toast'
 import { postApi, putApi } from '@/lib/api'
-
-type PlatformKey = 'ebay' | 'joom' | 'etsy' | 'shopify' | 'instagram_shop' | 'tiktok_shop'
-
-type PlatformStatus = {
-  connected: boolean
-  tokenExpiry?: string | null
-  lastSyncedAt?: string | null
-  stats?: { listings: number; orders: number; sales: number }
-  settings?: {
-    inventorySync: boolean
-    orderSync: boolean
-    priceSync: boolean
-    interval: '15m' | '30m' | '1h'
-  }
-}
-
-type MarketplaceStatus = {
-  platforms: Record<PlatformKey, PlatformStatus>
-}
-
-type Order = {
-  id: string
-  platform: string
-  amount: number
-  status: string
-  createdAt: string
-}
-
-const platformMeta: Record<PlatformKey, { label: string; color: string }> = {
-  ebay: { label: 'eBay', color: 'blue-600' },
-  joom: { label: 'Joom', color: 'green-600' },
-  etsy: { label: 'Etsy', color: 'orange-600' },
-  shopify: { label: 'Shopify', color: 'emerald-600' },
-  instagram_shop: { label: 'Instagram Shop', color: 'pink-600' },
-  tiktok_shop: { label: 'TikTok Shop', color: 'cyan-600' },
-}
+import {
+  PlatformKey,
+  PlatformStatus,
+  MarketplaceStatus,
+  Order,
+  platformMeta,
+  MarketplaceOverviewSchema,
+  defaultPlatformStatus,
+} from './types'
 
 function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(' ')
@@ -66,62 +39,51 @@ export default function MarketplacePage() {
       setLoading(true)
       setError(null)
       try {
-        const [sRes, oRes] = await Promise.all([
-          fetch('/api/marketplace/status'),
-          fetch('/api/marketplace/orders/recent'),
-        ])
+        const sRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/marketplaces/overview`
+        )
         if (!sRes.ok) throw new Error('接続状態の取得に失敗しました')
-        if (!oRes.ok) throw new Error('最近の注文取得に失敗しました')
-        const sData = (await sRes.json()) as Partial<MarketplaceStatus>
-        const oData = (await oRes.json()) as Order[]
+        const rawData = await sRes.json()
+        const parsed = MarketplaceOverviewSchema.safeParse(rawData)
+        if (!parsed.success) {
+          throw new Error('データ形式が不正です')
+        }
+        const overview = parsed.data.data
         if (!cancelled) {
+          const ebayListingsTotal = overview.ebay.listings
+            ? Object.values(overview.ebay.listings).reduce((a, b) => a + b, 0)
+            : 0
+          const joomListingsTotal = overview.joom.listings
+            ? Object.values(overview.joom.listings).reduce((a, b) => a + b, 0)
+            : 0
           setStatus({
             platforms: {
-              ebay: sData.platforms?.ebay ?? {
-                connected: false,
-                tokenExpiry: null,
+              ebay: {
+                connected: overview.ebay.connected,
+                tokenExpiry:
+                  overview.ebay.tokenExpired !== null
+                    ? overview.ebay.tokenExpired
+                      ? 'expired'
+                      : null
+                    : null,
                 lastSyncedAt: null,
-                stats: { listings: 0, orders: 0, sales: 0 },
+                stats: { listings: ebayListingsTotal, orders: 0, sales: 0 },
                 settings: { inventorySync: true, orderSync: true, priceSync: false, interval: '30m' },
               },
-              joom: sData.platforms?.joom ?? {
-                connected: false,
+              joom: {
+                connected: overview.joom.connected,
                 tokenExpiry: null,
                 lastSyncedAt: null,
-                stats: { listings: 0, orders: 0, sales: 0 },
+                stats: { listings: joomListingsTotal, orders: 0, sales: 0 },
                 settings: { inventorySync: true, orderSync: true, priceSync: false, interval: '30m' },
               },
-              etsy: sData.platforms?.etsy ?? {
-                connected: false,
-                tokenExpiry: null,
-                lastSyncedAt: null,
-                stats: { listings: 0, orders: 0, sales: 0 },
-                settings: { inventorySync: true, orderSync: true, priceSync: false, interval: '30m' },
-              },
-              shopify: sData.platforms?.shopify ?? {
-                connected: false,
-                tokenExpiry: null,
-                lastSyncedAt: null,
-                stats: { listings: 0, orders: 0, sales: 0 },
-                settings: { inventorySync: true, orderSync: true, priceSync: false, interval: '30m' },
-              },
-              instagram_shop: sData.platforms?.instagram_shop ?? {
-                connected: false,
-                tokenExpiry: null,
-                lastSyncedAt: null,
-                stats: { listings: 0, orders: 0, sales: 0 },
-                settings: { inventorySync: true, orderSync: true, priceSync: false, interval: '30m' },
-              },
-              tiktok_shop: sData.platforms?.tiktok_shop ?? {
-                connected: false,
-                tokenExpiry: null,
-                lastSyncedAt: null,
-                stats: { listings: 0, orders: 0, sales: 0 },
-                settings: { inventorySync: true, orderSync: true, priceSync: false, interval: '30m' },
-              },
+              etsy: { ...defaultPlatformStatus },
+              shopify: { ...defaultPlatformStatus },
+              instagram_shop: { ...defaultPlatformStatus },
+              tiktok_shop: { ...defaultPlatformStatus },
             },
           })
-          setOrders(Array.isArray(oData) ? oData.slice(0, 10) : [])
+          // 注文APIは未実装のため空配列のまま
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? '不明なエラー')
@@ -154,7 +116,7 @@ export default function MarketplacePage() {
             setDefaultDest(json.data['marketplace.route.default_dest'])
         }
       } catch (e) {
-        console.error('Failed to load routing settings:', e)
+        addToast('ルーティング設定の読み込みに失敗しました', 'error')
       }
     }
     loadRoutingSettings()
@@ -196,48 +158,15 @@ export default function MarketplacePage() {
   }
 
   const handleConnect = async (platform: PlatformKey) => {
-    setOpLoading((s) => ({ ...s, [platform]: true }))
-    try {
-      const res = await fetch(`/api/marketplace/${platform}/connect`, { method: 'POST' })
-      if (!res.ok) throw new Error('接続に失敗しました')
-      setStatus((prev) =>
-        prev
-          ? {
-              platforms: { ...prev.platforms, [platform]: { ...prev.platforms[platform], connected: true } },
-            }
-          : prev
-      )
-    } catch (e) {
-      alert('接続に失敗しました')
-      console.error(e)
-    } finally {
-      setOpLoading((s) => ({ ...s, [platform]: false }))
-    }
+    addToast(`${platformMeta[platform].label}の接続機能は準備中です`, 'info')
   }
 
   const handleDisconnect = async (platform: PlatformKey) => {
-    setOpLoading((s) => ({ ...s, [platform]: true }))
-    try {
-      const res = await fetch(`/api/marketplace/${platform}/disconnect`, { method: 'POST' })
-      if (!res.ok) throw new Error('切断に失敗しました')
-      setStatus((prev) =>
-        prev
-          ? {
-              platforms: { ...prev.platforms, [platform]: { ...prev.platforms[platform], connected: false } },
-            }
-          : prev
-      )
-    } catch (e) {
-      alert('切断に失敗しました')
-      console.error(e)
-    } finally {
-      setOpLoading((s) => ({ ...s, [platform]: false }))
-    }
+    addToast(`${platformMeta[platform].label}の切断機能は準備中です`, 'info')
   }
 
   const handleReauth = async (platform: PlatformKey) => {
-    // 簡易: 再認証＝connectエンドポイントを叩く想定
-    await handleConnect(platform)
+    addToast(`${platformMeta[platform].label}の再認証機能は準備中です`, 'info')
   }
 
   const handleSettingChange = async (
@@ -248,17 +177,7 @@ export default function MarketplacePage() {
     const current = status.platforms[platform]
     const nextSettings = { ...(current.settings ?? {}), ...patch } as NonNullable<PlatformStatus['settings']>
     setStatus({ platforms: { ...status.platforms, [platform]: { ...current, settings: nextSettings } } })
-    try {
-      const res = await fetch(`/api/marketplace/${platform}/settings`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nextSettings),
-      })
-      if (!res.ok) throw new Error('設定更新に失敗しました')
-    } catch (e) {
-      alert('設定更新に失敗しました')
-      console.error(e)
-    }
+    addToast('同期設定の保存はAPIが準備中です', 'info')
   }
 
   const platformCards = useMemo(() => {
@@ -276,13 +195,14 @@ export default function MarketplacePage() {
       return (
         <div key={key} className="rounded-lg border bg-white shadow-sm">
           <div className="flex items-center justify-between border-b p-4">
-            <div className="flex items-center gap-2">
-              <div className={cn(`rounded bg-${color} px-2 py-1 text-xs font-semibold text-white`)}>{meta.label}</div>
+              <div className="flex items-center gap-2">
+                <div className={cn(`rounded bg-${color} px-2 py-1 text-xs font-semibold text-white`)}>{meta.label}</div>
               <span
                 className={cn(
                   'ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
                   data.connected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
                 )}
+                role="status"
               >
                 {data.connected ? 'Connected' : 'Disconnected'}
               </span>
@@ -298,6 +218,7 @@ export default function MarketplacePage() {
                       'border-red-200 bg-white text-red-700 hover:bg-red-50',
                       opLoading[key] && 'cursor-wait opacity-50'
                     )}
+                    aria-label={`${meta.label}から切断`}
                   >
                     切断
                   </button>
@@ -309,6 +230,7 @@ export default function MarketplacePage() {
                       `border-${color} bg-${color} text-white hover:brightness-110`,
                       opLoading[key] && 'cursor-wait opacity-50'
                     )}
+                    aria-label={`${meta.label}を再認証`}
                   >
                     再認証
                   </button>
@@ -322,6 +244,7 @@ export default function MarketplacePage() {
                     `border-${color} bg-${color} text-white hover:brightness-110`,
                     opLoading[key] && 'cursor-wait opacity-50'
                   )}
+                  aria-label={`${meta.label}に接続`}
                 >
                   接続
                 </button>
@@ -372,6 +295,7 @@ export default function MarketplacePage() {
                     className="h-4 w-8 cursor-pointer appearance-none rounded-full bg-gray-200 outline-none transition peer checked:bg-green-500"
                     checked={!!settings.inventorySync}
                     onChange={(e) => handleSettingChange(key, { inventorySync: e.target.checked })}
+                    aria-label={`${meta.label}の在庫同期を切り替え`}
                   />
                 </label>
                 <label className="flex items-center justify-between gap-4">
@@ -381,6 +305,7 @@ export default function MarketplacePage() {
                     className="h-4 w-8 cursor-pointer appearance-none rounded-full bg-gray-200 outline-none transition peer checked:bg-green-500"
                     checked={!!settings.orderSync}
                     onChange={(e) => handleSettingChange(key, { orderSync: e.target.checked })}
+                    aria-label={`${meta.label}の注文同期を切り替え`}
                   />
                 </label>
                 <label className="flex items-center justify-between gap-4">
@@ -390,14 +315,16 @@ export default function MarketplacePage() {
                     className="h-4 w-8 cursor-pointer appearance-none rounded-full bg-gray-200 outline-none transition peer checked:bg-green-500"
                     checked={!!settings.priceSync}
                     onChange={(e) => handleSettingChange(key, { priceSync: e.target.checked })}
+                    aria-label={`${meta.label}の価格同期を切り替え`}
                   />
                 </label>
                 <label className="flex items-center justify-between gap-4">
                   <span className="text-gray-600">同期間隔</span>
                   <select
                     value={settings.interval}
-                    onChange={(e) => handleSettingChange(key, { interval: e.target.value as any })}
+                    onChange={(e) => handleSettingChange(key, { interval: e.target.value as '15m' | '30m' | '1h' })}
                     className="rounded-md border border-gray-300 px-2 py-1"
+                    aria-label={`${meta.label}の同期間隔を選択`}
                   >
                     <option value="15m">15分</option>
                     <option value="30m">30分</option>
@@ -441,6 +368,7 @@ export default function MarketplacePage() {
                     checked={routePriceRule}
                     onChange={(e) => setRoutePriceRule(e.target.checked)}
                     className="h-4 w-8 cursor-pointer appearance-none rounded-full bg-gray-200 outline-none transition peer checked:bg-blue-600"
+                    aria-label="価格ルールを切り替え"
                   />
                 </label>
                 <label className="flex items-center justify-between gap-4">
@@ -450,6 +378,7 @@ export default function MarketplacePage() {
                     checked={routeVintageRule}
                     onChange={(e) => setRouteVintageRule(e.target.checked)}
                     className="h-4 w-8 cursor-pointer appearance-none rounded-full bg-gray-200 outline-none transition peer checked:bg-orange-600"
+                    aria-label="ヴィンテージルールを切り替え"
                   />
                 </label>
                 <label className="flex items-center justify-between gap-4">
@@ -459,6 +388,7 @@ export default function MarketplacePage() {
                     checked={routeBrandRule}
                     onChange={(e) => setRouteBrandRule(e.target.checked)}
                     className="h-4 w-8 cursor-pointer appearance-none rounded-full bg-gray-200 outline-none transition peer checked:bg-emerald-600"
+                    aria-label="ブランドルールを切り替え"
                   />
                 </label>
               </div>
@@ -475,6 +405,7 @@ export default function MarketplacePage() {
                             e.target.checked ? [...prev, p] : prev.filter((x) => x !== p)
                           )
                         }
+                        aria-label={`${platformMeta[p].label}をデフォルト出品先に設定`}
                       />
                       <span>{platformMeta[p].label}</span>
                     </label>
@@ -506,21 +437,21 @@ export default function MarketplacePage() {
               <h2 className="text-lg font-semibold">注文統合ビュー（最近の10件）</h2>
             </div>
             <div className="w-full overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <table className="min-w-full divide-y divide-gray-200 text-sm" aria-label="最近の注文一覧">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-2 text-left font-medium text-gray-600">注文ID</th>
                     <th className="px-4 py-2 text-left font-medium text-gray-600">プラットフォーム</th>
                     <th className="px-4 py-2 text-left font-medium text-gray-600">金額</th>
                     <th className="px-4 py-2 text-left font-medium text-gray-600">ステータス</th>
-                    <th className="px-4 py-2 text-left font-medium text-gray-600">日時</th>
+                    <th className="hidden md:table-cell px-4 py-2 text-left font-medium text-gray-600">日時</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {orders.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                        注文がありません
+                        注文統合APIは準備中です
                       </td>
                     </tr>
                   )}
@@ -530,7 +461,7 @@ export default function MarketplacePage() {
                       <td className="px-4 py-2">{o.platform}</td>
                       <td className="px-4 py-2">¥{(o.amount ?? 0).toLocaleString()}</td>
                       <td className="px-4 py-2">{o.status}</td>
-                      <td className="px-4 py-2">{new Date(o.createdAt).toLocaleString()}</td>
+                      <td className="hidden md:table-cell px-4 py-2">{new Date(o.createdAt).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>
