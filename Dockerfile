@@ -83,8 +83,8 @@ FROM node:20-alpine AS worker
 
 WORKDIR /app
 
-# OpenSSLをインストール（Prismaエンジンに必要）
-RUN apk add --no-cache openssl
+# OpenSSL + rembg依存をインストール（Prismaエンジン + 背景除去）
+RUN apk add --no-cache openssl python3 py3-pip
 
 # セキュリティ: 非rootユーザーで実行
 RUN addgroup --system --gid 1001 nodejs && \
@@ -98,6 +98,9 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont
+
+# rembgインストール（Joomトップ画像の白背景処理）
+RUN pip install --break-system-packages --no-cache-dir "rembg[cli]" onnxruntime
 
 # Puppeteer設定
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
