@@ -48,7 +48,7 @@ async function removeBackground(inputPath: string, outputPath: string): Promise<
 
     // 背景削除実行
     await execAsync(`rembg i "${inputPath}" "${outputPath}"`, {
-      timeout: 60000, // 1分タイムアウト
+      timeout: 15000, // 15秒タイムアウト（Vultr CPU制限対策）
     });
 
     return true;
@@ -315,8 +315,21 @@ export async function processImageForJoom(
       throw new Error(downloadResult.error || 'Download failed');
     }
 
+    // 1.5. トップ画像（index=0）のみ背景除去を試行
+    let imagePathForOptimize = originalPath;
+    if (index === 0) {
+      const rembgOutputPath = path.join(tempDir, `rembg-${index}.png`);
+      const bgRemoved = await removeBackground(originalPath, rembgOutputPath);
+      if (bgRemoved) {
+        imagePathForOptimize = rembgOutputPath;
+        log.info({ type: 'joom_rembg_success', productId, index });
+      } else {
+        log.info({ type: 'joom_rembg_fallback', productId, index, message: 'rembg unavailable, using white padding only' });
+      }
+    }
+
     // 2. JPEG形式で最適化（Joom要件対応）
-    const optimizeResult = await optimizeImage(originalPath, optimizedPath, {
+    const optimizeResult = await optimizeImage(imagePathForOptimize, optimizedPath, {
       maxWidth: 1200,
       maxHeight: 1200,
       format: 'jpeg',
