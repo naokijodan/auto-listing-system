@@ -10,6 +10,12 @@ import { useListings, useExchangeRate } from '@/lib/hooks';
 import { Listing, postApi } from '@/lib/api';
 import { addToast } from '@/components/ui/toast';
 import {
+  type ViewMode,
+  marketplaceLabels,
+  statusLabels,
+  ListingsResponseSchema,
+} from './types'
+import {
   Search,
   Filter,
   ExternalLink,
@@ -30,26 +36,20 @@ import {
 
 const ROW_HEIGHT = 52; // Height of each row in pixels
 
-// View mode types
-type ViewMode = 'overview' | 'performance' | 'price';
-
 const viewModes: { id: ViewMode; label: string; icon: typeof Eye }[] = [
   { id: 'overview', label: '概要', icon: Eye },
   { id: 'performance', label: 'パフォーマンス', icon: TrendingUp },
   { id: 'price', label: '価格', icon: DollarSign },
 ];
 
-const marketplaceLabels: Record<string, { label: string; color: string }> = {
-  ebay: { label: 'eBay', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
-  joom: { label: 'Joom', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' },
-};
-
-const statusLabels: Record<string, string> = {
-  PUBLISHED: '出品中',
-  DRAFT: '下書き',
-  SOLD: '売却済',
-  ENDED: '終了',
-};
+// marketplaceData helper to avoid unsafe casts
+function getMarketplaceDataValue(data: unknown, key: string): number {
+  if (data && typeof data === 'object' && key in (data as Record<string, unknown>)) {
+    const val = (data as Record<string, unknown>)[key]
+    return typeof val === 'number' ? val : 0
+  }
+  return 0
+}
 
 export default function ListingsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -70,8 +70,9 @@ export default function ListingsPage() {
     limit: 5000, // Request more items for virtual scroll
   });
 
-  const listings = data?.data ?? [];
-  const totalCount = data?.pagination?.total ?? 0;
+  const parsed = data ? ListingsResponseSchema.safeParse(data) : null
+  const listings = parsed?.success ? parsed.data.data : []
+  const totalCount = parsed?.success ? (parsed.data.pagination?.total ?? 0) : 0
 
   // Fetch exchange rate from API
   const { data: rateData } = useExchangeRate();
@@ -289,6 +290,7 @@ export default function ListingsPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
+            aria-label="出品を検索"
             placeholder="出品を検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -296,6 +298,7 @@ export default function ListingsPage() {
           />
         </div>
         <select
+          aria-label="マーケットプレイスを選択"
           value={marketplaceFilter}
           onChange={(e) => setMarketplaceFilter(e.target.value)}
           className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
@@ -305,6 +308,7 @@ export default function ListingsPage() {
           <option value="joom">Joom</option>
         </select>
         <select
+          aria-label="ステータスを選択"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
@@ -324,6 +328,7 @@ export default function ListingsPage() {
           {viewModes.map((mode) => (
             <button
               key={mode.id}
+              aria-pressed={viewMode === mode.id}
               onClick={() => setViewMode(mode.id)}
               className={cn(
                 'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
@@ -338,7 +343,7 @@ export default function ListingsPage() {
           ))}
         </div>
 
-        <Button variant="ghost" size="sm" onClick={() => mutate()}>
+        <Button variant="ghost" size="sm" onClick={() => mutate()} aria-label="データを更新">
           <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
         </Button>
       </div>
@@ -352,6 +357,7 @@ export default function ListingsPage() {
             <div className="w-8">
               <input
                 type="checkbox"
+                aria-label="すべて選択"
                 checked={selectedIds.size === filteredListings.length && filteredListings.length > 0}
                 onChange={toggleSelectAll}
                 className="h-4 w-4 rounded border-zinc-300 text-amber-500 focus:ring-amber-500"
@@ -365,8 +371,8 @@ export default function ListingsPage() {
             {viewMode === 'overview' && (
               <>
                 <div className="w-24 text-right">価格</div>
-                <div className="w-16 text-right">Views</div>
-                <div className="w-16 text-right">Watch</div>
+                <div className="w-16 text-right hidden md:block">Views</div>
+                <div className="w-16 text-right hidden md:block">Watch</div>
                 <div className="w-24">ステータス</div>
               </>
             )}
@@ -375,8 +381,8 @@ export default function ListingsPage() {
             {viewMode === 'performance' && (
               <>
                 <div className="w-16 text-right">Views</div>
-                <div className="w-16 text-right">Watch</div>
-                <div className="w-16 text-right">CV率</div>
+                <div className="w-16 text-right hidden md:block">Watch</div>
+                <div className="w-16 text-right hidden md:block">CV率</div>
                 <div className="w-20 text-right">売上</div>
                 <div className="w-24">出品日</div>
               </>
@@ -388,7 +394,7 @@ export default function ListingsPage() {
                 <div className="w-24 text-right">仕入価格</div>
                 <div className="w-24 text-right">出品価格</div>
                 <div className="w-20 text-right">利益</div>
-                <div className="w-20 text-right">利益率</div>
+                <div className="w-20 text-right hidden md:block">利益率</div>
               </>
             )}
           </div>
@@ -401,7 +407,7 @@ export default function ListingsPage() {
           >
             {/* Loading State */}
             {isLoading && (
-              <div className="flex items-center justify-center py-12">
+              <div className="flex items-center justify-center py-12" role="status">
                 <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
                 <span className="ml-2 text-sm text-zinc-500">読み込み中...</span>
               </div>
@@ -429,6 +435,7 @@ export default function ListingsPage() {
             {/* Virtualized Listing Rows */}
             {!isLoading && !error && filteredListings.length > 0 && (
               <div
+                role="list"
                 style={{
                   height: `${virtualizer.getTotalSize()}px`,
                   width: '100%',
@@ -442,12 +449,13 @@ export default function ListingsPage() {
                   const mp = marketplaceLabels[listing.marketplace] || { label: listing.marketplace, color: 'bg-zinc-100 text-zinc-800' };
                   const imageUrl = listing.product?.processedImages?.[0] || listing.product?.images?.[0] || `https://placehold.co/400x400/27272a/f59e0b?text=No+Image`;
                   const title = listing.product?.titleEn || listing.product?.title || 'No Title';
-                  const views = (listing.marketplaceData as Record<string, unknown>)?.views as number ?? 0;
-                  const watchers = (listing.marketplaceData as Record<string, unknown>)?.watchers as number ?? 0;
+                  const views = getMarketplaceDataValue(listing.marketplaceData, 'views');
+                  const watchers = getMarketplaceDataValue(listing.marketplaceData, 'watchers');
 
                   return (
                     <div
                       key={listing.id}
+                      role="listitem"
                       data-index={virtualRow.index}
                       ref={virtualizer.measureElement}
                       onClick={() => setFocusedId(listing.id)}
@@ -499,12 +507,12 @@ export default function ListingsPage() {
                               {listing.currency === 'USD' ? '$' : ''}{listing.listingPrice.toFixed(2)}
                             </span>
                           </div>
-                          <div className="w-16 text-right">
+                          <div className="w-16 text-right hidden md:block">
                             <span className="text-sm text-zinc-600 dark:text-zinc-400">
                               {views}
                             </span>
                           </div>
-                          <div className="w-16 text-right">
+                          <div className="w-16 text-right hidden md:block">
                             <span className="text-sm text-zinc-600 dark:text-zinc-400">
                               {watchers}
                             </span>
@@ -517,9 +525,8 @@ export default function ListingsPage() {
 
                       {/* View Mode: Performance */}
                       {viewMode === 'performance' && (() => {
-                        const marketplaceData = listing.marketplaceData as Record<string, unknown> || {};
-                        const cvRate = views > 0 ? ((marketplaceData.sales as number || 0) / views * 100) : 0;
-                        const sales = (marketplaceData.sales as number) || 0;
+                        const sales = getMarketplaceDataValue(listing.marketplaceData, 'sales');
+                        const cvRate = views > 0 ? ((sales || 0) / views * 100) : 0;
                         const publishDate = listing.publishedAt
                           ? new Date(listing.publishedAt).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })
                           : '-';
@@ -529,10 +536,10 @@ export default function ListingsPage() {
                             <div className="w-16 text-right">
                               <span className="text-sm text-zinc-600 dark:text-zinc-400">{views}</span>
                             </div>
-                            <div className="w-16 text-right">
+                            <div className="w-16 text-right hidden md:block">
                               <span className="text-sm text-zinc-600 dark:text-zinc-400">{watchers}</span>
                             </div>
-                            <div className="w-16 text-right">
+                            <div className="w-16 text-right hidden md:block">
                               <span className={cn(
                                 'text-sm font-medium',
                                 cvRate >= 5 ? 'text-emerald-600 dark:text-emerald-400' :
@@ -582,7 +589,7 @@ export default function ListingsPage() {
                                 ${profit.toFixed(0)}
                               </span>
                             </div>
-                            <div className="w-20 text-right">
+                            <div className="w-20 text-right hidden md:block">
                               <span className={cn(
                                 'text-sm font-medium',
                                 profitRate >= 20 ? 'text-emerald-600 dark:text-emerald-400' :
@@ -642,13 +649,13 @@ export default function ListingsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg border border-zinc-200 p-3 text-center dark:border-zinc-700">
                     <p className="text-2xl font-bold text-zinc-900 dark:text-white">
-                      {((selectedListing.marketplaceData as Record<string, unknown>)?.views as number) ?? 0}
+                      {getMarketplaceDataValue(selectedListing.marketplaceData, 'views')}
                     </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">閲覧数</p>
                   </div>
                   <div className="rounded-lg border border-zinc-200 p-3 text-center dark:border-zinc-700">
                     <p className="text-2xl font-bold text-zinc-900 dark:text-white">
-                      {((selectedListing.marketplaceData as Record<string, unknown>)?.watchers as number) ?? 0}
+                      {getMarketplaceDataValue(selectedListing.marketplaceData, 'watchers')}
                     </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">ウォッチャー</p>
                   </div>
@@ -676,7 +683,7 @@ export default function ListingsPage() {
 
                 {/* Actions */}
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" aria-label="出品を編集" onClick={() => addToast({ type: 'info', message: '編集機能は準備中です' })}>
                     <Edit className="h-4 w-4" />
                     編集
                   </Button>
@@ -688,11 +695,11 @@ export default function ListingsPage() {
                       </Button>
                     </a>
                   )}
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" aria-label="価格を変更" onClick={() => addToast({ type: 'info', message: '価格変更機能は準備中です' })}>
                     <DollarSign className="h-4 w-4" />
                     価格変更
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" aria-label="出品を停止" onClick={() => addToast({ type: 'info', message: '個別停止機能は準備中です' })}>
                     <Pause className="h-4 w-4" />
                     停止
                   </Button>
@@ -728,12 +735,10 @@ export default function ListingsPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {/* hidden: not yet implemented
-          <Button variant="outline" size="sm" disabled={selectedIds.size === 0 || isProcessing}>
+          <Button variant="outline" size="sm" onClick={() => addToast({ type: 'info', message: '価格一括変更機能は準備中です' })} disabled={selectedIds.size === 0 || isProcessing}>
             <DollarSign className="h-4 w-4" />
             価格一括変更
           </Button>
-          */}
           <Button variant="outline" size="sm" onClick={handleBulkPublish} disabled={selectedIds.size === 0 || isProcessing}>
             <Play className="h-4 w-4" />
             再出品
