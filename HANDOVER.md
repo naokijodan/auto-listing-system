@@ -44,9 +44,10 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 - Web: https://rakuda.dev / API: https://api.rakuda.dev
 
 ■ 次にやること
-- 出品パイプライン本番テスト → 安定確認 → スクレイピング自動化（Smartproxy）
-- Etsy/Shopify OAuth認証実行
-- 計画書参照: https://naokijodan.github.io/auto-listing-system-plan/
+計画書の順番に従うこと: https://naokijodan.github.io/auto-listing-system-plan/
+1. 出品パイプライン本番テスト → 安定確認
+2. スクレイピング自動化（Smartproxy）— 出品が安定してから
+※ Etsy/Shopify OAuthは上記が安定した後。今は触らない
 
 ■ 開発ワークフロー（必須）
 - コード生成はCodex CLI（/opt/homebrew/bin/codex）に委託する
