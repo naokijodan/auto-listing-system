@@ -602,9 +602,6 @@ model Order {
   trackingCarrier String?
   shippedAt       DateTime?
 
-  // 販売チャネル識別（Shopify Hub経由の場合: ONLINE_STORE, INSTAGRAM, TIKTOK等）
-  sourceChannel String?
-
   // 生データ（デバッグ・参照用）
   rawData Json @default("{}")
 

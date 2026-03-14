@@ -34,17 +34,16 @@ describe('API → Worker Job Flow (Shopify)', () => {
     expect(res.body.status).toBe('PENDING');
   });
 
-  it('should return orders filtered by sourceChannel', async () => {
+  it('should return orders list for Shopify marketplace', async () => {
     mockPrisma.order.findMany.mockResolvedValue([]);
     mockPrisma.order.count.mockResolvedValue(0);
 
     await request(app)
       .get('/api/shopify-products/orders')
-      .query({ sourceChannel: 'INSTAGRAM' })
       .expect(200);
 
     expect(mockPrisma.order.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({ marketplace: 'SHOPIFY', sourceChannel: 'INSTAGRAM' }),
+      where: expect.objectContaining({ marketplace: 'SHOPIFY' }),
     }));
   });
 
@@ -73,4 +72,3 @@ describe('API → Worker Job Flow (Shopify)', () => {
     expect(res.body.products).toEqual(expect.objectContaining({ total: 9, pending: 5, active: 3, paused: 1 }));
   });
 });
-
