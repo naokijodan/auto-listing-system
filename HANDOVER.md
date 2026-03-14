@@ -44,13 +44,23 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 - Web: https://rakuda.dev / API: https://api.rakuda.dev
 
 ■ 次にやること
-計画書Phase 4（自動化）の順番に従うこと: https://naokijodan.github.io/auto-listing-system-plan/
+2つの計画書のPhase 4に従う。セッション開始時に両方を読んで、ユーザーにどちらの順序で進めるか確認すること。
+
+計画書1: https://naokijodan.github.io/auto-listing-system-plan/
+Phase 4（自動化・2週間）:
 1. 在庫監視スケジューラー（1日2〜3回実行）
 2. 価格自動調整（為替・仕入価格変動対応）
 3. セラー一括取得機能
 4. 楽天・Amazon検索収集 + AI選別
 5. エラー通知・アラート機能
 6. 運用ダッシュボード完成
+
+計画書2: https://naokijodan.github.io/resale-automation-design/
+Phase 4（安定化テスト・1週間）:
+1. 500商品フルロードテスト（3セッション×3日、エラー率・Ban確認）
+2. Smartproxy統合（Residential Proxy検証・ローテーション確認）
+3. モニタリング構築（成功率ダッシュボード・Ban検知アラート・ログ可視化）
+完了条件: Ban確率0.5%以下、成功率95%以上、1週間連続稼働エラーなし
 
 ■ 開発ワークフロー（必須）
 - コード生成はCodex CLI（/opt/homebrew/bin/codex）に委託する
