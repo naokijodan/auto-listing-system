@@ -17,6 +17,7 @@ import {
   Layers,
   Link2,
   Users,
+  Search,
 } from 'lucide-react';
 
 const navigation = [
@@ -24,6 +25,7 @@ const navigation = [
   { name: '商品管理', href: '/products', icon: Package },
   { name: '商品レビュー', href: '/products/review', icon: ClipboardCheck },
   { name: 'エンリッチメント', href: '/enrichment', icon: Sparkles },
+  { name: '検索収集', href: '/collections', icon: Search },
   { name: 'バッチ処理', href: '/batch', icon: Layers },
   { name: 'セラー管理', href: '/sellers', icon: Users },
   { name: 'Joom管理', href: '/joom', icon: Store },

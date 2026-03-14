@@ -10,6 +10,7 @@ import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { registerCoreRoutes } from './routes/core-routes';
 import { registerEbayRoutes } from './routes/ebay-routes';
+import searchCollectionsRouter from './routes/search-collections';
 import sellersRouter from './routes/sellers';
 
 import { logger } from '@rakuda/logger';
@@ -90,6 +91,7 @@ app.use(apiKeyAuth);
 // ルート
 registerCoreRoutes(app);
 registerEbayRoutes(app);
+app.use('/api/search-collections', searchCollectionsRouter);
 app.use('/api/sellers', sellersRouter);
 // Bull Board（管理UI）
 app.use('/admin/queues', serverAdapter.getRouter());

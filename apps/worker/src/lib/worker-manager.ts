@@ -4,6 +4,7 @@ import { logger, captureJobFailure, initSentry, flushSentry } from '@rakuda/logg
 import { QUEUE_NAMES, QUEUE_CONFIG } from '@rakuda/config';
 
 import { processScrapeJob } from '../processors/scrape';
+import { processSearchCollectionJob } from '../processors/search-collection';
 import { processImageJob } from '../processors/image';
 import { processTranslateJob } from '../processors/translate';
 import { processPublishJob, processAutoPublishJob } from '../processors/publish';
@@ -62,6 +63,10 @@ export async function startWorkers(connection: IORedis): Promise<void> {
   const scrapeWorker = createWorker(
     QUEUE_NAMES.SCRAPE,
     async (job) => {
+      // 検索収集ジョブ
+      if (job.name === 'search-collection') {
+        return processSearchCollectionJob(job as any);
+      }
       // 為替レート更新ジョブ
       if (job.name === 'update-exchange-rate') {
         return handleExchangeRateUpdate(job);
