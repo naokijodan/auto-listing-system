@@ -44,7 +44,7 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 - Web: https://rakuda.dev / API: https://api.rakuda.dev
 
 ■ 次にやること
-2つの計画書のPhase 4に従う。セッション開始時に両方を読んで、ユーザーにどちらの順序で進めるか確認すること。
+2つの計画書のPhase 4を順番通りに実行する。聞かずにやる。
 
 計画書1: https://naokijodan.github.io/auto-listing-system-plan/
 Phase 4（自動化・2週間）:
