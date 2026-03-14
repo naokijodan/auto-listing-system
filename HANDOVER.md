@@ -44,10 +44,13 @@ RAKUDAプロジェクト（~/Desktop/rakuda/）の続きをお願いする。
 - Web: https://rakuda.dev / API: https://api.rakuda.dev
 
 ■ 次にやること
-計画書の順番に従うこと: https://naokijodan.github.io/auto-listing-system-plan/
-1. 出品パイプライン本番テスト → 安定確認
-2. スクレイピング自動化（Smartproxy）— 出品が安定してから
-※ Etsy/Shopify OAuthは上記が安定した後。今は触らない
+計画書Phase 4（自動化）の順番に従うこと: https://naokijodan.github.io/auto-listing-system-plan/
+1. 在庫監視スケジューラー（1日2〜3回実行）
+2. 価格自動調整（為替・仕入価格変動対応）
+3. セラー一括取得機能
+4. 楽天・Amazon検索収集 + AI選別
+5. エラー通知・アラート機能
+6. 運用ダッシュボード完成
 
 ■ 開発ワークフロー（必須）
 - コード生成はCodex CLI（/opt/homebrew/bin/codex）に委託する
