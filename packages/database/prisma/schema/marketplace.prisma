@@ -221,3 +221,133 @@ model ProductPriceOverride {
   @@index([productId, marketplace, isActive])
   @@map("product_price_overrides")
 }
+
+
+// ========================================
+// セラー管理（Phase 4）
+// ========================================
+model Seller {
+  id              String    @id @default(cuid())
+  sourceType      SourceType
+  sellerId        String    // プラットフォーム上のセラーID
+  sellerName      String?
+  sellerUrl       String
+
+  rating          Float?
+  ratingCount     Int?
+  productCount    Int?
+
+  lastScrapedAt   DateTime?
+  isMonitored     Boolean   @default(false)  // 定期監視対象か
+  monitorCron     String?   // 監視スケジュール（cron式）
+
+  metadata        Json      @default("{}")
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  batchJobs       SellerBatchJob[]
+
+  @@unique([sourceType, sellerId])
+  @@index([isMonitored, lastScrapedAt])
+  @@map("sellers")
+}
+
+model SellerBatchJob {
+  id            String    @id @default(cuid())
+  sellerId      String?
+  seller        Seller?   @relation(fields: [sellerId], references: [id])
+
+  jobId         String?   // BullMQ job ID
+  sourceType    SourceType
+  sellerUrl     String
+  sellerName    String?
+
+  limit         Int       @default(50)
+
+  // 結果
+  productsFound Int       @default(0)
+  created       Int       @default(0)
+  updated       Int       @default(0)
+  skipped       Int       @default(0)
+  failed        Int       @default(0)
+
+  status        String    @default("QUEUED")  // QUEUED, PROCESSING, COMPLETED, FAILED
+  errorMessage  String?
+
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([sellerId])
+  @@map("seller_batch_jobs")
+}
+
+model SearchCollection {
+  id            String    @id @default(cuid())
+
+  name          String    // コレクション名（例: "セイコー時計 楽天"）
+  sourceType    SourceType
+  searchUrl     String?   // 検索URL
+  searchQuery   String?   // 検索キーワード
+
+  // フィルター
+  minPrice      Int?
+  maxPrice      Int?
+  category      String?
+  brand         String?
+
+  // AI選別設定
+  aiFilterEnabled   Boolean  @default(true)
+  minConfidence     Float    @default(0.7)   // AI信頼度の最低値
+  autoApprove       Boolean  @default(false) // 自動承認するか
+
+  // スケジュール
+  isScheduled   Boolean   @default(false)
+  scheduleCron  String?   // 定期収集スケジュール
+
+  limit         Int       @default(50)
+
+  // 統計
+  totalCollected  Int     @default(0)
+  totalApproved   Int     @default(0)
+  totalRejected   Int     @default(0)
+  lastRunAt       DateTime?
+
+  status        String    @default("ACTIVE")  // ACTIVE, PAUSED, ARCHIVED
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  runs          SearchCollectionRun[]
+
+  @@index([sourceType, status])
+  @@map("search_collections")
+}
+
+model SearchCollectionRun {
+  id              String    @id @default(cuid())
+  collectionId    String
+  collection      SearchCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  jobId           String?   // BullMQ job ID
+
+  // 結果
+  productsFound   Int       @default(0)
+  created         Int       @default(0)
+  filtered        Int       @default(0)  // AI選別で除外された数
+  approved        Int       @default(0)
+  rejected        Int       @default(0)
+
+  status          String    @default("QUEUED")  // QUEUED, PROCESSING, COMPLETED, FAILED
+  errorMessage    String?
+
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([collectionId, createdAt])
+  @@map("search_collection_runs")
+}
