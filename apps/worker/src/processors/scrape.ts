@@ -367,6 +367,15 @@ async function processSellerScrape(
   const batchSize = options.batchSize || BATCH_SIZE;
 
   try {
+    // Mark related SellerBatchJob as PROCESSING if present
+    if (job.id) {
+      try {
+        await prisma.sellerBatchJob.updateMany({
+          where: { jobId: job.id as any },
+          data: { status: 'PROCESSING', startedAt: new Date() },
+        });
+      } catch {}
+    }
     // Daily Limit チェック
     const dailyStatus = await canScrape();
     if (!dailyStatus.allowed) {
@@ -491,6 +500,24 @@ async function processSellerScrape(
       },
     });
 
+    // Update SellerBatchJob with results
+    if (job.id) {
+      try {
+        await prisma.sellerBatchJob.updateMany({
+          where: { jobId: job.id as any },
+          data: {
+            status: 'COMPLETED',
+            productsFound: progress.total,
+            created: progress.created,
+            updated: progress.updated,
+            skipped: progress.skipped,
+            failed: progress.failed,
+            completedAt: new Date(),
+          },
+        });
+      } catch {}
+    }
+
     // 商品単位のカウントを加算（作成+更新分）
     await incrementDailyCount(progress.created + progress.updated);
 
@@ -517,6 +544,16 @@ async function processSellerScrape(
         startedAt: new Date(),
       },
     });
+
+    // Mark SellerBatchJob as FAILED
+    if (job.id) {
+      try {
+        await prisma.sellerBatchJob.updateMany({
+          where: { jobId: job.id as any },
+          data: { status: 'FAILED', errorMessage: error.message, completedAt: new Date() },
+        });
+      } catch {}
+    }
 
     // Phase 26: AlertManager経由のアラート発火
     await alertManager.processEvent({

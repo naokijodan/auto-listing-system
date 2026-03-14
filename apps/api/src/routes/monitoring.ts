@@ -3,6 +3,7 @@ import IORedis from 'ioredis';
 import { Queue } from 'bullmq';
 import { logger, getLogAggregator } from '@rakuda/logger';
 import { QUEUE_NAMES } from '@rakuda/config';
+import { prisma } from '@rakuda/database';
 
 const router = Router();
 const log = logger.child({ module: 'monitoring' });
@@ -441,3 +442,272 @@ router.get('/logs/export', async (req, res, next) => {
 });
 
 export { router as monitoringRouter };
+
+// =====================
+// Phase 4 監視API 追加
+// =====================
+
+// GET /api/monitoring/scraping-stats
+router.get('/scraping-stats', async (req, res, next) => {
+  try {
+    const now = new Date();
+    const start24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const start7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const start30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const whereBase = { queueName: QUEUE_NAMES.SCRAPE } as const;
+
+    const [
+      total24, failed24, total7, failed7, total30, failed30,
+    ] = await Promise.all([
+      prisma.jobLog.count({ where: { ...whereBase, createdAt: { gte: start24h } } }),
+      prisma.jobLog.count({ where: { ...whereBase, status: 'FAILED', createdAt: { gte: start24h } } }),
+      prisma.jobLog.count({ where: { ...whereBase, createdAt: { gte: start7d } } }),
+      prisma.jobLog.count({ where: { ...whereBase, status: 'FAILED', createdAt: { gte: start7d } } }),
+      prisma.jobLog.count({ where: { ...whereBase, createdAt: { gte: start30d } } }),
+      prisma.jobLog.count({ where: { ...whereBase, status: 'FAILED', createdAt: { gte: start30d } } }),
+    ]);
+
+    // Ban検知（簡易ヒューリスティック）
+    const banWhere = {
+      ...whereBase,
+      status: 'FAILED',
+      createdAt: { gte: start7d },
+      OR: [
+        { errorMessage: { contains: 'ban', mode: 'insensitive' } },
+        { errorMessage: { contains: 'blocked', mode: 'insensitive' } },
+        { errorMessage: { contains: 'captcha', mode: 'insensitive' } },
+        { errorMessage: { contains: '403' } },
+      ],
+    } as const;
+    const banDetections7d = await prisma.jobLog.count({ where: banWhere });
+
+    // ソースタイプ別統計（直近7日）
+    const recentScrapeLogs = await prisma.jobLog.findMany({
+      where: { ...whereBase, createdAt: { gte: start7d } },
+      select: { status: true, product: { select: { source: { select: { type: true } } } } },
+      take: 5000, // 安全のため上限
+      orderBy: { createdAt: 'desc' },
+    });
+    const bySource: Record<string, { total: number; failed: number; successRate: number }> = {};
+    for (const log of recentScrapeLogs) {
+      const type = log.product?.source?.type || 'OTHER';
+      if (!bySource[type]) bySource[type] = { total: 0, failed: 0, successRate: 100 };
+      bySource[type].total += 1;
+      if (log.status === 'FAILED') bySource[type].failed += 1;
+    }
+    for (const key of Object.keys(bySource)) {
+      const item = bySource[key];
+      const succ = item.total - item.failed;
+      item.successRate = item.total > 0 ? Math.round((succ / item.total) * 1000) / 10 : 100;
+    }
+
+    // 時間帯別のエラー率（直近24h）
+    const hourly: Array<{ hour: string; total: number; failed: number; errorRate: number }> = [];
+    for (let i = 23; i >= 0; i--) {
+      const hourStart = new Date(now.getTime() - (i + 1) * 60 * 60 * 1000);
+      const hourEnd = new Date(now.getTime() - i * 60 * 60 * 1000);
+      // eslint-disable-next-line no-await-in-loop
+      const [t, f] = await Promise.all([
+        prisma.jobLog.count({ where: { ...whereBase, createdAt: { gte: hourStart, lt: hourEnd } } }),
+        prisma.jobLog.count({ where: { ...whereBase, status: 'FAILED', createdAt: { gte: hourStart, lt: hourEnd } } }),
+      ]);
+      hourly.push({
+        hour: hourStart.toISOString(),
+        total: t,
+        failed: f,
+        errorRate: t > 0 ? Math.round((f / t) * 1000) / 10 : 0,
+      });
+    }
+
+    const resp = {
+      summary: {
+        last24h: {
+          total: total24,
+          failed: failed24,
+          successRate: total24 > 0 ? Math.round(((total24 - failed24) / total24) * 1000) / 10 : 100,
+        },
+        last7d: {
+          total: total7,
+          failed: failed7,
+          successRate: total7 > 0 ? Math.round(((total7 - failed7) / total7) * 1000) / 10 : 100,
+          banDetections: banDetections7d,
+        },
+        last30d: {
+          total: total30,
+          failed: failed30,
+          successRate: total30 > 0 ? Math.round(((total30 - failed30) / total30) * 1000) / 10 : 100,
+        },
+      },
+      bySource,
+      hourly,
+    } as const;
+
+    res.json({ success: true, data: resp });
+  } catch (error) {
+    log.error('Failed to get scraping-stats', error);
+    next(error);
+  }
+});
+
+// GET /api/monitoring/system-health
+router.get('/system-health', async (_req, res, next) => {
+  try {
+    // Redis/DB 状態
+    let redisStatus: 'CONNECTED' | 'ERROR' = 'CONNECTED';
+    let dbStatus: 'CONNECTED' | 'ERROR' = 'CONNECTED';
+    try { await redis.ping(); } catch { redisStatus = 'ERROR'; }
+    try { await prisma.$queryRaw`SELECT 1`; } catch { dbStatus = 'ERROR'; }
+
+    // キュー状態
+    const queueStates = await Promise.all(
+      queues.map(async (q) => {
+        const [waiting, active, failed, completed] = await Promise.all([
+          q.getWaitingCount(),
+          q.getActiveCount(),
+          q.getFailedCount(),
+          q.getCompletedCount(),
+        ]);
+        return { name: q.name, waiting, active, failed, completed };
+      })
+    );
+
+    // スケジューラー（同期設定など）の最終実行時刻
+    const schedulers = await prisma.marketplaceSyncSetting.findMany({
+      select: { marketplace: true, syncType: true, lastRunAt: true, isEnabled: true },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+
+    // ヘルス判定
+    const anyQueueBacklog = queueStates.some((s) => s.waiting > 100 || s.failed > 10);
+    const unhealthy = redisStatus === 'ERROR' || dbStatus === 'ERROR';
+    const health: 'HEALTHY' | 'DEGRADED' | 'UNHEALTHY' = unhealthy
+      ? 'UNHEALTHY'
+      : anyQueueBacklog
+        ? 'DEGRADED'
+        : 'HEALTHY';
+
+    res.json({
+      success: true,
+      data: {
+        status: health,
+        redis: redisStatus,
+        database: dbStatus,
+        queues: queueStates,
+        schedulers,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    log.error('Failed to get system-health', error);
+    next(error);
+  }
+});
+
+// GET /api/monitoring/inventory-stats
+router.get('/inventory-stats', async (_req, res, next) => {
+  try {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // 在庫チェック数（InventoryLog）
+    const checkedCount = await prisma.inventoryLog.count({ where: { checkedAt: { gte: todayStart } } });
+
+    // 在庫切れ検知数（InventoryAlert: STOCK_OUT）
+    const outOfStockCount = await prisma.inventoryAlert.count({
+      where: { alertType: 'STOCK_OUT', createdAt: { gte: todayStart } },
+    });
+
+    // 価格変動検知数（InventoryLog.priceChanged）
+    const priceChangeCount = await prisma.inventoryLog.count({
+      where: { checkedAt: { gte: todayStart }, priceChanged: true },
+    });
+
+    // ソースタイプ別（今日）
+    const logs = await prisma.inventoryLog.findMany({
+      where: { checkedAt: { gte: todayStart } },
+      select: { product: { select: { source: { select: { type: true } } } }, priceChanged: true, stockChanged: true },
+      take: 5000,
+      orderBy: { checkedAt: 'desc' },
+    });
+    const bySource: Record<string, { checked: number; priceChanged: number }> = {};
+    for (const l of logs) {
+      const type = l.product?.source?.type || 'OTHER';
+      if (!bySource[type]) bySource[type] = { checked: 0, priceChanged: 0 };
+      bySource[type].checked += 1;
+      if (l.priceChanged) bySource[type].priceChanged += 1;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        today: {
+          checked: checkedCount,
+          outOfStock: outOfStockCount,
+          priceChanges: priceChangeCount,
+        },
+        bySource,
+      },
+    });
+  } catch (error) {
+    log.error('Failed to get inventory-stats', error);
+    next(error);
+  }
+});
+
+// GET /api/monitoring/marketplace-sync
+router.get('/marketplace-sync', async (_req, res, next) => {
+  try {
+    const marketplaces: Array<'JOOM' | 'EBAY'> = ['JOOM', 'EBAY'];
+
+    const result: Record<string, any> = {};
+    for (const mp of marketplaces) {
+      // eslint-disable-next-line no-await-in-loop
+      const [states, last] = await Promise.all([
+        prisma.marketplaceSyncState.groupBy({
+          by: ['syncStatus'],
+          where: { marketplace: mp },
+          _count: true,
+        }),
+        prisma.marketplaceSyncState.findFirst({
+          where: { marketplace: mp, lastSyncAt: { not: null } },
+          orderBy: { lastSyncAt: 'desc' },
+          select: { lastSyncAt: true },
+        }),
+      ]);
+
+      const counts: Record<string, number> = { SYNCED: 0, PENDING: 0, ERROR: 0, STALE: 0, SYNCING: 0 };
+      for (const s of states) counts[s.syncStatus] = s._count as unknown as number;
+
+      result[mp.toLowerCase()] = {
+        counts: {
+          synced: counts.SYNCED || 0,
+          pending: (counts.PENDING || 0) + (counts.STALE || 0) + (counts.SYNCING || 0),
+          error: counts.ERROR || 0,
+        },
+        lastSyncAt: last?.lastSyncAt ?? null,
+      };
+    }
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    log.error('Failed to get marketplace-sync', error);
+    next(error);
+  }
+});
+
+// GET /api/monitoring/alerts/recent
+router.get('/alerts/recent', async (_req, res, next) => {
+  try {
+    const alerts = await prisma.notification.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: { id: true, type: true, message: true, severity: true, createdAt: true, title: true },
+    });
+    res.json({ success: true, data: alerts });
+  } catch (error) {
+    log.error('Failed to get recent alerts', error);
+    next(error);
+  }
+});

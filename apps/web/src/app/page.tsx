@@ -538,6 +538,24 @@ export default function Dashboard() {
       ]} />
       </div>
 
+      {/* Monitoring Link Card */}
+      <Link
+        href="/monitoring"
+        className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-5 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+        aria-label="監視パネルリンク"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 dark:bg-amber-900/30">
+            <Activity className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-zinc-900 dark:text-white">監視パネル</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">システムヘルスや成功率を確認</p>
+          </div>
+        </div>
+        <div className="text-amber-600">→</div>
+      </Link>
+
       {/* Exchange Rate Card */}
       <div className="rounded-xl border border-zinc-200 bg-gradient-to-r from-amber-50 to-orange-50 p-6 dark:border-zinc-800 dark:from-amber-900/20 dark:to-orange-900/20" aria-label="為替レートカード">
         <div className="flex items-center justify-between">
